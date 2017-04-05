@@ -44,6 +44,7 @@ build_lib(
     test/cobalt-queue-disc-test-suite.cc
     test/codel-queue-disc-test-suite.cc
     test/fifo-queue-disc-test-suite.cc
+    test/pi-square-queue-disc-test-suite.cc
     test/pie-queue-disc-test-suite.cc
     test/prio-queue-disc-test-suite.cc
     test/queue-disc-traces-test-suite.cc
