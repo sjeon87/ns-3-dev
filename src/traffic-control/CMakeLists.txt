@@ -12,6 +12,7 @@ build_lib(
     model/mq-queue-disc.cc
     model/packet-filter.cc
     model/pfifo-fast-queue-disc.cc
+    model/pi-square-queue-disc.cc
     model/pie-queue-disc.cc
     model/prio-queue-disc.cc
     model/queue-disc.cc
@@ -30,6 +31,7 @@ build_lib(
     model/mq-queue-disc.h
     model/packet-filter.h
     model/pfifo-fast-queue-disc.h
+    model/pi-square-queue-disc.h
     model/pie-queue-disc.h
     model/prio-queue-disc.h
     model/queue-disc.h
