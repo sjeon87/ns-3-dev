@@ -18,11 +18,13 @@
  * Author: George F. Riley <riley@ece.gatech.edu>
  */
 
+#include <chrono>
 #include <iostream>
 #include <string>
 #include "ns3/log.h"
 #include "ns3/address.h"
 #include "ns3/node.h"
+#include "ns3/v4ping.h"
 #include "ns3/nstime.h"
 #include "ns3/socket.h"
 #include "ns3/simulator.h"
@@ -128,15 +130,41 @@ void FlentApplication::SetDelay (Time delay)
 {
   m_delay = delay;
 }
- 
+
+std::string AddressToString (Address addr)
+{
+  Ipv4Address ipv4Addr = Ipv4Address::ConvertFrom(addr);
+  uint32_t ip = ipv4Addr.Get();
+  unsigned char bytes[4];
+  bytes[0] = ip & 0xFF;
+  bytes[1] = (ip >> 8) & 0xFF;
+  bytes[2] = (ip >> 16) & 0xFF;
+  bytes[3] = (ip >> 24) & 0xFF;
+  char buf[32];
+  snprintf(buf, 32, "%d.%d.%d.%d", bytes[3], bytes[2], bytes[1], bytes[0]);
+  std::string addrString(buf);
+  return addrString;
+}
+
+std::string FlentApplication::GetUTCFormatTime (int sec) {
+  time_t     now = time (0) + sec;
+  struct tm  tstruct;
+  char       buf[80];
+  tstruct = *localtime(&now);
+  strftime(buf, sizeof(buf), "%Y-%m-%dT%X.004275Z", &tstruct);
+
+  return buf;
+}
+
 void FlentApplication::AddMetadata (Json::Value &j)
 {
   j["metadata"]["BATCH_NAME"] = Json::Value::null;
   j["metadata"]["BATCH_TIME"] = Json::Value::null;
   j["metadata"]["BATCH_TITLE"] = Json::Value::null;
   j["metadata"]["BATCH_UUID"] = Json::Value::null;
-  j["metadata"]["DATA_FILENAME"] = Json::Value::null;
-  j["metadata"]["EGRESS_INFO"]["bql"]["tx-0"] = Json::Value::null;
+  std::string filename = (m_testName + "-" + m_imageText + ".flent");
+  j["metadata"]["DATA_FILENAME"] = filename;
+  j["metadata"]["EGRESS_INFO"]["bql"]["tx-0"] = "";
   j["metadata"]["classes"] = Json::Value::null;
   j["metadata"]["driver"] = Json::Value::null;
   j["metadata"]["iface"] = Json::Value::null;
@@ -159,55 +187,62 @@ void FlentApplication::AddMetadata (Json::Value &j)
   j["metadata"]["qdiscs"]["parent"] = Json::Value::null;
   j["metadata"]["FAILED_RUNNERS"] = Json::Value::null;
   j["metadata"]["FLENT_VERSION"] = Json::Value::null;
-  j["metadata"]["HOST"] = Json::Value::null;
-  j["metadata"]["HOSTS"] = Json::Value::null;
+  std::string hostName = AddressToString (m_server);
+  j["metadata"]["HOST"] = hostName;
+  j["metadata"]["HOSTS"] = Json::Value (Json::arrayValue);
+  j["metadata"]["HOSTS"].append(hostName);
   j["metadata"]["HTTP_GETTER_DNS"] = Json::Value::null;
   j["metadata"]["HTTP_GETTER_URLLIST"] = Json::Value::null;
   j["metadata"]["HTTP_GETTER_WORKERS"] = Json::Value::null;
   j["metadata"]["IP_VERSION"] = Json::Value::null;
   j["metadata"]["KERNEL_NAME"] = Json::Value::null;
   j["metadata"]["KERNEL_RELEASE"] = Json::Value::null;
-  j["metadata"]["LENGTH"] = Json::Value::null;
+  j["metadata"]["LENGTH"] = m_duration.GetSeconds ();
   j["metadata"]["LOCAL_HOST"] = Json::Value::null;
   j["metadata"]["MODULE_VERSIONS"] = Json::Value::null;
-  j["metadata"]["NAME"] = Json::Value::null;
+  j["metadata"]["NAME"] = "tcp_download";
   j["metadata"]["NOTE"] = Json::Value::null;
   j["metadata"]["REMOTE_METADATA"] = Json::Value::null;
-  j["metadata"]["STEP_SIZE"] = Json::Value::null;
-  j["metadata"]["T0"] = Json::Value::null;
-  j["metadata"]["TEST_PARAMETERS"] = Json::Value::null;
-  j["metadata"]["TIME"] = Json::Value::null;
+  j["metadata"]["STEP_SIZE"] = m_stepSize.GetSeconds ();
+  j["metadata"]["TIME"] = GetUTCFormatTime (0);
+  j["metadata"]["T0"] = GetUTCFormatTime (-19800);
+  j["metadata"]["TEST_PARAMETERS"] = Json::objectValue;
   j["metadata"]["TITLE"] = Json::Value::null;
-  j["metadata"]["TOTAL_LENGTH"] = Json::Value::null;
+  j["metadata"]["TOTAL_LENGTH"] = m_stopTime.GetSeconds ();
+  j["version"] = 4;
 }
 
-static void
-ReceivePing (Json::Value &pingData,  const Address &address, uint16_t seq, uint8_t ttl, Time t)
+void
+FlentApplication::ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t)
 {
   Json::Value data;
   Json::Int64 rtt = t.GetMilliSeconds ();
   data["seq"] = seq;
-  data["t"] = Simulator::Now ().GetSeconds ();
+  data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
   data["val"] = rtt; 
-  pingData.append(data);
-  //std::cout << pingData << std::endl;
+  m_output["raw_values"]["Ping (ms) ICMP"].append(data);
+  m_output["results"]["Ping (ms) ICMP"].append(rtt);
+  m_output["x_values"].append(Simulator::Now ().GetSeconds ());
 }
 
 //Application Methods
 void FlentApplication::StartApplication (void) //Called at time specified by Start
 {
   NS_LOG_FUNCTION (this);
+  m_currTime = (std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count()/1000000000);
   FlentApplication::AddMetadata (m_output);
 
   if (m_testName.compare ("ping") == 0) {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_server);
-      Ptr<V4Ping> m_v4ping = CreateObject<V4Ping> ();
+      m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue(serverAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       GetNode ()->AddApplication (m_v4ping);
       m_output["raw_values"]["Ping (ms) ICMP"] = Json::Value (Json::arrayValue);
+      m_output["results"]["Ping (ms) ICMP"] = Json::Value (Json::arrayValue);
+      m_output["x_values"] = Json::Value (Json::arrayValue);
       
-      m_v4ping->TraceConnectWithoutContext ("Rx", MakeBoundCallback (&ReceivePing, m_output["raw_values"]["Ping (ms) ICMP"]));
+      m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
   } 
 }
@@ -216,10 +251,10 @@ void FlentApplication::StopApplication (void) // Called at time specified by Sto
 {
   NS_LOG_FUNCTION (this);
   Simulator::Schedule (MilliSeconds (0.01), &Simulator::Stop);
-  std::cout << m_output << std::endl;
-  //AsciiTraceHelper ascii;
-  //Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + "-" + m_imageText + ".flent");
-  //streamOutput->GetStream () << m_output << std::endl;
+  m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+  AsciiTraceHelper ascii;
+  Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + "-" + m_imageText + ".flent");
+  *streamOutput->GetStream () << m_output << std::endl;
 }
 
 } // Namespace ns3

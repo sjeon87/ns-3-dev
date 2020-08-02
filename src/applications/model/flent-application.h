@@ -30,6 +30,7 @@
 
 namespace ns3 {
 
+class V4Ping;
 
 /**
  * \ingroup applications
@@ -66,14 +67,18 @@ public:
   void SetDelay (Time delay);
   void AddMetadata (Json::Value &j);
 
-  Json::Value    m_output;          //!< Json output
-
 private:
 
   // inherited from Application base class.
   virtual void StartApplication (void);    //Called at time specified by Start
   virtual void StopApplication (void);     //Called at time specified by Stop
 
+  void ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t);
+  std::string GetUTCFormatTime (int sec);
+
+  double          m_currTime;      //!< Current time
+  Json::Value     m_output;        //!< Json output
+  Ptr<V4Ping>     m_v4ping;        //!< V4Ping application
   Time            m_duration;      //!< Test duration
   std::string     m_testName;      //!< Flent test name
   Address         m_server;        //!< Server address
