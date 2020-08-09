@@ -31,6 +31,8 @@
 namespace ns3 {
 
 class V4Ping;
+class PacketSink;
+class BulkSendApplication;
 
 /**
  * \ingroup applications
@@ -60,12 +62,13 @@ public:
 
   void SetTest (std::string testname);
   void SetDuration (Time duration);
-  void SetServer (Address serverAddress);
+  void SetServerAddress (Address serverAddress);
   void SetIncludeText (std::string textInImage);
   void SetOutput (std::string imagename);
   void SetStepSize (Time stepsize);
   void SetDelay (Time delay);
   void AddMetadata (Json::Value &j);
+  void SetServer ();
 
 private:
 
@@ -74,14 +77,20 @@ private:
   virtual void StopApplication (void);     //Called at time specified by Stop
 
   void ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t);
+  void SendData (Ptr<const Packet> packet);
   std::string GetUTCFormatTime (int sec);
+  void GoodputSampling ();
 
+
+  bool            m_server;        //!< Bool client or server
   double          m_currTime;      //!< Current time
   Json::Value     m_output;        //!< Json output
   Ptr<V4Ping>     m_v4ping;        //!< V4Ping application
+  Ptr<PacketSink> m_packetSink;    //!< Packet sink application
+  Ptr<BulkSendApplication> m_bulkSend; //!< Bulk send application
   Time            m_duration;      //!< Test duration
   std::string     m_testName;      //!< Flent test name
-  Address         m_server;        //!< Server address
+  Address         m_serverAddress; //!< Server address
   std::string     m_imageText;     //!< Text to be included in plot
   std::string     m_imageName;     //!< Name of the image to which plot is saved
   Time            m_stepSize;      //!< Measurment data point step size

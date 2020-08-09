@@ -38,12 +38,18 @@
 #include "ns3/core-module.h"
 #include "ns3/internet-apps-module.h"
 #include "ns3/trace-helper.h"
+#include "ns3/applications-module.h"
+#include "ns3/packet-sink.h"
+#include "ns3/packet-sink-helper.h"
+//#include "bulk-send-application.h"
 
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("FlentApplication");
 
 NS_OBJECT_ENSURE_REGISTERED (FlentApplication);
+
+uint32_t g_bytesSent = 0;
 
 TypeId
 FlentApplication::GetTypeId (void)
@@ -58,7 +64,7 @@ FlentApplication::GetTypeId (void)
 		  MakeStringChecker ())
     .AddAttribute ("ServerAddress", "The address of the destination",
 		  AddressValue (),
-		  MakeAddressAccessor (&FlentApplication::m_server),
+		  MakeAddressAccessor (&FlentApplication::m_serverAddress),
 		  MakeAddressChecker ())
     .AddAttribute ("ImageText", "Text to be included in the plot",
 		  StringValue (""),
@@ -82,6 +88,7 @@ FlentApplication::GetTypeId (void)
 
 
 FlentApplication::FlentApplication ()
+  : m_server (false)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -100,13 +107,19 @@ FlentApplication::SetTest (std::string testname)
 void FlentApplication::SetDuration (Time duration)
 {
   m_duration = duration;
-  m_stopTime = Seconds (m_startTime.GetSeconds() + m_duration.GetSeconds() + 10);
+  m_stopTime = Seconds (m_startTime.GetSeconds () + m_duration.GetSeconds () + 10);
 }
 
 void
-FlentApplication::SetServer (Address serverAddress)
+FlentApplication::SetServerAddress (Address serverAddress)
 {
-  m_server = serverAddress;
+  m_serverAddress = serverAddress;
+}
+
+void
+FlentApplication::SetServer ()
+{
+  m_server = true;
 }
 
 void
@@ -131,27 +144,12 @@ void FlentApplication::SetDelay (Time delay)
   m_delay = delay;
 }
 
-std::string AddressToString (Address addr)
-{
-  Ipv4Address ipv4Addr = Ipv4Address::ConvertFrom(addr);
-  uint32_t ip = ipv4Addr.Get();
-  unsigned char bytes[4];
-  bytes[0] = ip & 0xFF;
-  bytes[1] = (ip >> 8) & 0xFF;
-  bytes[2] = (ip >> 16) & 0xFF;
-  bytes[3] = (ip >> 24) & 0xFF;
-  char buf[32];
-  snprintf(buf, 32, "%d.%d.%d.%d", bytes[3], bytes[2], bytes[1], bytes[0]);
-  std::string addrString(buf);
-  return addrString;
-}
-
 std::string FlentApplication::GetUTCFormatTime (int sec) {
   time_t     now = time (0) + sec;
   struct tm  tstruct;
   char       buf[80];
-  tstruct = *localtime(&now);
-  strftime(buf, sizeof(buf), "%Y-%m-%dT%X.004275Z", &tstruct);
+  tstruct = *localtime (&now);
+  strftime (buf, sizeof (buf), "%Y-%m-%dT%X.004275Z", &tstruct);
 
   return buf;
 }
@@ -187,10 +185,12 @@ void FlentApplication::AddMetadata (Json::Value &j)
   j["metadata"]["qdiscs"]["parent"] = Json::Value::null;
   j["metadata"]["FAILED_RUNNERS"] = Json::Value::null;
   j["metadata"]["FLENT_VERSION"] = Json::Value::null;
-  std::string hostName = AddressToString (m_server);
+  std::ostringstream oss;
+  oss << m_serverAddress;
+  std::string hostName = oss.str ();
   j["metadata"]["HOST"] = hostName;
   j["metadata"]["HOSTS"] = Json::Value (Json::arrayValue);
-  j["metadata"]["HOSTS"].append(hostName);
+  j["metadata"]["HOSTS"].append (hostName);
   j["metadata"]["HTTP_GETTER_DNS"] = Json::Value::null;
   j["metadata"]["HTTP_GETTER_URLLIST"] = Json::Value::null;
   j["metadata"]["HTTP_GETTER_WORKERS"] = Json::Value::null;
@@ -200,7 +200,7 @@ void FlentApplication::AddMetadata (Json::Value &j)
   j["metadata"]["LENGTH"] = m_duration.GetSeconds ();
   j["metadata"]["LOCAL_HOST"] = Json::Value::null;
   j["metadata"]["MODULE_VERSIONS"] = Json::Value::null;
-  j["metadata"]["NAME"] = "tcp_download";
+  j["metadata"]["NAME"] = "tcp_upload";
   j["metadata"]["NOTE"] = Json::Value::null;
   j["metadata"]["REMOTE_METADATA"] = Json::Value::null;
   j["metadata"]["STEP_SIZE"] = m_stepSize.GetSeconds ();
@@ -216,26 +216,48 @@ void
 FlentApplication::ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t)
 {
   Json::Value data;
-  Json::Int64 rtt = t.GetMilliSeconds ();
+  double rtt = t.GetNanoSeconds ()/1e6;
   data["seq"] = seq;
   data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
   data["val"] = rtt; 
   m_output["raw_values"]["Ping (ms) ICMP"].append(data);
   m_output["results"]["Ping (ms) ICMP"].append(rtt);
-  m_output["x_values"].append(Simulator::Now ().GetSeconds ());
+  m_output["x_values"].append (Simulator::Now ().GetSeconds ());
+}
+
+void 
+FlentApplication::SendData (Ptr<const Packet> packet)
+{
+  g_bytesSent += packet->GetSize ();
+}
+
+void
+FlentApplication::GoodputSampling () {
+  Json::Value data;
+  Json::Int64 throughput = (g_bytesSent * 8 / m_stepSize.GetSeconds () / 1e6);
+  data["dur"] = m_stepSize.GetSeconds ();
+  data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
+  data["val"] = throughput;
+  m_output["raw_values"]["TCP upload"].append (data);
+  m_output["results"]["TCP upload"].append (throughput);
+  g_bytesSent = 0;
+  Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling, this);
 }
 
 //Application Methods
 void FlentApplication::StartApplication (void) //Called at time specified by Start
 {
   NS_LOG_FUNCTION (this);
-  m_currTime = (std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count()/1000000000);
+  //Intital timestamp t0 is recorded in UTC Format in json output
+  //and is substracted from all timestamp values so we add currTime to all
+  //timestamp values written to json output
+  m_currTime = (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ()/1000000000);
   FlentApplication::AddMetadata (m_output);
 
   if (m_testName.compare ("ping") == 0) {
-      Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_server);
+      Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       m_v4ping = CreateObject<V4Ping> ();
-      m_v4ping->SetAttribute ("Remote", Ipv4AddressValue(serverAddr));
+      m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       GetNode ()->AddApplication (m_v4ping);
       m_output["raw_values"]["Ping (ms) ICMP"] = Json::Value (Json::arrayValue);
@@ -244,7 +266,52 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
-  } 
+  } else if (m_testName.compare ("tcp_upload") == 0) {
+      Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
+      m_v4ping = CreateObject<V4Ping> ();
+      m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
+      m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
+      GetNode ()->AddApplication (m_v4ping);
+      ApplicationContainer pingContainer;
+      pingContainer.Add (m_v4ping);
+      pingContainer.Start (m_startTime);
+      pingContainer.Stop (m_stopTime);
+
+      m_output["raw_values"]["Ping (ms) ICMP"] = Json::Value (Json::arrayValue);
+      m_output["results"]["Ping (ms) ICMP"] = Json::Value (Json::arrayValue);
+      m_output["x_values"] = Json::Value (Json::arrayValue);
+      
+      m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+
+      InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 9);
+      BulkSendHelper tcp ("ns3::TcpSocketFactory", clientAddress);
+      tcp.SetAttribute ("MaxBytes", UintegerValue (0));
+      ApplicationContainer sourceApp = tcp.Install (GetNode ());
+      sourceApp.Start (Seconds (m_startTime.GetSeconds () + 5));
+      sourceApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
+      m_bulkSend = DynamicCast<BulkSendApplication> (sourceApp.Get (0));
+      m_output["results"]["TCP upload"] = Json::Value (Json::arrayValue);
+      m_output["raw_values"]["TCP upload"] = Json::Value (Json::arrayValue);
+      Json::Value data;
+      data["dur"] = m_stepSize.GetSeconds ();
+      data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
+      data["val"] = 0;
+      m_output["raw_values"]["TCP upload"].append (data);
+      m_output["results"]["TCP upload"].append (data["val"]);
+      m_bulkSend->TraceConnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData, this));
+      Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling, this);
+
+    } else if (m_testName.compare ("netserver") == 0) {
+      Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 9));
+      PacketSinkHelper netserver ("ns3::TcpSocketFactory", sinkAddress);
+      netserver.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
+      ApplicationContainer sinkApp = netserver.Install (GetNode ());
+      sinkApp.Start (m_startTime);
+      sinkApp.Stop (m_stopTime);
+      m_packetSink = DynamicCast<PacketSink> (sinkApp.Get (0));
+
+    }
+
 }
 
 void FlentApplication::StopApplication (void) // Called at time specified by Stop
@@ -252,8 +319,9 @@ void FlentApplication::StopApplication (void) // Called at time specified by Sto
   NS_LOG_FUNCTION (this);
   Simulator::Schedule (MilliSeconds (0.01), &Simulator::Stop);
   m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+  m_bulkSend->TraceDisconnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData, this));
   AsciiTraceHelper ascii;
-  Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + "-" + m_imageText + ".flent");
+  Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
   *streamOutput->GetStream () << m_output << std::endl;
 }
 
