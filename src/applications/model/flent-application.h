@@ -69,6 +69,7 @@ public:
   void SetDelay (Time delay);
   void AddMetadata (Json::Value &j);
   void SetServer ();
+  void SetServerApp (Ptr<FlentApplication> serverApp);
 
 private:
 
@@ -78,8 +79,10 @@ private:
 
   void ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t);
   void SendData (Ptr<const Packet> packet);
+  void ReceiveData (Ptr<const Packet> packet, const Address &address);
   std::string GetUTCFormatTime (int sec);
   void GoodputSampling ();
+  void GoodputSamplingDownload ();
 
 
   bool            m_server;        //!< Bool client or server
@@ -88,6 +91,7 @@ private:
   Ptr<V4Ping>     m_v4ping;        //!< V4Ping application
   Ptr<PacketSink> m_packetSink;    //!< Packet sink application
   Ptr<BulkSendApplication> m_bulkSend; //!< Bulk send application
+  Ptr<FlentApplication> m_serverApp; //!< Point to ns-3 flent server application
   Time            m_duration;      //!< Test duration
   std::string     m_testName;      //!< Flent test name
   Address         m_serverAddress; //!< Server address
