@@ -71,6 +71,8 @@ public:
   void SetServer ();
   void SetServerApp (Ptr<FlentApplication> serverApp);
 
+protected:
+  virtual void DoDispose (void);
 private:
 
   // inherited from Application base class.

@@ -100,6 +100,19 @@ FlentApplication::~FlentApplication ()
 }
 
 void
+FlentApplication::DoDispose (void)
+{
+  NS_LOG_FUNCTION (this);
+  m_v4ping = 0;
+  m_packetSink = 0;
+  m_bulkSend = 0;
+  m_serverApp = 0;
+
+  // chain up
+  Application::DoDispose ();
+}
+
+void
 FlentApplication::SetTest (std::string testname)
 {
   m_testName = testname;
