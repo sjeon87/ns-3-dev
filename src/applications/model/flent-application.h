@@ -69,7 +69,7 @@ public:
   void SetDelay (Time delay);
   void AddMetadata (Json::Value &j);
   void SetServer ();
-  void SetServerApp (Ptr<FlentApplication> serverApp);
+  void SetServerNode (Ptr<Node> serverNode);
 
 protected:
   virtual void DoDispose (void);
@@ -93,7 +93,7 @@ private:
   Ptr<V4Ping>     m_v4ping;        //!< V4Ping application
   Ptr<PacketSink> m_packetSink;    //!< Packet sink application
   Ptr<BulkSendApplication> m_bulkSend; //!< Bulk send application
-  Ptr<FlentApplication> m_serverApp; //!< Point to ns-3 flent server application
+  Ptr<Node> m_serverNode; //!< Point to ns-3 server node
   Time            m_duration;      //!< Test duration
   std::string     m_testName;      //!< Flent test name
   Address         m_serverAddress; //!< Server address
