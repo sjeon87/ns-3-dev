@@ -68,7 +68,6 @@ public:
   void SetStepSize (Time stepsize);
   void SetDelay (Time delay);
   void AddMetadata (Json::Value &j);
-  void SetServer ();
   void SetServerNode (Ptr<Node> serverNode);
 
 protected:
@@ -87,7 +86,6 @@ private:
   void GoodputSamplingDownload ();
 
 
-  bool            m_server;        //!< Bool client or server
   double          m_currTime;      //!< Current time
   Json::Value     m_output;        //!< Json output
   Ptr<V4Ping>     m_v4ping;        //!< V4Ping application

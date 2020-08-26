@@ -89,7 +89,6 @@ FlentApplication::GetTypeId (void)
 
 
 FlentApplication::FlentApplication ()
-  : m_server (false)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -128,12 +127,6 @@ void
 FlentApplication::SetServerAddress (Address serverAddress)
 {
   m_serverAddress = serverAddress;
-}
-
-void
-FlentApplication::SetServer ()
-{
-  m_server = true;
 }
 
 void
@@ -305,7 +298,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
-  } else if (m_testName.compare ("tcp_upload") == 0 && !m_server) {
+  } else if (m_testName.compare ("tcp_upload") == 0) {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
@@ -348,7 +341,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       sinkApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
       m_packetSink = DynamicCast<PacketSink> (sinkApp.Get (0));
 
-    } else if (m_testName.compare ("tcp_download") == 0 && !m_server) {
+    } else if (m_testName.compare ("tcp_download") == 0) {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
@@ -382,7 +375,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_output["results"]["TCP download"].append (data["val"]);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this);
 
-      //Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 9);
       BulkSendHelper tcp ("ns3::TcpSocketFactory", clientAddress);
       tcp.SetAttribute ("MaxBytes", UintegerValue (0));
@@ -400,12 +392,12 @@ void FlentApplication::StopApplication (void) // Called at time specified by Sto
   NS_LOG_FUNCTION (this);
   Simulator::Schedule (MilliSeconds (1), &Simulator::Stop);
   AsciiTraceHelper ascii;
-  if (m_testName.compare ("tcp_upload") == 0 && !m_server) {
+  if (m_testName.compare ("tcp_upload") == 0) {
     m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
     m_bulkSend->TraceDisconnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData, this));
     Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
     *streamOutput->GetStream () << m_output << std::endl;
-  } else if (m_testName.compare ("tcp_download") == 0 && !m_server) {
+  } else if (m_testName.compare ("tcp_download") == 0) {
     m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
     m_packetSink->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData, this));
     Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
