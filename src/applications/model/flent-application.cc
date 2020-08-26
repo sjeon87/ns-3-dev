@@ -161,7 +161,7 @@ std::string FlentApplication::GetUTCFormatTime (int sec) {
   time_t     now = time (0) + sec;
   struct tm  tstruct;
   char       buf[80];
-  tstruct = *localtime (&now);
+  tstruct = *gmtime (&now);
   strftime (buf, sizeof (buf), "%Y-%m-%dT%X.004275Z", &tstruct);
 
   return buf;
@@ -218,7 +218,7 @@ void FlentApplication::AddMetadata (Json::Value &j)
   j["metadata"]["REMOTE_METADATA"] = Json::Value::null;
   j["metadata"]["STEP_SIZE"] = m_stepSize.GetSeconds ();
   j["metadata"]["TIME"] = GetUTCFormatTime (0);
-  j["metadata"]["T0"] = GetUTCFormatTime (-19800);
+  j["metadata"]["T0"] = GetUTCFormatTime (0);
   j["metadata"]["TEST_PARAMETERS"] = Json::objectValue;
   j["metadata"]["TITLE"] = Json::Value::null;
   j["metadata"]["TOTAL_LENGTH"] = m_stopTime.GetSeconds ();
