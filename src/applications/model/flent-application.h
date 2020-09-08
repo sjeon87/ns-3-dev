@@ -63,6 +63,7 @@ public:
   void SetTest (std::string testname);
   void SetDuration (Time duration);
   void SetServerAddress (Address serverAddress);
+  void SetClientAddress (Address clientAddress);
   void SetIncludeText (std::string textInImage);
   void SetOutput (std::string imagename);
   void SetStepSize (Time stepsize);
@@ -79,11 +80,23 @@ private:
   virtual void StopApplication (void);     //Called at time specified by Stop
 
   void ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t);
-  void SendData (Ptr<const Packet> packet);
-  void ReceiveData (Ptr<const Packet> packet, const Address &address);
+  void SendData1 (Ptr<const Packet> packet);
+  void SendData2 (Ptr<const Packet> packet);
+  void SendData3 (Ptr<const Packet> packet);
+  void SendData4 (Ptr<const Packet> packet);
+  void ReceiveData1 (Ptr<const Packet> packet, const Address &address);
+  void ReceiveData2 (Ptr<const Packet> packet, const Address &address);
+  void ReceiveData3 (Ptr<const Packet> packet, const Address &address);
+  void ReceiveData4 (Ptr<const Packet> packet, const Address &address);
   std::string GetUTCFormatTime (int sec);
-  void GoodputSampling ();
-  void GoodputSamplingDownload ();
+  void GoodputSampling1 (std::string name);
+  void GoodputSampling2 (std::string name);
+  void GoodputSampling3 (std::string name);
+  void GoodputSampling4 (std::string name);
+  void GoodputSamplingDownload1 (std::string name);
+  void GoodputSamplingDownload2 (std::string name);
+  void GoodputSamplingDownload3 (std::string name);
+  void GoodputSamplingDownload4 (std::string name);
 
 
   double          m_currTime;      //!< Current time
@@ -95,6 +108,7 @@ private:
   Time            m_duration;      //!< Test duration
   std::string     m_testName;      //!< Flent test name
   Address         m_serverAddress; //!< Server address
+  Address         m_clientAddress; //!< Client address
   std::string     m_imageText;     //!< Text to be included in plot
   std::string     m_imageName;     //!< Name of the image to which plot is saved
   Time            m_stepSize;      //!< Measurment data point step size
