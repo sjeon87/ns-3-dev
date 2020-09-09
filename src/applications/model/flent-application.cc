@@ -1,6 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2010 Georgia Institute of Technology
+ * Copyright (c) 2020 Harsha Sharma (adapted BulkSendApplication
+ * and PacketSinkApplication for ns-3 flent)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: George F. Riley <riley@ece.gatech.edu>
+ * Author: Harsha Sharma <harshasha256@gmail.com>
  */
 
 #include <chrono>
@@ -36,13 +37,14 @@
 #include "ns3/boolean.h"
 #include "flent-application.h"
 #include "ns3/core-module.h"
-#include "ns3/internet-apps-module.h"
 #include "ns3/trace-helper.h"
-#include "ns3/applications-module.h"
+#include "ns3/bulk-send-application.h"
+#include "ns3/bulk-send-helper.h"
+#include "ns3/v4ping.h"
 #include "ns3/packet-sink.h"
 #include "ns3/packet-sink-helper.h"
-#include "ns3/internet-module.h"
-//#include "bulk-send-application.h"
+#include "ns3/ipv4.h"
+#include "ns3/ipv4-header.h"
 
 namespace ns3 {
 
@@ -86,13 +88,9 @@ FlentApplication::GetTypeId (void)
 		  StringValue (""),
 		  MakeStringAccessor (&FlentApplication::m_imageName),
 		  MakeStringChecker ())
-    .AddAttribute ("StepSize", "Measurment data point size",
+    .AddAttribute ("StepSize", "Measurement data point size",
 		  TimeValue (Seconds(1)),
 		  MakeTimeAccessor (&FlentApplication::m_stepSize),
-		  MakeTimeChecker ())
-    .AddAttribute ("Delay", "Time to delay parts of test",
-		  TimeValue (Seconds(1)),
-		  MakeTimeAccessor (&FlentApplication::m_delay),
 		  MakeTimeChecker ())
   ;
   return tid;
@@ -131,7 +129,7 @@ FlentApplication::SetTest (std::string testname)
 void FlentApplication::SetDuration (Time duration)
 {
   m_duration = duration;
-  m_stopTime = Seconds (m_startTime.GetSeconds () + m_duration.GetSeconds () + 10);
+  m_stopTime = m_startTime + m_duration + Seconds (10);
 }
 
 void
@@ -169,17 +167,12 @@ void FlentApplication::SetStepSize (Time stepsize)
   m_stepSize = stepsize;
 }
 
-void FlentApplication::SetDelay (Time delay)
-{
-  m_delay = delay;
-}
-
-std::string FlentApplication::GetUTCFormatTime (int sec) {
+std::string FlentApplication::GetUtcFormatTime (int sec) const {
   time_t     now = time (0) + sec;
   struct tm  tstruct;
   char       buf[80];
   tstruct = *gmtime (&now);
-  strftime (buf, sizeof (buf), "%Y-%m-%dT%X.004275Z", &tstruct);
+  strftime (buf, sizeof (buf), "%Y-%m-%dT%X.000000Z", &tstruct);
 
   return buf;
 }
@@ -234,8 +227,8 @@ void FlentApplication::AddMetadata (Json::Value &j)
   j["metadata"]["NOTE"] = Json::Value::null;
   j["metadata"]["REMOTE_METADATA"] = Json::Value::null;
   j["metadata"]["STEP_SIZE"] = m_stepSize.GetSeconds ();
-  j["metadata"]["TIME"] = GetUTCFormatTime (0);
-  j["metadata"]["T0"] = GetUTCFormatTime (0);
+  j["metadata"]["TIME"] = GetUtcFormatTime (0);
+  j["metadata"]["T0"] = GetUtcFormatTime (0);
   j["metadata"]["TEST_PARAMETERS"] = Json::objectValue;
   j["metadata"]["TITLE"] = Json::Value::null;
   j["metadata"]["TOTAL_LENGTH"] = m_stopTime.GetSeconds ();
@@ -246,7 +239,7 @@ void
 FlentApplication::ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t)
 {
   Json::Value data;
-  double rtt = t.GetMicroSeconds ()/1e3;
+  double rtt = t.GetSeconds () * 1000;
   data["seq"] = seq;
   data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
   data["val"] = rtt; 
@@ -306,12 +299,12 @@ FlentApplication::ReceiveData4 (Ptr<const Packet> packet, const Address &address
 void
 FlentApplication::GoodputSampling1 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesSent1 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesSent1 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesSent1 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling1, this, name);
 }
@@ -319,12 +312,12 @@ FlentApplication::GoodputSampling1 (std::string name) {
 void
 FlentApplication::GoodputSampling2 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesSent2 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesSent2 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesSent2 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling2, this, name);
 }
@@ -332,12 +325,12 @@ FlentApplication::GoodputSampling2 (std::string name) {
 void
 FlentApplication::GoodputSampling3 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesSent3 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesSent3 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesSent3 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling3, this, name);
 }
@@ -345,12 +338,12 @@ FlentApplication::GoodputSampling3 (std::string name) {
 void
 FlentApplication::GoodputSampling4 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesSent4 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesSent4 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesSent4 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling4, this, name);
 }
@@ -358,12 +351,12 @@ FlentApplication::GoodputSampling4 (std::string name) {
 void
 FlentApplication::GoodputSamplingDownload1 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesReceived1 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesReceived1 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds () + m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesReceived1 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload1, this, name);
 }
@@ -371,12 +364,12 @@ FlentApplication::GoodputSamplingDownload1 (std::string name) {
 void
 FlentApplication::GoodputSamplingDownload2 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesReceived2 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesReceived2 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds () + m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesReceived2 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload2, this, name);
 }
@@ -384,12 +377,12 @@ FlentApplication::GoodputSamplingDownload2 (std::string name) {
 void
 FlentApplication::GoodputSamplingDownload3 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesReceived3 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesReceived3 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds () + m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesReceived3 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload3, this, name);
 }
@@ -397,12 +390,12 @@ FlentApplication::GoodputSamplingDownload3 (std::string name) {
 void
 FlentApplication::GoodputSamplingDownload4 (std::string name) {
   Json::Value data;
-  Json::Int64 throughput = (g_bytesReceived4 * 8 / m_stepSize.GetSeconds () / 1e6);
+  Json::Int64 goodput = (g_bytesReceived4 * 8 / m_stepSize.GetSeconds () / 1e6);
   data["dur"] = m_stepSize.GetSeconds ();
   data["t"] = (Simulator::Now ().GetSeconds () + m_currTime);
-  data["val"] = throughput;
+  data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (throughput);
+  m_output["results"][name].append (goodput);
   g_bytesReceived4 = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload4, this, name);
 }
@@ -411,13 +404,11 @@ FlentApplication::GoodputSamplingDownload4 (std::string name) {
 void FlentApplication::StartApplication (void) //Called at time specified by Start
 {
   NS_LOG_FUNCTION (this);
-  //Intital timestamp t0 is recorded in UTC Format in json output
-  //and is substracted from all timestamp values so we add currTime to all
-  //timestamp values written to json output
   m_currTime = (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ()/1000000000);
   FlentApplication::AddMetadata (m_output);
 
-  if (m_testName.compare ("ping") == 0) {
+  if (m_testName.compare ("ping") == 0)
+    {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
@@ -428,8 +419,9 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_output["x_values"] = Json::Value (Json::arrayValue);
       
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
-
-  } else if (m_testName.compare ("tcp_upload") == 0) {
+    }
+  else if (m_testName.compare ("tcp_upload") == 0)
+    {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
@@ -472,7 +464,9 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       sinkApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
       m_packetSink = DynamicCast<PacketSink> (sinkApp.Get (0));
 
-    } else if (m_testName.compare ("tcp_download") == 0) {
+    }
+  else if (m_testName.compare ("tcp_download") == 0)
+    {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
@@ -513,7 +507,9 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       sourceApp.Start (Seconds (m_startTime.GetSeconds () + 5));
       sourceApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
       m_bulkSend = DynamicCast<BulkSendApplication> (sourceApp.Get (0));
-    } else if (m_testName.compare ("rrul") == 0) {
+    }
+  else if (m_testName.compare ("rrul") == 0)
+    {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
       m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
@@ -746,23 +742,27 @@ void FlentApplication::StopApplication (void) // Called at time specified by Sto
   NS_LOG_FUNCTION (this);
   Simulator::Schedule (MilliSeconds (1), &Simulator::Stop);
   AsciiTraceHelper ascii;
-  if (m_testName.compare ("tcp_upload") == 0) {
-    m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
-    m_bulkSend->TraceDisconnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData1, this));
-    Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
-    *streamOutput->GetStream () << m_output << std::endl;
-  } else if (m_testName.compare ("tcp_download") == 0) {
-    m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
-    m_packetSink->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData1, this));
-    Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
-    *streamOutput->GetStream () << m_output << std::endl;
-  } else if (m_testName.compare ("rrul") == 0) {
-    //m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
-    //m_packetSink->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData, this));
-    Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
-    *streamOutput->GetStream () << m_output << std::endl;
-  }
-
+  if (m_testName.compare ("tcp_upload") == 0)
+    {
+      m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+      m_bulkSend->TraceDisconnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData1, this));
+      Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
+      *streamOutput->GetStream () << m_output << std::endl;
+    }
+  else if (m_testName.compare ("tcp_download") == 0)
+    {
+      m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+      m_packetSink->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData1, this));
+      Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
+      *streamOutput->GetStream () << m_output << std::endl;
+    }
+  else if (m_testName.compare ("rrul") == 0)
+    {
+      //m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+      //m_packetSink->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData, this));
+      Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
+      *streamOutput->GetStream () << m_output << std::endl;
+    }
 }
 
 } // Namespace ns3

@@ -88,7 +88,7 @@ private:
   void ReceiveData2 (Ptr<const Packet> packet, const Address &address);
   void ReceiveData3 (Ptr<const Packet> packet, const Address &address);
   void ReceiveData4 (Ptr<const Packet> packet, const Address &address);
-  std::string GetUTCFormatTime (int sec);
+  std::string GetUtcFormatTime (int sec) const;
   void GoodputSampling1 (std::string name);
   void GoodputSampling2 (std::string name);
   void GoodputSampling3 (std::string name);
