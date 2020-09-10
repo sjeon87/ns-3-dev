@@ -39,7 +39,6 @@
 #include "ns3/core-module.h"
 #include "ns3/trace-helper.h"
 #include "ns3/bulk-send-application.h"
-#include "ns3/bulk-send-helper.h"
 #include "ns3/v4ping.h"
 #include "ns3/packet-sink.h"
 #include "ns3/packet-sink-helper.h"
@@ -439,12 +438,15 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
       InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 9);
-      BulkSendHelper tcp ("ns3::TcpSocketFactory", clientAddress);
-      tcp.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceApp = tcp.Install (GetNode ());
-      sourceApp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      m_bulkSend = DynamicCast<BulkSendApplication> (sourceApp.Get (0));
+      m_bulkSend = CreateObject<BulkSendApplication> ();
+      m_bulkSend->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSend->SetAttribute ("Remote", AddressValue (clientAddress));
+      m_bulkSend->SetAttribute ("MaxBytes", UintegerValue (0));
+      GetNode ()->AddApplication (m_bulkSend);
+      ApplicationContainer sourceApp;
+      sourceApp.Add(m_bulkSend);
+      sourceApp.Start (m_startTime + Seconds(5));
+      sourceApp.Stop (m_stopTime - Seconds(5));
       m_output["results"]["TCP upload"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP upload"] = Json::Value (Json::arrayValue);
       Json::Value data;
@@ -457,12 +459,14 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling1, this, "TCP upload");
 
       Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 9));
-      PacketSinkHelper netserver ("ns3::TcpSocketFactory", sinkAddress);
-      netserver.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp = netserver.Install (m_serverNode);
-      sinkApp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      m_packetSink = DynamicCast<PacketSink> (sinkApp.Get (0));
+      m_packetSink = CreateObject<PacketSink> ();
+      m_packetSink->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSink->SetAttribute ("Local", AddressValue (sinkAddress));
+      m_serverNode->AddApplication (m_packetSink);
+      ApplicationContainer sinkApp;
+      sinkApp.Add (m_packetSink);
+      sinkApp.Start (m_startTime + Seconds(5));
+      sinkApp.Stop (m_stopTime - Seconds(5));
 
     }
   else if (m_testName.compare ("tcp_download") == 0)
@@ -483,12 +487,14 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
 
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
       Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 9));
-      PacketSinkHelper netserver ("ns3::TcpSocketFactory", sinkAddress);
-      netserver.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp = netserver.Install (GetNode ());
-      sinkApp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkApp.Stop (Seconds (m_stopTime.GetSeconds () - 6));
-      m_packetSink = DynamicCast<PacketSink> (sinkApp.Get (0));
+      m_packetSink = CreateObject<PacketSink> ();
+      m_packetSink->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSink->SetAttribute ("Local", AddressValue (sinkAddress));
+      GetNode ()->AddApplication (m_packetSink);
+      ApplicationContainer sinkApp;
+      sinkApp.Add (m_packetSink);
+      sinkApp.Start (m_startTime + Seconds(5));
+      sinkApp.Stop (m_stopTime - Seconds(5));
       m_packetSink->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData1, this));
       m_output["results"]["TCP download"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP download"] = Json::Value (Json::arrayValue);
@@ -501,12 +507,15 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload1, this, "TCP download");
 
       InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 9);
-      BulkSendHelper tcp ("ns3::TcpSocketFactory", clientAddress);
-      tcp.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceApp = tcp.Install (m_serverNode);
-      sourceApp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      m_bulkSend = DynamicCast<BulkSendApplication> (sourceApp.Get (0));
+      m_bulkSend = CreateObject<BulkSendApplication> ();
+      m_bulkSend->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSend->SetAttribute ("Remote", AddressValue (clientAddress));
+      m_bulkSend->SetAttribute ("MaxBytes", UintegerValue (0));
+      m_serverNode->AddApplication (m_bulkSend);
+      ApplicationContainer sourceApp;
+      sourceApp.Add(m_bulkSend);
+      sourceApp.Start (m_startTime + Seconds(5));
+      sourceApp.Stop (m_stopTime - Seconds(5));
     }
   else if (m_testName.compare ("rrul") == 0)
     {
@@ -526,12 +535,14 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
       Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 10));
-      PacketSinkHelper netserver ("ns3::TcpSocketFactory", sinkAddress);
-      netserver.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp = netserver.Install (GetNode ());
-      sinkApp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkApp.Stop (Seconds (m_stopTime.GetSeconds () - 6));
-      m_packetSink = DynamicCast<PacketSink> (sinkApp.Get (0));
+      m_packetSink = CreateObject<PacketSink> ();
+      m_packetSink->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSink->SetAttribute ("Local", AddressValue (sinkAddress));
+      GetNode ()->AddApplication (m_packetSink);
+      ApplicationContainer sinkApp;
+      sinkApp.Add (m_packetSink);
+      sinkApp.Start (m_startTime + Seconds(5));
+      sinkApp.Stop (m_stopTime - Seconds(5));
       m_packetSink->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData1, this));
       m_output["results"]["TCP download BE"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP download BE"] = Json::Value (Json::arrayValue);
@@ -544,22 +555,28 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload1, this, "TCP download BE");
       InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 10);
       clientAddress.SetTos (Ipv4Header::DscpType::DscpDefault << 2);
-      BulkSendHelper tcp ("ns3::TcpSocketFactory", clientAddress);
-      tcp.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceApp = tcp.Install (m_serverNode);
-      sourceApp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceApp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      m_bulkSend = DynamicCast<BulkSendApplication> (sourceApp.Get (0));
+      m_bulkSend = CreateObject<BulkSendApplication> ();
+      m_bulkSend->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSend->SetAttribute ("Remote", AddressValue (clientAddress));
+      m_bulkSend->SetAttribute ("MaxBytes", UintegerValue (0));
+      m_serverNode->AddApplication (m_bulkSend);
+      ApplicationContainer sourceApp;
+      sourceApp.Add(m_bulkSend);
+      sourceApp.Start (m_startTime + Seconds(5));
+      sourceApp.Stop (m_stopTime - Seconds(5));
       
       Ipv4Address clientAddr = Ipv4Address::ConvertFrom (m_clientAddress);
       clientAddress = InetSocketAddress (clientAddr, 10);
       clientAddress.SetTos (Ipv4Header::DscpType::DscpDefault << 2);
-      BulkSendHelper tcp_upload ("ns3::TcpSocketFactory", clientAddress);
-      tcp_upload.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceAppUp = tcp_upload.Install (GetNode ());
-      sourceAppUp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceAppUp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<BulkSendApplication> m_bulkSendUp = DynamicCast<BulkSendApplication> (sourceAppUp.Get (0));
+      Ptr<BulkSendApplication> m_bulkSendUp = CreateObject<BulkSendApplication> ();
+      m_bulkSendUp->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSendUp->SetAttribute ("Remote", AddressValue (clientAddress));
+      m_bulkSendUp->SetAttribute ("MaxBytes", UintegerValue (0));
+      GetNode ()->AddApplication (m_bulkSendUp);
+      ApplicationContainer sourceAppUp;
+      sourceAppUp.Add(m_bulkSendUp);
+      sourceAppUp.Start (m_startTime + Seconds(5));
+      sourceAppUp.Stop (m_stopTime - Seconds(5));
       m_output["results"]["TCP upload BE"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP upload BE"] = Json::Value (Json::arrayValue);
       Json::Value data_up;
@@ -571,20 +588,24 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_bulkSendUp->TraceConnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData1, this));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling1, this, "TCP upload BE");
       Address sinkAddressUp (InetSocketAddress (Ipv4Address::GetAny (), 10));
-      PacketSinkHelper netserverUp ("ns3::TcpSocketFactory", sinkAddressUp);
-      netserverUp.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkAppUp = netserverUp.Install (m_serverNode);
-      sinkAppUp.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkAppUp.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<PacketSink> m_packetSinkUp = DynamicCast<PacketSink> (sinkAppUp.Get (0));
+      Ptr<PacketSink> m_packetSinkUp = CreateObject<PacketSink> ();
+      m_packetSinkUp->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSinkUp->SetAttribute ("Local", AddressValue (sinkAddressUp));
+      m_serverNode->AddApplication (m_packetSinkUp);
+      ApplicationContainer sinkAppUp;
+      sinkAppUp.Add (m_packetSinkUp);
+      sinkAppUp.Start (m_startTime + Seconds(5));
+      sinkAppUp.Stop (m_stopTime - Seconds(5));
 
       Address sinkAddress2 (InetSocketAddress (Ipv4Address::GetAny (), 9));
-      PacketSinkHelper netserver2 ("ns3::TcpSocketFactory", sinkAddress2);
-      netserver2.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp2 = netserver2.Install (GetNode ());
-      sinkApp2.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkApp2.Stop (Seconds (m_stopTime.GetSeconds () - 6));
-      Ptr<PacketSink> m_packetSink2 = DynamicCast<PacketSink> (sinkApp2.Get (0));
+      Ptr<PacketSink> m_packetSink2 = CreateObject<PacketSink> ();
+      m_packetSink2->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSink2->SetAttribute ("Local", AddressValue (sinkAddress2));
+      GetNode ()->AddApplication (m_packetSink2);
+      ApplicationContainer sinkApp2;
+      sinkApp2.Add (m_packetSink2);
+      sinkApp2.Start (m_startTime + Seconds(5));
+      sinkApp2.Stop (m_stopTime - Seconds(5));
       m_packetSink2->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData2, this));
       m_output["results"]["TCP download BK"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP download BK"] = Json::Value (Json::arrayValue);
@@ -597,21 +618,27 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload2, this, "TCP download BK");
       InetSocketAddress clientAddress2 = InetSocketAddress (serverAddr, 9);
       clientAddress2.SetTos (Ipv4Header::DscpType::DSCP_CS1 << 2);
-      BulkSendHelper tcp2 ("ns3::TcpSocketFactory", clientAddress2);
-      tcp2.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceApp2 = tcp2.Install (m_serverNode);
-      sourceApp2.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceApp2.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<BulkSendApplication> m_bulkSend2 = DynamicCast<BulkSendApplication> (sourceApp2.Get (0));
+      Ptr<BulkSendApplication> m_bulkSend2 = CreateObject<BulkSendApplication> ();
+      m_bulkSend2->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSend2->SetAttribute ("Remote", AddressValue (clientAddress2));
+      m_bulkSend2->SetAttribute ("MaxBytes", UintegerValue (0));
+      m_serverNode->AddApplication (m_bulkSend2);
+      ApplicationContainer sourceApp2;
+      sourceApp2.Add(m_bulkSend2);
+      sourceApp2.Start (m_startTime + Seconds(5));
+      sourceApp2.Stop (m_stopTime - Seconds(5));
       
       clientAddress = InetSocketAddress (clientAddr, 11);
       clientAddress.SetTos (Ipv4Header::DscpType::DSCP_CS1 << 2);
-      BulkSendHelper tcp_upload2 ("ns3::TcpSocketFactory", clientAddress);
-      tcp_upload2.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceAppUp2 = tcp_upload2.Install (GetNode ());
-      sourceAppUp2.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceAppUp2.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<BulkSendApplication> m_bulkSendUp2 = DynamicCast<BulkSendApplication> (sourceAppUp2.Get (0));
+      Ptr<BulkSendApplication> m_bulkSendUp2 = CreateObject<BulkSendApplication> ();
+      m_bulkSendUp2->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSendUp2->SetAttribute ("Remote", AddressValue (clientAddress));
+      m_bulkSendUp2->SetAttribute ("MaxBytes", UintegerValue (0));
+      GetNode ()->AddApplication (m_bulkSendUp2);
+      ApplicationContainer sourceAppUp2;
+      sourceAppUp2.Add(m_bulkSendUp2);
+      sourceAppUp2.Start (m_startTime + Seconds(5));
+      sourceAppUp2.Stop (m_stopTime - Seconds(5));
       m_output["results"]["TCP upload BK"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP upload BK"] = Json::Value (Json::arrayValue);
       Json::Value data_up2;
@@ -623,20 +650,24 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_bulkSendUp->TraceConnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData2, this));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling2, this, "TCP upload BK");
       Address sinkAddressUp2 (InetSocketAddress (Ipv4Address::GetAny (), 11));
-      PacketSinkHelper netserverUp2 ("ns3::TcpSocketFactory", sinkAddressUp2);
-      netserverUp2.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkAppUp2 = netserverUp2.Install (m_serverNode);
-      sinkAppUp2.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkAppUp2.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<PacketSink> m_packetSinkUp2 = DynamicCast<PacketSink> (sinkAppUp2.Get (0));
+      Ptr<PacketSink> m_packetSinkUp2 = CreateObject<PacketSink> ();
+      m_packetSinkUp2->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSinkUp2->SetAttribute ("Local", AddressValue (sinkAddressUp2));
+      m_serverNode->AddApplication (m_packetSinkUp2);
+      ApplicationContainer sinkAppUp2;
+      sinkAppUp2.Add (m_packetSinkUp2);
+      sinkAppUp2.Start (m_startTime + Seconds(5));
+      sinkAppUp2.Stop (m_stopTime - Seconds(5));
 
       Address sinkAddress3 (InetSocketAddress (Ipv4Address::GetAny (), 11));
-      PacketSinkHelper netserver3 ("ns3::TcpSocketFactory", sinkAddress3);
-      netserver3.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp3 = netserver3.Install (GetNode ());
-      sinkApp3.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkApp3.Stop (Seconds (m_stopTime.GetSeconds () - 6));
-      Ptr<PacketSink> m_packetSink3 = DynamicCast<PacketSink> (sinkApp3.Get (0));
+      Ptr<PacketSink> m_packetSink3 = CreateObject<PacketSink> ();
+      m_packetSink3->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSink3->SetAttribute ("Local", AddressValue (sinkAddress3));
+      GetNode ()->AddApplication (m_packetSink3);
+      ApplicationContainer sinkApp3;
+      sinkApp3.Add (m_packetSink3);
+      sinkApp3.Start (m_startTime + Seconds(5));
+      sinkApp3.Stop (m_stopTime - Seconds(5));
       m_packetSink3->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData3, this));
       m_output["results"]["TCP download CS5"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP download CS5"] = Json::Value (Json::arrayValue);
@@ -649,21 +680,27 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload3, this, "TCP download CS5");
       InetSocketAddress clientAddress3 = InetSocketAddress (serverAddr, 11);
       clientAddress3.SetTos (Ipv4Header::DscpType::DSCP_CS5 << 2);
-      BulkSendHelper tcp3 ("ns3::TcpSocketFactory", clientAddress3);
-      tcp3.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceApp3 = tcp3.Install (m_serverNode);
-      sourceApp3.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceApp3.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<BulkSendApplication> m_bulkSend3 = DynamicCast<BulkSendApplication> (sourceApp3.Get (0));
+      Ptr<BulkSendApplication> m_bulkSend3 = CreateObject<BulkSendApplication> ();
+      m_bulkSend3->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSend3->SetAttribute ("Remote", AddressValue (clientAddress3));
+      m_bulkSend3->SetAttribute ("MaxBytes", UintegerValue (0));
+      m_serverNode->AddApplication (m_bulkSend3);
+      ApplicationContainer sourceApp3;
+      sourceApp3.Add(m_bulkSend3);
+      sourceApp3.Start (m_startTime + Seconds(5));
+      sourceApp3.Stop (m_stopTime - Seconds(5));
 
       clientAddress = InetSocketAddress (clientAddr, 12);
       clientAddress.SetTos (Ipv4Header::DscpType::DSCP_CS5 << 2);
-      BulkSendHelper tcp_upload3 ("ns3::TcpSocketFactory", clientAddress);
-      tcp_upload3.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceAppUp3 = tcp_upload3.Install (GetNode ());
-      sourceAppUp3.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceAppUp3.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<BulkSendApplication> m_bulkSendUp3 = DynamicCast<BulkSendApplication> (sourceAppUp3.Get (0));
+      Ptr<BulkSendApplication> m_bulkSendUp3 = CreateObject<BulkSendApplication> ();
+      m_bulkSendUp3->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSendUp3->SetAttribute ("Remote", AddressValue (clientAddress));
+      m_bulkSendUp3->SetAttribute ("MaxBytes", UintegerValue (0));
+      GetNode ()->AddApplication (m_bulkSendUp3);
+      ApplicationContainer sourceAppUp3;
+      sourceAppUp3.Add(m_bulkSendUp3);
+      sourceAppUp3.Start (m_startTime + Seconds(5));
+      sourceAppUp3.Stop (m_stopTime - Seconds(5));
       m_output["results"]["TCP upload CS5"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP upload CS5"] = Json::Value (Json::arrayValue);
       Json::Value data_up3;
@@ -675,20 +712,24 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_bulkSendUp3->TraceConnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData3, this));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling3, this, "TCP upload CS5");
       Address sinkAddressUp3 (InetSocketAddress (Ipv4Address::GetAny (), 12));
-      PacketSinkHelper netserverUp3 ("ns3::TcpSocketFactory", sinkAddressUp3);
-      netserverUp3.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkAppUp3 = netserverUp3.Install (m_serverNode);
-      sinkAppUp3.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkAppUp3.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<PacketSink> m_packetSinkUp3 = DynamicCast<PacketSink> (sinkAppUp3.Get (0));
+      Ptr<PacketSink> m_packetSinkUp3 = CreateObject<PacketSink> ();
+      m_packetSinkUp3->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSinkUp3->SetAttribute ("Local", AddressValue (sinkAddressUp3));
+      m_serverNode->AddApplication (m_packetSinkUp3);
+      ApplicationContainer sinkAppUp3;
+      sinkAppUp3.Add (m_packetSinkUp3);
+      sinkAppUp3.Start (m_startTime + Seconds(5));
+      sinkAppUp3.Stop (m_stopTime - Seconds(5));
 
       Address sinkAddress4 (InetSocketAddress (Ipv4Address::GetAny (), 12));
-      PacketSinkHelper netserver4 ("ns3::TcpSocketFactory", sinkAddress4);
-      netserver4.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkApp4 = netserver4.Install (GetNode ());
-      sinkApp4.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkApp4.Stop (Seconds (m_stopTime.GetSeconds () - 6));
-      Ptr<PacketSink> m_packetSink4 = DynamicCast<PacketSink> (sinkApp4.Get (0));
+      Ptr<PacketSink> m_packetSink4 = CreateObject<PacketSink> ();
+      m_packetSink4->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSink4->SetAttribute ("Local", AddressValue (sinkAddress4));
+      GetNode ()->AddApplication (m_packetSink4);
+      ApplicationContainer sinkApp4;
+      sinkApp4.Add (m_packetSink4);
+      sinkApp4.Start (m_startTime + Seconds(5));
+      sinkApp4.Stop (m_stopTime - Seconds(5));
       m_packetSink4->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData4, this));
       m_output["results"]["TCP download EF"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP download EF"] = Json::Value (Json::arrayValue);
@@ -701,21 +742,27 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload4, this, "TCP download EF");
       InetSocketAddress clientAddress4 = InetSocketAddress (serverAddr, 12);
       clientAddress4.SetTos (Ipv4Header::DscpType::DSCP_EF << 2);
-      BulkSendHelper tcp4 ("ns3::TcpSocketFactory", clientAddress4);
-      tcp4.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceApp4 = tcp4.Install (m_serverNode);
-      sourceApp4.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceApp4.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<BulkSendApplication> m_bulkSend4 = DynamicCast<BulkSendApplication> (sourceApp4.Get (0));
+      Ptr<BulkSendApplication> m_bulkSend4 = CreateObject<BulkSendApplication> ();
+      m_bulkSend4->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSend4->SetAttribute ("Remote", AddressValue (clientAddress4));
+      m_bulkSend4->SetAttribute ("MaxBytes", UintegerValue (0));
+      m_serverNode->AddApplication (m_bulkSend4);
+      ApplicationContainer sourceApp4;
+      sourceApp4.Add(m_bulkSend4);
+      sourceApp4.Start (m_startTime + Seconds(5));
+      sourceApp4.Stop (m_stopTime - Seconds(5));
 
       clientAddress = InetSocketAddress (clientAddr, 13);
       clientAddress.SetTos (Ipv4Header::DscpType::DSCP_EF << 2);
-      BulkSendHelper tcp_upload4 ("ns3::TcpSocketFactory", clientAddress);
-      tcp_upload4.SetAttribute ("MaxBytes", UintegerValue (0));
-      ApplicationContainer sourceAppUp4 = tcp_upload4.Install (GetNode ());
-      sourceAppUp4.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sourceAppUp4.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<BulkSendApplication> m_bulkSendUp4 = DynamicCast<BulkSendApplication> (sourceAppUp4.Get (0));
+      Ptr<BulkSendApplication> m_bulkSendUp4 = CreateObject<BulkSendApplication> ();
+      m_bulkSendUp4->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_bulkSendUp4->SetAttribute ("Remote", AddressValue (clientAddress));
+      m_bulkSendUp4->SetAttribute ("MaxBytes", UintegerValue (0));
+      GetNode ()->AddApplication (m_bulkSendUp4);
+      ApplicationContainer sourceAppUp4;
+      sourceAppUp4.Add(m_bulkSendUp4);
+      sourceAppUp4.Start (m_startTime + Seconds(5));
+      sourceAppUp4.Stop (m_stopTime - Seconds(5));
       m_output["results"]["TCP upload EF"] = Json::Value (Json::arrayValue);
       m_output["raw_values"]["TCP upload EF"] = Json::Value (Json::arrayValue);
       Json::Value data_up4;
@@ -727,12 +774,14 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_bulkSendUp4->TraceConnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData4, this));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling4, this, "TCP upload EF");
       Address sinkAddressUp4 (InetSocketAddress (Ipv4Address::GetAny (), 13));
-      PacketSinkHelper netserverUp4 ("ns3::TcpSocketFactory", sinkAddressUp4);
-      netserverUp4.SetAttribute ("Protocol", TypeIdValue (TcpSocketFactory::GetTypeId ()));
-      ApplicationContainer sinkAppUp4 = netserverUp4.Install (m_serverNode);
-      sinkAppUp4.Start (Seconds (m_startTime.GetSeconds () + 5));
-      sinkAppUp4.Stop (Seconds (m_stopTime.GetSeconds () - 5));
-      Ptr<PacketSink> m_packetSinkUp4 = DynamicCast<PacketSink> (sinkAppUp4.Get (0));
+      Ptr<PacketSink> m_packetSinkUp4 = CreateObject<PacketSink> ();
+      m_packetSinkUp4->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
+      m_packetSinkUp4->SetAttribute ("Local", AddressValue (sinkAddressUp4));
+      m_serverNode->AddApplication (m_packetSinkUp4);
+      ApplicationContainer sinkAppUp4;
+      sinkAppUp4.Add (m_packetSinkUp4);
+      sinkAppUp4.Start (m_startTime + Seconds(5));
+      sinkAppUp4.Stop (m_stopTime - Seconds(5));
     }
 
 }
