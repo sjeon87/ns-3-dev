@@ -101,9 +101,6 @@ private:
 
   double          m_currTime;      //!< Current time
   Json::Value     m_output;        //!< Json output
-  Ptr<V4Ping>     m_v4ping;        //!< V4Ping application
-  Ptr<PacketSink> m_packetSink;    //!< Packet sink application
-  Ptr<BulkSendApplication> m_bulkSend; //!< Bulk send application
   Ptr<Node> m_serverNode; //!< Point to ns-3 server node
   Time            m_duration;      //!< Test duration
   std::string     m_testName;      //!< Flent test name
@@ -113,6 +110,14 @@ private:
   std::string     m_imageName;     //!< Name of the image to which plot is saved
   Time            m_stepSize;      //!< Measurment data point step size
   Time            m_delay;         //!< Number of Seconds to delay parts of test
+  uint32_t        g_bytesSent1{0};
+  uint32_t        g_bytesSent2{0};
+  uint32_t        g_bytesSent3{0};
+  uint32_t        g_bytesSent4{0};
+  uint32_t        g_bytesReceived1{0};
+  uint32_t        g_bytesReceived2{0};
+  uint32_t        g_bytesReceived3{0};
+  uint32_t        g_bytesReceived4{0};
 
 };
 

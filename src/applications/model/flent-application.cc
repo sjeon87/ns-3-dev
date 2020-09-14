@@ -51,15 +51,6 @@ NS_LOG_COMPONENT_DEFINE ("FlentApplication");
 
 NS_OBJECT_ENSURE_REGISTERED (FlentApplication);
 
-uint32_t g_bytesSent1 = 0;
-uint32_t g_bytesSent2 = 0;
-uint32_t g_bytesSent3 = 0;
-uint32_t g_bytesSent4 = 0;
-uint32_t g_bytesReceived1 = 0;
-uint32_t g_bytesReceived2 = 0;
-uint32_t g_bytesReceived3 = 0;
-uint32_t g_bytesReceived4 = 0;
-
 TypeId
 FlentApplication::GetTypeId (void)
 {
@@ -110,9 +101,6 @@ void
 FlentApplication::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
-  m_v4ping = 0;
-  m_packetSink = 0;
-  m_bulkSend = 0;
   m_serverNode = 0;
 
   // chain up
@@ -409,7 +397,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
   if (m_testName.compare ("ping") == 0)
     {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
-      m_v4ping = CreateObject<V4Ping> ();
+      Ptr<V4Ping> m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       GetNode ()->AddApplication (m_v4ping);
@@ -422,7 +410,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
   else if (m_testName.compare ("tcp_upload") == 0)
     {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
-      m_v4ping = CreateObject<V4Ping> ();
+      Ptr<V4Ping> m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       GetNode ()->AddApplication (m_v4ping);
@@ -438,7 +426,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
       InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 9);
-      m_bulkSend = CreateObject<BulkSendApplication> ();
+      Ptr<BulkSendApplication> m_bulkSend = CreateObject<BulkSendApplication> ();
       m_bulkSend->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSend->SetAttribute ("Remote", AddressValue (clientAddress));
       m_bulkSend->SetAttribute ("MaxBytes", UintegerValue (0));
@@ -459,7 +447,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSampling1, this, "TCP upload");
 
       Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 9));
-      m_packetSink = CreateObject<PacketSink> ();
+      Ptr<PacketSink> m_packetSink = CreateObject<PacketSink> ();
       m_packetSink->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_packetSink->SetAttribute ("Local", AddressValue (sinkAddress));
       m_serverNode->AddApplication (m_packetSink);
@@ -472,7 +460,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
   else if (m_testName.compare ("tcp_download") == 0)
     {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
-      m_v4ping = CreateObject<V4Ping> ();
+      Ptr<V4Ping> m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       m_serverNode->AddApplication (m_v4ping);
@@ -487,7 +475,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
 
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
       Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 9));
-      m_packetSink = CreateObject<PacketSink> ();
+      Ptr<PacketSink> m_packetSink = CreateObject<PacketSink> ();
       m_packetSink->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_packetSink->SetAttribute ("Local", AddressValue (sinkAddress));
       GetNode ()->AddApplication (m_packetSink);
@@ -507,7 +495,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload1, this, "TCP download");
 
       InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 9);
-      m_bulkSend = CreateObject<BulkSendApplication> ();
+      Ptr<BulkSendApplication> m_bulkSend = CreateObject<BulkSendApplication> ();
       m_bulkSend->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSend->SetAttribute ("Remote", AddressValue (clientAddress));
       m_bulkSend->SetAttribute ("MaxBytes", UintegerValue (0));
@@ -520,7 +508,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
   else if (m_testName.compare ("rrul") == 0)
     {
       Ipv4Address serverAddr = Ipv4Address::ConvertFrom (m_serverAddress);
-      m_v4ping = CreateObject<V4Ping> ();
+      Ptr<V4Ping>  m_v4ping = CreateObject<V4Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (serverAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       m_serverNode->AddApplication (m_v4ping);
@@ -535,7 +523,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
       Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 10));
-      m_packetSink = CreateObject<PacketSink> ();
+      Ptr<PacketSink> m_packetSink = CreateObject<PacketSink> ();
       m_packetSink->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_packetSink->SetAttribute ("Local", AddressValue (sinkAddress));
       GetNode ()->AddApplication (m_packetSink);
@@ -555,7 +543,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload1, this, "TCP download BE");
       InetSocketAddress clientAddress = InetSocketAddress (serverAddr, 10);
       clientAddress.SetTos (Ipv4Header::DscpType::DscpDefault << 2);
-      m_bulkSend = CreateObject<BulkSendApplication> ();
+      Ptr<BulkSendApplication> m_bulkSend = CreateObject<BulkSendApplication> ();
       m_bulkSend->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSend->SetAttribute ("Remote", AddressValue (clientAddress));
       m_bulkSend->SetAttribute ("MaxBytes", UintegerValue (0));
@@ -793,15 +781,15 @@ void FlentApplication::StopApplication (void) // Called at time specified by Sto
   AsciiTraceHelper ascii;
   if (m_testName.compare ("tcp_upload") == 0)
     {
-      m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
-      m_bulkSend->TraceDisconnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData1, this));
+      //m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+      //m_bulkSend->TraceDisconnectWithoutContext ("Tx", MakeCallback (&FlentApplication::SendData1, this));
       Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
       *streamOutput->GetStream () << m_output << std::endl;
     }
   else if (m_testName.compare ("tcp_download") == 0)
     {
-      m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
-      m_packetSink->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData1, this));
+      //m_v4ping->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
+      //m_packetSink->TraceDisconnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceiveData1, this));
       Ptr<OutputStreamWrapper> streamOutput = ascii.CreateFileStream (m_testName + ".flent");
       *streamOutput->GetStream () << m_output << std::endl;
     }
