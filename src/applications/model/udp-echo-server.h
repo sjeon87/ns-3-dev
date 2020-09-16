@@ -56,6 +56,7 @@ class UdpEchoServer : public SinkApplication
     void HandleRead(Ptr<Socket> socket);
 
     uint8_t m_tos; //!< The packets Type of Service
+    bool m_enableSeqTsEchoHeader; //!< Enable or disable use of SeqTsEchoHeader
 
     /// Callbacks for tracing the packet Rx events, includes source and destination addresses
     TracedCallback<Ptr<const Packet>, const Address&, const Address&> m_rxTraceWithAddresses;
