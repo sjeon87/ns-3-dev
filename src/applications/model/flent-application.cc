@@ -44,8 +44,13 @@
 #include "ns3/packet-sink-helper.h"
 #include "ns3/ipv4.h"
 #include "ns3/ipv4-header.h"
+#include "ns3/seq-ts-echo-header.h"
+#include "ns3/udp-echo-server.h"
+#include "ns3/udp-echo-client.h"
 
 namespace ns3 {
+
+class SeqTsEchoHeader;
 
 NS_LOG_COMPONENT_DEFINE ("FlentApplication");
 
@@ -233,6 +238,45 @@ FlentApplication::ReceivePing (const Address &address, uint16_t seq, uint8_t ttl
   m_output["raw_values"]["Ping (ms) ICMP"].append(data);
   m_output["results"]["Ping (ms) ICMP"].append(rtt);
   m_output["x_values"].append (Simulator::Now ().GetSeconds ());
+}
+
+void
+FlentApplication::ReceiveUdpPing (Ptr<const Packet> packet,  const Address &address, const Address &localAddress, const SeqTsEchoHeader &header)
+{
+  Json::Value data;
+  Time t = header.GetTsValue ();
+  double rtt = t.GetSeconds () * 1000;
+  data["dur"] = m_stepSize.GetSeconds ();
+  data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
+  data["val"] = rtt;
+  m_output["raw_values"]["Ping (ms) UDP BE"].append(data);
+  m_output["results"]["Ping (ms) UDP BE"].append(rtt);
+}
+
+void
+FlentApplication::ReceiveUdpPing2 (Ptr<const Packet> packet,  const Address &address, const Address &localAddress, const SeqTsEchoHeader &header)
+{
+  Json::Value data;
+  Time t = header.GetTsValue ();
+  double rtt = t.GetSeconds () * 1000;
+  data["dur"] = m_stepSize.GetSeconds ();
+  data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
+  data["val"] = rtt;
+  m_output["raw_values"]["Ping (ms) UDP BK"].append(data);
+  m_output["results"]["Ping (ms) UDP BK"].append(rtt);
+}
+
+void
+FlentApplication::ReceiveUdpPing3 (Ptr<const Packet> packet,  const Address &address, const Address &localAddress, const SeqTsEchoHeader &header)
+{
+  Json::Value data;
+  Time t = header.GetTsValue ();
+  double rtt = t.GetSeconds () * 1000;
+  data["dur"] = m_stepSize.GetSeconds ();
+  data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
+  data["val"] = rtt;
+  m_output["raw_values"]["Ping (ms) UDP EF"].append(data);
+  m_output["results"]["Ping (ms) UDP EF"].append(rtt);
 }
 
 void
@@ -522,6 +566,85 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_output["x_values"] = Json::Value (Json::arrayValue);
       m_v4ping->TraceConnectWithoutContext ("Rx", MakeCallback (&FlentApplication::ReceivePing, this));
 
+      uint16_t port = 9;
+      bool enableSeqTsEchoHeader = true;
+      Ptr<UdpEchoServer> m_udpserver = CreateObject<UdpEchoServer> ();
+      m_udpserver->SetAttribute ("Port", UintegerValue (port));
+      m_udpserver->SetAttribute ("EnableSeqTsEchoHeader", BooleanValue (enableSeqTsEchoHeader));
+      m_serverNode->AddApplication (m_udpserver);
+      ApplicationContainer apps;
+      apps.Add (m_udpserver);
+      apps.Start (m_startTime);
+      apps.Stop (m_stopTime);
+      uint32_t packetSize = 1024;
+      uint32_t maxPacketCount = 200;
+      Ipv4Address clientAddr = Ipv4Address::ConvertFrom (m_clientAddress);
+      Ptr<UdpEchoClient>  m_udpclient = CreateObject<UdpEchoClient> ();
+      m_udpclient->SetAttribute ("RemoteAddress", AddressValue (clientAddr)); 
+      m_udpclient->SetAttribute ("RemotePort", UintegerValue (port));
+      m_udpclient->SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
+      m_udpclient->SetAttribute ("Interval", TimeValue (m_stepSize));
+      m_udpclient->SetAttribute ("PacketSize", UintegerValue (packetSize));
+      m_udpclient->SetAttribute ("EnableSeqTsEchoHeader", BooleanValue (enableSeqTsEchoHeader));
+      GetNode ()->AddApplication (m_udpclient);
+      ApplicationContainer apps2;
+      apps2.Add(m_udpclient);
+      apps2.Start (m_startTime);
+      apps2.Stop (m_stopTime);
+      m_output["raw_values"]["Ping (ms) UDP BE"] = Json::Value (Json::arrayValue);
+      m_output["results"]["Ping (ms) UDP BE"] = Json::Value (Json::arrayValue);
+      m_udpclient->TraceConnectWithoutContext ("RxWithSeqTsEchoHeader", MakeCallback (&FlentApplication::ReceiveUdpPing, this));
+
+      port = 10;
+      Ptr<UdpEchoServer> m_udpserver2 = CreateObject<UdpEchoServer> ();
+      m_udpserver2->SetAttribute ("Port", UintegerValue (port));
+      m_udpserver2->SetAttribute ("EnableSeqTsEchoHeader", BooleanValue (enableSeqTsEchoHeader));
+      m_serverNode->AddApplication (m_udpserver2);
+      ApplicationContainer apps3;
+      apps3.Add (m_udpserver2);
+      apps3.Start (m_startTime);
+      apps3.Stop (m_stopTime);
+      Ptr<UdpEchoClient>  m_udpclient2 = CreateObject<UdpEchoClient> ();
+      m_udpclient2->SetAttribute ("RemoteAddress", AddressValue (clientAddr)); 
+      m_udpclient2->SetAttribute ("RemotePort", UintegerValue (port));
+      m_udpclient2->SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
+      m_udpclient2->SetAttribute ("Interval", TimeValue (m_stepSize));
+      m_udpclient2->SetAttribute ("PacketSize", UintegerValue (packetSize));
+      m_udpclient2->SetAttribute ("EnableSeqTsEchoHeader", BooleanValue (enableSeqTsEchoHeader));
+      GetNode ()->AddApplication (m_udpclient2);
+      ApplicationContainer apps4;
+      apps4.Add(m_udpclient2);
+      apps4.Start (m_startTime);
+      apps4.Stop (m_stopTime);
+      m_output["raw_values"]["Ping (ms) UDP BK"] = Json::Value (Json::arrayValue);
+      m_output["results"]["Ping (ms) UDP BK"] = Json::Value (Json::arrayValue);
+      m_udpclient->TraceConnectWithoutContext ("RxWithSeqTsEchoHeader", MakeCallback (&FlentApplication::ReceiveUdpPing2, this));
+
+      port = 11;
+      Ptr<UdpEchoServer> m_udpserver3 = CreateObject<UdpEchoServer> ();
+      m_udpserver3->SetAttribute ("Port", UintegerValue (port));
+      m_udpserver3->SetAttribute ("EnableSeqTsEchoHeader", BooleanValue (enableSeqTsEchoHeader));
+      m_serverNode->AddApplication (m_udpserver3);
+      ApplicationContainer apps5;
+      apps5.Add (m_udpserver3);
+      apps5.Start (m_startTime);
+      apps5.Stop (m_stopTime);
+      Ptr<UdpEchoClient>  m_udpclient3 = CreateObject<UdpEchoClient> ();
+      m_udpclient3->SetAttribute ("RemoteAddress", AddressValue (clientAddr)); 
+      m_udpclient3->SetAttribute ("RemotePort", UintegerValue (port));
+      m_udpclient3->SetAttribute ("MaxPackets", UintegerValue (maxPacketCount));
+      m_udpclient3->SetAttribute ("Interval", TimeValue (m_stepSize));
+      m_udpclient3->SetAttribute ("PacketSize", UintegerValue (packetSize));
+      m_udpclient3->SetAttribute ("EnableSeqTsEchoHeader", BooleanValue (enableSeqTsEchoHeader));
+      GetNode ()->AddApplication (m_udpclient3);
+      ApplicationContainer apps6;
+      apps6.Add(m_udpclient3);
+      apps6.Start (m_startTime);
+      apps6.Stop (m_stopTime);
+      m_output["raw_values"]["Ping (ms) UDP EF"] = Json::Value (Json::arrayValue);
+      m_output["results"]["Ping (ms) UDP EF"] = Json::Value (Json::arrayValue);
+      m_udpclient->TraceConnectWithoutContext ("RxWithSeqTsEchoHeader", MakeCallback (&FlentApplication::ReceiveUdpPing3, this));
+
       Address sinkAddress (InetSocketAddress (Ipv4Address::GetAny (), 10));
       Ptr<PacketSink> m_packetSink = CreateObject<PacketSink> ();
       m_packetSink->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
@@ -553,7 +676,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       sourceApp.Start (m_startTime + Seconds(5));
       sourceApp.Stop (m_stopTime - Seconds(5));
       
-      Ipv4Address clientAddr = Ipv4Address::ConvertFrom (m_clientAddress);
       clientAddress = InetSocketAddress (clientAddr, 10);
       clientAddress.SetTos (Ipv4Header::DscpType::DscpDefault << 2);
       Ptr<BulkSendApplication> m_bulkSendUp = CreateObject<BulkSendApplication> ();

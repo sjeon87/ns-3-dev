@@ -33,6 +33,7 @@ namespace ns3 {
 class V4Ping;
 class PacketSink;
 class BulkSendApplication;
+class SeqTsEchoHeader;
 
 /**
  * \ingroup applications
@@ -80,6 +81,9 @@ private:
   virtual void StopApplication (void);     //Called at time specified by Stop
 
   void ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t);
+  void ReceiveUdpPing (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
+  void ReceiveUdpPing2 (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
+  void ReceiveUdpPing3 (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
   void SendData1 (Ptr<const Packet> packet);
   void SendData2 (Ptr<const Packet> packet);
   void SendData3 (Ptr<const Packet> packet);
