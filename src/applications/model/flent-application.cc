@@ -39,7 +39,6 @@
 #include "ns3/core-module.h"
 #include "ns3/trace-helper.h"
 #include "ns3/bulk-send-application.h"
-#include "ns3/v4ping.h"
 #include "ns3/packet-sink.h"
 #include "ns3/packet-sink-helper.h"
 #include "ns3/ipv4.h"
@@ -580,7 +579,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       apps.Start (m_startTime);
       apps.Stop (m_stopTime);
       uint32_t packetSize = 1024;
-      uint32_t maxPacketCount = 1000;
+      uint32_t maxPacketCount = 10000;
       Ptr<UdpEchoClient>  m_udpclient = CreateObject<UdpEchoClient> ();
       m_udpclient->SetAttribute ("RemoteAddress", AddressValue (hostIpv4Address)); 
       m_udpclient->SetAttribute ("RemotePort", UintegerValue (port));
