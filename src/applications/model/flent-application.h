@@ -62,15 +62,15 @@ public:
   virtual ~FlentApplication ();
 
   void SetTest (std::string testname);
-  void SetDuration (Time duration);
-  void SetServerAddress (Address serverAddress);
-  void SetClientAddress (Address clientAddress);
+  void SetDuration (Time duration); //TODO: Should probably be 'SetLength'
+  void SetHostAddress (Address hostAddress); // Remote address
+  void SetLocalBindAddress (Address localBindAddress); //Local address
   void SetIncludeText (std::string textInImage);
   void SetOutput (std::string imagename);
   void SetStepSize (Time stepsize);
   void SetDelay (Time delay);
   void AddMetadata (Json::Value &j);
-  void SetServerNode (Ptr<Node> serverNode);
+  void SetHostNode (Ptr<Node> hostNode);
 
 protected:
   virtual void DoDispose (void);
@@ -105,11 +105,11 @@ private:
 
   double          m_currTime;      //!< Current time
   Json::Value     m_output;        //!< Json output
-  Ptr<Node> m_serverNode; //!< Point to ns-3 server node
+  Ptr<Node> m_hostNode; //!< Point to ns-3 server node
   Time            m_duration;      //!< Test duration
   std::string     m_testName;      //!< Flent test name
-  Address         m_serverAddress; //!< Server address
-  Address         m_clientAddress; //!< Client address
+  Address         m_hostAddress; //!< Host address
+  Address         m_localBindAddress; //!< Local bind address
   std::string     m_imageText;     //!< Text to be included in plot
   std::string     m_imageName;     //!< Name of the image to which plot is saved
   Time            m_stepSize;      //!< Measurment data point step size
