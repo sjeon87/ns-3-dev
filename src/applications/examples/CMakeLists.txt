@@ -9,7 +9,7 @@ build_lib_example(
 )
 
 build_lib_example(
-  NAME tgax-video-example
+NAME tgax-video-example
   SOURCE_FILES tgax-video-example.cc
   LIBRARIES_TO_LINK
     ${libapplications}
@@ -50,4 +50,17 @@ build_lib_example(
     ${libmobility}
     ${libinternet}
     ${libnetwork}
+)
+
+build_lib_example(
+  NAME flent-example
+  SOURCE_FILES flent-example.cc
+  LIBRARIES_TO_LINK
+    ${libapplications}
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libnetwork}
+    ${libcore}
+    ${libtraffic-control}
+    ${libinternet-apps}
 )

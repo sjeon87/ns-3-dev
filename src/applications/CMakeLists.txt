@@ -9,6 +9,8 @@ build_lib(
     helper/udp-echo-helper.cc
     model/application-packet-probe.cc
     model/bulk-send-application.cc
+    model/flent-application.cc
+    model/jsoncpp.cc
     model/onoff-application.cc
     model/packet-loss-counter.cc
     model/packet-sink.cc
@@ -39,6 +41,8 @@ build_lib(
     helper/udp-echo-helper.h
     model/application-packet-probe.h
     model/bulk-send-application.h
+    model/flent-application.h
+    model/json.h
     model/onoff-application.h
     model/packet-loss-counter.h
     model/packet-sink.h
