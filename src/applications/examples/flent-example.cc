@@ -82,7 +82,7 @@ int main (int argc, char *argv[])
   DataRate edgeRate (100 * bw.GetBitRate ());
   deviceHelper.SetDeviceAttribute ("DataRate", DataRateValue (edgeRate));
   deviceHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (1)));
-  deviceHelper.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("3p"));
+  deviceHelper.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
   NetDeviceContainer devices0;
   devices0 = deviceHelper.Install (n0);
   NetDeviceContainer devices2;
