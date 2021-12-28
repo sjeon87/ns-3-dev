@@ -23,6 +23,7 @@ SOURCES = \
 	$(SRC)/applications/doc/tgax-video-traffic.inc \
 	$(SRC)/applications/doc/tgax-virtual-desktop-traffic.inc \
 	$(SRC)/applications/doc/tgax-voip-traffic.inc \
+	$(SRC)/applications/doc/flent.rst \
 	$(SRC)/bridge/doc/bridge.rst \
 	$(SRC)/brite/doc/brite.rst \
 	$(SRC)/buildings/doc/source/buildings.rst \

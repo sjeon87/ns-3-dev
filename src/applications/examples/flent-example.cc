@@ -1,6 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * Copyright (c) 2015 Universita' degli Studi di Napoli Federico II
+ * Copyright (c) 2020 Harsha Sharma : Adapt for Flent
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -41,9 +42,10 @@ int main (int argc, char *argv[])
   bool verbose = false;
 
   // 2 MB of TCP buffer
-   Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (1 << 21));
-   Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (1 << 21));
-   Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpLinuxReno"));
+  Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (1 << 21));
+  Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (1 << 21));
+  Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpLinuxReno"));
+  Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1448));
 
   CommandLine cmd (__FILE__);
   cmd.AddValue ("test", "Type of ns-3 flent test", testName);
@@ -82,7 +84,7 @@ int main (int argc, char *argv[])
   DataRate edgeRate (100 * bw.GetBitRate ());
   deviceHelper.SetDeviceAttribute ("DataRate", DataRateValue (edgeRate));
   deviceHelper.SetChannelAttribute ("Delay", TimeValue (MicroSeconds (1)));
-  deviceHelper.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("3p"));
+  deviceHelper.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
   NetDeviceContainer devices0;
   devices0 = deviceHelper.Install (n0);
   NetDeviceContainer devices2;
@@ -116,16 +118,19 @@ int main (int argc, char *argv[])
   
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
   
-  // Configure flent
-  Ptr<FlentApplication> flent1 = CreateObject<FlentApplication> ();
-  flent1->SetStartTime (delay);
-  flent1->SetTest (testName);
-  flent1->SetStepSize (Seconds (0.2));
-  flent1->SetDuration (length);
-  flent1->SetHostNode (n.Get(3));
-  flent1->SetLocalBindAddress (interfaces0.GetAddress (0)); // local node
-  flent1->SetHostAddress (interfaces2.GetAddress (1));  // remote node
-  n.Get(0)->AddApplication (flent1); // add to local node only
+  // Configure with the help of FlentHelper
+  FlentHelper flentHelper (testName, interfaces2.GetAddress (1));
+  flentHelper.SetAttribute ("StartTime", TimeValue (delay));
+  flentHelper.SetAttribute ("StepSize", TimeValue (Seconds (0.2)));
+  flentHelper.SetAttribute ("Length", TimeValue (length));
+
+  ApplicationContainer flent = flentHelper.Install (n.Get (0));
+  flent.Start (delay);
+  // Stop () function get overridden with the
+  // help of "Length" attribute of FlentApplication.
+  // Always use "Length" attribute to set the
+  // length of the Flent Test.
+  flent.Stop (delay + length + Seconds (10));
   
   // Stop the simulation one second after flent ends
   // Flent ends at 'delay + length + Seconds (10)'
