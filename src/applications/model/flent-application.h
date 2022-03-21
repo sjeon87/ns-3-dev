@@ -22,6 +22,7 @@
  *          packet-sink-application.h written by George F. Riley)
  *
  * Modified by: Ameya Deshpande <ameyanrd@outlook.com>
+ *              Bhaskar Kataria <bhaskar.k7920@gmail.com> (Post processing of raw data)
  */
 
 #ifndef FLENT_APPLICATION_H
@@ -194,6 +195,17 @@ private:
    * @param [in] i index of the flow
    */
   void GoodputSamplingDownload (std::string name, int i);
+
+  /**
+   * \brief Fill x_values parameter in flent file.
+   * Adds x parameter values with the differece of stepSize
+   */
+  void FillXValues (void);
+
+  /**
+   * \brief Process raw values and add the processed result in the flent file.
+   */
+  void ProcessRawValues (void);
 
 
   double          m_currTime;         //!< Current time

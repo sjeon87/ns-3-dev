@@ -22,6 +22,7 @@
  *          packet-sink-application.cc written by George F. Riley)
  *
  * Modified by: Ameya Deshpande <ameyanrd@outlook.com>
+ *              Bhaskar Kataria <bhaskar.k7920@gmail.com> (Post processing of raw data)
  */
 
 #include <chrono>
@@ -285,8 +286,6 @@ FlentApplication::TraceReceivedPing (const Address &address, uint16_t seq, uint8
   data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
   data["val"] = rtt; 
   m_output["raw_values"]["Ping (ms) ICMP"].append(data);
-  m_output["results"]["Ping (ms) ICMP"].append(rtt);
-  m_output["x_values"].append (Simulator::Now ().GetSeconds ());
 }
 
 void
@@ -299,7 +298,6 @@ FlentApplication::TraceReceivedUdpPing1 (Ptr<const Packet> packet, const Address
   data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
   data["val"] = rtt;
   m_output["raw_values"]["Ping (ms) UDP BE"].append(data);
-  m_output["results"]["Ping (ms) UDP BE"].append(rtt);
 }
 
 void
@@ -312,7 +310,6 @@ FlentApplication::TraceReceivedUdpPing2 (Ptr<const Packet> packet, const Address
   data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
   data["val"] = rtt;
   m_output["raw_values"]["Ping (ms) UDP BK"].append(data);
-  m_output["results"]["Ping (ms) UDP BK"].append(rtt);
 }
 
 void
@@ -325,7 +322,6 @@ FlentApplication::TraceReceivedUdpPing3 (Ptr<const Packet> packet, const Address
   data["t"] = (Simulator::Now ().GetSeconds ()+ m_currTime);
   data["val"] = rtt;
   m_output["raw_values"]["Ping (ms) UDP EF"].append(data);
-  m_output["results"]["Ping (ms) UDP EF"].append(rtt);
 }
 
 void
@@ -336,7 +332,6 @@ FlentApplication::GoodputSamplingUpload (std::string name, int i) {
   data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
   data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (goodput);
   m_bytesSent[i] = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingUpload, this, name, i);
 }
@@ -349,9 +344,94 @@ FlentApplication::GoodputSamplingDownload (std::string name, int i) {
   data["t"] = (Simulator::Now ().GetSeconds () + m_currTime);
   data["val"] = goodput;
   m_output["raw_values"][name].append (data);
-  m_output["results"][name].append (goodput);
   m_bytesReceived[i] = 0;
   Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, name, i);
+}
+
+void
+FlentApplication::FillXValues (void)
+{
+  NS_LOG_DEBUG ("Filling x values");
+  double stepSize = m_stepSize. GetSeconds ();
+  NS_LOG_DEBUG (stepSize);
+  for (int step = 0; step < int (std::ceil (m_stopTime.GetSeconds () / m_stepSize.GetSeconds ())); step += 1)
+    {
+      NS_LOG_DEBUG (step);
+      m_output["x_values"].append (std::to_string (step * stepSize).substr (0, std::to_string (step * stepSize).find (".")+3));
+    }
+}
+void
+FlentApplication::ProcessRawValues (void)
+{
+  NS_LOG_DEBUG ("Process Raw values");
+  int steps = int (std::ceil (m_stopTime.GetSeconds () / m_stepSize.GetSeconds ()));
+  for (int s = 0; s < steps; s++)
+    {
+      double t = m_currTime + (m_stepSize.GetSeconds () * s);
+      for (auto itrName = m_output["raw_values"].begin (); itrName != m_output["raw_values"].end (); itrName++)
+        {
+          std::string rawValueName = itrName.key ().asString ();
+          double maxDist = m_stepSize.GetSeconds () * 5.0;
+          if (!(*itrName))
+            {
+              continue;
+            }
+          double tPrev = 0.0;
+          double vPrev = 0.0;
+          double tNext = 0.0;
+          double vNext = 0.0;
+          for (auto itrValues = m_output["raw_values"][rawValueName].begin (), prev= --(m_output["raw_values"][rawValueName].end ());
+              itrValues != m_output["raw_values"][rawValueName].end (); itrValues++, prev = itrValues)
+            {
+              if ((*itrValues)["t"].asDouble () > t)
+                {
+                  if (itrValues == m_output["raw_values"][rawValueName].begin ())
+                    {
+                      tPrev = (*prev)["t"].asDouble ();
+                      vPrev = (*prev)["val"].asDouble ();
+                    }
+                  else 
+                    {
+                      maxDist = m_stepSize.GetSeconds () * 0.5;
+                    }
+                  tNext = (*itrValues)["t"].asDouble ();
+                  vNext = (*itrValues)["val"].asDouble ();
+                  break;
+                }
+            }
+          bool last = false;
+          if (tNext == 0)
+            {
+              tNext = (*(--(m_output["raw_values"][rawValueName].end ())))["t"].asDouble ();
+              vNext = (*(--(m_output["raw_values"][rawValueName].end ())))["val"].asDouble ();
+              last = true;
+            }
+          if (abs (t - tNext) <= maxDist)
+            {
+              if (tPrev == 0)
+                {
+                  auto itrResult = m_output["results"][rawValueName].end ();
+                  if (last && (( *(itrResult) == vNext) || *(itrResult) == Json::Value::null))
+                    {
+                      m_output["results"][rawValueName].append (Json::Value::null);
+                    }
+                  else
+                    {
+                      m_output["results"][rawValueName].append (vNext);
+                    }
+                }
+              else
+                {
+                  double dvDt =  (vNext - vPrev) / (tNext - tPrev);
+                  m_output["results"][rawValueName].append (vPrev + dvDt * (t - tPrev));
+                }
+            }
+          else
+            {
+              m_output["results"][rawValueName].append (Json::Value::null);
+            }
+        }
+    }
 }
 
 //Application Methods
@@ -409,7 +489,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data["val"] = 0;
       m_output["raw_values"]["TCP upload"].append (data);
-      m_output["results"]["TCP upload"].append (data["val"]);
       m_bulkSend->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&TraceSentPacket, &m_bytesSent[0]));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingUpload, this, "TCP upload", 0);
 
@@ -458,7 +537,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data["val"] = 0;
       m_output["raw_values"]["TCP download"].append (data);
-      m_output["results"]["TCP download"].append (data["val"]);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download", 0);
 
       InetSocketAddress localBindAddress = InetSocketAddress (localBindAddr, 9);
@@ -586,7 +664,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data["val"] = 0;
       m_output["raw_values"]["TCP download BE"].append (data);
-      m_output["results"]["TCP download BE"].append (data["val"]);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download BE", 0);
       InetSocketAddress localBindAddress = InetSocketAddress (localIpv4Address, 10);
       localBindAddress.SetTos (Ipv4Header::DscpType::DscpDefault << 2);
@@ -619,7 +696,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data_up["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data_up["val"] = 0;
       m_output["raw_values"]["TCP upload BE"].append (data_up);
-      m_output["results"]["TCP upload BE"].append (data_up["val"]);
       m_bulkSendUp->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&TraceSentPacket, &m_bytesSent[0]));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingUpload, this, "TCP upload BE", 0);
       Address sinkAddressUp (InetSocketAddress (Ipv4Address::GetAny (), 10));
@@ -650,7 +726,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data2["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data2["val"] = 0;
       m_output["raw_values"]["TCP download BK"].append (data2);
-      m_output["results"]["TCP download BK"].append (data2["val"]);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download BK", 1);
       InetSocketAddress localBindAddress2 = InetSocketAddress (localIpv4Address, 9);
       localBindAddress2.SetTos (Ipv4Header::DscpType::DSCP_CS1 << 2);
@@ -683,7 +758,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data_up2["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data_up2["val"] = 0;
       m_output["raw_values"]["TCP upload BK"].append (data_up2);
-      m_output["results"]["TCP upload BK"].append (data_up2["val"]);
       m_bulkSendUp->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&TraceSentPacket, &m_bytesSent[1]));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingUpload, this, "TCP upload BK", 1);
       Address sinkAddressUp2 (InetSocketAddress (Ipv4Address::GetAny (), 11));
@@ -714,7 +788,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data3["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data3["val"] = 0;
       m_output["raw_values"]["TCP download CS5"].append (data3);
-      m_output["results"]["TCP download CS5"].append (data3["val"]);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download CS5", 2);
       InetSocketAddress localBindAddress3 = InetSocketAddress (localIpv4Address, 11);
       localBindAddress3.SetTos (Ipv4Header::DscpType::DSCP_CS5 << 2);
@@ -747,7 +820,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data_up3["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data_up3["val"] = 0;
       m_output["raw_values"]["TCP upload CS5"].append (data_up3);
-      m_output["results"]["TCP upload CS5"].append (data_up3["val"]);
       m_bulkSendUp3->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&TraceSentPacket, &m_bytesSent[2]));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingUpload, this, "TCP upload CS5", 2);
       Address sinkAddressUp3 (InetSocketAddress (Ipv4Address::GetAny (), 12));
@@ -778,7 +850,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data4["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data4["val"] = 0;
       m_output["raw_values"]["TCP download EF"].append (data4);
-      m_output["results"]["TCP download EF"].append (data4["val"]);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download EF", 3);
       InetSocketAddress localBindAddress4 = InetSocketAddress (localIpv4Address, 12);
       localBindAddress4.SetTos (Ipv4Header::DscpType::DSCP_EF << 2);
@@ -811,7 +882,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       data_up4["t"] = (Simulator::Now ().GetSeconds ()+m_currTime);
       data_up4["val"] = 0;
       m_output["raw_values"]["TCP upload EF"].append (data_up4);
-      m_output["results"]["TCP upload EF"].append (data_up4["val"]);
       m_bulkSendUp4->TraceConnectWithoutContext ("Tx", MakeBoundCallback (&TraceSentPacket, &m_bytesSent[3]));
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingUpload, this, "TCP upload EF", 3);
       Address sinkAddressUp4 (InetSocketAddress (Ipv4Address::GetAny (), 13));
@@ -830,6 +900,8 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
 void FlentApplication::StopApplication (void) // Called at time specified by Stop
 {
   NS_LOG_FUNCTION (this);
+  FillXValues ();
+  ProcessRawValues ();
   AsciiTraceHelper ascii;
   if (m_testName.compare ("ping") == 0)
     {
