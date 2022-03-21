@@ -65,6 +65,10 @@ build_lib(
     model/udp-server.h
     model/udp-trace-client.h
   LIBRARIES_TO_LINK ${libinternet}
+LIBRARIES_TO_LINK
+    ${libinternet}
+    ${libinternet-apps}
+    ${libstats}
   TEST_SOURCES
     test/three-gpp-http-client-server-test.cc
     test/bulk-send-application-test-suite.cc
