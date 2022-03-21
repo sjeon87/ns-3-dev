@@ -19,10 +19,12 @@ SOURCES = \
 	$(SRC)/antenna/doc/antenna.rst \
 	$(SRC)/aodv/doc/aodv.rst \
 	$(SRC)/applications/doc/applications.rst \
-        $(SRC)/applications/doc/rta-tig-mobile-gaming-traffic.inc \
+$(SRC)/applications/doc/rta-tig-mobile-gaming-traffic.inc \
         $(SRC)/applications/doc/tgax-video-traffic.inc \
         $(SRC)/applications/doc/tgax-virtual-desktop-traffic.inc \
         $(SRC)/applications/doc/tgax-voip-traffic.inc \
+        $(SRC)/applications/doc/flent.rst \
+        $(SRC)/applications/doc/three-gpp-http.rst \
 	$(SRC)/bridge/doc/bridge.rst \
 	$(SRC)/brite/doc/brite.rst \
 	$(SRC)/buildings/doc/source/buildings.rst \
