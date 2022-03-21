@@ -2,6 +2,7 @@ build_lib(
   LIBNAME applications
   SOURCE_FILES
     helper/bulk-send-helper.cc
+    helper/flent-helper.cc
     helper/on-off-helper.cc
     helper/packet-sink-helper.cc
     helper/three-gpp-http-helper.cc
@@ -34,6 +35,7 @@ build_lib(
     model/udp-trace-client.cc
   HEADER_FILES
     helper/bulk-send-helper.h
+    helper/flent-helper.h
     helper/on-off-helper.h
     helper/packet-sink-helper.h
     helper/three-gpp-http-helper.h

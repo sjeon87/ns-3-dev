@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2010 Georgia Institute of Technology
  * Copyright (c) 2020 Harsha Sharma : Flent application
+ * Copyright (c) 2021 NITK Surathkal
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +20,8 @@
  * Author: Harsha Sharma <harshasha256@gmail.com> 
  *         (adapted from bulk-send-application.h and
  *          packet-sink-application.h written by George F. Riley)
+ *
+ * Modified by: Ameya Deshpande <ameyanrd@outlook.com>
  */
 
 #ifndef FLENT_APPLICATION_H
@@ -27,6 +30,7 @@
 #include <string>
 #include "ns3/address.h"
 #include "ns3/application.h"
+#include "ns3/node-list.h"
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
 #include "ns3/json.h"
@@ -40,14 +44,30 @@ class SeqTsEchoHeader;
 
 /**
  * \ingroup applications
+ * \defgroup flent FlentApplication
  *
  * This application provides a basic model of
  * the flent traffic generator. In practice,
- * Flent is a wrapper around three traffic 
- * generation tools: netperf(for TCP), 
- * iperf (for UDP) and ping (for ICMP). 
- * Flent also provides output in a 
- * JSON-formatted data file, and plotting 
+ * Flent is a wrapper around three traffic
+ * generation tools: netperf(for TCP),
+ * iperf (for UDP) and ping (for ICMP).
+ * Flent also provides output in a
+ * JSON-formatted data file, and plotting
+ * support via matplotlib.
+ */
+
+/**
+ * \ingroup flent
+ *
+ * \brief Flent is a network benchmarking tool
+ *
+ * This application provides a basic model of
+ * the flent traffic generator. In practice,
+ * Flent is a wrapper around three traffic
+ * generation tools: netperf(for TCP),
+ * iperf (for UDP) and ping (for ICMP).
+ * Flent also provides output in a
+ * JSON-formatted data file, and plotting
  * support via matplotlib.
  */
 
@@ -64,18 +84,32 @@ public:
 
   virtual ~FlentApplication ();
 
-  void SetTest (std::string testname);
-  void SetDuration (Time duration); //TODO: Should probably be 'SetLength'
-  void SetHostAddress (Address hostAddress); // Remote address
-  void SetLocalBindAddress (Address localBindAddress); //Local address
-  void SetIncludeText (std::string textInImage);
-  void SetOutput (std::string imagename);
-  void SetStepSize (Time stepsize);
-  void SetDelay (Time delay);
+  /**
+   * \brief Add Flent Meta Data
+   *
+   * \param [out] j Json output object
+   */
   void AddMetadata (Json::Value &j);
-  void SetHostNode (Ptr<Node> hostNode);
 
 protected:
+
+  /**
+   * In this method, the following tasks are performed:
+   * 1) set the host node, which is derived from
+   *    the host address,
+   * 2) put the local bind address as the first
+   *    address of the first non-loopback interface
+   *    (if not set by the user explicitly), and
+   * 3) override the application stop time from the
+   *    Length attribute set by the user.
+   *
+   * \sa Application::DoInitialize
+   */
+  virtual void DoInitialize (void);
+
+  /**
+   * \sa Application::DoDispose
+   */
   virtual void DoDispose (void);
 private:
 
@@ -83,49 +117,98 @@ private:
   virtual void StartApplication (void);    //Called at time specified by Start
   virtual void StopApplication (void);     //Called at time specified by Stop
 
-  void ReceivePing (const Address &address, uint16_t seq, uint8_t ttl, Time t);
-  void ReceiveUdpPing (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
-  void ReceiveUdpPing2 (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
-  void ReceiveUdpPing3 (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
-  void SendData1 (Ptr<const Packet> packet);
-  void SendData2 (Ptr<const Packet> packet);
-  void SendData3 (Ptr<const Packet> packet);
-  void SendData4 (Ptr<const Packet> packet);
-  void ReceiveData1 (Ptr<const Packet> packet, const Address &address);
-  void ReceiveData2 (Ptr<const Packet> packet, const Address &address);
-  void ReceiveData3 (Ptr<const Packet> packet, const Address &address);
-  void ReceiveData4 (Ptr<const Packet> packet, const Address &address);
+  /**
+   * \brief Iterates through the node list and finds the node
+   * pointer for the given hostAddress
+   * \param [in] hostAddress host node IP
+   * \return The node with the specified IP.
+   *
+   */
+  Ptr<Node> GetHostNode (Ipv4Address hostAddress) const;
+
+  /**
+   * \brief Ping RTT Trace function
+   * \param address Destination address
+   * \param seq Echo sequence number
+   * \param ttl Time-To-Live field from IP header
+   * \param t Time delta from the sent time
+   */
+  void TraceReceivedPing (const Address &address, uint16_t seq, uint8_t ttl, Time t);
+
+  /**
+   * \brief UDP Ping RTT Trace function
+   * \param packet UDP Ping Packet
+   * \param address Address of the destination
+   * \param localAddress Local address of the sender
+   * \param header SeqTsEchoHeader header
+   */
+  void TraceReceivedUdpPing1 (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
+
+  /**
+   * \brief UDP Ping RTT Trace function
+   * \param packet UDP Ping Packet
+   * \param address Address of the destination
+   * \param localAddress Local address of the sender
+   * \param header SeqTsEchoHeader header
+   */
+  void TraceReceivedUdpPing2 (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
+
+  /**
+   * \brief UDP Ping RTT Trace function
+   * \param packet UDP Ping Packet
+   * \param address Address of the destination
+   * \param localAddress Local address of the sender
+   * \param header SeqTsEchoHeader header
+   */
+  void TraceReceivedUdpPing3 (Ptr<const Packet> packet, const Address &address, const Address &localAddress, const SeqTsEchoHeader &header);
+
+  /**
+   * \brief Calculate the Time in UTC time format
+   * from the number of seconds.
+   * \param [in] sec Seconds
+   * \return The time in UTC format
+   *
+   */
   std::string GetUtcFormatTime (int sec) const;
-  void GoodputSampling1 (std::string name);
-  void GoodputSampling2 (std::string name);
-  void GoodputSampling3 (std::string name);
-  void GoodputSampling4 (std::string name);
-  void GoodputSamplingDownload1 (std::string name);
-  void GoodputSamplingDownload2 (std::string name);
-  void GoodputSamplingDownload3 (std::string name);
-  void GoodputSamplingDownload4 (std::string name);
+
+  /**
+   * \brief Goodput calculation for the i-th flow
+   * based on the bytes sent.
+   *
+   * Index i can have various values from 0 to 3 for
+   * the four upload flows in case of RRUL test.
+   *
+   * @param [in] name Name of the flow
+   * @param [in] i index of the flow
+   */
+  void GoodputSamplingUpload (std::string name, int i);
+
+  /**
+   * \brief Goodput calculation for the i-th flow
+   * based on the bytes received.
+   *
+   * Index i can have various values from 0 to 3 for
+   * the four download flows in case of RRUL test.
+   *
+   * @param [in] name Name of the flow
+   * @param [in] i index of the flow
+   */
+  void GoodputSamplingDownload (std::string name, int i);
 
 
-  double          m_currTime;      //!< Current time
-  Json::Value     m_output;        //!< Json output
-  Ptr<Node> m_hostNode; //!< Point to ns-3 server node
-  Time            m_duration;      //!< Test duration
-  std::string     m_testName;      //!< Flent test name
-  Address         m_hostAddress; //!< Host address
+  double          m_currTime;         //!< Current time
+  Json::Value     m_output;           //!< Json output
+  Time            m_length;           //!< Test duration
+  std::string     m_testName;         //!< Flent test name
+  Ptr<Node>       m_hostNode;         //!< Host Node
+  Address         m_hostAddress;      //!< Host address
   Address         m_localBindAddress; //!< Local bind address
-  std::string     m_imageText;     //!< Text to be included in plot
-  std::string     m_imageName;     //!< Name of the image to which plot is saved
-  Time            m_stepSize;      //!< Measurment data point step size
-  Time            m_delay;         //!< Number of Seconds to delay parts of test
-  uint32_t        g_bytesSent1{0};
-  uint32_t        g_bytesSent2{0};
-  uint32_t        g_bytesSent3{0};
-  uint32_t        g_bytesSent4{0};
-  uint32_t        g_bytesReceived1{0};
-  uint32_t        g_bytesReceived2{0};
-  uint32_t        g_bytesReceived3{0};
-  uint32_t        g_bytesReceived4{0};
-
+  std::string     m_imageText;        //!< Text to be included in plot
+  std::string     m_imageName;        //!< Name of the image to which plot is saved
+  Time            m_stepSize;         //!< Measurment data point step size
+  Time            m_delay;            //!< Number of Seconds to delay parts of test
+  std::vector<uint32_t> m_bytesSent {std::vector<uint32_t> (4, 0)}; //!< sent data counters
+  std::vector<uint32_t> m_bytesReceived {std::vector<uint32_t> (4, 0)}; //!< receive data counters
 };
 
 } // namespace ns3
