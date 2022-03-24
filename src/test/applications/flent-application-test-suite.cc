@@ -66,7 +66,7 @@ FlentApplicationRrul::DoRun (void)
   std::string testName = "rrul";
   Time rtt = MilliSeconds (80);
   DataRate bw ("50Mbps");
-  Time length = Seconds (60);
+  Time length = Seconds (5);
   Time delay = Seconds (0);
 
   // 2 MB of TCP buffer
@@ -172,7 +172,7 @@ FlentApplicationTcpUpload::DoRun (void)
   std::string testName = "tcp_upload";
   Time rtt = MilliSeconds (80);
   DataRate bw ("50Mbps");
-  Time length = Seconds (60);
+  Time length = Seconds (5);
   Time delay = Seconds (0);
 
   // 2 MB of TCP buffer
@@ -279,7 +279,7 @@ FlentApplicationTcpDownload::DoRun (void)
 std::string testName = "tcp_download";
   Time rtt = MilliSeconds (80);
   DataRate bw ("50Mbps");
-  Time length = Seconds (60);
+  Time length = Seconds (5);
   Time delay = Seconds (0);
 
   // 2 MB of TCP buffer
@@ -385,7 +385,7 @@ FlentApplicationPing::DoRun (void)
 std::string testName = "ping";
   Time rtt = MilliSeconds (80);
   DataRate bw ("50Mbps");
-  Time length = Seconds (60);
+  Time length = Seconds (5);
   Time delay = Seconds (0);
 
   // 2 MB of TCP buffer
