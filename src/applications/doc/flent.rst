@@ -62,6 +62,27 @@ The following points provide useful insights about how flent records metrics:
   - It uses ‘tc’ to measure queue delay, queue backlog, drops,and marks. 
   - Since ‘ss’ and ‘tc’ sample data at regular intervals that cannot be less than the execution time of ‘ss’ and ‘tc’ itself (which may vary depending upon the hardware). However ns3 collects data with help of writing into trace files via periodic callbacks. These callbacks have practically negligible execution time. Hence one may expect to see different results for smaller sampling rates while comparing ns3 and flent. 
 
+In the Flent application we keep the ``MaxSize`` of DropTailQueue as 1p to keep the latency to at a minimum values
+and further align the results with flent. We are enabling BQL as well which should control the latency for longer queue lengths.
+But we keep the MaxSize as 1p to the latency minimum, this does not mean that BQL is working, its just that even with BQL enabled
+we would get a little bit higher latency that we are getting now. More details available at ``src/network/doc/queue-limits.rst``
+
+Post processing of raw values
+=============================
+
+``FlentApplication::FillXValues`` function fills the x_values parameter in flent file. x_values corresponds to the
+x coordinates on the generated plot. We keep the x coordinates based on the step size as we are calculating our results for
+all those x coordinates. In this function we incrementally add x_values with the difference of step size
+
+``FlentApplication::ProcessRawValues`` process the raw values and calculates the y coordinate value for the points in x_values.
+For each step we find the interpolated measurement value at time t (x_values point) by interpolating between the nearest measurements before
+and after t. For the entry we keep the minimum interpolation distance as 0.5 * stepSize to avoid multiple interpolations to the same value.
+For the first/last data point we might not have vPrev and vNext so we directly use the values without interpolating.
+For all other datapoints we will find the previous and next values; interpolate between them. We assume that the rate of change dv/dt
+is constant in the interval, and so can be calculated as (vNext-vPrev)/(tNext-tPrev). Then the value of result at t can be calculated
+as v_t=vPrev + dv/dt * (t-tPrev). If the interpolation distance (default max interpolation distance = 5 * stepSize) is too long then
+we wont use the value and keep the datapoint as null.
+
 References
 ==========
 \
@@ -132,10 +153,29 @@ one may install the flent application, use its GUI and view time series plots of
 
 Tests
 *****
+The Flent application defined in `src/test/applications/flent-application-test-suite` test suite:
+  1. Runs the first 4 tests for sanity check and generating the flent files required for the Flent file integrity and Flent results test.
+      Flent files generated from the first 4 tests can be reused again for the Flent file integrity and Flent results test.
+  2. Runs the Flent file integrity test which reads the files from first 4 tests and check if metadata required for flent-gui is available
+  3. Runs the Flent result test which reads the files from the 4 tests and calculate average throughput and average ICMP latency.
+      The result is checked if its within bounds obtained from results at the time of writing the test suite.
+
+The test suite can be run using the following commands::
+
+  $ ./ns3 configure --enable-examples --enable-tests
+  $ ./ns3 build
+  $ ./test.py -s flent-application
 
 Validation
 ==========
 
-Regression Tests
-================
+The FlentApplication model is tested using :cpp:class:`FlentApplicationTestSuite` class defined in `src/test/applications/flent-application-test-suite.cc`.  The suite includes 6 test cases:
+
+* Test 1: Flent rrul test, checks if the test is running. Generates rrul.flent file which is used in Test 5 and 6.
+* Test 2: Flent tcp_upload test, checks if the test is running. Generates tcp_upload.flent file which is used in Test 5 and 6
+* Test 3: Flent tcp_download test, checks if the test is running. Generates tcp_download.flent file which is used in Test 5 and 6
+* Test 4: Flent ping test, checks if the test is running. Generates ping.flent file which is used in Test 5 and 6
+* Test 5: Flent file integrity test, checks if the created flent files have the required fields.
+* Test 6: Flent application results test, checks if the average throughput and average ICMP latency are as expected.
+
 
