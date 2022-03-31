@@ -35,6 +35,11 @@
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
 #include "ns3/json.h"
+#include "ns3/v4ping.h"
+#include "ns3/bulk-send-application.h"
+#include "ns3/packet-sink.h"
+#include "ns3/udp-echo-server.h"
+#include "ns3/udp-echo-client.h"
 
 namespace ns3 {
 
@@ -221,6 +226,15 @@ private:
   Time            m_delay;            //!< Number of Seconds to delay parts of test
   std::vector<uint32_t> m_bytesSent {std::vector<uint32_t> (4, 0)}; //!< sent data counters
   std::vector<uint32_t> m_bytesReceived {std::vector<uint32_t> (4, 0)}; //!< receive data counters
+
+  /* Applications */
+  Ptr<V4Ping>               m_v4ping;            //!< V4Ping Application
+  Ptr<PacketSink>           m_packetSinkUp[4];   //!< PacketSink Applications for Upload flows
+  Ptr<PacketSink>           m_packetSinkDown[4]; //!< PacketSink Applications for Download flows
+  Ptr<BulkSendApplication>  m_bulkSendUp[4];     //!< BulkSend Applications for Upload flows
+  Ptr<BulkSendApplication>  m_bulkSendDown[4];   //!< BulkSend Applications for Download flows
+  Ptr<UdpEchoServer>        m_udpserver[3];      //!< UdpEchoServer Applications
+  Ptr<UdpEchoClient>        m_udpclient[3];      //!< UdpEchoClient Applications
 };
 
 } // namespace ns3
