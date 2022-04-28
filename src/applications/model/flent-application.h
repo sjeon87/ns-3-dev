@@ -34,12 +34,12 @@
 #include "ns3/node-list.h"
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
-#include "ns3/json.h"
 #include "ns3/v4ping.h"
 #include "ns3/bulk-send-application.h"
 #include "ns3/packet-sink.h"
 #include "ns3/udp-echo-server.h"
 #include "ns3/udp-echo-client.h"
+#include "ns3/ns3jsoncpp.h"
 
 namespace ns3 {
 

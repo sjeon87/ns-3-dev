@@ -6,28 +6,28 @@
 // //////////////////////////////////////////////////////////////////////
 
 /*
-The JsonCpp library's source code, including accompanying documentation, 
+The JsonCpp library's source code, including accompanying documentation,
 tests and demonstration applications, are licensed under the following
 conditions...
 
-Baptiste Lepilleur and The JsonCpp Authors explicitly disclaim copyright in all 
-jurisdictions which recognize such a disclaimer. In such jurisdictions, 
+Baptiste Lepilleur and The JsonCpp Authors explicitly disclaim copyright in all
+jurisdictions which recognize such a disclaimer. In such jurisdictions,
 this software is released into the Public Domain.
 
 In jurisdictions which do not recognize Public Domain property (e.g. Germany as of
 2010), this software is Copyright (c) 2007-2010 by Baptiste Lepilleur and
 The JsonCpp Authors, and is released under the terms of the MIT License (see below).
 
-In jurisdictions which recognize Public Domain property, the user of this 
-software may choose to accept it either as 1) Public Domain, 2) under the 
-conditions of the MIT License (see below), or 3) under the terms of dual 
+In jurisdictions which recognize Public Domain property, the user of this
+software may choose to accept it either as 1) Public Domain, 2) under the
+conditions of the MIT License (see below), or 3) under the terms of dual
 Public Domain/MIT License conditions described here, as they choose.
 
 The MIT License is about as close to Public Domain as a license can get, and is
 described in clear, concise terms at:
 
    http://en.wikipedia.org/wiki/MIT_License
-   
+
 The full text of the MIT License follows:
 
 ========================================================================
@@ -73,7 +73,7 @@ license you like.
 
 
 
-#include "json.h"
+#include "ns3jsoncpp.h"
 
 #ifndef JSON_IS_AMALGAMATION
 #error "Compile with -I PATH_TO_JSON_DIRECTORY"
@@ -104,6 +104,8 @@ license you like.
 #ifndef JSONCPP_NO_LOCALE_SUPPORT
 #include <clocale>
 #endif
+
+namespace ns3 {
 
 /* This header provides common string manipulation support, such as UTF-8,
  * portable conversion from/to string...
@@ -202,20 +204,26 @@ template <typename Iter> void fixNumericLocaleInput(Iter begin, Iter end) {
  * Return iterator that would be the new end of the range [begin,end), if we
  * were to delete zeros in the end of string, but not the last zero before '.'.
  */
-template <typename Iter> Iter fixZerosInTheEnd(Iter begin, Iter end) {
+template <typename Iter>
+Iter fixZerosInTheEnd(Iter begin, Iter end, unsigned int precision) {
   for (; begin != end; --end) {
     if (*(end - 1) != '0') {
       return end;
     }
     // Don't delete the last zero before the decimal point.
-    if (begin != (end - 1) && *(end - 2) == '.') {
-      return end;
+    if (begin != (end - 1) && begin != (end - 2) && *(end - 2) == '.') {
+      if (precision) {
+        return end;
+      }
+      return end - 2;
     }
   }
   return end;
 }
 
 } // namespace Json
+
+} // Namespace ns3
 
 #endif // LIB_JSONCPP_JSON_TOOL_H_INCLUDED
 
@@ -284,6 +292,8 @@ template <typename Iter> Iter fixZerosInTheEnd(Iter begin, Iter end) {
 static size_t const stackLimit_g =
     JSONCPP_DEPRECATED_STACK_LIMIT; // see readValue()
 
+namespace ns3 {
+
 namespace Json {
 
 #if __cplusplus >= 201103L || (defined(_CPPLIB_VER) && _CPPLIB_VER >= 520)
@@ -338,8 +348,7 @@ bool Reader::parse(std::istream& is, Value& root, bool collectComments) {
 
   // Since String is reference-counted, this at least does not
   // create an extra copy.
-  String doc;
-  std::getline(is, doc, static_cast<char> EOF);
+  String doc(std::istreambuf_iterator<char>(is), {});
   return parse(doc.data(), doc.data() + doc.size(), root, collectComments);
 }
 
@@ -2155,7 +2164,7 @@ bool CharReaderBuilder::validate(Json::Value* invalid) const {
     if (valid_keys.count(key))
       continue;
     if (invalid)
-      (*invalid)[std::move(key)] = *si;
+      (*invalid)[key] = *si;
     else
       return false;
   }
@@ -2226,6 +2235,8 @@ IStream& operator>>(IStream& sin, Value& root) {
 
 } // namespace Json
 
+} // Namespace ns3
+
 // //////////////////////////////////////////////////////////////////////
 // End of content of file: src/lib_json/json_reader.cpp
 // //////////////////////////////////////////////////////////////////////
@@ -2245,6 +2256,8 @@ IStream& operator>>(IStream& sin, Value& root) {
 // See file LICENSE for detail or copy at http://jsoncpp.sourceforge.net/LICENSE
 
 // included by json_value.cpp
+
+namespace ns3 {
 
 namespace Json {
 
@@ -2396,6 +2409,8 @@ ValueIterator& ValueIterator::operator=(const SelfType& other) {
 
 } // namespace Json
 
+} // Namespace ns3
+
 // //////////////////////////////////////////////////////////////////////
 // End of content of file: src/lib_json/json_valueiterator.inl
 // //////////////////////////////////////////////////////////////////////
@@ -2457,6 +2472,8 @@ int JSON_API msvc_pre1900_c99_snprintf(char* outBuf, size_t size,
 #endif
 
 #define JSON_ASSERT_UNREACHABLE assert(false)
+
+namespace ns3 {
 
 namespace Json {
 template <typename T>
@@ -2596,6 +2613,8 @@ static inline void releaseStringValue(char* value, unsigned) { free(value); }
 
 } // namespace Json
 
+} // Namespace ns3
+
 // //////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////
@@ -2607,6 +2626,8 @@ static inline void releaseStringValue(char* value, unsigned) { free(value); }
 
 #include "json_valueiterator.inl"
 #endif // if !defined(JSON_IS_AMALGAMATION)
+
+namespace ns3 {
 
 namespace Json {
 
@@ -2670,7 +2691,7 @@ Value::CZString::CZString(const CZString& other) {
   storage_.length_ = other.storage_.length_;
 }
 
-Value::CZString::CZString(CZString&& other)
+Value::CZString::CZString(CZString&& other) noexcept
     : cstr_(other.cstr_), index_(other.index_) {
   other.cstr_ = nullptr;
 }
@@ -2696,7 +2717,7 @@ Value::CZString& Value::CZString::operator=(const CZString& other) {
   return *this;
 }
 
-Value::CZString& Value::CZString::operator=(CZString&& other) {
+Value::CZString& Value::CZString::operator=(CZString&& other) noexcept {
   cstr_ = other.cstr_;
   index_ = other.index_;
   other.cstr_ = nullptr;
@@ -2844,7 +2865,7 @@ Value::Value(const Value& other) {
   dupMeta(other);
 }
 
-Value::Value(Value&& other) {
+Value::Value(Value&& other) noexcept {
   initBasic(nullValue);
   swap(other);
 }
@@ -2859,7 +2880,7 @@ Value& Value::operator=(const Value& other) {
   return *this;
 }
 
-Value& Value::operator=(Value&& other) {
+Value& Value::operator=(Value&& other) noexcept {
   other.swap(*this);
   return *this;
 }
@@ -3323,7 +3344,8 @@ void Value::resize(ArrayIndex newSize) {
   if (newSize == 0)
     clear();
   else if (newSize > oldSize)
-    this->operator[](newSize - 1);
+    for (ArrayIndex i = oldSize; i < newSize; ++i)
+      (*this)[i];
   else {
     for (ArrayIndex index = newSize; index < oldSize; ++index) {
       value_.map_->erase(index);
@@ -3784,14 +3806,15 @@ bool Value::isObject() const { return type() == objectValue; }
 Value::Comments::Comments(const Comments& that)
     : ptr_{cloneUnique(that.ptr_)} {}
 
-Value::Comments::Comments(Comments&& that) : ptr_{std::move(that.ptr_)} {}
+Value::Comments::Comments(Comments&& that) noexcept
+    : ptr_{std::move(that.ptr_)} {}
 
 Value::Comments& Value::Comments::operator=(const Comments& that) {
   ptr_ = cloneUnique(that.ptr_);
   return *this;
 }
 
-Value::Comments& Value::Comments::operator=(Comments&& that) {
+Value::Comments& Value::Comments::operator=(Comments&& that) noexcept {
   ptr_ = std::move(that.ptr_);
   return *this;
 }
@@ -3807,13 +3830,11 @@ String Value::Comments::get(CommentPlacement slot) const {
 }
 
 void Value::Comments::set(CommentPlacement slot, String comment) {
-  if (!ptr_) {
+  if (slot >= CommentPlacement::numberOfCommentPlacement)
+    return;
+  if (!ptr_)
     ptr_ = std::unique_ptr<Array>(new Array());
-  }
-  // check comments array boundry.
-  if (slot < CommentPlacement::numberOfCommentPlacement) {
-    (*ptr_)[slot] = std::move(comment);
-  }
+  (*ptr_)[slot] = std::move(comment);
 }
 
 void Value::setComment(String comment, CommentPlacement placement) {
@@ -4044,6 +4065,8 @@ Value& Path::make(Value& root) const {
 
 } // namespace Json
 
+} // Namespace ns3
+
 // //////////////////////////////////////////////////////////////////////
 // End of content of file: src/lib_json/json_value.cpp
 // //////////////////////////////////////////////////////////////////////
@@ -4127,7 +4150,7 @@ Value& Path::make(Value& root) const {
 
 #if !defined(isnan)
 // IEEE standard states that NaN values will not compare to themselves
-#define isnan(x) (x != x)
+#define isnan(x) ((x) != (x))
 #endif
 
 #if !defined(__APPLE__)
@@ -4141,6 +4164,8 @@ Value& Path::make(Value& root) const {
 // Disable warning about strdup being deprecated.
 #pragma warning(disable : 4996)
 #endif
+
+namespace ns3 {
 
 namespace Json {
 
@@ -4213,16 +4238,18 @@ String valueToString(double value, bool useSpecialFloats,
 
   buffer.erase(fixNumericLocale(buffer.begin(), buffer.end()), buffer.end());
 
-  // strip the zero padding from the right
-  if (precisionType == PrecisionType::decimalPlaces) {
-    buffer.erase(fixZerosInTheEnd(buffer.begin(), buffer.end()), buffer.end());
-  }
-
   // try to ensure we preserve the fact that this was given to us as a double on
   // input
   if (buffer.find('.') == buffer.npos && buffer.find('e') == buffer.npos) {
     buffer += ".0";
   }
+
+  // strip the zero padding from the right
+  if (precisionType == PrecisionType::decimalPlaces) {
+    buffer.erase(fixZerosInTheEnd(buffer.begin(), buffer.end(), precision),
+                 buffer.end());
+  }
+
   return buffer;
 }
 } // namespace
@@ -4329,7 +4356,7 @@ static void appendHex(String& result, unsigned ch) {
   result.append("\\u").append(toHex16Bit(ch));
 }
 
-static String valueToQuotedStringN(const char* value, unsigned length,
+static String valueToQuotedStringN(const char* value, size_t length,
                                    bool emitUTF8 = false) {
   if (value == nullptr)
     return "";
@@ -4407,7 +4434,7 @@ static String valueToQuotedStringN(const char* value, unsigned length,
 }
 
 String valueToQuotedString(const char* value) {
-  return valueToQuotedStringN(value, static_cast<unsigned int>(strlen(value)));
+  return valueToQuotedStringN(value, strlen(value));
 }
 
 // Class Writer
@@ -4456,7 +4483,7 @@ void FastWriter::writeValue(const Value& value) {
     char const* end;
     bool ok = value.getString(&str, &end);
     if (ok)
-      document_ += valueToQuotedStringN(str, static_cast<unsigned>(end - str));
+      document_ += valueToQuotedStringN(str, static_cast<size_t>(end - str));
     break;
   }
   case booleanValue:
@@ -4479,8 +4506,7 @@ void FastWriter::writeValue(const Value& value) {
       const String& name = *it;
       if (it != members.begin())
         document_ += ',';
-      document_ += valueToQuotedStringN(name.data(),
-                                        static_cast<unsigned>(name.length()));
+      document_ += valueToQuotedStringN(name.data(), name.length());
       document_ += yamlCompatibilityEnabled_ ? ": " : ":";
       writeValue(value[name]);
     }
@@ -4525,7 +4551,7 @@ void StyledWriter::writeValue(const Value& value) {
     char const* end;
     bool ok = value.getString(&str, &end);
     if (ok)
-      pushValue(valueToQuotedStringN(str, static_cast<unsigned>(end - str)));
+      pushValue(valueToQuotedStringN(str, static_cast<size_t>(end - str)));
     else
       pushValue("");
     break;
@@ -4566,7 +4592,7 @@ void StyledWriter::writeValue(const Value& value) {
 }
 
 void StyledWriter::writeArrayValue(const Value& value) {
-  unsigned size = value.size();
+  size_t size = value.size();
   if (size == 0)
     pushValue("[]");
   else {
@@ -4575,7 +4601,7 @@ void StyledWriter::writeArrayValue(const Value& value) {
       writeWithIndent("[");
       indent();
       bool hasChildValue = !childValues_.empty();
-      unsigned index = 0;
+      ArrayIndex index = 0;
       for (;;) {
         const Value& childValue = value[index];
         writeCommentBeforeValue(childValue);
@@ -4598,7 +4624,7 @@ void StyledWriter::writeArrayValue(const Value& value) {
     {
       assert(childValues_.size() == size);
       document_ += "[ ";
-      for (unsigned index = 0; index < size; ++index) {
+      for (size_t index = 0; index < size; ++index) {
         if (index > 0)
           document_ += ", ";
         document_ += childValues_[index];
@@ -4743,7 +4769,7 @@ void StyledStreamWriter::writeValue(const Value& value) {
     char const* end;
     bool ok = value.getString(&str, &end);
     if (ok)
-      pushValue(valueToQuotedStringN(str, static_cast<unsigned>(end - str)));
+      pushValue(valueToQuotedStringN(str, static_cast<size_t>(end - str)));
     else
       pushValue("");
     break;
@@ -5017,8 +5043,8 @@ void BuiltStyledStreamWriter::writeValue(Value const& value) {
     char const* end;
     bool ok = value.getString(&str, &end);
     if (ok)
-      pushValue(valueToQuotedStringN(str, static_cast<unsigned>(end - str),
-                                     emitUTF8_));
+      pushValue(
+          valueToQuotedStringN(str, static_cast<size_t>(end - str), emitUTF8_));
     else
       pushValue("");
     break;
@@ -5041,8 +5067,8 @@ void BuiltStyledStreamWriter::writeValue(Value const& value) {
         String const& name = *it;
         Value const& childValue = value[name];
         writeCommentBeforeValue(childValue);
-        writeWithIndent(valueToQuotedStringN(
-            name.data(), static_cast<unsigned>(name.length()), emitUTF8_));
+        writeWithIndent(
+            valueToQuotedStringN(name.data(), name.length(), emitUTF8_));
         *sout_ << colonSymbol_;
         writeValue(childValue);
         if (++it == members.end()) {
@@ -5276,7 +5302,7 @@ bool StreamWriterBuilder::validate(Json::Value* invalid) const {
     if (valid_keys.count(key))
       continue;
     if (invalid)
-      (*invalid)[std::move(key)] = *si;
+      (*invalid)[key] = *si;
     else
       return false;
   }
@@ -5316,10 +5342,11 @@ OStream& operator<<(OStream& sout, Value const& root) {
 
 } // namespace Json
 
+} // Namespace ns3
+
 // //////////////////////////////////////////////////////////////////////
 // End of content of file: src/lib_json/json_writer.cpp
 // //////////////////////////////////////////////////////////////////////
-
 
 
 

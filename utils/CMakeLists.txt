@@ -79,3 +79,15 @@ if(core IN_LIST ns3-all-enabled-modules)
     EXECUTABLE_DIRECTORY_PATH ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/utils/perf/
   )
 endif()
+
+add_library(jsoncpp SHARED jsoncpp/ns3jsoncpp.cc)
+copy_headers_before_building_lib("" "${CMAKE_HEADER_OUTPUT_DIRECTORY}" "jsoncpp/ns3jsoncpp.h" "")
+
+# Handle package export
+install(
+    TARGETS jsoncpp
+    EXPORT ns3ExportTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/
+    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/ns3"
+  )

@@ -11,7 +11,6 @@ build_lib(
     model/application-packet-probe.cc
     model/bulk-send-application.cc
     model/flent-application.cc
-    model/jsoncpp.cc
     model/onoff-application.cc
     model/packet-loss-counter.cc
     model/packet-sink.cc
@@ -44,7 +43,6 @@ build_lib(
     model/application-packet-probe.h
     model/bulk-send-application.h
     model/flent-application.h
-    model/json.h
     model/onoff-application.h
     model/packet-loss-counter.h
     model/packet-sink.h
@@ -66,11 +64,11 @@ build_lib(
     model/udp-echo-server.h
     model/udp-server.h
     model/udp-trace-client.h
-  LIBRARIES_TO_LINK ${libinternet}
-LIBRARIES_TO_LINK
+  LIBRARIES_TO_LINK
     ${libinternet}
     ${libinternet-apps}
     ${libstats}
+    jsoncpp
   TEST_SOURCES
     test/three-gpp-http-client-server-test.cc
     test/bulk-send-application-test-suite.cc
