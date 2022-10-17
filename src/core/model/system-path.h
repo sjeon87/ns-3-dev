@@ -8,6 +8,7 @@
 #ifndef SYSTEM_PATH_H
 #define SYSTEM_PATH_H
 
+#include <filesystem>
 #include <list>
 #include <string>
 
@@ -144,6 +145,14 @@ void MakeDirectories(std::string path);
 
 /**
  * @ingroup systempath
+ * Remove all the directories leading to path.
+ *
+ * @param [in] path A path to a directory
+ */
+void RemoveDirectories(std::string path);
+
+/**
+ * @ingroup systempath
  * Check if a path exists.
  * Path can be a file or directory.
  * @param [in] path The path to check.
@@ -160,6 +169,23 @@ bool Exists(const std::string path);
  * @returns A compatible path.
  */
 std::string CreateValidSystemPath(const std::string path);
+
+/**
+ * @ingroup systempath
+ * Get the size of a file.
+ *
+ * @param path The path to the file.
+ * @return The file size (in bytes).
+ */
+std::uintmax_t GetFileSize(const std::string path);
+
+/**
+ * @ingroup systempath
+ * Remove a file, if it exists. If the file does not exist, do nothing.
+ *
+ * @param path The path to the file to be removed.
+ */
+void RemoveFile(const std::string path);
 
 } // namespace SystemPath
 
