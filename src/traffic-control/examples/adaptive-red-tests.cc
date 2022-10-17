@@ -500,8 +500,8 @@ main(int argc, char* argv[])
         filePlotQueueDisc << pathOut << "/ared-queue-disc.plotme";
         filePlotQueueDiscAvg << pathOut << "/ared-queue-disc_avg.plotme";
 
-        remove(filePlotQueueDisc.str().c_str());
-        remove(filePlotQueueDiscAvg.str().c_str());
+        SystemPath::RemoveFile(filePlotQueueDisc.str());
+        SystemPath::RemoveFile(filePlotQueueDiscAvg.str());
         Ptr<QueueDisc> queue = queueDiscs.Get(0);
         Simulator::ScheduleNow(&CheckQueueDiscSize, queue);
     }

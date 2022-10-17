@@ -37,7 +37,8 @@
 #include <sys/stat.h>
 
 using namespace ns3;
-std::string dir = "results/";
+
+const std::string DIR = "results/";
 Time stopTime = Seconds(60);
 uint32_t segmentSize = 524;
 
@@ -209,17 +210,15 @@ main(int argc, char* argv[])
     // Create directories to store dat files
     struct stat buffer;
     int retVal [[maybe_unused]];
-    if ((stat(dir.c_str(), &buffer)) == 0)
+    if ((stat(DIR.c_str(), &buffer)) == 0)
     {
-        std::string dirToRemove = "rm -rf " + dir;
-        retVal = system(dirToRemove.c_str());
-        NS_ASSERT_MSG(retVal == 0, "Error in return value");
+        SystemPath::RemoveDirectories(DIR);
     }
 
-    SystemPath::MakeDirectories(dir);
-    SystemPath::MakeDirectories(dir + "/pcap/");
-    SystemPath::MakeDirectories(dir + "/queueTraces/");
-    SystemPath::MakeDirectories(dir + "/cwndTraces/");
+    SystemPath::MakeDirectories(DIR);
+    SystemPath::MakeDirectories(DIR + "/pcap/");
+    SystemPath::MakeDirectories(DIR + "/queueTraces/");
+    SystemPath::MakeDirectories(DIR + "/cwndTraces/");
 
     // Set default parameters for queue discipline
     Config::SetDefault(qdiscTypeId + "::MaxSize", QueueSizeValue(QueueSize("100p")));
@@ -245,7 +244,7 @@ main(int argc, char* argv[])
     Ptr<OutputStreamWrapper> streamWrapper;
 
     // Create dat to store packets dropped and marked at the router
-    streamWrapper = asciiTraceHelper.CreateFileStream(dir + "/queueTraces/drop-0.dat");
+    streamWrapper = asciiTraceHelper.CreateFileStream(DIR + "/queueTraces/drop-0.dat");
     qd.Get(0)->TraceConnectWithoutContext("Drop", MakeBoundCallback(&DropAtQueue, streamWrapper));
 
     // Install packet sink at receiver side
@@ -262,21 +261,21 @@ main(int argc, char* argv[])
                     MakeCallback(&CwndChange));
 
     // Enable PCAP on all the point to point interfaces
-    pointToPointLeaf.EnablePcapAll(dir + "pcap/ns-3", true);
+    pointToPointLeaf.EnablePcapAll(DIR + "pcap/ns-3", true);
 
     Simulator::Stop(stopTime);
     Simulator::Run();
 
     // Store queue stats in a file
     std::ofstream myfile;
-    myfile.open(dir + "queueStats.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+    myfile.open(DIR + "queueStats.txt", std::fstream::in | std::fstream::out | std::fstream::app);
     myfile << std::endl;
     myfile << "Stat for Queue 1";
     myfile << qd.Get(0)->GetStats();
     myfile.close();
 
     // Store configuration of the simulation in a file
-    myfile.open(dir + "config.txt", std::fstream::in | std::fstream::out | std::fstream::app);
+    myfile.open(DIR + "config.txt", std::fstream::in | std::fstream::out | std::fstream::app);
     myfile << "qdiscTypeId " << qdiscTypeId << "\n";
     myfile << "stream  " << stream << "\n";
     myfile << "segmentSize " << segmentSize << "\n";

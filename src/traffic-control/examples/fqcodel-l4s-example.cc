@@ -468,11 +468,7 @@ main(int argc, char* argv[])
     DataRate bottleneckRate("100Mbps");
 
     std::string dir = "results/FqCoDel-L4S/";
-    std::string dirToSave = "mkdir -p " + dir;
-    if (system(dirToSave.c_str()) == -1)
-    {
-        exit(1);
-    }
+    SystemPath::MakeDirectories(dir);
 
     std::string pingTraceFile = dir + "ping.dat";
     std::string n0TcpRttTraceFile = dir + "n0-tcp-rtt.dat";

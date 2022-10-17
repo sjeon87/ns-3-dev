@@ -223,12 +223,9 @@ experiment(std::string queue_disc_type)
     Ptr<QueueDisc> queue = queueDiscs.Get(0);
     Simulator::ScheduleNow(&CheckQueueSize, queue, queue_disc_type);
 
-    std::string dirToSave = "mkdir -p " + dir + queue_disc_type;
-    if (system((dirToSave + "/cwndTraces/").c_str()) == -1 ||
-        system((dirToSave + "/queueTraces/").c_str()) == -1)
-    {
-        exit(1);
-    }
+    std::string dirToSave = dir + queue_disc_type;
+    SystemPath::MakeDirectories(dirToSave + "/cwndTraces/");
+    SystemPath::MakeDirectories(dirToSave + "/queueTraces/");
 
     Simulator::Schedule(Seconds(0.1), &TraceCwnd, queue_disc_type);
 
