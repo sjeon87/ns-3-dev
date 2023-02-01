@@ -34,7 +34,7 @@ NS_LOG_COMPONENT_DEFINE("PointToPointTreeHelper");
 NS_OBJECT_ENSURE_REGISTERED(PointToPointTreeHelper);
 
 TypeId
-PointToPointTreeHelper::GetTypeId(void)
+PointToPointTreeHelper::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::PointToPointTreeHelper")
                             .SetParent<Object>()
@@ -94,7 +94,7 @@ PointToPointTreeHelper::CreateTopology(uint32_t nLevels, PointToPointHelper p2pH
 
     for (uint32_t i = 0; i < nLevels; i++)
     {
-        PerLevelNodeContainer.push_back(NodeContainer());
+        PerLevelNodeContainer.emplace_back(NodeContainer());
     }
     PerLevelNodeContainer[0] = m_rootNode; // level 0 container has root node
     NS_LOG_INFO("Level 0 complete.Begin creating levels recursively starting from level 1");
@@ -158,7 +158,7 @@ PointToPointTreeHelper::GetNode(uint32_t level, uint32_t index)
     if (level >= m_nLevels)
     {
         NS_LOG_INFO("Requested level:" << level << " Does not exist");
-        return 0;
+        return nullptr;
     }
     if (index >= PerLevelNodeContainer[level].GetN())
     {

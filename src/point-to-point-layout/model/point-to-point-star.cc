@@ -24,7 +24,7 @@ NS_LOG_COMPONENT_DEFINE("PointToPointStarHelper");
 NS_OBJECT_ENSURE_REGISTERED(PointToPointStarHelper);
 
 TypeId
-PointToPointStarHelper::GetTypeId(void)
+PointToPointStarHelper::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::PointToPointStarHelper")
                             .SetParent<Object>()
