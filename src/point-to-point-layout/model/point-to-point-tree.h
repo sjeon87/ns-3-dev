@@ -166,26 +166,26 @@ class PointToPointTreeHelper : public Object
      * Therefore 10.0.0.0/10 is divided to get 4 subnets by extending the
      * mask to /12.
      *
-     *
-     *
-     *                              Y       X (10.16.0.2/12)
-     *                               \     /
-     *                                \   /
-     *                           Z --- o o (10.16.0.1/12)
-     *                                 [N1]
-     *                                o (10.0.0.2/12)
-     *          -------              /
-     *             |                /
-     *             |               /
-     *             |______________o (10.0.0.1/12)
-     *             |              |
-     *             |     [R]      |
-     *             | (10.0.0.0/8) |
-     *             |______________|
-     *             |              |
-     *             |              |
-     *          -------       ------- (10.64.0.0/12)
-     *
+     * \verbatim
+
+                                   Y       X (10.16.0.2/12)
+                                    \     /
+                                     \   /
+                                Z --- o o (10.16.0.1/12)
+                                      [N1]
+                                     o (10.0.0.2/12)
+               -------              /
+                  |                /
+                  |               /
+                  |______________o (10.0.0.1/12)
+                  |              |
+                  |     [R]      |
+                  | (10.0.0.0/8) |
+                  |______________|
+                  |              |
+                  |              |
+               -------       ------- (10.64.0.0/12)
+     \endverbatim
      * The procedure is recursively repeated until the leaf node is reached
      *
      * \param network The network address allocated for the root of the tree
@@ -238,7 +238,7 @@ class PointToPointTreeHelper : public Object
 
     /**
      * Get the Ipv4Address of the interface of a leaf node
-     * \param index of the leaf node (zero-indexed)
+     * \param leafIndex of the leaf node (zero-indexed)
      * \returns Ipv4 Address on the leaf node's interface
      *
      */
@@ -246,7 +246,7 @@ class PointToPointTreeHelper : public Object
 
     /**
      * Gets the Leaves of the tree (Nodes at the final level)
-     * \param index of the leaf node (zero-indexed)
+     * \param leafIndex of the leaf node (zero-indexed)
      * \returns Ptr to the leaf node
      *
      */
@@ -303,24 +303,58 @@ class PointToPointTreeHelper : public Object
     void PrintIpv4Addresses();
 
   private:
+    /**
+     * \brief Assigns IPv4 addresses recursively.
+     * \param n The node to start the recursion from
+     * \param network The network address allocated for the root of the tree
+     * \param mask The mask allocated for this tree
+     */
     void AssignIpv4AddrHierarchicalRecursive(Ptr<Node> n, Ipv4Address network, Ipv4Mask mask);
+
+    /**
+     * \brief Creates the topology.
+     * \param levels Number of levels
+     * \param p2pHelper The P2P helper
+     */
     void CreateTopology(uint32_t levels, PointToPointHelper p2pHelper);
-    void AddStarTopologyRecursively(NodeContainer parent_node,
+
+    /**
+     * \brief Add a star topology to a node, and continue recursively.
+     * \param parentNode A node container (the first node is the one the recursion starts from)
+     * \param levels Number of levels
+     * \param p2pHelper The P2P helper
+     */
+    void AddStarTopologyRecursively(NodeContainer parentNode,
                                     uint32_t nLevels,
                                     PointToPointHelper p2pHelper);
+
+    /**
+     * \brief Set the nodes positions recursively.
+     * \param xDist Horizontal distance between the nodes
+     * \param interLevelHeight Vertical distance between levels
+     * \param currentLevel Current level
+     */
     void BoundingBoxRecursiveHelper(double xDist, double interLevelHeight, uint32_t currentLevel);
+
+    /**
+     * \brief Extend the network mask for a subnet.
+     * \param originalMask Original mask
+     * \param subnetsRequired Number of subnets required
+     * \return a modified network mask.
+     */
     Ipv4Mask ExtendIpv4MaskForSubnets(Ipv4Mask originalMask, uint32_t subnetsRequired);
-    uint32_t m_nLevels;
-    Ptr<RandomVariableStream> m_nBranches;
-    std::vector<uint32_t> m_nBranchesVec;
-    bool usingBranchVec;
-    NodeContainer m_rootNode;
-    std::vector<NodeContainer>
-        PerLevelNodeContainer; // each tree level maintains a container of nodes at that level
-    typedef std::map<uint32_t, Ptr<NetDevice>> nodeIdNetDevice_t;
-    nodeIdNetDevice_t m_netDeviceTowardsRoot;
-    typedef std::map<uint32_t, Ipv4Address> nodeIdIpv4Addr_t;
-    nodeIdIpv4Addr_t m_ipv4AddrTowardsRoot;
+
+    uint32_t m_nLevels;                               //!< Number of levels.
+    Ptr<RandomVariableStream> m_nBranches;            //!< Number of branches.
+    std::vector<uint32_t> m_nBranchesVec;             //!< Number of branches at each level
+    bool usingBranchVec;                              //!< True if m_nBranchesVec is used.
+    NodeContainer m_rootNode;                         //!< Root node.
+    std::vector<NodeContainer> PerLevelNodeContainer; //!< Container of nodes at each tree level.
+
+    /// Container of the interface facing the Root level for each node.
+    std::map<uint32_t, Ptr<NetDevice>> m_netDeviceTowardsRoot;
+    /// Container of the IPv4 address facing the Root level for each node.
+    std::map<uint32_t, Ipv4Address> m_ipv4AddrTowardsRoot;
 };
 
 } // namespace ns3

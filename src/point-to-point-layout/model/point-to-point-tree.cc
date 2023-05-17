@@ -428,10 +428,10 @@ PointToPointTreeHelper::BoundingBoxRecursiveHelper(double xDist,
         NS_LOG_INFO("Recursion complete");
         return;
     }
-    nNodesCurLevel =
-        PerLevelNodeContainer[currentLevel].GetN(); // number of nodes in the current level
-    interNodeXDist = (xDist / nNodesCurLevel) /
-                     2; //  /2 is required to position the nodes at center of each x block
+    // number of nodes in the current level
+    nNodesCurLevel = PerLevelNodeContainer[currentLevel].GetN();
+    //  /2 is required to position the nodes at center of each x block
+    interNodeXDist = (xDist / nNodesCurLevel) / 2;
 
     for (uint32_t i = 0; i < nNodesCurLevel; i++)
     {
@@ -444,7 +444,7 @@ PointToPointTreeHelper::BoundingBoxRecursiveHelper(double xDist,
         }
         else
         {
-            NS_LOG_WARN("ConstantPositionMobilityModel Aggregated object already exists.Will use "
+            NS_LOG_WARN("ConstantPositionMobilityModel Aggregated object already exists. Will use "
                         "this object");
         }
         n->AggregateObject(loc);
