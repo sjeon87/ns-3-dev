@@ -49,17 +49,11 @@ namespace ns3
 {
 
 /**
- * \defgroup pointtopointlayout Point-to-Point Layout Helpers
- *
- */
-
-/**
- * \ingroup pointtopointlayout
+ * \ingroup point-to-point-layout
  *
  * \brief A helper to make it easier to create a tree topology
  * with PointToPoint links
  */
-
 class PointToPointTreeHelper : public Object
 {
   public:

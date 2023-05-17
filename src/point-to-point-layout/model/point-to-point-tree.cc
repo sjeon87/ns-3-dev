@@ -325,7 +325,7 @@ PointToPointTreeHelper::GetLeafIpv4Address(uint32_t leafIndex)
 }
 
 /*
- A helper function that extends a massk, based on the number of subnets required
+ A helper function that extends a mask, based on the number of subnets required
 
  Example: given a mask such as /8, if 3 subnets are required, the mask has to be
  extended to /10
