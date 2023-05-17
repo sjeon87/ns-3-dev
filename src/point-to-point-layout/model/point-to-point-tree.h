@@ -321,7 +321,7 @@ class PointToPointTreeHelper : public Object
     /**
      * \brief Add a star topology to a node, and continue recursively.
      * \param parentNode A node container (the first node is the one the recursion starts from)
-     * \param levels Number of levels
+     * \param nLevels Number of levels
      * \param p2pHelper The P2P helper
      */
     void AddStarTopologyRecursively(NodeContainer parentNode,
