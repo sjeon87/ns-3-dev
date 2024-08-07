@@ -1,0 +1,26 @@
+build_lib(
+  LIBNAME aodvv2
+  SOURCE_FILES
+    helper/aodvv2-helper.cc
+    model/aodvv2-dpd.cc
+    model/aodvv2-id-cache.cc
+    model/aodvv2-neighbor.cc
+    model/aodvv2-packet.cc
+    model/aodvv2-routing-protocol.cc
+    model/aodvv2-rqueue.cc
+    model/aodvv2-rtable.cc
+  HEADER_FILES
+    helper/aodvv2-helper.h
+    model/aodvv2-dpd.h
+    model/aodvv2-id-cache.h
+    model/aodvv2-neighbor.h
+    model/aodvv2-packet.h
+    model/aodvv2-routing-protocol.h
+    model/aodvv2-rqueue.h
+    model/aodvv2-rtable.h
+  LIBRARIES_TO_LINK
+    ${libapplications}
+    ${libinternet-apps}
+    ${libwifi}
+  TEST_SOURCES
+)
