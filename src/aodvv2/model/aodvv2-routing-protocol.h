@@ -391,26 +391,26 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param receiver receiver address
      * \param src sender address
      */
-    void RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address src);
+    void RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address src, PbbPacket tlvHeader);
     /**
      * Receive RREP
      * \param p packet
      * \param my destination address
      * \param src sender address
      */
-    void RecvReply(Ptr<Packet> p, Ipv4Address my, Ipv4Address src);
+    void RecvReply(Ptr<Packet> p, Ipv4Address my, Ipv4Address src, PbbPacket tlvHeader);
     /**
      * Receive RREP_ACK
      * \param neighbor neighbor address
      */
-    void RecvReplyAck(Ipv4Address neighbor);
+    void RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader);
     /**
      * Receive RERR
      * \param p packet
      * \param src sender address
      */
     /// Receive  from node with address src
-    void RecvError(Ptr<Packet> p, Ipv4Address src);
+    void RecvError(Ptr<Packet> p, Ipv4Address src, PbbPacket tlvHeader);
     /** @} */
 
     /**
@@ -428,6 +428,16 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param dst destination address
      */
     void SendRequest(Ipv4Address dst);
+    /** Add TLV headers to packet
+     * \param packet packet
+     * \param socket socket
+     * \param dst destination address
+     * \param sequenceNumber sequence number
+     */
+    void AddTlvHeaders(Ptr<Packet> packet,
+                       Ptr<Socket> socket,
+                       Ipv4Address dst,
+                       uint32_t sequenceNumber);
     /** Send RREP
      * \param rreqHeader route request header
      * \param toOrigin routing table entry to originator
@@ -455,9 +465,8 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      */
     void SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> precursors);
     /**
-     * Send RERR message when no route to forward input packet. Unicast if there is reverse route to
-     * originating node, broadcast otherwise.
-     * \param dst destination node IP address
+     * Send RERR message when no route to forward input packet. Unicast if there is reverse
+     * route to originating node, broadcast otherwise. \param dst destination node IP address
      * \param dstSeqNo destination node sequence number
      * \param origin originating node IP address
      */
