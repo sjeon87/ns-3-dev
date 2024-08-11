@@ -1110,7 +1110,6 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
     m_seqNo++;
     rreqHeader.SetSeqNo(m_seqNo);
     m_requestId++;
-    rreqHeader.SetId(m_requestId);
 
     // Send RREQ as subnet directed broadcast from each interface used by aodv
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
@@ -1140,7 +1139,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
         {
             destination = iface.GetBroadcast();
         }
-        NS_LOG_DEBUG("Send RREQ with id " << rreqHeader.GetId() << " to socket");
+        NS_LOG_DEBUG("Send RREQ with seqNo " << rreqHeader.GetSeqNo() << " to socket");
         m_lastBcastTime = Simulator::Now();
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
                             &RoutingProtocol::SendTo,
@@ -1228,19 +1227,19 @@ RoutingProtocol::RecvAodvv2(Ptr<Socket> socket)
 
     switch (tlvType)
     {
-    case AODVV2TYPE_RREQ: {
+    case AODVV2_TYPE_RREQ: {
         RecvRequest(packet, receiver, sender, tlvHeader);
         break;
     }
-    case AODVV2TYPE_RREP: {
+    case AODVV2_TYPE_RREP: {
         RecvReply(packet, receiver, sender, tlvHeader);
         break;
     }
-    case AODVV2TYPE_RERR: {
+    case AODVV2_TYPE_RERR: {
         RecvError(packet, sender, tlvHeader);
         break;
     }
-    case AODVV2TYPE_RREP_ACK: {
+    case AODVV2_TYPE_RREP_ACK: {
         RecvReplyAck(sender, tlvHeader);
         break;
     }
@@ -1330,7 +1329,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
         }
     }
 
-    uint32_t id = rreqHeader.GetId();
+    uint32_t id = rreqHeader.GetSeqNo();
     Ipv4Address origin = rreqHeader.GetOrigIp();
 
     /*
@@ -1428,8 +1427,8 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
     m_nb.Update(src, Time(m_allowedHelloLoss * m_helloInterval));
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
-                          << static_cast<uint32_t>(rreqHeader.GetHopCount()) << " ID "
-                          << rreqHeader.GetId() << " to destination " << rreqHeader.GetTargIp());
+                          << static_cast<uint32_t>(rreqHeader.GetHopCount()) << " SeqNo "
+                          << rreqHeader.GetSeqNo() << " to destination " << rreqHeader.GetTargIp());
 
     //  A node generates a RREP if either:
     //  (i)  it is itself the destination,
@@ -1530,16 +1529,16 @@ RoutingProtocol::SendReply(const RreqHeader& rreqHeader, const RoutingTableEntry
     {
         m_seqNo++;
     }
-    RrepHeader rrepHeader(/*prefixSize=*/0,
-                          /*hopCount=*/0,
-                          /*dst=*/rreqHeader.GetTargIp(),
-                          /*dstSeqNo=*/m_seqNo,
-                          /*origin=*/toOrigin.GetDestination(),
-                          /*lifetime=*/m_myRouteTimeout);
+    RrepHeader rrepHeader(
+        /*origin=*/toOrigin.GetDestination(),
+        /*originMask=*/32,
+        /*dst=*/rreqHeader.GetTargIp(),
+        /*dstMask=*/32);
     Ptr<Packet> packet = Create<Packet>();
     SocketIpTtlTag tag;
     tag.SetTtl(toOrigin.GetHop());
     packet->AddPacketTag(tag);
+    rrepHeader.CreateTlvHeader();
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1552,18 +1551,16 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst,
                                              bool gratRep)
 {
     NS_LOG_FUNCTION(this);
-    RrepHeader rrepHeader(/*prefixSize=*/0,
-                          /*hopCount=*/toDst.GetHop(),
-                          /*dst=*/toDst.GetDestination(),
-                          /*dstSeqNo=*/toDst.GetSeqNo(),
-                          /*origin=*/toOrigin.GetDestination(),
-                          /*lifetime=*/toDst.GetLifeTime());
+    RrepHeader rrepHeader(
+        /*origin=*/toOrigin.GetDestination(),
+        /*originMask=*/32,
+        /*dst=*/toDst.GetDestination(),
+        /*dstMask=*/32);
     /* If the node we received a RREQ for is a neighbor we are
      * probably facing a unidirectional link... Better request a RREP-ack
      */
     if (toDst.GetHop() == 1)
     {
-        rrepHeader.SetAckRequired(true);
         RoutingTableEntry toNextHop;
         m_routingTable.LookupRoute(toOrigin.GetNextHop(), toNextHop);
         toNextHop.m_ackTimer.SetFunction(&RoutingProtocol::AckTimerExpire, this);
@@ -1579,6 +1576,7 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst,
     SocketIpTtlTag tag;
     tag.SetTtl(toOrigin.GetHop());
     packet->AddPacketTag(tag);
+    rrepHeader.CreateTlvHeader();
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1587,12 +1585,10 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst,
     // Generating gratuitous RREPs
     if (gratRep)
     {
-        RrepHeader gratRepHeader(/*prefixSize=*/0,
-                                 /*hopCount=*/toOrigin.GetHop(),
+        RrepHeader gratRepHeader(/*origin=*/toDst.GetDestination(),
+                                 /*originMask=*/32,
                                  /*dst=*/toOrigin.GetDestination(),
-                                 /*dstSeqNo=*/toOrigin.GetSeqNo(),
-                                 /*origin=*/toDst.GetDestination(),
-                                 /*lifetime=*/toOrigin.GetLifeTime());
+                                 /*dstMask=*/32);
         Ptr<Packet> packetToDst = Create<Packet>();
         SocketIpTtlTag gratTag;
         gratTag.SetTtl(toDst.GetHop());
@@ -1630,15 +1626,16 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
 {
     NS_LOG_FUNCTION(this << " src " << sender);
     RrepHeader rrepHeader;
-    p->RemoveHeader(rrepHeader);
-    Ipv4Address dst = rrepHeader.GetDst();
-    NS_LOG_LOGIC("RREP destination " << dst << " RREP origin " << rrepHeader.GetOrigin());
+    rrepHeader.SetTlvHeader(tlvHeader);
+
+    Ipv4Address dst = rrepHeader.GetTargIp();
+    NS_LOG_LOGIC("RREP destination " << dst << " RREP origin " << rrepHeader.GetOrigIp());
 
     uint8_t hop = rrepHeader.GetHopCount() + 1;
     rrepHeader.SetHopCount(hop);
 
     // If RREP is Hello message
-    if (dst == rrepHeader.GetOrigin())
+    if (dst == rrepHeader.GetOrigIp())
     {
         ProcessHello(rrepHeader, receiver);
         return;
@@ -1697,13 +1694,9 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
         m_routingTable.AddRoute(newEntry);
     }
     // Acknowledge receipt of the RREP by sending a RREP-ACK message back
-    if (rrepHeader.GetAckRequired())
-    {
-        SendReplyAck(sender);
-        rrepHeader.SetAckRequired(false);
-    }
-    NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigin());
-    if (IsMyOwnAddress(rrepHeader.GetOrigin()))
+    SendReplyAck(sender);
+    NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigIp());
+    if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
     {
         if (toDst.GetFlag() == IN_SEARCH)
         {
@@ -1717,7 +1710,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
     }
 
     RoutingTableEntry toOrigin;
-    if (!m_routingTable.LookupRoute(rrepHeader.GetOrigin(), toOrigin) ||
+    if (!m_routingTable.LookupRoute(rrepHeader.GetOrigIp(), toOrigin) ||
         toOrigin.GetFlag() == IN_SEARCH)
     {
         return; // Impossible! drop.
@@ -1726,7 +1719,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
     m_routingTable.Update(toOrigin);
 
     // Update information about precursors
-    if (m_routingTable.LookupValidRoute(rrepHeader.GetDst(), toDst))
+    if (m_routingTable.LookupValidRoute(rrepHeader.GetTargIp(), toDst))
     {
         toDst.InsertPrecursor(toOrigin.GetNextHop());
         m_routingTable.Update(toDst);
@@ -1749,7 +1742,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
     if (tag.GetTtl() < 2)
     {
         NS_LOG_DEBUG("TTL exceeded. Drop RREP destination " << dst << " origin "
-                                                            << rrepHeader.GetOrigin());
+                                                            << rrepHeader.GetOrigIp());
         return;
     }
 
@@ -1757,6 +1750,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
     SocketIpTtlTag ttl;
     ttl.SetTtl(tag.GetTtl() - 1);
     packet->AddPacketTag(ttl);
+    rrepHeader.CreateTlvHeader();
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1779,24 +1773,24 @@ RoutingProtocol::RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader)
 void
 RoutingProtocol::ProcessHello(const RrepHeader& rrepHeader, Ipv4Address receiver)
 {
-    NS_LOG_FUNCTION(this << "from " << rrepHeader.GetDst());
+    NS_LOG_FUNCTION(this << "from " << rrepHeader.GetTargIp());
     /*
      *  Whenever a node receives a Hello message from a neighbor, the node
      * SHOULD make sure that it has an active route to the neighbor, and
      * create one if necessary.
      */
     RoutingTableEntry toNeighbor;
-    if (!m_routingTable.LookupRoute(rrepHeader.GetDst(), toNeighbor))
+    if (!m_routingTable.LookupRoute(rrepHeader.GetTargIp(), toNeighbor))
     {
         Ptr<NetDevice> dev = m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver));
         RoutingTableEntry newEntry(
             /*dev=*/dev,
-            /*dst=*/rrepHeader.GetDst(),
+            /*dst=*/rrepHeader.GetTargIp(),
             /*vSeqNo=*/true,
             /*seqNo=*/rrepHeader.GetDstSeqno(),
             /*iface=*/m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0),
             /*hops=*/1,
-            /*nextHop=*/rrepHeader.GetDst(),
+            /*nextHop=*/rrepHeader.GetTargIp(),
             /*lifetime=*/rrepHeader.GetLifeTime());
         m_routingTable.AddRoute(newEntry);
     }
@@ -1810,12 +1804,12 @@ RoutingProtocol::ProcessHello(const RrepHeader& rrepHeader, Ipv4Address receiver
         toNeighbor.SetOutputDevice(m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver)));
         toNeighbor.SetInterface(m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0));
         toNeighbor.SetHop(1);
-        toNeighbor.SetNextHop(rrepHeader.GetDst());
+        toNeighbor.SetNextHop(rrepHeader.GetTargIp());
         m_routingTable.Update(toNeighbor);
     }
     if (m_enableHello)
     {
-        m_nb.Update(rrepHeader.GetDst(), Time(m_allowedHelloLoss * m_helloInterval));
+        m_nb.Update(rrepHeader.GetTargIp(), Time(m_allowedHelloLoss * m_helloInterval));
     }
 }
 
@@ -1973,12 +1967,11 @@ RoutingProtocol::SendHello()
     {
         Ptr<Socket> socket = j->first;
         Ipv4InterfaceAddress iface = j->second;
-        RrepHeader helloHeader(/*prefixSize=*/0,
-                               /*hopCount=*/0,
-                               /*dst=*/iface.GetLocal(),
-                               /*dstSeqNo=*/m_seqNo,
-                               /*origin=*/iface.GetLocal(),
-                               /*lifetime=*/Time(m_allowedHelloLoss * m_helloInterval));
+        RrepHeader helloHeader(
+            /*origin=*/iface.GetLocal(),
+            /*originMask=*/32,
+            /*dst=*/iface.GetLocal(),
+            /*dstMask=*/32);
         Ptr<Packet> packet = Create<Packet>();
         SocketIpTtlTag tag;
         tag.SetTtl(1);
