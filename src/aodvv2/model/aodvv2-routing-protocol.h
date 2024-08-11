@@ -442,7 +442,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param rreqHeader route request header
      * \param toOrigin routing table entry to originator
      */
-    void SendReply(const RreqHeader& rreqHeader, const RoutingTableEntry& toOrigin);
+    void SendReply(const RreqHeader& rreqHeader, const RoutingTableEntry& toOrigin, uint8_t hopCount);
     /** Send RREP by intermediate node
      * \param toDst routing table entry to destination
      * \param toOrigin routing table entry to originator

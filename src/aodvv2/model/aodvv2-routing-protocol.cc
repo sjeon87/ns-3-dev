@@ -1436,7 +1436,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
     {
         m_routingTable.LookupRoute(origin, toOrigin);
         NS_LOG_DEBUG("Send reply since I am the destination");
-        SendReply(rreqHeader, toOrigin);
+        SendReply(rreqHeader, toOrigin, rreqHeader.GetHopCount());
         return;
     }
     /*
@@ -1517,7 +1517,9 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
 }
 
 void
-RoutingProtocol::SendReply(const RreqHeader& rreqHeader, const RoutingTableEntry& toOrigin)
+RoutingProtocol::SendReply(const RreqHeader& rreqHeader,
+                           const RoutingTableEntry& toOrigin,
+                           uint8_t hopCount)
 {
     NS_LOG_FUNCTION(this << toOrigin.GetDestination());
     /*
@@ -1534,6 +1536,7 @@ RoutingProtocol::SendReply(const RreqHeader& rreqHeader, const RoutingTableEntry
         /*originMask=*/32,
         /*dst=*/rreqHeader.GetTargIp(),
         /*dstMask=*/32);
+    rrepHeader.SetHopCount(hopCount);
     Ptr<Packet> packet = Create<Packet>();
     SocketIpTtlTag tag;
     tag.SetTtl(toOrigin.GetHop());
