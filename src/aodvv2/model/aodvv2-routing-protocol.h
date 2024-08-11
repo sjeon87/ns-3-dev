@@ -390,6 +390,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param p packet
      * \param receiver receiver address
      * \param src sender address
+     * \param tlvHeader TLV header
      */
     void RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address src, PbbPacket tlvHeader);
     /**
@@ -397,17 +398,20 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param p packet
      * \param my destination address
      * \param src sender address
+     * \param tlvHeader TLV header
      */
     void RecvReply(Ptr<Packet> p, Ipv4Address my, Ipv4Address src, PbbPacket tlvHeader);
     /**
      * Receive RREP_ACK
      * \param neighbor neighbor address
+     * \param tlvHeader TLV header
      */
     void RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader);
     /**
      * Receive RERR
      * \param p packet
      * \param src sender address
+     * \param tlvHeader TLV header
      */
     /// Receive  from node with address src
     void RecvError(Ptr<Packet> p, Ipv4Address src, PbbPacket tlvHeader);

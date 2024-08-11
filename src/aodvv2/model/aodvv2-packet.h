@@ -150,13 +150,20 @@ class RreqHeader : public Header
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RREQ
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RREQ header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
     uint32_t Deserialize(Buffer::Iterator start) override;
     void Print(std::ostream& os) const override;
-    void CreateTlvHeader() const;
-    void SetTlvHeader(PbbPacket tlvHeader);
 
     // Fields
     /**
@@ -323,6 +330,7 @@ class RrepHeader : public Header
      * \param origMask the origin mask
      * \param targIp the target IP address
      * \param targMask the target mask
+     * \param seqNo the sequence number
      * \param hopCount the hop count
      */
     RrepHeader(Ipv4Address origIp = Ipv4Address(),
@@ -336,13 +344,20 @@ class RrepHeader : public Header
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RREP
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RREP header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
     uint32_t Deserialize(Buffer::Iterator start) override;
     void Print(std::ostream& os) const override;
-    void CreateTlvHeader() const;
-    void SetTlvHeader(PbbPacket tlvHeader);
 
     // Fields
     /**
