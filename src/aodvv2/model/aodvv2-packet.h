@@ -72,12 +72,20 @@ enum Aodvv2Timers
  * \brief MessageType enumeration
  */
 enum MessageType
-
 {
     AODVV2_TYPE_RREQ = 10,    //!< AODVV2_TYPE_RREQ
     AODVV2_TYPE_RREP = 11,    //!< AODVV2_TYPE_RREP
     AODVV2_TYPE_RERR = 12,    //!< AODVV2_TYPE_RERR
     AODVV2_TYPE_RREP_ACK = 13 //!< AODVV2_TYPE_RREP_ACK
+};
+
+/**
+ * \ingroup aodvv2
+ * \brief Message TLV Type
+ */
+enum MessageTlvType
+{
+    AODVV2_ACK_REQ = 128
 };
 
 /**
@@ -510,7 +518,7 @@ std::ostream& operator<<(std::ostream& os, const RrepHeader&);
   0                   1
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |   Reserved    |
+  |       AckReq (optional)       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
@@ -525,11 +533,38 @@ class RrepAckHeader : public Header
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RREP_ACK
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RREP_ACK header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
     uint32_t Deserialize(Buffer::Iterator start) override;
     void Print(std::ostream& os) const override;
+
+    /**
+     * \brief Set the sequence number
+     * \param seq the sequence number
+     */
+    void SetSeqNo(uint32_t seq)
+    {
+        m_seqNo = seq;
+    }
+
+    /**
+     * \brief Get the sequence number
+     * \return the sequence number
+     */
+    uint32_t GetSeqNo() const
+    {
+        return m_seqNo;
+    }
 
     /**
      * \brief Comparison operator
@@ -539,7 +574,9 @@ class RrepAckHeader : public Header
     bool operator==(const RrepAckHeader& o) const;
 
   private:
-    uint8_t m_reserved; ///< Not used (must be 0)
+    uint8_t m_reserved;                 ///< Not used (must be 0)
+    uint8_t m_seqNo;                    ///< Sequence number
+    mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
 /**
@@ -556,15 +593,15 @@ std::ostream& operator<<(std::ostream& os, const RrepAckHeader&);
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |N|          Reserved           |   DestCount   |
+  |                      PktSource (optional)                     |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |            Unreachable Destination IP Address (1)             |
+  |                          AddressList                          |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |         Unreachable Destination Sequence Number (1)           |
+  |                 PrefixLengthList (optional)                   |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
-  |  Additional Unreachable Destination IP Addresses (if needed)  |
+  |                     SeqNumList (optional)                     |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |Additional Unreachable Destination Sequence Numbers (if needed)|
+  |                         MetricTypeList                        |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */

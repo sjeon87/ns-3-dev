@@ -1532,10 +1532,10 @@ RoutingProtocol::SendReply(const RreqHeader& rreqHeader,
         m_seqNo++;
     }
     RrepHeader rrepHeader(
-        /*origin=*/toOrigin.GetDestination(),
-        /*originMask=*/32,
-        /*dst=*/rreqHeader.GetTargIp(),
-        /*dstMask=*/32);
+        /*origIp=*/toOrigin.GetDestination(),
+        /*origMask=*/32,
+        /*targIp=*/rreqHeader.GetTargIp(),
+        /*targMask=*/32);
     rrepHeader.SetHopCount(hopCount);
     Ptr<Packet> packet = Create<Packet>();
     SocketIpTtlTag tag;
@@ -1555,10 +1555,10 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst,
 {
     NS_LOG_FUNCTION(this);
     RrepHeader rrepHeader(
-        /*origin=*/toOrigin.GetDestination(),
-        /*originMask=*/32,
-        /*dst=*/toDst.GetDestination(),
-        /*dstMask=*/32);
+        /*origIp=*/toOrigin.GetDestination(),
+        /*origMask=*/32,
+        /*targIp=*/toDst.GetDestination(),
+        /*targMask=*/32);
     /* If the node we received a RREQ for is a neighbor we are
      * probably facing a unidirectional link... Better request a RREP-ack
      */
@@ -1588,10 +1588,10 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst,
     // Generating gratuitous RREPs
     if (gratRep)
     {
-        RrepHeader gratRepHeader(/*origin=*/toDst.GetDestination(),
-                                 /*originMask=*/32,
-                                 /*dst=*/toOrigin.GetDestination(),
-                                 /*dstMask=*/32);
+        RrepHeader gratRepHeader(/*origIp=*/toDst.GetDestination(),
+                                 /*origMask=*/32,
+                                 /*targIp=*/toOrigin.GetDestination(),
+                                 /*targMask=*/32);
         Ptr<Packet> packetToDst = Create<Packet>();
         SocketIpTtlTag gratTag;
         gratTag.SetTtl(toDst.GetHop());
@@ -1613,6 +1613,7 @@ RoutingProtocol::SendReplyAck(Ipv4Address neighbor)
     SocketIpTtlTag tag;
     tag.SetTtl(1);
     packet->AddPacketTag(tag);
+    h.CreateTlvHeader();
     packet->AddHeader(h);
     RoutingTableEntry toNeighbor;
     m_routingTable.LookupRoute(neighbor, toNeighbor);
@@ -1971,10 +1972,10 @@ RoutingProtocol::SendHello()
         Ptr<Socket> socket = j->first;
         Ipv4InterfaceAddress iface = j->second;
         RrepHeader helloHeader(
-            /*origin=*/iface.GetLocal(),
-            /*originMask=*/32,
-            /*dst=*/iface.GetLocal(),
-            /*dstMask=*/32);
+            /*origIp=*/iface.GetLocal(),
+            /*origMask=*/32,
+            /*targIp=*/iface.GetLocal(),
+            /*targMask=*/32);
         Ptr<Packet> packet = Create<Packet>();
         SocketIpTtlTag tag;
         tag.SetTtl(1);

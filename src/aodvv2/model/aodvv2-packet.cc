@@ -134,11 +134,12 @@ RreqHeader::CreateTlvHeader() const
     msg1a2->TlvPushBack(msg1a2tlv1);
 
     // Add SEQ_NUM TLV
+    /* optional, use only with invalid route
     Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
     msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-    uint8_t msg1a2tlv2val[] = {0}; // TODO what value?
+    uint8_t msg1a2tlv2val[] = {0};
     msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
-    msg1a2->TlvPushBack(msg1a2tlv2);
+    msg1a2->TlvPushBack(msg1a2tlv2); */
 
     msg1->AddressBlockPushBack(msg1a2);
     m_tlvHeader->MessagePushBack(msg1);
@@ -420,13 +421,35 @@ RrepAckHeader::GetInstanceTypeId() const
 uint32_t
 RrepAckHeader::GetSerializedSize() const
 {
-    return 1;
+    return m_tlvHeader->GetSerializedSize();
 }
 
 void
 RrepAckHeader::Serialize(Buffer::Iterator i) const
 {
-    i.WriteU8(m_reserved);
+    m_tlvHeader->Serialize(i);
+}
+
+void
+RrepAckHeader::CreateTlvHeader() const
+{
+    m_tlvHeader = Create<PbbPacket>();
+    m_tlvHeader->SetSequenceNumber(this->m_seqNo);
+
+    Ptr<PbbMessageIpv4> msg1 = Create<PbbMessageIpv4>();
+    msg1->SetType(AODVV2_TYPE_RREP_ACK);
+    Ptr<PbbTlv> msg1tlv1 = Create<PbbTlv>();
+    msg1tlv1->SetType(AODVV2_ACK_REQ);
+    msg1->TlvPushBack(msg1tlv1);
+
+    m_tlvHeader->MessagePushBack(msg1);
+}
+
+void
+RrepAckHeader::SetTlvHeader(PbbPacket tlvHeader)
+{
+    this->SetSeqNo(tlvHeader.GetSequenceNumber());
+    CreateTlvHeader();
 }
 
 uint32_t
