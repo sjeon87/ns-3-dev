@@ -476,11 +476,19 @@ class RrepHeader : public Header
         return m_hopCount;
     }
 
+    /**
+     * \brief Get the destination sequence number
+     * \return the destination sequence number
+     */
     uint32_t GetDstSeqno() const
     {
         return 0; // TODO
     }
 
+    /**
+     * \brief Get the lifetime
+     * \return the lifetime
+     */
     Time GetLifeTime() const
     {
         Time t(MilliSeconds(0)); // TODO

@@ -445,6 +445,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     /** Send RREP
      * \param rreqHeader route request header
      * \param toOrigin routing table entry to originator
+     * \param hopCount hop count
      */
     void SendReply(const RreqHeader& rreqHeader,
                    const RoutingTableEntry& toOrigin,

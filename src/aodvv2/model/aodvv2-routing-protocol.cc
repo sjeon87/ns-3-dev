@@ -1980,6 +1980,7 @@ RoutingProtocol::SendHello()
         SocketIpTtlTag tag;
         tag.SetTtl(1);
         packet->AddPacketTag(tag);
+        helloHeader.CreateTlvHeader();
         packet->AddHeader(helloHeader);
         // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
         Ipv4Address destination;
