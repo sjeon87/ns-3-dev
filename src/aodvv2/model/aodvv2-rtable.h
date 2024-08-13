@@ -49,9 +49,9 @@ namespace aodvv2
  */
 enum RouteFlags
 {
-    VALID = 0,     //!< VALID
-    INVALID = 1,   //!< INVALID
-    IN_SEARCH = 2, //!< IN_SEARCH
+    CONFIRMED = 0,   //!< CONFIRMED
+    BLACKLISTED = 1, //!< BLACKLISTED
+    HEARD = 2,       //!< HEARD
 };
 
 /**

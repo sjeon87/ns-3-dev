@@ -165,7 +165,6 @@ RoutingProtocol::RoutingProtocol()
       m_maxQueueLen(64),
       m_maxQueueTime(Seconds(30)),
       m_destinationOnly(false),
-      m_gratuitousReply(true),
       m_enableHello(false),
       m_routingTable(m_deletePeriod),
       m_queue(m_maxQueueLen, m_maxQueueTime),
@@ -308,13 +307,6 @@ RoutingProtocol::GetTypeId()
                           UintegerValue(2),
                           MakeUintegerAccessor(&RoutingProtocol::m_allowedHelloLoss),
                           MakeUintegerChecker<uint16_t>())
-            .AddAttribute("GratuitousReply",
-                          "Indicates whether a gratuitous RREP should be unicast to the node "
-                          "originated route discovery.",
-                          BooleanValue(true),
-                          MakeBooleanAccessor(&RoutingProtocol::SetGratuitousReplyFlag,
-                                              &RoutingProtocol::GetGratuitousReplyFlag),
-                          MakeBooleanChecker())
             .AddAttribute("DestinationOnly",
                           "Indicates only the destination may respond to this RREQ.",
                           BooleanValue(false),
@@ -483,7 +475,7 @@ RoutingProtocol::DeferredRouteOutput(Ptr<const Packet> p,
                                    << (uint16_t)header.GetProtocol());
         RoutingTableEntry rt;
         bool result = m_routingTable.LookupRoute(header.GetDestination(), rt);
-        if (!result || ((rt.GetFlag() != IN_SEARCH) && result))
+        if (!result || ((rt.GetFlag() != HEARD) && result))
         {
             NS_LOG_LOGIC("Send new RREQ for outbound packet to " << header.GetDestination());
             SendRequest(header.GetDestination());
@@ -652,7 +644,7 @@ RoutingProtocol::Forwarding(Ptr<const Packet> p,
     RoutingTableEntry toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
     {
-        if (toDst.GetFlag() == VALID)
+        if (toDst.GetFlag() == CONFIRMED)
         {
             Ptr<Ipv4Route> route = toDst.GetRoute();
             NS_LOG_LOGIC(route->GetSource() << " forwarding to " << dst << " from " << origin
@@ -1066,7 +1058,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
     uint16_t ttl = m_ttlStart;
     if (m_routingTable.LookupRoute(dst, rt))
     {
-        if (rt.GetFlag() != IN_SEARCH)
+        if (rt.GetFlag() != HEARD)
         {
             ttl = std::min<uint16_t>(rt.GetHop() + m_ttlIncrement, m_netDiameter);
         }
@@ -1083,7 +1075,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
             rt.IncrementRreqCnt();
         }
         rt.SetHop(ttl);
-        rt.SetFlag(IN_SEARCH);
+        rt.SetFlag(HEARD);
         rt.SetLifeTime(m_pathDiscoveryTime);
         m_routingTable.Update(rt);
     }
@@ -1103,7 +1095,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
         {
             newEntry.IncrementRreqCnt();
         }
-        newEntry.SetFlag(IN_SEARCH);
+        newEntry.SetFlag(HEARD);
         m_routingTable.AddRoute(newEntry);
     }
 
@@ -1253,9 +1245,9 @@ RoutingProtocol::UpdateRouteLifeTime(Ipv4Address addr, Time lifetime)
     RoutingTableEntry rt;
     if (m_routingTable.LookupRoute(addr, rt))
     {
-        if (rt.GetFlag() == VALID)
+        if (rt.GetFlag() == CONFIRMED)
         {
-            NS_LOG_DEBUG("Updating VALID route");
+            NS_LOG_DEBUG("Updating CONFIRMED route");
             rt.SetRreqCnt(0);
             rt.SetLifeTime(std::max(lifetime, rt.GetLifeTime()));
             m_routingTable.Update(rt);
@@ -1417,7 +1409,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
         toNeighbor.SetLifeTime(m_activeRouteTimeout);
         toNeighbor.SetValidSeqNo(false);
         toNeighbor.SetSeqNo(rreqHeader.GetSeqNo());
-        toNeighbor.SetFlag(VALID);
+        toNeighbor.SetFlag(CONFIRMED);
         toNeighbor.SetOutputDevice(m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver)));
         toNeighbor.SetInterface(m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0));
         toNeighbor.SetHop(1);
@@ -1468,7 +1460,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
              (int32_t(toDst.GetSeqNo()) - int32_t(rreqHeader.GetSeqNo()) >= 0)) &&
             toDst.GetValidSeqNo())
         {
-            if (!rreqHeader.GetDestinationOnly() && toDst.GetFlag() == VALID)
+            if (!rreqHeader.GetDestinationOnly() && toDst.GetFlag() == CONFIRMED)
             {
                 m_routingTable.LookupRoute(origin, toOrigin);
                 SendReplyByIntermediateNode(toDst, toOrigin, rreqHeader.GetGratuitousRrep());
@@ -1549,9 +1541,7 @@ RoutingProtocol::SendReply(const RreqHeader& rreqHeader,
 }
 
 void
-RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst,
-                                             RoutingTableEntry& toOrigin,
-                                             bool gratRep)
+RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst, RoutingTableEntry& toOrigin)
 {
     NS_LOG_FUNCTION(this);
     RrepHeader rrepHeader(
@@ -1584,24 +1574,6 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst,
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
     socket->SendTo(packet, 0, InetSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
-
-    // Generating gratuitous RREPs
-    if (gratRep)
-    {
-        RrepHeader gratRepHeader(/*origIp=*/toDst.GetDestination(),
-                                 /*origMask=*/32,
-                                 /*targIp=*/toOrigin.GetDestination(),
-                                 /*targMask=*/32);
-        Ptr<Packet> packetToDst = Create<Packet>();
-        SocketIpTtlTag gratTag;
-        gratTag.SetTtl(toDst.GetHop());
-        packetToDst->AddPacketTag(gratTag);
-        packetToDst->AddHeader(gratRepHeader);
-        Ptr<Socket> socket = FindSocketWithInterfaceAddress(toDst.GetInterface());
-        NS_ASSERT(socket);
-        NS_LOG_LOGIC("Send gratuitous RREP " << packet->GetUid());
-        socket->SendTo(packetToDst, 0, InetSocketAddress(toDst.GetNextHop(), AODV_PORT));
-    }
 }
 
 void
@@ -1682,7 +1654,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
             ((int32_t(rrepHeader.GetDstSeqno()) - int32_t(toDst.GetSeqNo())) > 0) ||
 
             // (iii) the sequence numbers are the same, but the route is marked as inactive.
-            (rrepHeader.GetDstSeqno() == toDst.GetSeqNo() && toDst.GetFlag() != VALID) ||
+            (rrepHeader.GetDstSeqno() == toDst.GetSeqNo() && toDst.GetFlag() != CONFIRMED) ||
 
             // (iv) the sequence numbers are the same, and the New Hop Count is smaller than the
             // hop count in route table entry.
@@ -1702,7 +1674,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
     NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigIp());
     if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
     {
-        if (toDst.GetFlag() == IN_SEARCH)
+        if (toDst.GetFlag() == HEARD)
         {
             m_routingTable.Update(newEntry);
             m_addressReqTimer[dst].Cancel();
@@ -1715,7 +1687,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
 
     RoutingTableEntry toOrigin;
     if (!m_routingTable.LookupRoute(rrepHeader.GetOrigIp(), toOrigin) ||
-        toOrigin.GetFlag() == IN_SEARCH)
+        toOrigin.GetFlag() == HEARD)
     {
         return; // Impossible! drop.
     }
@@ -1769,7 +1741,7 @@ RoutingProtocol::RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader)
     if (m_routingTable.LookupRoute(neighbor, rt))
     {
         rt.m_ackTimer.Cancel();
-        rt.SetFlag(VALID);
+        rt.SetFlag(CONFIRMED);
         m_routingTable.Update(rt);
     }
 }
@@ -1804,7 +1776,7 @@ RoutingProtocol::ProcessHello(const RrepHeader& rrepHeader, Ipv4Address receiver
             std::max(Time(m_allowedHelloLoss * m_helloInterval), toNeighbor.GetLifeTime()));
         toNeighbor.SetSeqNo(rrepHeader.GetDstSeqno());
         toNeighbor.SetValidSeqNo(true);
-        toNeighbor.SetFlag(VALID);
+        toNeighbor.SetFlag(CONFIRMED);
         toNeighbor.SetOutputDevice(m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver)));
         toNeighbor.SetInterface(m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0));
         toNeighbor.SetHop(1);
@@ -1900,7 +1872,7 @@ RoutingProtocol::RouteRequestTimerExpire(Ipv4Address dst)
         return;
     }
 
-    if (toDst.GetFlag() == IN_SEARCH)
+    if (toDst.GetFlag() == HEARD)
     {
         NS_LOG_LOGIC("Resend RREQ to " << dst << " previous ttl " << toDst.GetHop());
         SendRequest(dst);

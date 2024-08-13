@@ -140,24 +140,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     }
 
     /**
-     * Get gratuitous reply flag
-     * \returns the gratuitous reply flag
-     */
-    bool GetGratuitousReplyFlag() const
-    {
-        return m_gratuitousReply;
-    }
-
-    /**
-     * Set gratuitous reply flag
-     * \param f the gratuitous reply flag
-     */
-    void SetGratuitousReplyFlag(bool f)
-    {
-        m_gratuitousReply = f;
-    }
-
-    /**
      * Set hello enable
      * \param f the hello enable flag
      */
@@ -453,11 +435,8 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     /** Send RREP by intermediate node
      * \param toDst routing table entry to destination
      * \param toOrigin routing table entry to originator
-     * \param gratRep indicates whether a gratuitous RREP should be unicast to destination
      */
-    void SendReplyByIntermediateNode(RoutingTableEntry& toDst,
-                                     RoutingTableEntry& toOrigin,
-                                     bool gratRep);
+    void SendReplyByIntermediateNode(RoutingTableEntry& toDst, RoutingTableEntry& toOrigin);
     /** Send RREP_ACK
      * \param neighbor neighbor address
      */

@@ -59,7 +59,7 @@ RoutingTableEntry::RoutingTableEntry(Ptr<NetDevice> dev,
       m_hops(hops),
       m_lifeTime(lifetime + Simulator::Now()),
       m_iface(iface),
-      m_flag(VALID),
+      m_flag(CONFIRMED),
       m_reqCount(0),
       m_blackListState(false),
       m_blackListTimeout(Simulator::Now())
@@ -167,11 +167,11 @@ void
 RoutingTableEntry::Invalidate(Time badLinkLifetime)
 {
     NS_LOG_FUNCTION(this << badLinkLifetime.As(Time::S));
-    if (m_flag == INVALID)
+    if (m_flag == BLACKLISTED)
     {
         return;
     }
-    m_flag = INVALID;
+    m_flag = BLACKLISTED;
     m_reqCount = 0;
     m_lifeTime = badLinkLifetime + Simulator::Now();
 }
@@ -200,16 +200,16 @@ RoutingTableEntry::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = T
     *os << std::setw(16);
     switch (m_flag)
     {
-    case VALID: {
+    case CONFIRMED: {
         *os << "UP";
         break;
     }
-    case INVALID: {
+    case BLACKLISTED: {
         *os << "DOWN";
         break;
     }
-    case IN_SEARCH: {
-        *os << "IN_SEARCH";
+    case HEARD: {
+        *os << "HEARD";
         break;
     }
     }
@@ -260,8 +260,8 @@ RoutingTable::LookupValidRoute(Ipv4Address id, RoutingTableEntry& rt)
         return false;
     }
     NS_LOG_LOGIC("Route to " << id << " flag is "
-                             << ((rt.GetFlag() == VALID) ? "valid" : "not valid"));
-    return (rt.GetFlag() == VALID);
+                             << ((rt.GetFlag() == CONFIRMED) ? "valid" : "not valid"));
+    return (rt.GetFlag() == CONFIRMED);
 }
 
 bool
@@ -283,7 +283,7 @@ RoutingTable::AddRoute(RoutingTableEntry& rt)
 {
     NS_LOG_FUNCTION(this);
     Purge();
-    if (rt.GetFlag() != IN_SEARCH)
+    if (rt.GetFlag() != HEARD)
     {
         rt.SetRreqCnt(0);
     }
@@ -302,7 +302,7 @@ RoutingTable::Update(RoutingTableEntry& rt)
         return false;
     }
     i->second = rt;
-    if (i->second.GetFlag() != IN_SEARCH)
+    if (i->second.GetFlag() != HEARD)
     {
         NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " set RreqCnt to 0");
         i->second.SetRreqCnt(0);
@@ -352,7 +352,7 @@ RoutingTable::InvalidateRoutesWithDst(const std::map<Ipv4Address, uint32_t>& unr
     {
         for (auto j = unreachable.begin(); j != unreachable.end(); ++j)
         {
-            if ((i->first == j->first) && (i->second.GetFlag() == VALID))
+            if ((i->first == j->first) && (i->second.GetFlag() == CONFIRMED))
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -396,13 +396,13 @@ RoutingTable::Purge()
     {
         if (i->second.GetLifeTime() < Seconds(0))
         {
-            if (i->second.GetFlag() == INVALID)
+            if (i->second.GetFlag() == BLACKLISTED)
             {
                 auto tmp = i;
                 ++i;
                 m_ipv4AddressEntry.erase(tmp);
             }
-            else if (i->second.GetFlag() == VALID)
+            else if (i->second.GetFlag() == CONFIRMED)
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -432,13 +432,13 @@ RoutingTable::Purge(std::map<Ipv4Address, RoutingTableEntry>& table) const
     {
         if (i->second.GetLifeTime() < Seconds(0))
         {
-            if (i->second.GetFlag() == INVALID)
+            if (i->second.GetFlag() == BLACKLISTED)
             {
                 auto tmp = i;
                 ++i;
                 table.erase(tmp);
             }
-            else if (i->second.GetFlag() == VALID)
+            else if (i->second.GetFlag() == CONFIRMED)
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
