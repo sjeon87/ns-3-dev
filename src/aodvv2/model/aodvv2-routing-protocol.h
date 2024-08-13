@@ -140,24 +140,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     }
 
     /**
-     * Set hello enable
-     * \param f the hello enable flag
-     */
-    void SetHelloEnable(bool f)
-    {
-        m_enableHello = f;
-    }
-
-    /**
-     * Get hello enable flag
-     * \returns the enable hello flag
-     */
-    bool GetHelloEnable() const
-    {
-        return m_enableHello;
-    }
-
-    /**
      * Set broadcast enable flag
      * \param f enable broadcast flag
      */
@@ -220,12 +202,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     Time m_pathDiscoveryTime; ///< Estimate of maximum time needed to find route in network.
     Time m_myRouteTimeout;    ///< Value of lifetime field in RREP generating by this node.
     /**
-     * Every HelloInterval the node checks whether it has sent a broadcast  within the last
-     * HelloInterval. If it has not, it MAY broadcast a  Hello message
-     */
-    Time m_helloInterval;
-    uint32_t m_allowedHelloLoss; ///< Number of hello messages which may be loss for valid link
-    /**
      * DeletePeriod is intended to provide an upper bound on the time for which an upstream node A
      * can have a neighbor B as an active next hop for destination D, while B has invalidated the
      * route to D.
@@ -240,7 +216,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     bool m_destinationOnly;  ///< Indicates only the destination may respond to this RREQ.
     bool m_gratuitousReply;  ///< Indicates whether a gratuitous RREP should be unicast to the node
                              ///< originated route discovery.
-    bool m_enableHello;      ///< Indicates whether a hello messages enable
     bool m_enableBroadcast;  ///< Indicates whether a a broadcast data packets forwarding enable
 
     /// IP protocol
@@ -343,13 +318,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      */
     Ptr<Socket> FindSubnetBroadcastSocketWithInterfaceAddress(Ipv4InterfaceAddress iface) const;
     /**
-     * Process hello message
-     *
-     * \param rrepHeader RREP message header
-     * \param receiverIfaceAddr receiver interface IP address
-     */
-    void ProcessHello(const RrepHeader& rrepHeader, Ipv4Address receiverIfaceAddr);
-    /**
      * Create loopback route for given header
      *
      * \param header the IP header
@@ -408,8 +376,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param route route to use
      */
     void SendPacketFromQueue(Ipv4Address dst, Ptr<Ipv4Route> route);
-    /// Send hello
-    void SendHello();
     /** Send RREQ
      * \param dst destination address
      */
@@ -467,10 +433,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      */
     void SendTo(Ptr<Socket> socket, Ptr<Packet> packet, Ipv4Address destination);
 
-    /// Hello timer
-    Timer m_htimer;
-    /// Schedule next send of hello message
-    void HelloTimerExpire();
     /// RREQ rate limit timer
     Timer m_rreqRateLimitTimer;
     /// Reset RREQ count and schedule RREQ rate limit timer with delay 1 sec.
