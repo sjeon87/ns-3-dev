@@ -32,8 +32,9 @@ namespace ns3
 {
 namespace aodvv2
 {
+template <typename T>
 bool
-IdCache::IsDuplicate(Ipv4Address addr, uint32_t id)
+IdCache<T>::IsDuplicate(T addr, uint32_t id)
 {
     Purge();
     for (auto i = m_idCache.begin(); i != m_idCache.end(); ++i)
@@ -48,18 +49,23 @@ IdCache::IsDuplicate(Ipv4Address addr, uint32_t id)
     return false;
 }
 
+template <typename T>
 void
-IdCache::Purge()
+IdCache<T>::Purge()
 {
     m_idCache.erase(remove_if(m_idCache.begin(), m_idCache.end(), IsExpired()), m_idCache.end());
 }
 
+template <typename T>
 uint32_t
-IdCache::GetSize()
+IdCache<T>::GetSize()
 {
     Purge();
     return m_idCache.size();
 }
+
+template class IdCache<Ipv4Address>;
+template class IdCache<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

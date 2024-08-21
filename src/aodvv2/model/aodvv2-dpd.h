@@ -24,7 +24,10 @@
 
 #include "aodvv2-id-cache.h"
 
+#include "ns3/ipv4-address.h"
 #include "ns3/ipv4-header.h"
+#include "ns3/ipv6-address.h"
+#include "ns3/ipv6-header.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
 
@@ -41,8 +44,15 @@ namespace aodvv2
  * This approach is known to be weak (ns3::Packet UID is an internal identifier and not intended for
  * logical uniqueness in models) and should be changed.
  */
+template <typename T>
 class DuplicatePacketDetection
 {
+    /// Alias for determining whether the parent is Ipv4RoutingProtocol or Ipv6RoutingProtocol
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Header, T>;
+
+    /// Alias for Ipv4 and Ipv6 classes
+    using IdCache = typename std::conditional_t<IsIpv4, IdCache<Ipv4Address>, IdCache<Ipv6Address>>;
+
   public:
     /**
      * Constructor
@@ -59,7 +69,7 @@ class DuplicatePacketDetection
      * \param header the IP header to check
      * \returns true if duplicate
      */
-    bool IsDuplicate(Ptr<const Packet> p, const Ipv4Header& header);
+    bool IsDuplicate(Ptr<const Packet> p, const T& header);
     /**
      * Set duplicate record lifetime
      * \param lifetime the lifetime for duplicate records

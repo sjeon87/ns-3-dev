@@ -26,23 +26,29 @@ namespace ns3
 namespace aodvv2
 {
 
+template <typename T>
 bool
-DuplicatePacketDetection::IsDuplicate(Ptr<const Packet> p, const Ipv4Header& header)
+DuplicatePacketDetection<T>::IsDuplicate(Ptr<const Packet> p, const T& header)
 {
     return m_idCache.IsDuplicate(header.GetSource(), p->GetUid());
 }
 
+template <typename T>
 void
-DuplicatePacketDetection::SetLifetime(Time lifetime)
+DuplicatePacketDetection<T>::SetLifetime(Time lifetime)
 {
     m_idCache.SetLifetime(lifetime);
 }
 
+template <typename T>
 Time
-DuplicatePacketDetection::GetLifetime() const
+DuplicatePacketDetection<T>::GetLifetime() const
 {
     return m_idCache.GetLifeTime();
 }
+
+template class DuplicatePacketDetection<Ipv4Header>;
+template class DuplicatePacketDetection<Ipv6Header>;
 
 } // namespace aodvv2
 } // namespace ns3

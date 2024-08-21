@@ -238,9 +238,9 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     /// Request sequence number
     uint32_t m_seqNo;
     /// Handle duplicated RREQ
-    IdCache m_rreqIdCache;
+    IdCache<Ipv4Address> m_rreqIdCache;
     /// Handle duplicated broadcast/multicast packets
-    DuplicatePacketDetection m_dpd;
+    DuplicatePacketDetection<Ipv4Header> m_dpd;
     /// Handle neighbors
     Neighbors m_nb;
     /// Number of RREQs used for RREQ rate control

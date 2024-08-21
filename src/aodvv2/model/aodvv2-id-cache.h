@@ -29,6 +29,7 @@
 #define AODVV2_ID_CACHE_H
 
 #include "ns3/ipv4-address.h"
+#include "ns3/ipv6-address.h"
 #include "ns3/simulator.h"
 
 #include <vector>
@@ -42,6 +43,7 @@ namespace aodvv2
  *
  * \brief Unique packets identification cache used for simple duplicate detection.
  */
+template <typename T>
 class IdCache
 {
   public:
@@ -60,7 +62,7 @@ class IdCache
      * \param id the cache entry ID
      * \returns true if the pair exists
      */
-    bool IsDuplicate(Ipv4Address addr, uint32_t id);
+    bool IsDuplicate(T addr, uint32_t id);
     /// Remove all expired entries
     void Purge();
     /**
@@ -91,7 +93,7 @@ class IdCache
     struct UniqueId
     {
         /// ID is supposed to be unique in single address context (e.g. sender address)
-        Ipv4Address m_context;
+        T m_context;
         /// The id
         uint32_t m_id;
         /// When record will expire
