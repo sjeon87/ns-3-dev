@@ -31,6 +31,7 @@
 #include "ns3/arp-cache.h"
 #include "ns3/callback.h"
 #include "ns3/ipv4-address.h"
+#include "ns3/ipv6-address.h"
 #include "ns3/simulator.h"
 #include "ns3/timer.h"
 
@@ -50,8 +51,12 @@ class RoutingProtocol;
  * \ingroup aodv
  * \brief maintain list of active neighbors
  */
+template <typename T>
 class Neighbors
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv4Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
   public:
     /**
      * constructor
@@ -62,8 +67,8 @@ class Neighbors
     /// Neighbor description
     struct Neighbor
     {
-        /// Neighbor IPv4 address
-        Ipv4Address m_neighborAddress;
+        /// Neighbor T address
+        T m_neighborAddress;
         /// Neighbor MAC address
         Mac48Address m_hardwareAddress;
         /// Neighbor expire time
@@ -74,11 +79,11 @@ class Neighbors
         /**
          * \brief Neighbor structure constructor
          *
-         * \param ip Ipv4Address entry
+         * \param ip T entry
          * \param mac Mac48Address entry
          * \param t Time expire time
          */
-        Neighbor(Ipv4Address ip, Mac48Address mac, Time t)
+        Neighbor(T ip, Mac48Address mac, Time t)
             : m_neighborAddress(ip),
               m_hardwareAddress(mac),
               m_expireTime(t),
@@ -92,19 +97,19 @@ class Neighbors
      * \param addr the IP address of the neighbor node
      * \returns the expire time for the neighbor node
      */
-    Time GetExpireTime(Ipv4Address addr);
+    Time GetExpireTime(T addr);
     /**
      * Check that node with address addr is neighbor
      * \param addr the IP address to check
      * \returns true if the node with IP address is a neighbor
      */
-    bool IsNeighbor(Ipv4Address addr);
+    bool IsNeighbor(T addr);
     /**
      * Update expire time for entry with address addr, if it exists, else add new entry
      * \param addr the IP address to check
      * \param expire the expire time for the address
      */
-    void Update(Ipv4Address addr, Time expire);
+    void Update(T addr, Time expire);
     /// Remove all expired entries
     void Purge();
     /// Schedule m_ntimer.
@@ -140,7 +145,7 @@ class Neighbors
      * Set link failure callback
      * \param cb the callback function
      */
-    void SetCallback(Callback<void, Ipv4Address> cb)
+    void SetCallback(Callback<void, T> cb)
     {
         m_handleLinkFailure = cb;
     }
@@ -149,14 +154,14 @@ class Neighbors
      * Get link failure callback
      * \returns the link failure callback
      */
-    Callback<void, Ipv4Address> GetCallback() const
+    Callback<void, T> GetCallback() const
     {
         return m_handleLinkFailure;
     }
 
   private:
     /// link failure callback
-    Callback<void, Ipv4Address> m_handleLinkFailure;
+    Callback<void, T> m_handleLinkFailure;
     /// TX error callback
     Callback<void, const WifiMacHeader&> m_txErrorCallback;
     /// Timer for neighbor's list. Schedule Purge().
@@ -172,7 +177,7 @@ class Neighbors
      * \param addr the IP address to lookup
      * \returns the MAC address for the IP address
      */
-    Mac48Address LookupMacAddress(Ipv4Address addr);
+    Mac48Address LookupMacAddress(T addr);
     /**
      * Process layer 2 TX error notification
      * \param hdr header of the packet

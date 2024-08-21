@@ -51,7 +51,8 @@ class DuplicatePacketDetection
     static constexpr bool IsIpv4 = std::is_same_v<Ipv4Header, T>;
 
     /// Alias for Ipv4 and Ipv6 classes
-    using IdCache = typename std::conditional_t<IsIpv4, IdCache<Ipv4Address>, IdCache<Ipv6Address>>;
+    using IdCacheAlias =
+        typename std::conditional_t<IsIpv4, IdCache<Ipv4Address>, IdCache<Ipv6Address>>;
 
   public:
     /**
@@ -83,7 +84,7 @@ class DuplicatePacketDetection
 
   private:
     /// Impl
-    IdCache m_idCache;
+    IdCacheAlias m_idCache;
 };
 
 } // namespace aodvv2

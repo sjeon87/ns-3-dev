@@ -242,7 +242,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     /// Handle duplicated broadcast/multicast packets
     DuplicatePacketDetection<Ipv4Header> m_dpd;
     /// Handle neighbors
-    Neighbors m_nb;
+    Neighbors<Ipv4Address> m_nb;
     /// Number of RREQs used for RREQ rate control
     uint16_t m_rreqCount;
     /// Number of RERRs used for RERR rate control

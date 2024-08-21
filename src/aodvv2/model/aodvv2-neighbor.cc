@@ -39,7 +39,8 @@ NS_LOG_COMPONENT_DEFINE("Aodvv2Neighbors");
 
 namespace aodvv2
 {
-Neighbors::Neighbors(Time delay)
+template <typename T>
+Neighbors<T>::Neighbors(Time delay)
     : m_ntimer(Timer::CANCEL_ON_DESTROY)
 {
     m_ntimer.SetDelay(delay);
@@ -47,8 +48,9 @@ Neighbors::Neighbors(Time delay)
     m_txErrorCallback = MakeCallback(&Neighbors::ProcessTxError, this);
 }
 
+template <typename T>
 bool
-Neighbors::IsNeighbor(Ipv4Address addr)
+Neighbors<T>::IsNeighbor(T addr)
 {
     Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
@@ -61,8 +63,9 @@ Neighbors::IsNeighbor(Ipv4Address addr)
     return false;
 }
 
+template <typename T>
 Time
-Neighbors::GetExpireTime(Ipv4Address addr)
+Neighbors<T>::GetExpireTime(T addr)
 {
     Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
@@ -75,8 +78,9 @@ Neighbors::GetExpireTime(Ipv4Address addr)
     return Seconds(0);
 }
 
+template <typename T>
 void
-Neighbors::Update(Ipv4Address addr, Time expire)
+Neighbors<T>::Update(T addr, Time expire)
 {
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
@@ -108,14 +112,26 @@ struct CloseNeighbor
      * \param nb Neighbors::Neighbor entry
      * \return true if expired, false otherwise
      */
-    bool operator()(const Neighbors::Neighbor& nb) const
+    bool operator()(const Neighbors<Ipv4Address>::Neighbor& nb) const
+    {
+        return ((nb.m_expireTime < Simulator::Now()) || nb.close);
+    }
+
+    /**
+     * Check if the entry is expired
+     *
+     * \param nb Neighbors::Neighbor entry
+     * \return true if expired, false otherwise
+     */
+    bool operator()(const Neighbors<Ipv6Address>::Neighbor& nb) const
     {
         return ((nb.m_expireTime < Simulator::Now()) || nb.close);
     }
 };
 
+template <typename T>
 void
-Neighbors::Purge()
+Neighbors<T>::Purge()
 {
     if (m_nb.empty())
     {
@@ -139,27 +155,31 @@ Neighbors::Purge()
     m_ntimer.Schedule();
 }
 
+template <typename T>
 void
-Neighbors::ScheduleTimer()
+Neighbors<T>::ScheduleTimer()
 {
     m_ntimer.Cancel();
     m_ntimer.Schedule();
 }
 
+template <typename T>
 void
-Neighbors::AddArpCache(Ptr<ArpCache> a)
+Neighbors<T>::AddArpCache(Ptr<ArpCache> a)
 {
     m_arp.push_back(a);
 }
 
+template <typename T>
 void
-Neighbors::DelArpCache(Ptr<ArpCache> a)
+Neighbors<T>::DelArpCache(Ptr<ArpCache> a)
 {
     m_arp.erase(std::remove(m_arp.begin(), m_arp.end(), a), m_arp.end());
 }
 
+template <>
 Mac48Address
-Neighbors::LookupMacAddress(Ipv4Address addr)
+Neighbors<Ipv4Address>::LookupMacAddress(Ipv4Address addr)
 {
     Mac48Address hwaddr;
     for (auto i = m_arp.begin(); i != m_arp.end(); ++i)
@@ -174,8 +194,17 @@ Neighbors::LookupMacAddress(Ipv4Address addr)
     return hwaddr;
 }
 
+template <>
+Mac48Address
+Neighbors<Ipv6Address>::LookupMacAddress(Ipv6Address addr)
+{
+    // TODO IPv6 MAC address lookup logic
+    return Mac48Address();
+}
+
+template <typename T>
 void
-Neighbors::ProcessTxError(const WifiMacHeader& hdr)
+Neighbors<T>::ProcessTxError(const WifiMacHeader& hdr)
 {
     Mac48Address addr = hdr.GetAddr1();
 
@@ -188,6 +217,9 @@ Neighbors::ProcessTxError(const WifiMacHeader& hdr)
     }
     Purge();
 }
+
+template class Neighbors<Ipv4Address>;
+template class Neighbors<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3
