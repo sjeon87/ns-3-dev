@@ -232,7 +232,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     RoutingTable m_routingTable;
     /// A "drop-front" queue used by the routing layer to buffer packets to which it does not have a
     /// route.
-    RequestQueue m_queue;
+    RequestQueue<Ipv4Address> m_queue;
     /// Broadcast ID
     uint32_t m_requestId;
     /// Request sequence number

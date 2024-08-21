@@ -1837,7 +1837,7 @@ void
 RoutingProtocol::SendPacketFromQueue(Ipv4Address dst, Ptr<Ipv4Route> route)
 {
     NS_LOG_FUNCTION(this);
-    QueueEntry queueEntry;
+    QueueEntry<Ipv4Header> queueEntry;
     while (m_queue.Dequeue(dst, queueEntry))
     {
         DeferredRouteOutputTag tag;
@@ -1849,7 +1849,7 @@ RoutingProtocol::SendPacketFromQueue(Ipv4Address dst, Ptr<Ipv4Route> route)
             return;
         }
         UnicastForwardCallback ucb = queueEntry.GetUnicastForwardCallback();
-        Ipv4Header header = queueEntry.GetIpv4Header();
+        Ipv4Header header = queueEntry.GetIpHeader();
         header.SetSource(route->GetSource());
         header.SetTtl(header.GetTtl() +
                       1); // compensate extra TTL decrement by fake loopback routing

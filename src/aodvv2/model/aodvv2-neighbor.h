@@ -54,7 +54,7 @@ class RoutingProtocol;
 template <typename T>
 class Neighbors
 {
-    /// Alias for determining whether the parent is Ipv4Address or Ipv4Address
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
     static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
 
   public:
