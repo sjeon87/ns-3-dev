@@ -177,7 +177,14 @@ class Neighbors
      * \param addr the IP address to lookup
      * \returns the MAC address for the IP address
      */
-    Mac48Address LookupMacAddress(T addr);
+    Mac48Address LookupMacAddress(Ipv4Address addr);
+    /**
+     * Find MAC address by IP using list of ARP caches
+     *
+     * \param addr the IP address to lookup
+     * \returns the MAC address for the IP address
+     */
+    Mac48Address LookupMacAddress(Ipv6Address addr);
     /**
      * Process layer 2 TX error notification
      * \param hdr header of the packet
