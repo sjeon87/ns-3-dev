@@ -55,7 +55,7 @@ namespace aodvv2
  *
  * \brief AODV routing protocol
  */
-class RoutingProtocol : public Ipv4RoutingProtocol
+class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
 {
   public:
     /**
@@ -66,8 +66,8 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     static const uint32_t AODV_PORT;
 
     /// constructor
-    RoutingProtocol();
-    ~RoutingProtocol() override;
+    Aodvv2RoutingProtocol();
+    ~Aodvv2RoutingProtocol() override;
     void DoDispose() override;
 
     // Inherited from Ipv4RoutingProtocol

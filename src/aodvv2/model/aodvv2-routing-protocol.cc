@@ -57,10 +57,10 @@ NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingProtocol");
 
 namespace aodvv2
 {
-NS_OBJECT_ENSURE_REGISTERED(RoutingProtocol);
+NS_OBJECT_ENSURE_REGISTERED(Aodvv2RoutingProtocol);
 
 /// UDP Port for AODV control traffic
-const uint32_t RoutingProtocol::AODV_PORT = 269;
+const uint32_t Aodvv2RoutingProtocol::AODV_PORT = 269;
 
 /**
  * \ingroup aodv
@@ -143,7 +143,7 @@ class DeferredRouteOutputTag : public Tag
 NS_OBJECT_ENSURE_REGISTERED(DeferredRouteOutputTag);
 
 //-----------------------------------------------------------------------------
-RoutingProtocol::RoutingProtocol()
+Aodvv2RoutingProtocol::Aodvv2RoutingProtocol()
     : m_rreqRetries(2),
       m_ttlStart(1),
       m_ttlIncrement(2),
@@ -176,83 +176,83 @@ RoutingProtocol::RoutingProtocol()
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0))
 {
-    m_nb.SetCallback(MakeCallback(&RoutingProtocol::SendRerrWhenBreaksLinkToNextHop, this));
+    m_nb.SetCallback(MakeCallback(&Aodvv2RoutingProtocol::SendRerrWhenBreaksLinkToNextHop, this));
 }
 
 TypeId
-RoutingProtocol::GetTypeId()
+Aodvv2RoutingProtocol::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::aodvv2::RoutingProtocol")
+        TypeId("ns3::aodvv2::Aodvv2RoutingProtocol")
             .SetParent<Ipv4RoutingProtocol>()
             .SetGroupName("Aodvv2")
-            .AddConstructor<RoutingProtocol>()
+            .AddConstructor<Aodvv2RoutingProtocol>()
             .AddAttribute("TtlStart",
                           "Initial TTL value for RREQ.",
                           UintegerValue(1),
-                          MakeUintegerAccessor(&RoutingProtocol::m_ttlStart),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_ttlStart),
                           MakeUintegerChecker<uint16_t>())
             .AddAttribute("TtlIncrement",
                           "TTL increment for each attempt using the expanding ring search for RREQ "
                           "dissemination.",
                           UintegerValue(2),
-                          MakeUintegerAccessor(&RoutingProtocol::m_ttlIncrement),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_ttlIncrement),
                           MakeUintegerChecker<uint16_t>())
             .AddAttribute("TtlThreshold",
                           "Maximum TTL value for expanding ring search, TTL = NetDiameter is used "
                           "beyond this value.",
                           UintegerValue(7),
-                          MakeUintegerAccessor(&RoutingProtocol::m_ttlThreshold),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_ttlThreshold),
                           MakeUintegerChecker<uint16_t>())
             .AddAttribute("TimeoutBuffer",
                           "Provide a buffer for the timeout.",
                           UintegerValue(2),
-                          MakeUintegerAccessor(&RoutingProtocol::m_timeoutBuffer),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_timeoutBuffer),
                           MakeUintegerChecker<uint16_t>())
             .AddAttribute("RreqRetries",
                           "Maximum number of retransmissions of RREQ to discover a route",
                           UintegerValue(2),
-                          MakeUintegerAccessor(&RoutingProtocol::m_rreqRetries),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_rreqRetries),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("RreqRateLimit",
                           "Maximum number of RREQ per second.",
                           UintegerValue(10),
-                          MakeUintegerAccessor(&RoutingProtocol::m_rreqRateLimit),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_rreqRateLimit),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("RerrRateLimit",
                           "Maximum number of RERR per second.",
                           UintegerValue(10),
-                          MakeUintegerAccessor(&RoutingProtocol::m_rerrRateLimit),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_rerrRateLimit),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("NodeTraversalTime",
                           "Conservative estimate of the average one hop traversal time for packets "
                           "and should include "
                           "queuing delays, interrupt processing times and transfer times.",
                           TimeValue(MilliSeconds(40)),
-                          MakeTimeAccessor(&RoutingProtocol::m_nodeTraversalTime),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol::m_nodeTraversalTime),
                           MakeTimeChecker())
             .AddAttribute(
                 "NextHopWait",
                 "Period of our waiting for the neighbour's RREP_ACK = 10 ms + NodeTraversalTime",
                 TimeValue(MilliSeconds(50)),
-                MakeTimeAccessor(&RoutingProtocol::m_nextHopWait),
+                MakeTimeAccessor(&Aodvv2RoutingProtocol::m_nextHopWait),
                 MakeTimeChecker())
             .AddAttribute("ActiveRouteTimeout",
                           "Period of time during which the route is considered to be valid",
                           TimeValue(Seconds(3)),
-                          MakeTimeAccessor(&RoutingProtocol::m_activeRouteTimeout),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol::m_activeRouteTimeout),
                           MakeTimeChecker())
             .AddAttribute("MyRouteTimeout",
                           "Value of lifetime field in RREP generating by this node = 2 * "
                           "max(ActiveRouteTimeout, PathDiscoveryTime)",
                           TimeValue(Seconds(11.2)),
-                          MakeTimeAccessor(&RoutingProtocol::m_myRouteTimeout),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol::m_myRouteTimeout),
                           MakeTimeChecker())
             .AddAttribute("BlackListTimeout",
                           "Time for which the node is put into the blacklist = RreqRetries * "
                           "NetTraversalTime",
                           TimeValue(Seconds(5.6)),
-                          MakeTimeAccessor(&RoutingProtocol::m_blackListTimeout),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol::m_blackListTimeout),
                           MakeTimeChecker())
             .AddAttribute("DeletePeriod",
                           "DeletePeriod is intended to provide an upper bound on the time for "
@@ -261,78 +261,78 @@ RoutingProtocol::GetTypeId()
                           "has invalidated the route to D."
                           " = 5 * ActiveRouteTimeout",
                           TimeValue(Seconds(15)),
-                          MakeTimeAccessor(&RoutingProtocol::m_deletePeriod),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol::m_deletePeriod),
                           MakeTimeChecker())
             .AddAttribute("NetDiameter",
                           "Net diameter measures the maximum possible number of hops between two "
                           "nodes in the network",
                           UintegerValue(35),
-                          MakeUintegerAccessor(&RoutingProtocol::m_netDiameter),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::m_netDiameter),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute(
                 "NetTraversalTime",
                 "Estimate of the average net traversal time = 2 * NodeTraversalTime * NetDiameter",
                 TimeValue(Seconds(2.8)),
-                MakeTimeAccessor(&RoutingProtocol::m_netTraversalTime),
+                MakeTimeAccessor(&Aodvv2RoutingProtocol::m_netTraversalTime),
                 MakeTimeChecker())
             .AddAttribute(
                 "PathDiscoveryTime",
                 "Estimate of maximum time needed to find route in network = 2 * NetTraversalTime",
                 TimeValue(Seconds(5.6)),
-                MakeTimeAccessor(&RoutingProtocol::m_pathDiscoveryTime),
+                MakeTimeAccessor(&Aodvv2RoutingProtocol::m_pathDiscoveryTime),
                 MakeTimeChecker())
             .AddAttribute("MaxQueueLen",
                           "Maximum number of packets that we allow a routing protocol to buffer.",
                           UintegerValue(64),
-                          MakeUintegerAccessor(&RoutingProtocol::SetMaxQueueLen,
-                                               &RoutingProtocol::GetMaxQueueLen),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol::SetMaxQueueLen,
+                                               &Aodvv2RoutingProtocol::GetMaxQueueLen),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("MaxQueueTime",
                           "Maximum time packets can be queued (in seconds)",
                           TimeValue(Seconds(30)),
-                          MakeTimeAccessor(&RoutingProtocol::SetMaxQueueTime,
-                                           &RoutingProtocol::GetMaxQueueTime),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol::SetMaxQueueTime,
+                                           &Aodvv2RoutingProtocol::GetMaxQueueTime),
                           MakeTimeChecker())
             .AddAttribute("DestinationOnly",
                           "Indicates only the destination may respond to this RREQ.",
                           BooleanValue(false),
-                          MakeBooleanAccessor(&RoutingProtocol::SetDestinationOnlyFlag,
-                                              &RoutingProtocol::GetDestinationOnlyFlag),
+                          MakeBooleanAccessor(&Aodvv2RoutingProtocol::SetDestinationOnlyFlag,
+                                              &Aodvv2RoutingProtocol::GetDestinationOnlyFlag),
                           MakeBooleanChecker())
             .AddAttribute("EnableBroadcast",
                           "Indicates whether a broadcast data packets forwarding enable.",
                           BooleanValue(true),
-                          MakeBooleanAccessor(&RoutingProtocol::SetBroadcastEnable,
-                                              &RoutingProtocol::GetBroadcastEnable),
+                          MakeBooleanAccessor(&Aodvv2RoutingProtocol::SetBroadcastEnable,
+                                              &Aodvv2RoutingProtocol::GetBroadcastEnable),
                           MakeBooleanChecker())
             .AddAttribute("UniformRv",
                           "Access to the underlying UniformRandomVariable",
                           StringValue("ns3::UniformRandomVariable"),
-                          MakePointerAccessor(&RoutingProtocol::m_uniformRandomVariable),
+                          MakePointerAccessor(&Aodvv2RoutingProtocol::m_uniformRandomVariable),
                           MakePointerChecker<UniformRandomVariable>());
     return tid;
 }
 
 void
-RoutingProtocol::SetMaxQueueLen(uint32_t len)
+Aodvv2RoutingProtocol::SetMaxQueueLen(uint32_t len)
 {
     m_maxQueueLen = len;
     m_queue.SetMaxQueueLen(len);
 }
 
 void
-RoutingProtocol::SetMaxQueueTime(Time t)
+Aodvv2RoutingProtocol::SetMaxQueueTime(Time t)
 {
     m_maxQueueTime = t;
     m_queue.SetQueueTimeout(t);
 }
 
-RoutingProtocol::~RoutingProtocol()
+Aodvv2RoutingProtocol::~Aodvv2RoutingProtocol()
 {
 }
 
 void
-RoutingProtocol::DoDispose()
+Aodvv2RoutingProtocol::DoDispose()
 {
     m_ipv4 = nullptr;
     for (auto iter = m_socketAddresses.begin(); iter != m_socketAddresses.end(); iter++)
@@ -351,7 +351,7 @@ RoutingProtocol::DoDispose()
 }
 
 void
-RoutingProtocol::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
+Aodvv2RoutingProtocol::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 {
     *stream->GetStream() << "Node: " << m_ipv4->GetObject<Node>()->GetId()
                          << "; Time: " << Now().As(unit)
@@ -363,7 +363,7 @@ RoutingProtocol::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit u
 }
 
 int64_t
-RoutingProtocol::AssignStreams(int64_t stream)
+Aodvv2RoutingProtocol::AssignStreams(int64_t stream)
 {
     NS_LOG_FUNCTION(this << stream);
     m_uniformRandomVariable->SetStream(stream);
@@ -371,21 +371,21 @@ RoutingProtocol::AssignStreams(int64_t stream)
 }
 
 void
-RoutingProtocol::Start()
+Aodvv2RoutingProtocol::Start()
 {
     NS_LOG_FUNCTION(this);
-    m_rreqRateLimitTimer.SetFunction(&RoutingProtocol::RreqRateLimitTimerExpire, this);
+    m_rreqRateLimitTimer.SetFunction(&Aodvv2RoutingProtocol::RreqRateLimitTimerExpire, this);
     m_rreqRateLimitTimer.Schedule(Seconds(1));
 
-    m_rerrRateLimitTimer.SetFunction(&RoutingProtocol::RerrRateLimitTimerExpire, this);
+    m_rerrRateLimitTimer.SetFunction(&Aodvv2RoutingProtocol::RerrRateLimitTimerExpire, this);
     m_rerrRateLimitTimer.Schedule(Seconds(1));
 }
 
 Ptr<Ipv4Route>
-RoutingProtocol::RouteOutput(Ptr<Packet> p,
-                             const Ipv4Header& header,
-                             Ptr<NetDevice> oif,
-                             Socket::SocketErrno& sockerr)
+Aodvv2RoutingProtocol::RouteOutput(Ptr<Packet> p,
+                                   const Ipv4Header& header,
+                                   Ptr<NetDevice> oif,
+                                   Socket::SocketErrno& sockerr)
 {
     NS_LOG_FUNCTION(this << header << (oif ? oif->GetIfIndex() : 0));
     if (!p)
@@ -435,10 +435,10 @@ RoutingProtocol::RouteOutput(Ptr<Packet> p,
 }
 
 void
-RoutingProtocol::DeferredRouteOutput(Ptr<const Packet> p,
-                                     const Ipv4Header& header,
-                                     UnicastForwardCallback ucb,
-                                     ErrorCallback ecb)
+Aodvv2RoutingProtocol::DeferredRouteOutput(Ptr<const Packet> p,
+                                           const Ipv4Header& header,
+                                           UnicastForwardCallback ucb,
+                                           ErrorCallback ecb)
 {
     NS_LOG_FUNCTION(this << p << header);
     NS_ASSERT(p && p != Ptr<Packet>());
@@ -460,13 +460,13 @@ RoutingProtocol::DeferredRouteOutput(Ptr<const Packet> p,
 }
 
 bool
-RoutingProtocol::RouteInput(Ptr<const Packet> p,
-                            const Ipv4Header& header,
-                            Ptr<const NetDevice> idev,
-                            const UnicastForwardCallback& ucb,
-                            const MulticastForwardCallback& mcb,
-                            const LocalDeliverCallback& lcb,
-                            const ErrorCallback& ecb)
+Aodvv2RoutingProtocol::RouteInput(Ptr<const Packet> p,
+                                  const Ipv4Header& header,
+                                  Ptr<const NetDevice> idev,
+                                  const UnicastForwardCallback& ucb,
+                                  const MulticastForwardCallback& mcb,
+                                  const LocalDeliverCallback& lcb,
+                                  const ErrorCallback& ecb)
 {
     NS_LOG_FUNCTION(this << p->GetUid() << header.GetDestination() << idev->GetAddress());
     if (m_socketAddresses.empty())
@@ -608,10 +608,10 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
 }
 
 bool
-RoutingProtocol::Forwarding(Ptr<const Packet> p,
-                            const Ipv4Header& header,
-                            UnicastForwardCallback ucb,
-                            ErrorCallback ecb)
+Aodvv2RoutingProtocol::Forwarding(Ptr<const Packet> p,
+                                  const Ipv4Header& header,
+                                  UnicastForwardCallback ucb,
+                                  ErrorCallback ecb)
 {
     NS_LOG_FUNCTION(this);
     Ipv4Address dst = header.GetDestination();
@@ -668,7 +668,7 @@ RoutingProtocol::Forwarding(Ptr<const Packet> p,
 }
 
 void
-RoutingProtocol::SetIpv4(Ptr<Ipv4> ipv4)
+Aodvv2RoutingProtocol::SetIpv4(Ptr<Ipv4> ipv4)
 {
     NS_ASSERT(ipv4);
     NS_ASSERT(!m_ipv4);
@@ -692,11 +692,11 @@ RoutingProtocol::SetIpv4(Ptr<Ipv4> ipv4)
         /*lifetime=*/Simulator::GetMaximumSimulationTime());
     m_routingTable.AddRoute(rt);
 
-    Simulator::ScheduleNow(&RoutingProtocol::Start, this);
+    Simulator::ScheduleNow(&Aodvv2RoutingProtocol::Start, this);
 }
 
 void
-RoutingProtocol::NotifyInterfaceUp(uint32_t i)
+Aodvv2RoutingProtocol::NotifyInterfaceUp(uint32_t i)
 {
     NS_LOG_FUNCTION(this << m_ipv4->GetAddress(i, 0).GetLocal());
     Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol>();
@@ -713,7 +713,7 @@ RoutingProtocol::NotifyInterfaceUp(uint32_t i)
     // Create a socket to listen only on this interface
     Ptr<Socket> socket = Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
     NS_ASSERT(socket);
-    socket->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAodvv2, this));
+    socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol::RecvAodvv2, this));
     socket->BindToNetDevice(l3->GetNetDevice(i));
     socket->Bind(InetSocketAddress(iface.GetLocal(), AODV_PORT));
     socket->SetAllowBroadcast(true);
@@ -723,7 +723,7 @@ RoutingProtocol::NotifyInterfaceUp(uint32_t i)
     // create also a subnet broadcast socket
     socket = Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
     NS_ASSERT(socket);
-    socket->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAodvv2, this));
+    socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol::RecvAodvv2, this));
     socket->BindToNetDevice(l3->GetNetDevice(i));
     socket->Bind(InetSocketAddress(iface.GetBroadcast(), AODV_PORT));
     socket->SetAllowBroadcast(true);
@@ -760,17 +760,17 @@ RoutingProtocol::NotifyInterfaceUp(uint32_t i)
     }
 
     mac->TraceConnectWithoutContext("DroppedMpdu",
-                                    MakeCallback(&RoutingProtocol::NotifyTxError, this));
+                                    MakeCallback(&Aodvv2RoutingProtocol::NotifyTxError, this));
 }
 
 void
-RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const WifiMpdu> mpdu)
+Aodvv2RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const WifiMpdu> mpdu)
 {
     m_nb.GetTxErrorCallback()(mpdu->GetHeader());
 }
 
 void
-RoutingProtocol::NotifyInterfaceDown(uint32_t i)
+Aodvv2RoutingProtocol::NotifyInterfaceDown(uint32_t i)
 {
     NS_LOG_FUNCTION(this << m_ipv4->GetAddress(i, 0).GetLocal());
 
@@ -783,8 +783,9 @@ RoutingProtocol::NotifyInterfaceDown(uint32_t i)
         Ptr<WifiMac> mac = wifi->GetMac()->GetObject<AdhocWifiMac>();
         if (mac)
         {
-            mac->TraceDisconnectWithoutContext("DroppedMpdu",
-                                               MakeCallback(&RoutingProtocol::NotifyTxError, this));
+            mac->TraceDisconnectWithoutContext(
+                "DroppedMpdu",
+                MakeCallback(&Aodvv2RoutingProtocol::NotifyTxError, this));
             m_nb.DelArpCache(l3->GetInterface(i)->GetArpCache());
         }
     }
@@ -812,7 +813,7 @@ RoutingProtocol::NotifyInterfaceDown(uint32_t i)
 }
 
 void
-RoutingProtocol::NotifyAddAddress(uint32_t i, Ipv4InterfaceAddress address)
+Aodvv2RoutingProtocol::NotifyAddAddress(uint32_t i, Ipv4InterfaceAddress address)
 {
     NS_LOG_FUNCTION(this << " interface " << i << " address " << address);
     Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol>();
@@ -834,7 +835,7 @@ RoutingProtocol::NotifyAddAddress(uint32_t i, Ipv4InterfaceAddress address)
             Ptr<Socket> socket =
                 Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
             NS_ASSERT(socket);
-            socket->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAodvv2, this));
+            socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
             socket->Bind(InetSocketAddress(iface.GetLocal(), AODV_PORT));
             socket->SetAllowBroadcast(true);
@@ -843,7 +844,7 @@ RoutingProtocol::NotifyAddAddress(uint32_t i, Ipv4InterfaceAddress address)
             // create also a subnet directed broadcast socket
             socket = Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
             NS_ASSERT(socket);
-            socket->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAodvv2, this));
+            socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
             socket->Bind(InetSocketAddress(iface.GetBroadcast(), AODV_PORT));
             socket->SetAllowBroadcast(true);
@@ -872,7 +873,7 @@ RoutingProtocol::NotifyAddAddress(uint32_t i, Ipv4InterfaceAddress address)
 }
 
 void
-RoutingProtocol::NotifyRemoveAddress(uint32_t i, Ipv4InterfaceAddress address)
+Aodvv2RoutingProtocol::NotifyRemoveAddress(uint32_t i, Ipv4InterfaceAddress address)
 {
     NS_LOG_FUNCTION(this);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(address);
@@ -897,7 +898,7 @@ RoutingProtocol::NotifyRemoveAddress(uint32_t i, Ipv4InterfaceAddress address)
             Ptr<Socket> socket =
                 Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
             NS_ASSERT(socket);
-            socket->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAodvv2, this));
+            socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol::RecvAodvv2, this));
             // Bind to any IP address so that broadcasts can be received
             socket->BindToNetDevice(l3->GetNetDevice(i));
             socket->Bind(InetSocketAddress(iface.GetLocal(), AODV_PORT));
@@ -908,7 +909,7 @@ RoutingProtocol::NotifyRemoveAddress(uint32_t i, Ipv4InterfaceAddress address)
             // create also a unicast socket
             socket = Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
             NS_ASSERT(socket);
-            socket->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAodvv2, this));
+            socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
             socket->Bind(InetSocketAddress(iface.GetBroadcast(), AODV_PORT));
             socket->SetAllowBroadcast(true);
@@ -943,7 +944,7 @@ RoutingProtocol::NotifyRemoveAddress(uint32_t i, Ipv4InterfaceAddress address)
 }
 
 bool
-RoutingProtocol::IsMyOwnAddress(Ipv4Address src)
+Aodvv2RoutingProtocol::IsMyOwnAddress(Ipv4Address src)
 {
     NS_LOG_FUNCTION(this << src);
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
@@ -958,7 +959,7 @@ RoutingProtocol::IsMyOwnAddress(Ipv4Address src)
 }
 
 Ptr<Ipv4Route>
-RoutingProtocol::LoopbackRoute(const Ipv4Header& hdr, Ptr<NetDevice> oif) const
+Aodvv2RoutingProtocol::LoopbackRoute(const Ipv4Header& hdr, Ptr<NetDevice> oif) const
 {
     NS_LOG_FUNCTION(this << hdr);
     NS_ASSERT(m_lo);
@@ -1006,14 +1007,14 @@ RoutingProtocol::LoopbackRoute(const Ipv4Header& hdr, Ptr<NetDevice> oif) const
 }
 
 void
-RoutingProtocol::SendRequest(Ipv4Address dst)
+Aodvv2RoutingProtocol::SendRequest(Ipv4Address dst)
 {
     NS_LOG_FUNCTION(this << dst);
     // A node SHOULD NOT originate more than RREQ_RATELIMIT RREQ messages per second.
     if (m_rreqCount == m_rreqRateLimit)
     {
         Simulator::Schedule(m_rreqRateLimitTimer.GetDelayLeft() + MicroSeconds(100),
-                            &RoutingProtocol::SendRequest,
+                            &Aodvv2RoutingProtocol::SendRequest,
                             this,
                             dst);
         return;
@@ -1108,7 +1109,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
         NS_LOG_DEBUG("Send RREQ with seqNo " << rreqHeader.GetSeqNo() << " to socket");
         m_lastBcastTime = Simulator::Now();
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
-                            &RoutingProtocol::SendTo,
+                            &Aodvv2RoutingProtocol::SendTo,
                             this,
                             socket,
                             packet,
@@ -1118,13 +1119,13 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
 }
 
 void
-RoutingProtocol::SendTo(Ptr<Socket> socket, Ptr<Packet> packet, Ipv4Address destination)
+Aodvv2RoutingProtocol::SendTo(Ptr<Socket> socket, Ptr<Packet> packet, Ipv4Address destination)
 {
     socket->SendTo(packet, 0, InetSocketAddress(destination, AODV_PORT));
 }
 
 void
-RoutingProtocol::ScheduleRreqRetry(Ipv4Address dst)
+Aodvv2RoutingProtocol::ScheduleRreqRetry(Ipv4Address dst)
 {
     NS_LOG_FUNCTION(this << dst);
     if (m_addressReqTimer.find(dst) == m_addressReqTimer.end())
@@ -1132,7 +1133,7 @@ RoutingProtocol::ScheduleRreqRetry(Ipv4Address dst)
         Timer timer(Timer::CANCEL_ON_DESTROY);
         m_addressReqTimer[dst] = timer;
     }
-    m_addressReqTimer[dst].SetFunction(&RoutingProtocol::RouteRequestTimerExpire, this);
+    m_addressReqTimer[dst].SetFunction(&Aodvv2RoutingProtocol::RouteRequestTimerExpire, this);
     m_addressReqTimer[dst].Cancel();
     m_addressReqTimer[dst].SetArguments(dst);
     RoutingTableEntry<Ipv4Address> rt;
@@ -1154,7 +1155,7 @@ RoutingProtocol::ScheduleRreqRetry(Ipv4Address dst)
 }
 
 void
-RoutingProtocol::RecvAodvv2(Ptr<Socket> socket)
+Aodvv2RoutingProtocol::RecvAodvv2(Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION(this << socket);
     Address sourceAddress;
@@ -1213,7 +1214,7 @@ RoutingProtocol::RecvAodvv2(Ptr<Socket> socket)
 }
 
 bool
-RoutingProtocol::UpdateRouteLifeTime(Ipv4Address addr, Time lifetime)
+Aodvv2RoutingProtocol::UpdateRouteLifeTime(Ipv4Address addr, Time lifetime)
 {
     NS_LOG_FUNCTION(this << addr << lifetime);
     RoutingTableEntry<Ipv4Address> rt;
@@ -1232,7 +1233,7 @@ RoutingProtocol::UpdateRouteLifeTime(Ipv4Address addr, Time lifetime)
 }
 
 void
-RoutingProtocol::UpdateRouteToNeighbor(Ipv4Address sender, Ipv4Address receiver)
+Aodvv2RoutingProtocol::UpdateRouteToNeighbor(Ipv4Address sender, Ipv4Address receiver)
 {
     NS_LOG_FUNCTION(this << "sender " << sender << " receiver " << receiver);
     RoutingTableEntry<Ipv4Address> toNeighbor;
@@ -1275,10 +1276,10 @@ RoutingProtocol::UpdateRouteToNeighbor(Ipv4Address sender, Ipv4Address receiver)
 }
 
 void
-RoutingProtocol::RecvRequest(Ptr<Packet> p,
-                             Ipv4Address receiver,
-                             Ipv4Address src,
-                             PbbPacket tlvHeader)
+Aodvv2RoutingProtocol::RecvRequest(Ptr<Packet> p,
+                                   Ipv4Address receiver,
+                                   Ipv4Address src,
+                                   PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this);
     RreqHeader<Ipv4Address> rreqHeader;
@@ -1475,7 +1476,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
         }
         m_lastBcastTime = Simulator::Now();
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
-                            &RoutingProtocol::SendTo,
+                            &Aodvv2RoutingProtocol::SendTo,
                             this,
                             socket,
                             packet,
@@ -1484,9 +1485,9 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
 }
 
 void
-RoutingProtocol::SendReply(const RreqHeader<Ipv4Address>& rreqHeader,
-                           const RoutingTableEntry<Ipv4Address>& toOrigin,
-                           uint8_t hopCount)
+Aodvv2RoutingProtocol::SendReply(const RreqHeader<Ipv4Address>& rreqHeader,
+                                 const RoutingTableEntry<Ipv4Address>& toOrigin,
+                                 uint8_t hopCount)
 {
     NS_LOG_FUNCTION(this << toOrigin.GetDestination());
     /*
@@ -1516,8 +1517,8 @@ RoutingProtocol::SendReply(const RreqHeader<Ipv4Address>& rreqHeader,
 }
 
 void
-RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry<Ipv4Address>& toDst,
-                                             RoutingTableEntry<Ipv4Address>& toOrigin)
+Aodvv2RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry<Ipv4Address>& toDst,
+                                                   RoutingTableEntry<Ipv4Address>& toOrigin)
 {
     NS_LOG_FUNCTION(this);
     RrepHeader rrepHeader(
@@ -1532,7 +1533,7 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry<Ipv4Address>& toD
     {
         RoutingTableEntry<Ipv4Address> toNextHop;
         m_routingTable.LookupRoute(toOrigin.GetNextHop(), toNextHop);
-        toNextHop.m_ackTimer.SetFunction(&RoutingProtocol::AckTimerExpire, this);
+        toNextHop.m_ackTimer.SetFunction(&Aodvv2RoutingProtocol::AckTimerExpire, this);
         toNextHop.m_ackTimer.SetArguments(toNextHop.GetDestination(), m_blackListTimeout);
         toNextHop.m_ackTimer.SetDelay(m_nextHopWait);
     }
@@ -1553,7 +1554,7 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry<Ipv4Address>& toD
 }
 
 void
-RoutingProtocol::SendReplyAck(Ipv4Address neighbor)
+Aodvv2RoutingProtocol::SendReplyAck(Ipv4Address neighbor)
 {
     NS_LOG_FUNCTION(this << " to " << neighbor);
     RrepAckHeader<Ipv4Address> h;
@@ -1571,10 +1572,10 @@ RoutingProtocol::SendReplyAck(Ipv4Address neighbor)
 }
 
 void
-RoutingProtocol::RecvReply(Ptr<Packet> p,
-                           Ipv4Address receiver,
-                           Ipv4Address sender,
-                           PbbPacket tlvHeader)
+Aodvv2RoutingProtocol::RecvReply(Ptr<Packet> p,
+                                 Ipv4Address receiver,
+                                 Ipv4Address sender,
+                                 PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this << " src " << sender);
     RrepHeader<Ipv4Address> rrepHeader;
@@ -1703,7 +1704,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
 }
 
 void
-RoutingProtocol::RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader)
+Aodvv2RoutingProtocol::RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this);
     RoutingTableEntry<Ipv4Address> rt;
@@ -1716,7 +1717,7 @@ RoutingProtocol::RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader)
 }
 
 void
-RoutingProtocol::RecvError(Ptr<Packet> p, Ipv4Address src, PbbPacket tlvHeader)
+Aodvv2RoutingProtocol::RecvError(Ptr<Packet> p, Ipv4Address src, PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this << " from " << src);
     RerrHeader<Ipv4Address> rerrHeader;
@@ -1770,7 +1771,7 @@ RoutingProtocol::RecvError(Ptr<Packet> p, Ipv4Address src, PbbPacket tlvHeader)
 }
 
 void
-RoutingProtocol::RouteRequestTimerExpire(Ipv4Address dst)
+Aodvv2RoutingProtocol::RouteRequestTimerExpire(Ipv4Address dst)
 {
     NS_LOG_LOGIC(this);
     RoutingTableEntry<Ipv4Address> toDst;
@@ -1813,7 +1814,7 @@ RoutingProtocol::RouteRequestTimerExpire(Ipv4Address dst)
 }
 
 void
-RoutingProtocol::RreqRateLimitTimerExpire()
+Aodvv2RoutingProtocol::RreqRateLimitTimerExpire()
 {
     NS_LOG_FUNCTION(this);
     m_rreqCount = 0;
@@ -1821,7 +1822,7 @@ RoutingProtocol::RreqRateLimitTimerExpire()
 }
 
 void
-RoutingProtocol::RerrRateLimitTimerExpire()
+Aodvv2RoutingProtocol::RerrRateLimitTimerExpire()
 {
     NS_LOG_FUNCTION(this);
     m_rerrCount = 0;
@@ -1829,14 +1830,14 @@ RoutingProtocol::RerrRateLimitTimerExpire()
 }
 
 void
-RoutingProtocol::AckTimerExpire(Ipv4Address neighbor, Time blacklistTimeout)
+Aodvv2RoutingProtocol::AckTimerExpire(Ipv4Address neighbor, Time blacklistTimeout)
 {
     NS_LOG_FUNCTION(this);
     m_routingTable.MarkLinkAsUnidirectional(neighbor, blacklistTimeout);
 }
 
 void
-RoutingProtocol::SendPacketFromQueue(Ipv4Address dst, Ptr<Ipv4Route> route)
+Aodvv2RoutingProtocol::SendPacketFromQueue(Ipv4Address dst, Ptr<Ipv4Route> route)
 {
     NS_LOG_FUNCTION(this);
     QueueEntry<Ipv4Header> queueEntry;
@@ -1860,7 +1861,7 @@ RoutingProtocol::SendPacketFromQueue(Ipv4Address dst, Ptr<Ipv4Route> route)
 }
 
 void
-RoutingProtocol::SendRerrWhenBreaksLinkToNextHop(Ipv4Address nextHop)
+Aodvv2RoutingProtocol::SendRerrWhenBreaksLinkToNextHop(Ipv4Address nextHop)
 {
     NS_LOG_FUNCTION(this << nextHop);
     RerrHeader<Ipv4Address> rerrHeader;
@@ -1910,9 +1911,9 @@ RoutingProtocol::SendRerrWhenBreaksLinkToNextHop(Ipv4Address nextHop)
 }
 
 void
-RoutingProtocol::SendRerrWhenNoRouteToForward(Ipv4Address dst,
-                                              uint32_t dstSeqNo,
-                                              Ipv4Address origin)
+Aodvv2RoutingProtocol::SendRerrWhenNoRouteToForward(Ipv4Address dst,
+                                                    uint32_t dstSeqNo,
+                                                    Ipv4Address origin)
 {
     NS_LOG_FUNCTION(this);
     // A node SHOULD NOT originate more than RERR_RATELIMIT RERR messages per second.
@@ -1965,7 +1966,7 @@ RoutingProtocol::SendRerrWhenNoRouteToForward(Ipv4Address dst,
 }
 
 void
-RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> precursors)
+Aodvv2RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> precursors)
 {
     NS_LOG_FUNCTION(this);
 
@@ -1997,7 +1998,7 @@ RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> pr
                          << toPrecursor.GetDestination() << " from "
                          << toPrecursor.GetInterface().GetLocal());
             Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
-                                &RoutingProtocol::SendTo,
+                                &Aodvv2RoutingProtocol::SendTo,
                                 this,
                                 socket,
                                 packet,
@@ -2038,7 +2039,7 @@ RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> pr
             destination = i->GetBroadcast();
         }
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
-                            &RoutingProtocol::SendTo,
+                            &Aodvv2RoutingProtocol::SendTo,
                             this,
                             socket,
                             p,
@@ -2047,7 +2048,7 @@ RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> pr
 }
 
 Ptr<Socket>
-RoutingProtocol::FindSocketWithInterfaceAddress(Ipv4InterfaceAddress addr) const
+Aodvv2RoutingProtocol::FindSocketWithInterfaceAddress(Ipv4InterfaceAddress addr) const
 {
     NS_LOG_FUNCTION(this << addr);
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
@@ -2064,7 +2065,8 @@ RoutingProtocol::FindSocketWithInterfaceAddress(Ipv4InterfaceAddress addr) const
 }
 
 Ptr<Socket>
-RoutingProtocol::FindSubnetBroadcastSocketWithInterfaceAddress(Ipv4InterfaceAddress addr) const
+Aodvv2RoutingProtocol::FindSubnetBroadcastSocketWithInterfaceAddress(
+    Ipv4InterfaceAddress addr) const
 {
     NS_LOG_FUNCTION(this << addr);
     for (auto j = m_socketSubnetBroadcastAddresses.begin();
@@ -2083,7 +2085,7 @@ RoutingProtocol::FindSubnetBroadcastSocketWithInterfaceAddress(Ipv4InterfaceAddr
 }
 
 void
-RoutingProtocol::DoInitialize()
+Aodvv2RoutingProtocol::DoInitialize()
 {
     NS_LOG_FUNCTION(this);
     Ipv4RoutingProtocol::DoInitialize();

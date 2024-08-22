@@ -227,7 +227,7 @@ Aodvv2Example::CreateDevices()
 void
 Aodvv2Example::InstallInternetStack()
 {
-    Aodvv2Helper aodv;
+    Aodvv2Helper<Ipv4RoutingHelper> aodv;
     // you can configure AODV attributes here using aodv.Set(name, value)
     InternetStackHelper stack;
     stack.SetRoutingHelper(aodv); // has effect on the next Install ()

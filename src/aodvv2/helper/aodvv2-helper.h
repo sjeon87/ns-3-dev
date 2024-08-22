@@ -22,6 +22,7 @@
 #define AODVV2_HELPER_H
 
 #include "ns3/ipv4-routing-helper.h"
+#include "ns3/ipv6-routing-helper.h"
 #include "ns3/node-container.h"
 #include "ns3/node.h"
 #include "ns3/object-factory.h"
@@ -29,11 +30,24 @@
 namespace ns3
 {
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  * \brief Helper class that adds AODV routing to nodes.
  */
-class Aodvv2Helper : public Ipv4RoutingHelper
+template <typename T>
+class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T> ||
+                                                 std::is_same_v<Ipv6RoutingHelper, T>,
+                                             T>
 {
+    /// Alias for determining whether the parent is Ipv4RoutingHelper or Ipv6RoutingHelper
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4RoutingHelper, T>;
+    /// Alias for Ipv4RoutingProtocol and Ipv6RoutingProtocol classes
+    using IpRoutingProtocol =
+        typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
+    /// Alias for Ipv4ListRouting and Ipv6ListRouting classes
+    using IpListRouting = typename std::conditional_t<IsIpv4, Ipv4ListRouting, Ipv6ListRouting>;
+    /// Alias for Ipv4 and Ipv6 classes
+    using Ip = typename std::conditional_t<IsIpv4, Ipv4, Ipv6>;
+
   public:
     Aodvv2Helper();
 
@@ -54,7 +68,7 @@ class Aodvv2Helper : public Ipv4RoutingHelper
      *
      * \todo support installing AODV on the subset of all available IP interfaces
      */
-    Ptr<Ipv4RoutingProtocol> Create(Ptr<Node> node) const override;
+    Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
      * \param name the name of the attribute to set
      * \param value the value of the attribute to set.

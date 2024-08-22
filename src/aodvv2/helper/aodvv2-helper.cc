@@ -29,61 +29,70 @@
 namespace ns3
 {
 
-Aodvv2Helper::Aodvv2Helper()
-    : Ipv4RoutingHelper()
+template <typename T>
+Aodvv2Helper<T>::Aodvv2Helper()
 {
-    m_agentFactory.SetTypeId("ns3::aodvv2::RoutingProtocol");
+    m_agentFactory.SetTypeId("ns3::aodvv2::Aodvv2RoutingProtocol");
 }
 
-Aodvv2Helper*
-Aodvv2Helper::Copy() const
+template <typename T>
+Aodvv2Helper<T>*
+Aodvv2Helper<T>::Copy() const
 {
-    return new Aodvv2Helper(*this);
+    return new Aodvv2Helper<T>(*this);
 }
 
-Ptr<Ipv4RoutingProtocol>
-Aodvv2Helper::Create(Ptr<Node> node) const
+template <typename T>
+Ptr<typename Aodvv2Helper<T>::IpRoutingProtocol>
+Aodvv2Helper<T>::Create(Ptr<Node> node) const
 {
-    Ptr<aodvv2::RoutingProtocol> agent = m_agentFactory.Create<aodvv2::RoutingProtocol>();
-    node->AggregateObject(agent);
-    return agent;
+    if constexpr (std::is_same<T, Ipv4RoutingHelper>::value)
+    {
+        Ptr<aodvv2::Aodvv2RoutingProtocol> agent =
+            m_agentFactory.Create<aodvv2::Aodvv2RoutingProtocol>();
+        node->AggregateObject(agent);
+        return agent;
+    }
+    return nullptr;
 }
 
+template <typename T>
 void
-Aodvv2Helper::Set(std::string name, const AttributeValue& value)
+Aodvv2Helper<T>::Set(std::string name, const AttributeValue& value)
 {
     m_agentFactory.Set(name, value);
 }
 
+template <typename T>
 int64_t
-Aodvv2Helper::AssignStreams(NodeContainer c, int64_t stream)
+Aodvv2Helper<T>::AssignStreams(NodeContainer c, int64_t stream)
 {
     int64_t currentStream = stream;
     Ptr<Node> node;
     for (auto i = c.Begin(); i != c.End(); ++i)
     {
         node = (*i);
-        Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
-        NS_ASSERT_MSG(ipv4, "Ipv4 not installed on node");
-        Ptr<Ipv4RoutingProtocol> proto = ipv4->GetRoutingProtocol();
-        NS_ASSERT_MSG(proto, "Ipv4 routing not installed on node");
-        Ptr<aodvv2::RoutingProtocol> aodv = DynamicCast<aodvv2::RoutingProtocol>(proto);
+        Ptr<Ip> ip = node->GetObject<Ip>();
+        NS_ASSERT_MSG(ip, "Ip not installed on node");
+        Ptr<IpRoutingProtocol> proto = ip->GetRoutingProtocol();
+        NS_ASSERT_MSG(proto, "Ip routing not installed on node");
+        Ptr<aodvv2::Aodvv2RoutingProtocol> aodv = DynamicCast<aodvv2::Aodvv2RoutingProtocol>(proto);
         if (aodv)
         {
             currentStream += aodv->AssignStreams(currentStream);
             continue;
         }
         // Aodv may also be in a list
-        Ptr<Ipv4ListRouting> list = DynamicCast<Ipv4ListRouting>(proto);
+        Ptr<IpListRouting> list = DynamicCast<IpListRouting>(proto);
         if (list)
         {
             int16_t priority;
-            Ptr<Ipv4RoutingProtocol> listProto;
-            Ptr<aodvv2::RoutingProtocol> listAodv;
+            Ptr<IpRoutingProtocol> listProto;
+            Ptr<aodvv2::Aodvv2RoutingProtocol> listAodv;
             for (uint32_t i = 0; i < list->GetNRoutingProtocols(); i++)
             {
                 listProto = list->GetRoutingProtocol(i, priority);
-                listAodv = DynamicCast<aodvv2::RoutingProtocol>(listProto);
+                listAodv = DynamicCast<aodvv2::Aodvv2RoutingProtocol>(listProto);
                 if (listAodv)
                 {
                     currentStream += listAodv->AssignStreams(currentStream);
@@ -94,5 +103,8 @@ Aodvv2Helper::AssignStreams(NodeContainer c, int64_t stream)
     }
     return (currentStream - stream);
 }
+
+template class Aodvv2Helper<Ipv4RoutingHelper>;
+template class Aodvv2Helper<Ipv6RoutingHelper>;
 
 } // namespace ns3
