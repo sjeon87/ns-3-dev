@@ -177,6 +177,12 @@ Neighbors<T>::DelArpCache(Ptr<ArpCache> a)
     m_arp.erase(std::remove(m_arp.begin(), m_arp.end(), a), m_arp.end());
 }
 
+/**
+ * Find MAC address by IP using list of ARP caches
+ *
+ * \param addr the IP address to lookup
+ * \returns the MAC address for the IP address
+ */
 template <>
 Mac48Address
 Neighbors<Ipv4Address>::LookupMacAddress(Ipv4Address addr)
@@ -194,6 +200,12 @@ Neighbors<Ipv4Address>::LookupMacAddress(Ipv4Address addr)
     return hwaddr;
 }
 
+/**
+ * Find MAC address by IP using list of ARP caches
+ *
+ * \param addr the IP address to lookup
+ * \returns the MAC address for the IP address
+ */
 template <>
 Mac48Address
 Neighbors<Ipv6Address>::LookupMacAddress(Ipv6Address addr)
