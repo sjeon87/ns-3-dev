@@ -229,7 +229,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     Ptr<NetDevice> m_lo;
 
     /// Routing table
-    RoutingTable m_routingTable;
+    RoutingTable<Ipv4Address> m_routingTable;
     /// A "drop-front" queue used by the routing layer to buffer packets to which it does not have a
     /// route.
     RequestQueue<Ipv4Address> m_queue;
@@ -396,13 +396,14 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param hopCount hop count
      */
     void SendReply(const RreqHeader& rreqHeader,
-                   const RoutingTableEntry& toOrigin,
+                   const RoutingTableEntry<Ipv4Address>& toOrigin,
                    uint8_t hopCount);
     /** Send RREP by intermediate node
      * \param toDst routing table entry to destination
      * \param toOrigin routing table entry to originator
      */
-    void SendReplyByIntermediateNode(RoutingTableEntry& toDst, RoutingTableEntry& toOrigin);
+    void SendReplyByIntermediateNode(RoutingTableEntry<Ipv4Address>& toDst,
+                                     RoutingTableEntry<Ipv4Address>& toOrigin);
     /** Send RREP_ACK
      * \param neighbor neighbor address
      */
