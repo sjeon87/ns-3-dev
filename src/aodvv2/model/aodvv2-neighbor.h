@@ -171,9 +171,19 @@ class Neighbors
     /// list of ARP cached to be used for layer 2 notifications processing
     std::vector<Ptr<ArpCache>> m_arp;
 
-    /// Find MAC address by IP using list of ARP caches
+    /**
+     * Find MAC address by IP using list of ARP caches
+     *
+     * \param addr the IP address to lookup
+     * \returns the MAC address for the IP address
+     */
     Mac48Address LookupMacAddress(Ipv4Address addr);
-    /// Find MAC address by IP using list of ARP caches
+    /**
+     * Find MAC address by IP using list of ARP caches
+     *
+     * \param addr the IP address to lookup
+     * \returns the MAC address for the IP address
+     */
     Mac48Address LookupMacAddress(Ipv6Address addr);
     /**
      * Process layer 2 TX error notification
