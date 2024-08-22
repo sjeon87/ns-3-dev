@@ -443,7 +443,7 @@ RoutingProtocol::DeferredRouteOutput(Ptr<const Packet> p,
     NS_LOG_FUNCTION(this << p << header);
     NS_ASSERT(p && p != Ptr<Packet>());
 
-    QueueEntry newEntry(p, header, ucb, ecb);
+    QueueEntry<Ipv4Header> newEntry(p, header, ucb, ecb);
     bool result = m_queue.Enqueue(newEntry);
     if (result)
     {
