@@ -45,11 +45,18 @@ namespace aodvv2
 template <typename T>
 class QueueEntry
 {
+    /// Alias for determining whether the parent is Ipv4Header or Ipv6Header
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Header, T>;
+
+    /// Alias for Ipv4 and Ipv6 classes
+    using IpRoutingProtocol =
+        typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
+
   public:
-    /// IPv4 routing unicast forward callback typedef
-    typedef Ipv4RoutingProtocol::UnicastForwardCallback UnicastForwardCallback;
-    /// IPv4 routing error callback typedef
-    typedef Ipv4RoutingProtocol::ErrorCallback ErrorCallback;
+    /// IP routing unicast forward callback typedef
+    typedef typename IpRoutingProtocol::UnicastForwardCallback UnicastForwardCallback;
+    /// IP routing error callback typedef
+    typedef typename IpRoutingProtocol::ErrorCallback ErrorCallback;
 
     /**
      * constructor
