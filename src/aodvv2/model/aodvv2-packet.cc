@@ -38,12 +38,13 @@ namespace aodvv2
 //-----------------------------------------------------------------------------
 // RREQ
 //-----------------------------------------------------------------------------
-RreqHeader::RreqHeader(Ipv4Address origIp,
-                       uint16_t origMask,
-                       Ipv4Address targIp,
-                       uint16_t targMask,
-                       uint32_t seqNo,
-                       uint8_t hopCount)
+template <typename T>
+RreqHeader<T>::RreqHeader(T origIp,
+                          uint16_t origMask,
+                          T targIp,
+                          uint16_t targMask,
+                          uint32_t seqNo,
+                          uint8_t hopCount)
     : m_origIp(origIp),
       m_origMask(origMask),
       m_targIp(targIp),
@@ -53,48 +54,53 @@ RreqHeader::RreqHeader(Ipv4Address origIp,
 {
 }
 
-NS_OBJECT_ENSURE_REGISTERED(RreqHeader);
+// NS_OBJECT_ENSURE_REGISTERED(RreqHeader);
 
+template <typename T>
 TypeId
-RreqHeader::GetTypeId()
+RreqHeader<T>::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::aodvv2::RreqHeader")
                             .SetParent<Header>()
                             .SetGroupName("Aodvv2")
-                            .AddConstructor<RreqHeader>();
+                            .AddConstructor<RreqHeader<T>>();
     return tid;
 }
 
+template <typename T>
 TypeId
-RreqHeader::GetInstanceTypeId() const
+RreqHeader<T>::GetInstanceTypeId() const
 {
     return GetTypeId();
 }
 
+template <typename T>
 uint32_t
-RreqHeader::GetSerializedSize() const
+RreqHeader<T>::GetSerializedSize() const
 {
     return m_tlvHeader->GetSerializedSize();
 }
 
+template <typename T>
 void
-RreqHeader::Serialize(Buffer::Iterator i) const
+RreqHeader<T>::Serialize(Buffer::Iterator i) const
 {
     m_tlvHeader->Serialize(i);
 }
 
+template <typename T>
 void
-RreqHeader::CreateTlvHeader() const
+RreqHeader<T>::CreateTlvHeader() const
 {
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIpv4> msg1 = Create<PbbMessageIpv4>();
+    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREQ);
     msg1->SetHopLimit(AODVV2_MAX_HOP_COUNT);
 
     // ****************************** OrigPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIpv4> msg1a1 = Create<PbbAddressBlockIpv4>();
+    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
     msg1a1->AddressPushBack(this->m_origIp);
     msg1a1->PrefixPushBack(this->m_origMask);
 
@@ -122,7 +128,7 @@ RreqHeader::CreateTlvHeader() const
     msg1->AddressBlockPushBack(msg1a1);
 
     // ****************************** TargPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIpv4> msg1a2 = Create<PbbAddressBlockIpv4>();
+    Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
     msg1a2->AddressPushBack(this->m_targIp);
     msg1a2->PrefixPushBack(this->m_targMask);
 
@@ -145,8 +151,9 @@ RreqHeader::CreateTlvHeader() const
     m_tlvHeader->MessagePushBack(msg1);
 }
 
+template <typename T>
 void
-RreqHeader::SetTlvHeader(PbbPacket tlvHeader)
+RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     this->SetSeqNo(tlvHeader.GetSequenceNumber());
 
@@ -164,12 +171,12 @@ RreqHeader::SetTlvHeader(PbbPacket tlvHeader)
             {
                 if (tlv->GetValue().Begin().ReadU8() == AODVV2_ORIGPREFIX)
                 {
-                    this->SetOrigIp(Ipv4Address::ConvertFrom(addressBlock->AddressFront()));
+                    this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                     this->SetOrigMask(addressBlock->PrefixFront());
                 }
                 else if (tlv->GetValue().Begin().ReadU8() == AODVV2_TARGPREFIX)
                 {
-                    this->SetTargIp(Ipv4Address::ConvertFrom(addressBlock->AddressFront()));
+                    this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
                     this->SetTargMask(addressBlock->PrefixFront());
                 }
             }
@@ -181,8 +188,9 @@ RreqHeader::SetTlvHeader(PbbPacket tlvHeader)
     CreateTlvHeader();
 }
 
+template <typename T>
 uint32_t
-RreqHeader::Deserialize(Buffer::Iterator start)
+RreqHeader<T>::Deserialize(Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
 
@@ -195,38 +203,45 @@ RreqHeader::Deserialize(Buffer::Iterator start)
     return dist;
 }
 
+template <typename T>
 void
-RreqHeader::Print(std::ostream& os) const
+RreqHeader<T>::Print(std::ostream& os) const
 {
-    os << "sequence number " << m_seqNo << " hop count " << m_hopCount << " originator ipv4 "
-       << m_origIp << " originator mask " << m_origMask << " target ipv4 " << m_targIp
+    os << "sequence number " << m_seqNo << " hop count " << m_hopCount << " originator ip "
+       << m_origIp << " originator mask " << m_origMask << " target ip " << m_targIp
        << " target mask " << m_targMask;
 }
 
+template <typename T>
 std::ostream&
-operator<<(std::ostream& os, const RreqHeader& h)
+operator<<(std::ostream& os, const RreqHeader<T>& h)
 {
     h.Print(os);
     return os;
 }
 
+template <typename T>
 bool
-RreqHeader::operator==(const RreqHeader& o) const
+RreqHeader<T>::operator==(const RreqHeader<T>& o) const
 {
     return (m_seqNo == o.m_seqNo && m_hopCount == o.m_hopCount && m_origIp == o.m_origIp &&
             m_origMask == o.m_origMask && m_targIp == o.m_targIp && m_targMask == o.m_targMask);
 }
 
+template class RreqHeader<Ipv4Address>;
+template class RreqHeader<Ipv6Address>;
+
 //-----------------------------------------------------------------------------
 // RREP
 //-----------------------------------------------------------------------------
 
-RrepHeader::RrepHeader(Ipv4Address origIp,
-                       uint16_t origMask,
-                       Ipv4Address targIp,
-                       uint16_t targMask,
-                       uint32_t seqNo,
-                       uint8_t hopCount)
+template <typename T>
+RrepHeader<T>::RrepHeader(T origIp,
+                          uint16_t origMask,
+                          T targIp,
+                          uint16_t targMask,
+                          uint32_t seqNo,
+                          uint8_t hopCount)
     : m_origIp(origIp),
       m_origMask(origMask),
       m_targIp(targIp),
@@ -236,48 +251,53 @@ RrepHeader::RrepHeader(Ipv4Address origIp,
 {
 }
 
-NS_OBJECT_ENSURE_REGISTERED(RrepHeader);
+// NS_OBJECT_ENSURE_REGISTERED(RrepHeader);
 
+template <typename T>
 TypeId
-RrepHeader::GetTypeId()
+RrepHeader<T>::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::aodvv2::RrepHeader")
                             .SetParent<Header>()
                             .SetGroupName("Aodvv2")
-                            .AddConstructor<RrepHeader>();
+                            .AddConstructor<RrepHeader<T>>();
     return tid;
 }
 
+template <typename T>
 TypeId
-RrepHeader::GetInstanceTypeId() const
+RrepHeader<T>::GetInstanceTypeId() const
 {
     return GetTypeId();
 }
 
+template <typename T>
 uint32_t
-RrepHeader::GetSerializedSize() const
+RrepHeader<T>::GetSerializedSize() const
 {
     return m_tlvHeader->GetSerializedSize();
 }
 
+template <typename T>
 void
-RrepHeader::Serialize(Buffer::Iterator i) const
+RrepHeader<T>::Serialize(Buffer::Iterator i) const
 {
     m_tlvHeader->Serialize(i);
 }
 
+template <typename T>
 void
-RrepHeader::CreateTlvHeader() const
+RrepHeader<T>::CreateTlvHeader() const
 {
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(0); // TODO
 
-    Ptr<PbbMessageIpv4> msg1 = Create<PbbMessageIpv4>();
+    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREP);
     msg1->SetHopLimit(AODVV2_MAX_HOP_COUNT - this->m_hopCount);
 
     // ****************************** OrigPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIpv4> msg1a1 = Create<PbbAddressBlockIpv4>();
+    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
     msg1a1->AddressPushBack(this->m_origIp);
     msg1a1->PrefixPushBack(this->m_origMask);
 
@@ -291,7 +311,7 @@ RrepHeader::CreateTlvHeader() const
     msg1->AddressBlockPushBack(msg1a1);
 
     // ****************************** TargPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIpv4> msg1a2 = Create<PbbAddressBlockIpv4>();
+    Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
     msg1a2->AddressPushBack(this->m_targIp);
     msg1a2->PrefixPushBack(this->m_targMask);
 
@@ -320,8 +340,9 @@ RrepHeader::CreateTlvHeader() const
     m_tlvHeader->MessagePushBack(msg1);
 }
 
+template <typename T>
 void
-RrepHeader::SetTlvHeader(PbbPacket tlvHeader)
+RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     this->SetSeqNo(tlvHeader.GetSequenceNumber());
 
@@ -339,12 +360,12 @@ RrepHeader::SetTlvHeader(PbbPacket tlvHeader)
             {
                 if (tlv->GetValue().Begin().ReadU8() == AODVV2_ORIGPREFIX)
                 {
-                    this->SetOrigIp(Ipv4Address::ConvertFrom(addressBlock->AddressFront()));
+                    this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                     this->SetOrigMask(addressBlock->PrefixFront());
                 }
                 else if (tlv->GetValue().Begin().ReadU8() == AODVV2_TARGPREFIX)
                 {
-                    this->SetTargIp(Ipv4Address::ConvertFrom(addressBlock->AddressFront()));
+                    this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
                     this->SetTargMask(addressBlock->PrefixFront());
                 }
             }
@@ -356,8 +377,9 @@ RrepHeader::SetTlvHeader(PbbPacket tlvHeader)
     CreateTlvHeader();
 }
 
+template <typename T>
 uint32_t
-RrepHeader::Deserialize(Buffer::Iterator start)
+RrepHeader<T>::Deserialize(Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
 
@@ -370,73 +392,85 @@ RrepHeader::Deserialize(Buffer::Iterator start)
     return dist;
 }
 
+template <typename T>
 void
-RrepHeader::Print(std::ostream& os) const
+RrepHeader<T>::Print(std::ostream& os) const
 {
-    os << " originator ipv4 " << m_origIp << " originator mask " << m_origMask << " target ipv4 "
+    os << " originator ip " << m_origIp << " originator mask " << m_origMask << " target ip "
        << m_targIp << " target mask " << m_targMask;
 }
 
+template <typename T>
 bool
-RrepHeader::operator==(const RrepHeader& o) const
+RrepHeader<T>::operator==(const RrepHeader<T>& o) const
 {
     return (m_origIp == o.m_origIp && m_origMask == o.m_origMask && m_targIp == o.m_targIp &&
             m_targMask == o.m_targMask);
 }
 
+template <typename T>
 std::ostream&
-operator<<(std::ostream& os, const RrepHeader& h)
+operator<<(std::ostream& os, const RrepHeader<T>& h)
 {
     h.Print(os);
     return os;
 }
 
+template class RrepHeader<Ipv4Address>;
+template class RrepHeader<Ipv6Address>;
+
 //-----------------------------------------------------------------------------
 // RREP-ACK
 //-----------------------------------------------------------------------------
 
-RrepAckHeader::RrepAckHeader()
+template <typename T>
+RrepAckHeader<T>::RrepAckHeader()
     : m_reserved(0)
 {
 }
 
-NS_OBJECT_ENSURE_REGISTERED(RrepAckHeader);
+// NS_OBJECT_ENSURE_REGISTERED(RrepAckHeader);
 
+template <typename T>
 TypeId
-RrepAckHeader::GetTypeId()
+RrepAckHeader<T>::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::aodvv2::RrepAckHeader")
                             .SetParent<Header>()
                             .SetGroupName("Aodvv2")
-                            .AddConstructor<RrepAckHeader>();
+                            .AddConstructor<RrepAckHeader<T>>();
     return tid;
 }
 
+template <typename T>
 TypeId
-RrepAckHeader::GetInstanceTypeId() const
+RrepAckHeader<T>::GetInstanceTypeId() const
 {
     return GetTypeId();
 }
 
+template <typename T>
 uint32_t
-RrepAckHeader::GetSerializedSize() const
+RrepAckHeader<T>::GetSerializedSize() const
 {
     return m_tlvHeader->GetSerializedSize();
 }
 
+template <typename T>
 void
-RrepAckHeader::Serialize(Buffer::Iterator i) const
+RrepAckHeader<T>::Serialize(Buffer::Iterator i) const
 {
     m_tlvHeader->Serialize(i);
 }
 
+template <typename T>
 void
-RrepAckHeader::CreateTlvHeader() const
+RrepAckHeader<T>::CreateTlvHeader() const
 {
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIpv4> msg1 = Create<PbbMessageIpv4>();
+    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREP_ACK);
     Ptr<PbbTlv> msg1tlv1 = Create<PbbTlv>();
     msg1tlv1->SetType(AODVV2_ACK_REQ);
@@ -445,15 +479,17 @@ RrepAckHeader::CreateTlvHeader() const
     m_tlvHeader->MessagePushBack(msg1);
 }
 
+template <typename T>
 void
-RrepAckHeader::SetTlvHeader(PbbPacket tlvHeader)
+RrepAckHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     this->SetSeqNo(tlvHeader.GetSequenceNumber());
     CreateTlvHeader();
 }
 
+template <typename T>
 uint32_t
-RrepAckHeader::Deserialize(Buffer::Iterator start)
+RrepAckHeader<T>::Deserialize(Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
     m_reserved = i.ReadU8();
@@ -462,37 +498,45 @@ RrepAckHeader::Deserialize(Buffer::Iterator start)
     return dist;
 }
 
+template <typename T>
 void
-RrepAckHeader::Print(std::ostream& os) const
+RrepAckHeader<T>::Print(std::ostream& os) const
 {
 }
 
+template <typename T>
 bool
-RrepAckHeader::operator==(const RrepAckHeader& o) const
+RrepAckHeader<T>::operator==(const RrepAckHeader& o) const
 {
     return m_reserved == o.m_reserved;
 }
 
+template <typename T>
 std::ostream&
-operator<<(std::ostream& os, const RrepAckHeader& h)
+operator<<(std::ostream& os, const RrepAckHeader<T>& h)
 {
     h.Print(os);
     return os;
 }
 
+template class RrepAckHeader<Ipv4Address>;
+template class RrepAckHeader<Ipv6Address>;
+
 //-----------------------------------------------------------------------------
 // RERR
 //-----------------------------------------------------------------------------
-RerrHeader::RerrHeader()
+template <typename T>
+RerrHeader<T>::RerrHeader()
     : m_flag(0),
       m_reserved(0)
 {
 }
 
-NS_OBJECT_ENSURE_REGISTERED(RerrHeader);
+// NS_OBJECT_ENSURE_REGISTERED(RerrHeader);
 
+template <typename T>
 TypeId
-RerrHeader::GetTypeId()
+RerrHeader<T>::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::aodvv2::RerrHeader")
                             .SetParent<Header>()
@@ -501,20 +545,23 @@ RerrHeader::GetTypeId()
     return tid;
 }
 
+template <typename T>
 TypeId
-RerrHeader::GetInstanceTypeId() const
+RerrHeader<T>::GetInstanceTypeId() const
 {
     return GetTypeId();
 }
 
+template <typename T>
 uint32_t
-RerrHeader::GetSerializedSize() const
+RerrHeader<T>::GetSerializedSize() const
 {
     return (3 + 8 * GetDestCount());
 }
 
+template <typename T>
 void
-RerrHeader::Serialize(Buffer::Iterator i) const
+RerrHeader<T>::Serialize(Buffer::Iterator i) const
 {
     i.WriteU8(m_flag);
     i.WriteU8(m_reserved);
@@ -526,15 +573,16 @@ RerrHeader::Serialize(Buffer::Iterator i) const
     }
 }
 
+template <typename T>
 uint32_t
-RerrHeader::Deserialize(Buffer::Iterator start)
+RerrHeader<T>::Deserialize(Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
     m_flag = i.ReadU8();
     m_reserved = i.ReadU8();
     uint8_t dest = i.ReadU8();
     m_unreachableDstSeqNo.clear();
-    Ipv4Address address;
+    T address;
     uint32_t seqNo;
     for (uint8_t k = 0; k < dest; ++k)
     {
@@ -548,10 +596,11 @@ RerrHeader::Deserialize(Buffer::Iterator start)
     return dist;
 }
 
+template <typename T>
 void
-RerrHeader::Print(std::ostream& os) const
+RerrHeader<T>::Print(std::ostream& os) const
 {
-    os << "Unreachable destination (ipv4 address, seq. number):";
+    os << "Unreachable destination (ip address, seq. number):";
     for (auto j = m_unreachableDstSeqNo.begin(); j != m_unreachableDstSeqNo.end(); ++j)
     {
         os << (*j).first << ", " << (*j).second;
@@ -559,8 +608,9 @@ RerrHeader::Print(std::ostream& os) const
     os << "No delete flag " << (*this).GetNoDelete();
 }
 
+template <typename T>
 void
-RerrHeader::SetNoDelete(bool f)
+RerrHeader<T>::SetNoDelete(bool f)
 {
     if (f)
     {
@@ -572,14 +622,16 @@ RerrHeader::SetNoDelete(bool f)
     }
 }
 
+template <typename T>
 bool
-RerrHeader::GetNoDelete() const
+RerrHeader<T>::GetNoDelete() const
 {
     return (m_flag & (1 << 0));
 }
 
+template <typename T>
 bool
-RerrHeader::AddUnDestination(Ipv4Address dst, uint32_t seqNo)
+RerrHeader<T>::AddUnDestination(T dst, uint32_t seqNo)
 {
     if (m_unreachableDstSeqNo.find(dst) != m_unreachableDstSeqNo.end())
     {
@@ -591,8 +643,9 @@ RerrHeader::AddUnDestination(Ipv4Address dst, uint32_t seqNo)
     return true;
 }
 
+template <typename T>
 bool
-RerrHeader::RemoveUnDestination(std::pair<Ipv4Address, uint32_t>& un)
+RerrHeader<T>::RemoveUnDestination(std::pair<T, uint32_t>& un)
 {
     if (m_unreachableDstSeqNo.empty())
     {
@@ -604,16 +657,18 @@ RerrHeader::RemoveUnDestination(std::pair<Ipv4Address, uint32_t>& un)
     return true;
 }
 
+template <typename T>
 void
-RerrHeader::Clear()
+RerrHeader<T>::Clear()
 {
     m_unreachableDstSeqNo.clear();
     m_flag = 0;
     m_reserved = 0;
 }
 
+template <typename T>
 bool
-RerrHeader::operator==(const RerrHeader& o) const
+RerrHeader<T>::operator==(const RerrHeader& o) const
 {
     if (m_flag != o.m_flag || m_reserved != o.m_reserved || GetDestCount() != o.GetDestCount())
     {
@@ -635,11 +690,16 @@ RerrHeader::operator==(const RerrHeader& o) const
     return true;
 }
 
+template <typename T>
 std::ostream&
-operator<<(std::ostream& os, const RerrHeader& h)
+operator<<(std::ostream& os, const RerrHeader<T>& h)
 {
     h.Print(os);
     return os;
 }
+
+template class RerrHeader<Ipv4Address>;
+template class RerrHeader<Ipv6Address>;
+
 } // namespace aodvv2
 } // namespace ns3

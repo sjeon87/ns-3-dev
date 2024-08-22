@@ -133,9 +133,19 @@ enum AddressTlvValue
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RreqHeader : public Header
 
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+    /// Alias for PbbAddressBlockIpv4 and PbbAddressBlockIpv6 classes
+    using PbbAddressBlockIp =
+        typename std::conditional_t<IsIpv4, PbbAddressBlockIpv4, PbbAddressBlockIpv6>;
+
   public:
     /**
      * constructor
@@ -146,9 +156,9 @@ class RreqHeader : public Header
      * \param seqNo the sequence number
      * \param hopCount the hop count
      */
-    RreqHeader(Ipv4Address origIp = Ipv4Address(),
+    RreqHeader(T origIp = T(),
                uint16_t origMask = 0,
-               Ipv4Address targIp = Ipv4Address(),
+               T targIp = T(),
                uint16_t targMask = 0,
                uint32_t seqNo = 0,
                uint8_t hopCount = 0);
@@ -178,7 +188,7 @@ class RreqHeader : public Header
      * \brief Set the origin IP address
      * \param ip the origin IP address
      */
-    void SetOrigIp(Ipv4Address ip)
+    void SetOrigIp(T ip)
     {
         m_origIp = ip;
     }
@@ -187,7 +197,7 @@ class RreqHeader : public Header
      * \brief Get the origin IP address
      * \return the origin IP address
      */
-    Ipv4Address GetOrigIp() const
+    T GetOrigIp() const
     {
         return m_origIp;
     }
@@ -214,7 +224,7 @@ class RreqHeader : public Header
      * \brief Set the target IP address
      * \param ip the target IP address
      */
-    void SetTargIp(Ipv4Address ip)
+    void SetTargIp(T ip)
     {
         m_targIp = ip;
     }
@@ -223,7 +233,7 @@ class RreqHeader : public Header
      * \brief Get the target IP address
      * \return the target IP address
      */
-    Ipv4Address GetTargIp() const
+    T GetTargIp() const
     {
         return m_targIp;
     }
@@ -290,12 +300,12 @@ class RreqHeader : public Header
     bool operator==(const RreqHeader& o) const;
 
   private:
-    Ipv4Address m_origIp; ///< Origin IP Address
-    uint16_t m_origMask;  ///< Origin Mask
-    Ipv4Address m_targIp; ///< Target IP Address
-    uint16_t m_targMask;  ///< Target Mask
-    uint8_t m_seqNo;      ///< Sequence number
-    uint8_t m_hopCount;   ///< Hop Count
+    T m_origIp;          ///< Origin IP Address
+    uint16_t m_origMask; ///< Origin Mask
+    T m_targIp;          ///< Target IP Address
+    uint16_t m_targMask; ///< Target Mask
+    uint8_t m_seqNo;     ///< Sequence number
+    uint8_t m_hopCount;  ///< Hop Count
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
@@ -305,7 +315,8 @@ class RreqHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RreqHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RreqHeader<T>&);
 
 /**
 * \ingroup aodvv2
@@ -328,8 +339,18 @@ std::ostream& operator<<(std::ostream& os, const RreqHeader&);
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RrepHeader : public Header
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+    /// Alias for PbbAddressBlockIpv4 and PbbAddressBlockIpv6 classes
+    using PbbAddressBlockIp =
+        typename std::conditional_t<IsIpv4, PbbAddressBlockIpv4, PbbAddressBlockIpv6>;
+
   public:
     /**
      * constructor
@@ -341,9 +362,9 @@ class RrepHeader : public Header
      * \param seqNo the sequence number
      * \param hopCount the hop count
      */
-    RrepHeader(Ipv4Address origIp = Ipv4Address(),
+    RrepHeader(T origIp = T(),
                uint16_t origMask = 0,
-               Ipv4Address targIp = Ipv4Address(),
+               T targIp = T(),
                uint16_t targMask = 0,
                uint32_t seqNo = 0,
                uint8_t hopCount = 0);
@@ -372,7 +393,7 @@ class RrepHeader : public Header
      * \brief Set the origin IP address
      * \param ip the origin IP address
      */
-    void SetOrigIp(Ipv4Address ip)
+    void SetOrigIp(T ip)
     {
         m_origIp = ip;
     }
@@ -381,7 +402,7 @@ class RrepHeader : public Header
      * \brief Get the origin IP address
      * \return the origin IP address
      */
-    Ipv4Address GetOrigIp() const
+    T GetOrigIp() const
     {
         return m_origIp;
     }
@@ -408,7 +429,7 @@ class RrepHeader : public Header
      * \brief Set the target IP address
      * \param ip the target IP address
      */
-    void SetTargIp(Ipv4Address ip)
+    void SetTargIp(T ip)
     {
         m_targIp = ip;
     }
@@ -417,7 +438,7 @@ class RrepHeader : public Header
      * \brief Get the target IP address
      * \return the target IP address
      */
-    Ipv4Address GetTargIp() const
+    T GetTargIp() const
     {
         return m_targIp;
     }
@@ -503,9 +524,9 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    Ipv4Address m_origIp;               ///< Origin IP Address
+    T m_origIp;                         ///< Origin IP Address
     uint16_t m_origMask;                ///< Origin Mask
-    Ipv4Address m_targIp;               ///< Target IP Address
+    T m_targIp;                         ///< Target IP Address
     uint16_t m_targMask;                ///< Target Mask
     uint8_t m_seqNo;                    ///< Sequence number
     uint8_t m_hopCount;                 ///< Hop Count
@@ -517,7 +538,8 @@ class RrepHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RrepHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RrepHeader<T>&);
 
 /**
 * \ingroup aodvv2
@@ -530,8 +552,15 @@ std::ostream& operator<<(std::ostream& os, const RrepHeader&);
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RrepAckHeader : public Header
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+
   public:
     /// constructor
     RrepAckHeader();
@@ -592,7 +621,8 @@ class RrepAckHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RrepAckHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RrepAckHeader<T>&);
 
 /**
 * \ingroup aodvv2
@@ -613,6 +643,7 @@ std::ostream& operator<<(std::ostream& os, const RrepAckHeader&);
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RerrHeader : public Header
 {
   public:
@@ -644,18 +675,18 @@ class RerrHeader : public Header
 
     /**
      * \brief Add unreachable node address and its sequence number in RERR header
-     * \param dst unreachable IPv4 address
+     * \param dst unreachable IP address
      * \param seqNo unreachable sequence number
      * \return false if we already added maximum possible number of unreachable destinations
      */
-    bool AddUnDestination(Ipv4Address dst, uint32_t seqNo);
+    bool AddUnDestination(T dst, uint32_t seqNo);
     /**
      * \brief Delete pair (address + sequence number) from REER header, if the number of unreachable
      * destinations > 0
      * \param un unreachable pair (address + sequence number)
      * \return true on success
      */
-    bool RemoveUnDestination(std::pair<Ipv4Address, uint32_t>& un);
+    bool RemoveUnDestination(std::pair<T, uint32_t>& un);
     /// Clear header
     void Clear();
 
@@ -679,7 +710,7 @@ class RerrHeader : public Header
     uint8_t m_reserved; ///< Not used (must be 0)
 
     /// List of Unreachable destination: IP addresses and sequence numbers
-    std::map<Ipv4Address, uint32_t> m_unreachableDstSeqNo;
+    std::map<T, uint32_t> m_unreachableDstSeqNo;
 };
 
 /**
@@ -687,7 +718,8 @@ class RerrHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RerrHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RerrHeader<T>&);
 
 } // namespace aodvv2
 } // namespace ns3

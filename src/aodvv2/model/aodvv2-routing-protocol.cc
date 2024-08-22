@@ -1023,7 +1023,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
         m_rreqCount++;
     }
     // Create RREQ header
-    RreqHeader rreqHeader;
+    RreqHeader<Ipv4Address> rreqHeader;
     rreqHeader.SetTargIp(dst);
     rreqHeader.SetTargMask(32);
 
@@ -1281,7 +1281,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
                              PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this);
-    RreqHeader rreqHeader;
+    RreqHeader<Ipv4Address> rreqHeader;
     rreqHeader.SetTlvHeader(tlvHeader);
 
     // A node ignores all RREQs received from any node in its blacklist
@@ -1484,7 +1484,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p,
 }
 
 void
-RoutingProtocol::SendReply(const RreqHeader& rreqHeader,
+RoutingProtocol::SendReply(const RreqHeader<Ipv4Address>& rreqHeader,
                            const RoutingTableEntry<Ipv4Address>& toOrigin,
                            uint8_t hopCount)
 {
@@ -1556,7 +1556,7 @@ void
 RoutingProtocol::SendReplyAck(Ipv4Address neighbor)
 {
     NS_LOG_FUNCTION(this << " to " << neighbor);
-    RrepAckHeader h;
+    RrepAckHeader<Ipv4Address> h;
     Ptr<Packet> packet = Create<Packet>();
     SocketIpTtlTag tag;
     tag.SetTtl(1);
@@ -1577,7 +1577,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p,
                            PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this << " src " << sender);
-    RrepHeader rrepHeader;
+    RrepHeader<Ipv4Address> rrepHeader;
     rrepHeader.SetTlvHeader(tlvHeader);
 
     Ipv4Address dst = rrepHeader.GetTargIp();
@@ -1719,7 +1719,7 @@ void
 RoutingProtocol::RecvError(Ptr<Packet> p, Ipv4Address src, PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this << " from " << src);
-    RerrHeader rerrHeader;
+    RerrHeader<Ipv4Address> rerrHeader;
     p->RemoveHeader(rerrHeader);
     std::map<Ipv4Address, uint32_t> dstWithNextHopSrc;
     std::map<Ipv4Address, uint32_t> unreachable;
@@ -1863,7 +1863,7 @@ void
 RoutingProtocol::SendRerrWhenBreaksLinkToNextHop(Ipv4Address nextHop)
 {
     NS_LOG_FUNCTION(this << nextHop);
-    RerrHeader rerrHeader;
+    RerrHeader<Ipv4Address> rerrHeader;
     std::vector<Ipv4Address> precursors;
     std::map<Ipv4Address, uint32_t> unreachable;
 
@@ -1926,7 +1926,7 @@ RoutingProtocol::SendRerrWhenNoRouteToForward(Ipv4Address dst,
                      << m_rerrRateLimitTimer.GetDelayLeft().As(Time::S) << "; suppressing RERR");
         return;
     }
-    RerrHeader rerrHeader;
+    RerrHeader<Ipv4Address> rerrHeader;
     rerrHeader.AddUnDestination(dst, dstSeqNo);
     RoutingTableEntry<Ipv4Address> toOrigin;
     Ptr<Packet> packet = Create<Packet>();

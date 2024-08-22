@@ -395,7 +395,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * \param toOrigin routing table entry to originator
      * \param hopCount hop count
      */
-    void SendReply(const RreqHeader& rreqHeader,
+    void SendReply(const RreqHeader<Ipv4Address>& rreqHeader,
                    const RoutingTableEntry<Ipv4Address>& toOrigin,
                    uint8_t hopCount);
     /** Send RREP by intermediate node
