@@ -65,8 +65,6 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
      * \returns a newly-created routing protocol
      *
      * This method will be called by ns3::InternetStackHelper::Install
-     *
-     * \todo support installing AODV on the subset of all available IP interfaces
      */
     Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
