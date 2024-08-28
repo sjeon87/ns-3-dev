@@ -48,8 +48,8 @@ Aodvv2Helper<T>::Create(Ptr<Node> node) const
 {
     if constexpr (std::is_same<T, Ipv4RoutingHelper>::value)
     {
-        Ptr<aodvv2::Aodvv2RoutingProtocol> agent =
-            m_agentFactory.Create<aodvv2::Aodvv2RoutingProtocol>();
+        Ptr<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>> agent =
+            m_agentFactory.Create<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>>();
         node->AggregateObject(agent);
         return agent;
     }
@@ -76,7 +76,8 @@ Aodvv2Helper<T>::AssignStreams(NodeContainer c, int64_t stream)
         NS_ASSERT_MSG(ip, "Ip not installed on node");
         Ptr<IpRoutingProtocol> proto = ip->GetRoutingProtocol();
         NS_ASSERT_MSG(proto, "Ip routing not installed on node");
-        Ptr<aodvv2::Aodvv2RoutingProtocol> aodv = DynamicCast<aodvv2::Aodvv2RoutingProtocol>(proto);
+        Ptr<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>> aodv =
+            DynamicCast<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>>(proto);
         if (aodv)
         {
             currentStream += aodv->AssignStreams(currentStream);
@@ -88,11 +89,11 @@ Aodvv2Helper<T>::AssignStreams(NodeContainer c, int64_t stream)
         {
             int16_t priority;
             Ptr<IpRoutingProtocol> listProto;
-            Ptr<aodvv2::Aodvv2RoutingProtocol> listAodv;
+            Ptr<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>> listAodv;
             for (uint32_t i = 0; i < list->GetNRoutingProtocols(); i++)
             {
                 listProto = list->GetRoutingProtocol(i, priority);
-                listAodv = DynamicCast<aodvv2::Aodvv2RoutingProtocol>(listProto);
+                listAodv = DynamicCast<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>>(listProto);
                 if (listAodv)
                 {
                     currentStream += listAodv->AssignStreams(currentStream);

@@ -134,7 +134,7 @@ bool
 Aodvv2Example::Configure(int argc, char** argv)
 {
     // Enable AODV logs by default. Comment this if too noisy
-    // LogComponentEnable("Aodvv2RoutingProtocol", LOG_LEVEL_ALL);
+    LogComponentEnable("Aodvv2RoutingProtocol", LOG_LEVEL_ALL);
 
     SeedManager::SetSeed(12345);
     CommandLine cmd(__FILE__);

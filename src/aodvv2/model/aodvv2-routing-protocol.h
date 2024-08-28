@@ -35,7 +35,12 @@
 
 #include "ns3/ipv4-interface.h"
 #include "ns3/ipv4-l3-protocol.h"
+#include "ns3/ipv4-routing-helper.h"
 #include "ns3/ipv4-routing-protocol.h"
+#include "ns3/ipv6-interface.h"
+#include "ns3/ipv6-l3-protocol.h"
+#include "ns3/ipv6-routing-helper.h"
+#include "ns3/ipv6-routing-protocol.h"
 #include "ns3/node.h"
 #include "ns3/output-stream-wrapper.h"
 #include "ns3/random-variable-stream.h"
@@ -55,8 +60,69 @@ namespace aodvv2
  *
  * \brief AODV routing protocol
  */
-class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
+template <typename T>
+class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4RoutingProtocol, T> ||
+                                                          std::is_same_v<Ipv6RoutingProtocol, T>,
+                                                      T>
 {
+    /// Alias for determining whether the parent is Ipv4RoutingProtocol or Ipv6RoutingProtocol
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4RoutingProtocol, T>;
+    /// Alias for Ipv4 and Ipv6 classes
+    using Ip = typename std::conditional_t<IsIpv4, Ipv4, Ipv6>;
+    /// Alias for Ipv4Address and Ipv6Address classes
+    using IpAddress = typename std::conditional_t<IsIpv4, Ipv4Address, Ipv6Address>;
+    /// Alias for Ipv4Route and Ipv6Route classes
+    using IpRoute = typename std::conditional_t<IsIpv4, Ipv4Route, Ipv6Route>;
+    /// Alias for Ipv4AddressHash and Ipv6AddressHash classes
+    using IpAddressHash = typename std::conditional_t<IsIpv4, Ipv4AddressHash, Ipv6AddressHash>;
+    /// Alias for Ipv4Header and Ipv6Header classes
+    using IpHeader = typename std::conditional_t<IsIpv4, Ipv4Header, Ipv6Header>;
+    /// Alias for Ipv4InterfaceAddress and Ipv6InterfaceAddress classes
+    using IpInterfaceAddress =
+        typename std::conditional_t<IsIpv4, Ipv4InterfaceAddress, Ipv6InterfaceAddress>;
+    /// Alias for Ipv4Interface and Ipv6Interface classes
+    using IpInterface = typename std::conditional_t<IsIpv4, Ipv4Interface, Ipv6Interface>;
+    /// Alias for Ipv4L3Protocol and Ipv6L3Protocol classes
+    using IpL3Protocol = typename std::conditional_t<IsIpv4, Ipv4L3Protocol, Ipv6L3Protocol>;
+    /// Alias for Ipv4RoutingProtocol and Ipv6RoutingProtocol classes
+    using IpRoutingProtocol =
+        typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
+
+    /// Callback for IPv4 unicast packets to be forwarded
+    typedef Callback<void, Ptr<IpRoute>, Ptr<const Packet>, const IpHeader&>
+        UnicastForwardCallbackv4;
+
+    /// Callback for IPv6 unicast packets to be forwarded
+    typedef Callback<void, Ptr<const NetDevice>, Ptr<IpRoute>, Ptr<const Packet>, const IpHeader&>
+        UnicastForwardCallbackv6;
+
+    /// Callback for unicast packets to be forwarded
+    typedef typename std::conditional_t<IsIpv4, UnicastForwardCallbackv4, UnicastForwardCallbackv6>
+        UnicastForwardCallback;
+
+    /// Callback for IPv4 multicast packets to be forwarded
+    typedef Callback<void, Ptr<Ipv4MulticastRoute>, Ptr<const Packet>, const IpHeader&>
+        MulticastForwardCallbackv4;
+
+    /// Callback for IPv6 multicast packets to be forwarded
+    typedef Callback<void,
+                     Ptr<const NetDevice>,
+                     Ptr<Ipv6MulticastRoute>,
+                     Ptr<const Packet>,
+                     const IpHeader&>
+        MulticastForwardCallbackv6;
+
+    /// Callback for multicast packets to be forwarded
+    typedef
+        typename std::conditional_t<IsIpv4, MulticastForwardCallbackv4, MulticastForwardCallbackv6>
+            MulticastForwardCallback;
+
+    /// Callback for packets to be locally delivered
+    typedef Callback<void, Ptr<const Packet>, const IpHeader&, uint32_t> LocalDeliverCallback;
+
+    /// Callback for routing errors (e.g., no route found)
+    typedef Callback<void, Ptr<const Packet>, const IpHeader&, Socket::SocketErrno> ErrorCallback;
+
   public:
     /**
      * \brief Get the type ID.
@@ -67,28 +133,29 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
 
     /// constructor
     Aodvv2RoutingProtocol();
-    ~Aodvv2RoutingProtocol() override;
-    void DoDispose() override;
+    ~Aodvv2RoutingProtocol();
+    void DoDispose();
 
-    // Inherited from Ipv4RoutingProtocol
-    Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p,
-                               const Ipv4Header& header,
-                               Ptr<NetDevice> oif,
-                               Socket::SocketErrno& sockerr) override;
-    bool RouteInput(Ptr<const Packet> p,
-                    const Ipv4Header& header,
-                    Ptr<const NetDevice> idev,
-                    const UnicastForwardCallback& ucb,
-                    const MulticastForwardCallback& mcb,
-                    const LocalDeliverCallback& lcb,
-                    const ErrorCallback& ecb) override;
-    void NotifyInterfaceUp(uint32_t interface) override;
-    void NotifyInterfaceDown(uint32_t interface) override;
-    void NotifyAddAddress(uint32_t interface, Ipv4InterfaceAddress address) override;
-    void NotifyRemoveAddress(uint32_t interface, Ipv4InterfaceAddress address) override;
-    void SetIpv4(Ptr<Ipv4> ipv4) override;
-    void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
-                           Time::Unit unit = Time::S) const override;
+    // Inherited from IpRoutingProtocol
+    virtual Ptr<IpRoute> RouteOutput(Ptr<Packet> p,
+                                     const IpHeader& header,
+                                     Ptr<NetDevice> oif,
+                                     Socket::SocketErrno& sockerr);
+    virtual bool RouteInput(Ptr<const Packet> p,
+                            const IpHeader& header,
+                            Ptr<const NetDevice> idev,
+                            const UnicastForwardCallback& ucb,
+                            const MulticastForwardCallback& mcb,
+                            const LocalDeliverCallback& lcb,
+                            const ErrorCallback& ecb);
+    virtual void NotifyInterfaceUp(uint32_t interface);
+    virtual void NotifyInterfaceDown(uint32_t interface);
+    virtual void NotifyAddAddress(uint32_t interface, IpInterfaceAddress address);
+    virtual void NotifyRemoveAddress(uint32_t interface, IpInterfaceAddress address);
+    virtual void SetIpv4(Ptr<Ip> ipv4);
+    virtual void SetIpv6(Ptr<Ip> ipv6);
+    virtual void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
+                                   Time::Unit unit = Time::S) const;
 
     // Handle protocol parameters
     /**
@@ -168,7 +235,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
     int64_t AssignStreams(int64_t stream);
 
   protected:
-    void DoInitialize() override;
+    void DoInitialize();
 
   private:
     /**
@@ -219,30 +286,30 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
     bool m_enableBroadcast;  ///< Indicates whether a a broadcast data packets forwarding enable
 
     /// IP protocol
-    Ptr<Ipv4> m_ipv4;
+    Ptr<Ip> m_ip;
     /// Raw unicast socket per each IP interface, map socket -> iface address (IP + mask)
-    std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketAddresses;
+    std::map<Ptr<Socket>, IpInterfaceAddress> m_socketAddresses;
     /// Raw subnet directed broadcast socket per each IP interface, map socket -> iface address (IP
     /// + mask)
-    std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketSubnetBroadcastAddresses;
+    std::map<Ptr<Socket>, IpInterfaceAddress> m_socketSubnetBroadcastAddresses;
     /// Loopback device used to defer RREQ until packet will be fully formed
     Ptr<NetDevice> m_lo;
 
     /// Routing table
-    RoutingTable<Ipv4Address> m_routingTable;
+    RoutingTable<IpAddress> m_routingTable;
     /// A "drop-front" queue used by the routing layer to buffer packets to which it does not have a
     /// route.
-    RequestQueue<Ipv4Address> m_queue;
+    RequestQueue<IpHeader> m_queue;
     /// Broadcast ID
     uint32_t m_requestId;
     /// Request sequence number
     uint32_t m_seqNo;
     /// Handle duplicated RREQ
-    IdCache<Ipv4Address> m_rreqIdCache;
+    IdCache<IpAddress> m_rreqIdCache;
     /// Handle duplicated broadcast/multicast packets
-    DuplicatePacketDetection<Ipv4Header> m_dpd;
+    DuplicatePacketDetection<IpAddress> m_dpd;
     /// Handle neighbors
-    Neighbors<Ipv4Address> m_nb;
+    Neighbors<IpAddress> m_nb;
     /// Number of RREQs used for RREQ rate control
     uint16_t m_rreqCount;
     /// Number of RERRs used for RERR rate control
@@ -260,7 +327,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \param ecb the ErrorCallback function
      */
     void DeferredRouteOutput(Ptr<const Packet> p,
-                             const Ipv4Header& header,
+                             const IpHeader& header,
                              UnicastForwardCallback ucb,
                              ErrorCallback ecb);
     /**
@@ -273,7 +340,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \returns true if forwarded
      */
     bool Forwarding(Ptr<const Packet> p,
-                    const Ipv4Header& header,
+                    const IpHeader& header,
                     UnicastForwardCallback ucb,
                     ErrorCallback ecb);
     /**
@@ -281,7 +348,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * use the expanding ring search technique.
      * \param dst the destination IP address
      */
-    void ScheduleRreqRetry(Ipv4Address dst);
+    void ScheduleRreqRetry(IpAddress dst);
     /**
      * Set lifetime field in routing table entry to the maximum of existing lifetime and lt, if the
      * entry exists
@@ -290,33 +357,33 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * address addr.
      * \return true if route to destination address addr exist
      */
-    bool UpdateRouteLifeTime(Ipv4Address addr, Time lt);
+    bool UpdateRouteLifeTime(IpAddress addr, Time lt);
     /**
      * Update neighbor record.
      * \param receiver is supposed to be my interface
      * \param sender is supposed to be IP address of my neighbor.
      */
-    void UpdateRouteToNeighbor(Ipv4Address sender, Ipv4Address receiver);
+    void UpdateRouteToNeighbor(IpAddress sender, IpAddress receiver);
     /**
      * Test whether the provided address is assigned to an interface on this node
      * \param src the source IP address
      * \returns true if the IP address is the node's IP address
      */
-    bool IsMyOwnAddress(Ipv4Address src);
+    bool IsMyOwnAddress(IpAddress src);
     /**
      * Find unicast socket with local interface address iface
      *
      * \param iface the interface
      * \returns the socket associated with the interface
      */
-    Ptr<Socket> FindSocketWithInterfaceAddress(Ipv4InterfaceAddress iface) const;
+    Ptr<Socket> FindSocketWithInterfaceAddress(IpInterfaceAddress iface) const;
     /**
      * Find subnet directed broadcast socket with local interface address iface
      *
      * \param iface the interface
      * \returns the socket associated with the interface
      */
-    Ptr<Socket> FindSubnetBroadcastSocketWithInterfaceAddress(Ipv4InterfaceAddress iface) const;
+    Ptr<Socket> FindSubnetBroadcastSocketWithInterfaceAddress(IpInterfaceAddress iface) const;
     /**
      * Create loopback route for given header
      *
@@ -324,7 +391,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \param oif the output interface net device
      * \returns the route
      */
-    Ptr<Ipv4Route> LoopbackRoute(const Ipv4Header& header, Ptr<NetDevice> oif) const;
+    Ptr<IpRoute> LoopbackRoute(const IpHeader& header, Ptr<NetDevice> oif) const;
 
     /**
      * \name Receive control packets
@@ -342,7 +409,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \param src sender address
      * \param tlvHeader TLV header
      */
-    void RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address src, PbbPacket tlvHeader);
+    void RecvRequest(Ptr<Packet> p, IpAddress receiver, IpAddress src, PbbPacket tlvHeader);
     /**
      * Receive RREP
      * \param p packet
@@ -350,13 +417,13 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \param src sender address
      * \param tlvHeader TLV header
      */
-    void RecvReply(Ptr<Packet> p, Ipv4Address my, Ipv4Address src, PbbPacket tlvHeader);
+    void RecvReply(Ptr<Packet> p, IpAddress my, IpAddress src, PbbPacket tlvHeader);
     /**
      * Receive RREP_ACK
      * \param neighbor neighbor address
      * \param tlvHeader TLV header
      */
-    void RecvReplyAck(Ipv4Address neighbor, PbbPacket tlvHeader);
+    void RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader);
     /**
      * Receive RERR
      * \param p packet
@@ -364,7 +431,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \param tlvHeader TLV header
      */
     /// Receive  from node with address src
-    void RecvError(Ptr<Packet> p, Ipv4Address src, PbbPacket tlvHeader);
+    void RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvHeader);
     /** @} */
 
     /**
@@ -375,11 +442,11 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \param dst destination address
      * \param route route to use
      */
-    void SendPacketFromQueue(Ipv4Address dst, Ptr<Ipv4Route> route);
+    void SendPacketFromQueue(IpAddress dst, Ptr<IpRoute> route);
     /** Send RREQ
      * \param dst destination address
      */
-    void SendRequest(Ipv4Address dst);
+    void SendRequest(IpAddress dst);
     /** Add TLV headers to packet
      * \param packet packet
      * \param socket socket
@@ -388,42 +455,42 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      */
     void AddTlvHeaders(Ptr<Packet> packet,
                        Ptr<Socket> socket,
-                       Ipv4Address dst,
+                       IpAddress dst,
                        uint32_t sequenceNumber);
     /** Send RREP
      * \param rreqHeader route request header
      * \param toOrigin routing table entry to originator
      * \param hopCount hop count
      */
-    void SendReply(const RreqHeader<Ipv4Address>& rreqHeader,
-                   const RoutingTableEntry<Ipv4Address>& toOrigin,
+    void SendReply(const RreqHeader<IpAddress>& rreqHeader,
+                   const RoutingTableEntry<IpAddress>& toOrigin,
                    uint8_t hopCount);
     /** Send RREP by intermediate node
      * \param toDst routing table entry to destination
      * \param toOrigin routing table entry to originator
      */
-    void SendReplyByIntermediateNode(RoutingTableEntry<Ipv4Address>& toDst,
-                                     RoutingTableEntry<Ipv4Address>& toOrigin);
+    void SendReplyByIntermediateNode(RoutingTableEntry<IpAddress>& toDst,
+                                     RoutingTableEntry<IpAddress>& toOrigin);
     /** Send RREP_ACK
      * \param neighbor neighbor address
      */
-    void SendReplyAck(Ipv4Address neighbor);
+    void SendReplyAck(IpAddress neighbor);
     /** Initiate RERR
      * \param nextHop next hop address
      */
-    void SendRerrWhenBreaksLinkToNextHop(Ipv4Address nextHop);
+    void SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop);
     /** Forward RERR
      * \param packet packet
      * \param precursors list of addresses of the visited nodes
      */
-    void SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> precursors);
+    void SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddress> precursors);
     /**
      * Send RERR message when no route to forward input packet. Unicast if there is reverse
      * route to originating node, broadcast otherwise. \param dst destination node IP address
      * \param dstSeqNo destination node sequence number
      * \param origin originating node IP address
      */
-    void SendRerrWhenNoRouteToForward(Ipv4Address dst, uint32_t dstSeqNo, Ipv4Address origin);
+    void SendRerrWhenNoRouteToForward(IpAddress dst, uint32_t dstSeqNo, IpAddress origin);
     /** @} */
 
     /**
@@ -432,7 +499,7 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
      * \param packet packet to send
      * \param destination destination node IP address
      */
-    void SendTo(Ptr<Socket> socket, Ptr<Packet> packet, Ipv4Address destination);
+    void SendTo(Ptr<Socket> socket, Ptr<Packet> packet, IpAddress destination);
 
     /// RREQ rate limit timer
     Timer m_rreqRateLimitTimer;
@@ -443,25 +510,28 @@ class Aodvv2RoutingProtocol : public Ipv4RoutingProtocol
     /// Reset RERR count and schedule RERR rate limit timer with delay 1 sec.
     void RerrRateLimitTimerExpire();
     /// Map IP address + RREQ timer.
-    std::map<Ipv4Address, Timer> m_addressReqTimer;
+    std::map<IpAddress, Timer> m_addressReqTimer;
     /**
      * Handle route discovery process
      * \param dst the destination IP address
      */
-    void RouteRequestTimerExpire(Ipv4Address dst);
+    void RouteRequestTimerExpire(IpAddress dst);
     /**
      * Mark link to neighbor node as unidirectional for blacklistTimeout
      *
      * \param neighbor the IP address of the neighbor node
      * \param blacklistTimeout the black list timeout time
      */
-    void AckTimerExpire(Ipv4Address neighbor, Time blacklistTimeout);
+    void AckTimerExpire(IpAddress neighbor, Time blacklistTimeout);
 
     /// Provides uniform random variables.
     Ptr<UniformRandomVariable> m_uniformRandomVariable;
     /// Keep track of the last bcast time
     Time m_lastBcastTime;
 };
+
+typedef Aodvv2RoutingProtocol<Ipv4RoutingProtocol> Ipv4Aodvv2RoutingProtocol;
+typedef Aodvv2RoutingProtocol<Ipv6RoutingProtocol> Ipv6Aodvv2RoutingProtocol;
 
 } // namespace aodvv2
 } // namespace ns3
