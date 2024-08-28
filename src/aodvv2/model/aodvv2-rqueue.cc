@@ -189,7 +189,7 @@ RequestQueue<T>::Drop(QueueEntry<IpHeader> en, std::string reason)
 }
 
 template class RequestQueue<Ipv4Address>;
-template class RequestQueue<Ipv4Route>;
+template class RequestQueue<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3
