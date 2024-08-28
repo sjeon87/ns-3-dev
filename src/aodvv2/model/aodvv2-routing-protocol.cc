@@ -153,9 +153,9 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rreqRateLimit(10),
       m_rerrRateLimit(10),
       m_activeRouteTimeout(Seconds(3)),
-      m_netDiameter(35),
+      m_netDiameter(AODVV2_MAX_HOP_COUNT),
       m_nodeTraversalTime(MilliSeconds(40)),
-      m_netTraversalTime(Time((2 * m_netDiameter) * m_nodeTraversalTime)),
+      m_netTraversalTime(AODVV2_RREQ_WAIT_TIME),
       m_pathDiscoveryTime(Time(2 * m_netTraversalTime)),
       m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeRouteTimeout))),
       m_deletePeriod(Time(5 * m_activeRouteTimeout)),
@@ -455,7 +455,7 @@ Aodvv2RoutingProtocol<T>::DeferredRouteOutput(Ptr<const Packet> p,
     NS_LOG_FUNCTION(this << p << header);
     NS_ASSERT(p && p != Ptr<Packet>());
 
-    QueueEntry newEntry(p, header, ucb, ecb);
+    QueueEntry<IpHeader> newEntry(p, header, ucb, ecb);
     bool result = m_queue.Enqueue(newEntry);
     if (result)
     {
@@ -1142,14 +1142,12 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
             {
                 destination = iface.GetBroadcast();
             }
-            NS_LOG_DEBUG("Send RREQ with seqNo " << rreqHeader.GetSeqNo() << " to socket");
         }
         else
         {
             // TODO
-            destination = Ipv6Address("ff02::1");
-            NS_LOG_DEBUG("Send RREQ with seqNo " << rreqHeader.GetSeqNo() << " to socket");
         }
+        NS_LOG_DEBUG("Send RREQ with seqNo " << rreqHeader.GetSeqNo() << " to socket");
         m_lastBcastTime = Simulator::Now();
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
                             &Aodvv2RoutingProtocol<T>::SendTo,
@@ -1662,7 +1660,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
         /*hops=*/hop,
         /*nextHop=*/sender,
-        /*lifetime=*/rrepHeader.GetLifeTime());
+        /*lifetime=*/m_netTraversalTime);
     RoutingTableEntry<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
     {

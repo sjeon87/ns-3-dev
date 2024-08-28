@@ -299,7 +299,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     RoutingTable<IpAddress> m_routingTable;
     /// A "drop-front" queue used by the routing layer to buffer packets to which it does not have a
     /// route.
-    RequestQueue<IpHeader> m_queue;
+    RequestQueue<IpAddress> m_queue;
     /// Broadcast ID
     uint32_t m_requestId;
     /// Request sequence number
@@ -307,7 +307,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Handle duplicated RREQ
     IdCache<IpAddress> m_rreqIdCache;
     /// Handle duplicated broadcast/multicast packets
-    DuplicatePacketDetection<IpAddress> m_dpd;
+    DuplicatePacketDetection<IpHeader> m_dpd;
     /// Handle neighbors
     Neighbors<IpAddress> m_nb;
     /// Number of RREQs used for RREQ rate control

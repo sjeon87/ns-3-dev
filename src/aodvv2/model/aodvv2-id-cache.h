@@ -45,6 +45,7 @@ namespace aodvv2
  */
 template <typename T>
 class IdCache
+    : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
   public:
     /**
