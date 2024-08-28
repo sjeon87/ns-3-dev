@@ -523,7 +523,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
         IpInterfaceAddress iface = j->second;
-        if (m_ip->GetInterfaceForAddress(iface.GetLocal()) == iif)
+        if (m_ip->GetInterfaceForAddress(iface.GetAddress()) == iif)
         {
             if (dst == iface.GetBroadcast() || dst.IsBroadcast())
             {
@@ -537,7 +537,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                 Ptr<Packet> packet = p->Copy();
                 if (!lcb.IsNull())
                 {
-                    NS_LOG_LOGIC("Broadcast local delivery to " << iface.GetLocal());
+                    NS_LOG_LOGIC("Broadcast local delivery to " << iface.GetAddress());
                     lcb(p, header, iif);
                     // Fall through to additional processing
                 }
@@ -661,8 +661,14 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
 
             m_nb.Update(route->GetGateway(), m_activeRouteTimeout);
             m_nb.Update(toOrigin.GetNextHop(), m_activeRouteTimeout);
-
-            ucb(route, p, header);
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+            {
+                ucb(route, p, header);
+            }
+            else
+            {
+                // TODO
+            }
             return true;
         }
         else
@@ -683,57 +689,63 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
 
 template <typename T>
 void
-Aodvv2RoutingProtocol<T>::SetIpv4(Ptr<Ip> ipv4)
+Aodvv2RoutingProtocol<T>::SetIpv4(Ptr<Ipv4> ipv4)
 {
-    NS_ASSERT(ipv4);
-    NS_ASSERT(!m_ip);
+    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+    {
+        NS_ASSERT(ipv4);
+        NS_ASSERT(!m_ip);
 
-    m_ip = ipv4;
+        m_ip = ipv4;
 
-    // Create lo route. It is asserted that the only one interface up for now is loopback
-    NS_ASSERT(m_ip->GetNInterfaces() == 1 &&
-              m_ip->GetAddress(0, 0).GetLocal() == IpAddress("127.0.0.1"));
-    m_lo = m_ip->GetNetDevice(0);
-    NS_ASSERT(m_lo);
-    // Remember lo route
-    RoutingTableEntry<IpAddress> rt(
-        /*dev=*/m_lo,
-        /*dst=*/IpAddress::GetLoopback(),
-        /*vSeqNo=*/true,
-        /*seqNo=*/0,
-        /*iface=*/IpInterfaceAddress(IpAddress::GetLoopback(), Ipv4Mask("255.0.0.0")),
-        /*hops=*/1,
-        /*nextHop=*/IpAddress::GetLoopback(),
-        /*lifetime=*/Simulator::GetMaximumSimulationTime());
-    m_routingTable.AddRoute(rt);
+        // Create lo route. It is asserted that the only one interface up for now is loopback
+        NS_ASSERT(m_ip->GetNInterfaces() == 1 &&
+                  m_ip->GetAddress(0, 0).GetAddress() == Ipv4Address("127.0.0.1"));
+        m_lo = m_ip->GetNetDevice(0);
+        NS_ASSERT(m_lo);
+        // Remember lo route
+        RoutingTableEntry<Ipv4Address> rt(
+            /*dev=*/m_lo,
+            /*dst=*/Ipv4Address::GetLoopback(),
+            /*vSeqNo=*/true,
+            /*seqNo=*/0,
+            /*iface=*/Ipv4InterfaceAddress(Ipv4Address::GetLoopback(), Ipv4Mask("255.0.0.0")),
+            /*hops=*/1,
+            /*nextHop=*/Ipv4Address::GetLoopback(),
+            /*lifetime=*/Simulator::GetMaximumSimulationTime());
+        m_routingTable.AddRoute(rt);
 
-    Simulator::ScheduleNow(&Aodvv2RoutingProtocol<T>::Start, this);
+        Simulator::ScheduleNow(&Aodvv2RoutingProtocol<T>::Start, this);
+    }
 }
 
 template <typename T>
 void
-Aodvv2RoutingProtocol<T>::SetIpv6(Ptr<Ip> ipv6)
+Aodvv2RoutingProtocol<T>::SetIpv6(Ptr<Ipv6> ipv6)
 {
-    NS_ASSERT(ipv6);
-    NS_ASSERT(!m_ip);
+    if constexpr (std::is_same<T, Ipv6RoutingProtocol>::value)
+    {
+        NS_ASSERT(ipv6);
+        NS_ASSERT(!m_ip);
 
-    m_ip = ipv6;
+        m_ip = ipv6;
 
-    // TODO
+        // TODO
+    }
 }
 
 template <typename T>
 void
 Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
 {
-    NS_LOG_FUNCTION(this << m_ip->GetAddress(i, 0).GetLocal());
+    NS_LOG_FUNCTION(this << m_ip->GetAddress(i, 0).GetAddress());
     Ptr<IpL3Protocol> l3 = m_ip->template GetObject<IpL3Protocol>();
     if (l3->GetNAddresses(i) > 1)
     {
         NS_LOG_WARN("AODV does not work with more then one address per each interface.");
     }
     IpInterfaceAddress iface = l3->GetAddress(i, 0);
-    if (iface.GetLocal() == IpAddress("127.0.0.1"))
+    if (iface.GetAddress() == IpAddress("127.0.0.1"))
     {
         return;
     }
@@ -744,7 +756,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     NS_ASSERT(socket);
     socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
     socket->BindToNetDevice(l3->GetNetDevice(i));
-    socket->Bind(InetSocketAddress(iface.GetLocal(), AODV_PORT));
+    socket->Bind(InetTSocketAddress(iface.GetAddress(), AODV_PORT));
     socket->SetAllowBroadcast(true);
     socket->SetIpRecvTtl(true);
     m_socketAddresses.insert(std::make_pair(socket, iface));
@@ -754,13 +766,13 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     NS_ASSERT(socket);
     socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
     socket->BindToNetDevice(l3->GetNetDevice(i));
-    socket->Bind(InetSocketAddress(iface.GetBroadcast(), AODV_PORT));
+    socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
     socket->SetAllowBroadcast(true);
     socket->SetIpRecvTtl(true);
     m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
 
     // Add local broadcast record to the routing table
-    Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetLocal()));
+    Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
     RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
                                     /*dst=*/iface.GetBroadcast(),
                                     /*vSeqNo=*/true,
@@ -803,7 +815,7 @@ template <typename T>
 void
 Aodvv2RoutingProtocol<T>::NotifyInterfaceDown(uint32_t i)
 {
-    NS_LOG_FUNCTION(this << m_ip->GetAddress(i, 0).GetLocal());
+    NS_LOG_FUNCTION(this << m_ip->GetAddress(i, 0).GetAddress());
 
     // Disable layer 2 link state monitoring (if possible)
     Ptr<IpL3Protocol> l3 = m_ip->template GetObject<IpL3Protocol>();
@@ -859,7 +871,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
         Ptr<Socket> socket = FindSocketWithInterfaceAddress(iface);
         if (!socket)
         {
-            if (iface.GetLocal() == IpAddress("127.0.0.1"))
+            if (iface.GetAddress() == IpAddress("127.0.0.1"))
             {
                 return;
             }
@@ -869,7 +881,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
             NS_ASSERT(socket);
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetSocketAddress(iface.GetLocal(), AODV_PORT));
+            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODV_PORT));
             socket->SetAllowBroadcast(true);
             m_socketAddresses.insert(std::make_pair(socket, iface));
 
@@ -878,13 +890,14 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
             NS_ASSERT(socket);
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetSocketAddress(iface.GetBroadcast(), AODV_PORT));
+            socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
             socket->SetAllowBroadcast(true);
             socket->SetIpRecvTtl(true);
             m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
 
             // Add local broadcast record to the routing table
-            Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetLocal()));
+            Ptr<NetDevice> dev =
+                m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
             RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
                                             /*dst=*/iface.GetBroadcast(),
                                             /*vSeqNo=*/true,
@@ -933,7 +946,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             // Bind to any IP address so that broadcasts can be received
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetSocketAddress(iface.GetLocal(), AODV_PORT));
+            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODV_PORT));
             socket->SetAllowBroadcast(true);
             socket->SetIpRecvTtl(true);
             m_socketAddresses.insert(std::make_pair(socket, iface));
@@ -943,13 +956,14 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
             NS_ASSERT(socket);
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetSocketAddress(iface.GetBroadcast(), AODV_PORT));
+            socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
             socket->SetAllowBroadcast(true);
             socket->SetIpRecvTtl(true);
             m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
 
             // Add local broadcast record to the routing table
-            Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetLocal()));
+            Ptr<NetDevice> dev =
+                m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
             RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
                                             /*dst=*/iface.GetBroadcast(),
                                             /*vSeqNo=*/true,
@@ -975,6 +989,28 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
 }
 
 template <typename T>
+void
+Aodvv2RoutingProtocol<T>::NotifyAddRoute(IpAddress dst,
+                                         Ipv6Prefix mask,
+                                         IpAddress nextHop,
+                                         uint32_t interface,
+                                         IpAddress prefixToUse)
+{
+    // TODO
+}
+
+template <typename T>
+void
+Aodvv2RoutingProtocol<T>::NotifyRemoveRoute(IpAddress dst,
+                                            Ipv6Prefix mask,
+                                            IpAddress nextHop,
+                                            uint32_t interface,
+                                            IpAddress prefixToUse)
+{
+    // TODO
+}
+
+template <typename T>
 bool
 Aodvv2RoutingProtocol<T>::IsMyOwnAddress(IpAddress src)
 {
@@ -982,7 +1018,7 @@ Aodvv2RoutingProtocol<T>::IsMyOwnAddress(IpAddress src)
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
         IpInterfaceAddress iface = j->second;
-        if (src == iface.GetLocal())
+        if (src == iface.GetAddress())
         {
             return true;
         }
@@ -1020,7 +1056,7 @@ Aodvv2RoutingProtocol<T>::LoopbackRoute(const IpHeader& hdr, Ptr<NetDevice> oif)
         // Iterate to find an address on the oif device
         for (j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
         {
-            IpAddress addr = j->second.GetLocal();
+            IpAddress addr = j->second.GetAddress();
             int32_t interface = m_ip->GetInterfaceForAddress(addr);
             if (oif == m_ip->GetNetDevice(static_cast<uint32_t>(interface)))
             {
@@ -1031,7 +1067,7 @@ Aodvv2RoutingProtocol<T>::LoopbackRoute(const IpHeader& hdr, Ptr<NetDevice> oif)
     }
     else
     {
-        rt->SetSource(j->second.GetLocal());
+        rt->SetSource(j->second.GetAddress());
     }
     NS_ASSERT_MSG(rt->GetSource() != IpAddress(), "Valid AODV source address not found");
     rt->SetGateway(IpAddress("127.0.0.1"));
@@ -1118,9 +1154,9 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         Ptr<Socket> socket = j->first;
         IpInterfaceAddress iface = j->second;
 
-        rreqHeader.SetOrigIp(iface.GetLocal());
+        rreqHeader.SetOrigIp(iface.GetAddress());
         rreqHeader.SetOrigMask(32);
-        m_rreqIdCache.IsDuplicate(iface.GetLocal(), m_requestId);
+        m_rreqIdCache.IsDuplicate(iface.GetAddress(), m_requestId);
 
         Ptr<Packet> packet = Create<Packet>();
         SocketIpTtlTag tag;
@@ -1132,7 +1168,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
         // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
         IpAddress destination;
-        if (IsIpv4)
+        if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
         {
             if (iface.GetMask() == Ipv4Mask::GetOnes())
             {
@@ -1163,7 +1199,7 @@ template <typename T>
 void
 Aodvv2RoutingProtocol<T>::SendTo(Ptr<Socket> socket, Ptr<Packet> packet, IpAddress destination)
 {
-    socket->SendTo(packet, 0, InetSocketAddress(destination, AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(destination, AODV_PORT));
 }
 
 template <typename T>
@@ -1204,18 +1240,26 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
     NS_LOG_FUNCTION(this << socket);
     Address sourceAddress;
     Ptr<Packet> packet = socket->RecvFrom(sourceAddress);
-    InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom(sourceAddress);
-    IpAddress sender = inetSourceAddr.GetIpv4();
+    InetTSocketAddress inetSourceAddr = InetTSocketAddress::ConvertFrom(sourceAddress);
+    IpAddress sender;
+    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+    {
+        sender = inetSourceAddr.GetIpv4();
+    }
+    else
+    {
+        sender = inetSourceAddr.GetIpv6();
+    }
     IpAddress receiver;
 
     if (m_socketAddresses.find(socket) != m_socketAddresses.end())
     {
-        receiver = m_socketAddresses[socket].GetLocal();
+        receiver = m_socketAddresses[socket].GetAddress();
     }
     else if (m_socketSubnetBroadcastAddresses.find(socket) !=
              m_socketSubnetBroadcastAddresses.end())
     {
-        receiver = m_socketSubnetBroadcastAddresses[socket].GetLocal();
+        receiver = m_socketSubnetBroadcastAddresses[socket].GetAddress();
     }
     else
     {
@@ -1513,13 +1557,19 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         packet->AddHeader(rreqHeader);
         // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
         IpAddress destination;
-        if (iface.GetMask() == Ipv4Mask::GetOnes())
+        if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
         {
-            destination = IpAddress("255.255.255.255");
+            if (iface.GetMask() == Ipv4Mask::GetOnes())
+            {
+                destination = IpAddress("255.255.255.255");
+            }
+            else
+            {
+                destination = iface.GetBroadcast();
+            }
         }
         else
-        {
-            destination = iface.GetBroadcast();
+        { // TODO
         }
         m_lastBcastTime = Simulator::Now();
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
@@ -1539,9 +1589,9 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
 {
     NS_LOG_FUNCTION(this << toOrigin.GetDestination());
     /*
-     * Destination node MUST increment its own sequence number by one if the sequence number in the
-     * RREQ packet is equal to that incremented value. Otherwise, the destination does not change
-     * its sequence number before generating the  RREP message.
+     * Destination node MUST increment its own sequence number by one if the sequence number in
+     * the RREQ packet is equal to that incremented value. Otherwise, the destination does not
+     * change its sequence number before generating the  RREP message.
      */
     if (rreqHeader.GetSeqNo() == m_seqNo + 1)
     {
@@ -1561,7 +1611,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
 }
 
 template <typename T>
@@ -1599,7 +1649,7 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(RoutingTableEntry<IpAddres
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
 }
 
 template <typename T>
@@ -1618,7 +1668,7 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     m_routingTable.LookupRoute(neighbor, toNeighbor);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toNeighbor.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetSocketAddress(neighbor, AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(neighbor, AODV_PORT));
 }
 
 template <typename T>
@@ -1639,8 +1689,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     rrepHeader.SetHopCount(hop);
 
     /*
-     * If the route table entry to the destination is created or updated, then the following actions
-     * occur:
+     * If the route table entry to the destination is created or updated, then the following
+     * actions occur:
      * -  the route is marked as active,
      * -  the destination sequence number is marked as valid,
      * -  the next hop in the route entry is assigned to be the node from which the RREP is
@@ -1670,8 +1720,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
             // entry.
             (!toDst.GetValidSeqNo()) ||
 
-            // (ii) the Destination Sequence Number in the RREP is greater than the node's copy of
-            // the destination sequence number and the known value is valid,
+            // (ii) the Destination Sequence Number in the RREP is greater than the node's copy
+            // of the destination sequence number and the known value is valid,
             ((int32_t(rrepHeader.GetDstSeqno()) - int32_t(toDst.GetSeqNo())) > 0) ||
 
             // (iii) the sequence numbers are the same, but the route is marked as inactive.
@@ -1751,7 +1801,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
 }
 
 template <typename T>
@@ -1837,9 +1887,9 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
     }
     /*
      *  If a route discovery has been attempted RreqRetries times at the maximum TTL without
-     *  receiving any RREP, all data packets destined for the corresponding destination SHOULD be
-     *  dropped from the buffer and a Destination Unreachable message SHOULD be delivered to the
-     * application.
+     *  receiving any RREP, all data packets destined for the corresponding destination SHOULD
+     * be dropped from the buffer and a Destination Unreachable message SHOULD be delivered to
+     * the application.
      */
     if (toDst.GetRreqCnt() == m_rreqRetries)
     {
@@ -1914,7 +1964,14 @@ Aodvv2RoutingProtocol<T>::SendPacketFromQueue(IpAddress dst, Ptr<IpRoute> route)
         header.SetSource(route->GetSource());
         header.SetTtl(header.GetTtl() +
                       1); // compensate extra TTL decrement by fake loopback routing
-        ucb(route, p, header);
+        if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+        {
+            ucb(route, p, header);
+        }
+        else
+        {
+            // TODO
+        }
     }
 }
 
@@ -2000,7 +2057,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
         Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
         NS_ASSERT(socket);
         NS_LOG_LOGIC("Unicast RERR to the source of the data transmission");
-        socket->SendTo(packet, 0, InetSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+        socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
     }
     else
     {
@@ -2009,18 +2066,25 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
             Ptr<Socket> socket = i->first;
             IpInterfaceAddress iface = i->second;
             NS_ASSERT(socket);
-            NS_LOG_LOGIC("Broadcast RERR message from interface " << iface.GetLocal());
+            NS_LOG_LOGIC("Broadcast RERR message from interface " << iface.GetAddress());
             // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
             IpAddress destination;
-            if (iface.GetMask() == Ipv4Mask::GetOnes())
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
-                destination = IpAddress("255.255.255.255");
+                if (iface.GetMask() == Ipv4Mask::GetOnes())
+                {
+                    destination = IpAddress("255.255.255.255");
+                }
+                else
+                {
+                    destination = iface.GetBroadcast();
+                }
             }
             else
             {
-                destination = iface.GetBroadcast();
+                // TODO
             }
-            socket->SendTo(packet->Copy(), 0, InetSocketAddress(destination, AODV_PORT));
+            socket->SendTo(packet->Copy(), 0, InetTSocketAddress(destination, AODV_PORT));
         }
     }
 }
@@ -2057,7 +2121,7 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
             NS_ASSERT(socket);
             NS_LOG_LOGIC("one precursor => unicast RERR to "
                          << toPrecursor.GetDestination() << " from "
-                         << toPrecursor.GetInterface().GetLocal());
+                         << toPrecursor.GetInterface().GetAddress());
             Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
                                 &Aodvv2RoutingProtocol<T>::SendTo,
                                 this,
@@ -2086,18 +2150,25 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
     {
         Ptr<Socket> socket = FindSocketWithInterfaceAddress(*i);
         NS_ASSERT(socket);
-        NS_LOG_LOGIC("Broadcast RERR message from interface " << i->GetLocal());
+        NS_LOG_LOGIC("Broadcast RERR message from interface " << i->GetAddress());
         // std::cout << "Broadcast RERR message from interface " << i->GetLocal () << std::endl;
         // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
         Ptr<Packet> p = packet->Copy();
         IpAddress destination;
-        if (i->GetMask() == Ipv4Mask::GetOnes())
+        if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
         {
-            destination = IpAddress("255.255.255.255");
+            if (i->GetMask() == Ipv4Mask::GetOnes())
+            {
+                destination = IpAddress("255.255.255.255");
+            }
+            else
+            {
+                destination = i->GetBroadcast();
+            }
         }
         else
         {
-            destination = i->GetBroadcast();
+            // TODO
         }
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
                             &Aodvv2RoutingProtocol<T>::SendTo,

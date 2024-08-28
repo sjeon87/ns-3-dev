@@ -87,6 +87,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Alias for Ipv4RoutingProtocol and Ipv6RoutingProtocol classes
     using IpRoutingProtocol =
         typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
+    using InetTSocketAddress =
+        typename std::conditional_t<IsIpv4, InetSocketAddress, Inet6SocketAddress>;
 
     /// Callback for IPv4 unicast packets to be forwarded
     typedef Callback<void, Ptr<IpRoute>, Ptr<const Packet>, const IpHeader&>
@@ -152,8 +154,43 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     virtual void NotifyInterfaceDown(uint32_t interface);
     virtual void NotifyAddAddress(uint32_t interface, IpInterfaceAddress address);
     virtual void NotifyRemoveAddress(uint32_t interface, IpInterfaceAddress address);
-    virtual void SetIpv4(Ptr<Ip> ipv4);
-    virtual void SetIpv6(Ptr<Ip> ipv6);
+    virtual void SetIpv4(Ptr<Ipv4> ipv4);
+    virtual void SetIpv6(Ptr<Ipv6> ipv6);
+
+    /**
+     * \brief Notify a new route.
+     *
+     * \param dst destination address
+     * \param mask destination mask
+     * \param nextHop nextHop for this destination
+     * \param interface output interface
+     * \param prefixToUse prefix to use as source with this route
+     *
+     * \sa Ipv6RoutingProtocol::NotifyAddRoute
+     */
+    virtual void NotifyAddRoute(IpAddress dst,
+                                Ipv6Prefix mask,
+                                IpAddress nextHop,
+                                uint32_t interface,
+                                IpAddress prefixToUse = IpAddress::GetZero());
+
+    /**
+     * \brief Notify route removing.
+     *
+     * \param dst destination address
+     * \param mask destination mask
+     * \param nextHop nextHop for this destination
+     * \param interface output interface
+     * \param prefixToUse prefix to use as source with this route
+     *
+     * \sa Ipv6RoutingProtocol::NotifyRemoveRoute
+     */
+    virtual void NotifyRemoveRoute(IpAddress dst,
+                                   Ipv6Prefix mask,
+                                   IpAddress nextHop,
+                                   uint32_t interface,
+                                   IpAddress prefixToUse = IpAddress::GetZero());
+
     virtual void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
                                    Time::Unit unit = Time::S) const;
 
