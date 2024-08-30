@@ -52,6 +52,9 @@ namespace aodvv2
 {
 NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingProtocol");
 
+// NS_OBJECT_TEMPLATE_CLASS_DEFINE(Aodvv2RoutingProtocol, Ipv4RoutingProtocol);
+// NS_OBJECT_TEMPLATE_CLASS_DEFINE(Aodvv2RoutingProtocol, Ipv6RoutingProtocol);
+
 /// UDP Port for AODV control traffic
 template <typename T>
 const uint32_t Aodvv2RoutingProtocol<T>::AODV_PORT = 269;

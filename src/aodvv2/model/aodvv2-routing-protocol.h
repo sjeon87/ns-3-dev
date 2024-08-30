@@ -24,8 +24,8 @@
  * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
  *          Pavel Boyko <boyko@iitp.ru>
  */
-#ifndef AODVV2ROUTINGPROTOCOL_H
-#define AODVV2ROUTINGPROTOCOL_H
+#ifndef AODVV2_ROUTING_PROTOCOL_H
+#define AODVV2_ROUTING_PROTOCOL_H
 
 #include "aodvv2-dpd.h"
 #include "aodvv2-neighbor.h"
@@ -573,4 +573,4 @@ typedef Aodvv2RoutingProtocol<Ipv6RoutingProtocol> Ipv6Aodvv2RoutingProtocol;
 } // namespace aodvv2
 } // namespace ns3
 
-#endif /* AODVV2ROUTINGPROTOCOL_H */
+#endif /* AODVV2_ROUTING_PROTOCOL_H */
