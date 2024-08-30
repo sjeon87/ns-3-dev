@@ -32,7 +32,17 @@ namespace ns3
 template <typename T>
 Aodvv2Helper<T>::Aodvv2Helper()
 {
-    m_agentFactory.SetTypeId("ns3::aodvv2::Aodvv2RoutingProtocol");
+    std::string name;
+    if constexpr (IsIpv4)
+    {
+        name = "Ipv4";
+    }
+    else
+    {
+        name = "Ipv6";
+    }
+
+    m_agentFactory.SetTypeId("ns3::aodvv2::" + name + "Aodvv2RoutingProtocol");
 }
 
 template <typename T>

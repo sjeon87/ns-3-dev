@@ -56,7 +56,7 @@ enum WifiMacDropReason : uint8_t; // opaque enum declaration
 namespace aodvv2
 {
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  *
  * \brief AODV routing protocol
  */

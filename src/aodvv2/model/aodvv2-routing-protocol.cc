@@ -24,11 +24,6 @@
  * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
  *          Pavel Boyko <boyko@iitp.ru>
  */
-/* #define NS_LOG_APPEND_CONTEXT \
-    if (m_ip)                                                                                      \
-    {                                                                                              \
-        std::clog << "[node " << m_ip->GetObject<Node>()->GetId() << "] ";                         \
-    } */
 
 #include "aodvv2-routing-protocol.h"
 
@@ -53,17 +48,16 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingProtocol");
-
 namespace aodvv2
 {
+NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingProtocol");
 
 /// UDP Port for AODV control traffic
 template <typename T>
 const uint32_t Aodvv2RoutingProtocol<T>::AODV_PORT = 269;
 
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  * \brief Tag used by AODV implementation
  */
 class DeferredRouteOutputTag : public Tag
@@ -185,8 +179,18 @@ template <typename T>
 TypeId
 Aodvv2RoutingProtocol<T>::GetTypeId()
 {
+    std::string name;
+    if constexpr (IsIpv4)
+    {
+        name = "Ipv4";
+    }
+    else
+    {
+        name = "Ipv6";
+    }
+
     static TypeId tid =
-        TypeId("ns3::aodvv2::Aodvv2RoutingProtocol")
+        TypeId("ns3::aodvv2::" + name + "Aodvv2RoutingProtocol")
             .SetParent<T>()
             .SetGroupName("Aodvv2")
             .template AddConstructor<Aodvv2RoutingProtocol<T>>()
@@ -459,8 +463,15 @@ Aodvv2RoutingProtocol<T>::DeferredRouteOutput(Ptr<const Packet> p,
     bool result = m_queue.Enqueue(newEntry);
     if (result)
     {
-        NS_LOG_LOGIC("Add packet " << p->GetUid() << " to queue. Protocol "
-                                   << (uint16_t)header.GetProtocol());
+        if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+        {
+            NS_LOG_LOGIC("Add packet " << p->GetUid() << " to queue. Protocol "
+                                       << (uint16_t)header.GetProtocol());
+        }
+        else
+        {
+            // TODO Ipv6
+        }
         RoutingTableEntry<IpAddress> rt;
         bool result = m_routingTable.LookupRoute(header.GetDestination(), rt);
         if (!result || ((rt.GetFlag() != HEARD) && result))
@@ -525,87 +536,102 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
         IpInterfaceAddress iface = j->second;
         if (m_ip->GetInterfaceForAddress(iface.GetAddress()) == iif)
         {
-            if (dst == iface.GetBroadcast() || dst.IsBroadcast())
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
-                if (m_dpd.IsDuplicate(p, header))
+                if (dst == iface.GetBroadcast() || dst.IsBroadcast())
                 {
-                    NS_LOG_DEBUG("Duplicated packet " << p->GetUid() << " from " << origin
-                                                      << ". Drop.");
-                    return true;
-                }
-                UpdateRouteLifeTime(origin, m_activeRouteTimeout);
-                Ptr<Packet> packet = p->Copy();
-                if (!lcb.IsNull())
-                {
-                    NS_LOG_LOGIC("Broadcast local delivery to " << iface.GetAddress());
-                    lcb(p, header, iif);
-                    // Fall through to additional processing
-                }
-                else
-                {
-                    NS_LOG_ERROR("Unable to deliver packet locally due to null callback "
-                                 << p->GetUid() << " from " << origin);
-                    ecb(p, header, Socket::ERROR_NOROUTETOHOST);
-                }
-                if (!m_enableBroadcast)
-                {
-                    return true;
-                }
-                if (header.GetProtocol() == UdpL4Protocol::PROT_NUMBER)
-                {
-                    UdpHeader udpHeader;
-                    p->PeekHeader(udpHeader);
-                    if (udpHeader.GetDestinationPort() == AODV_PORT)
+                    if (m_dpd.IsDuplicate(p, header))
                     {
-                        // AODV packets sent in broadcast are already managed
+                        NS_LOG_DEBUG("Duplicated packet " << p->GetUid() << " from " << origin
+                                                          << ". Drop.");
                         return true;
                     }
-                }
-                if (header.GetTtl() > 1)
-                {
-                    NS_LOG_LOGIC("Forward broadcast. TTL " << (uint16_t)header.GetTtl());
-                    RoutingTableEntry<IpAddress> toBroadcast;
-                    if (m_routingTable.LookupRoute(dst, toBroadcast))
+                    UpdateRouteLifeTime(origin, m_activeRouteTimeout);
+                    Ptr<Packet> packet = p->Copy();
+                    if (!lcb.IsNull())
                     {
-                        Ptr<IpRoute> route = toBroadcast.GetRoute();
-                        ucb(route, packet, header);
+                        NS_LOG_LOGIC("Broadcast local delivery to " << iface.GetAddress());
+                        lcb(p, header, iif);
+                        // Fall through to additional processing
                     }
                     else
                     {
-                        NS_LOG_DEBUG("No route to forward broadcast. Drop packet " << p->GetUid());
+                        NS_LOG_ERROR("Unable to deliver packet locally due to null callback "
+                                     << p->GetUid() << " from " << origin);
+                        ecb(p, header, Socket::ERROR_NOROUTETOHOST);
                     }
+                    if (!m_enableBroadcast)
+                    {
+                        return true;
+                    }
+                    if (header.GetProtocol() == UdpL4Protocol::PROT_NUMBER)
+                    {
+                        UdpHeader udpHeader;
+                        p->PeekHeader(udpHeader);
+                        if (udpHeader.GetDestinationPort() == AODV_PORT)
+                        {
+                            // AODV packets sent in broadcast are already managed
+                            return true;
+                        }
+                    }
+                    if (header.GetTtl() > 1)
+                    {
+                        NS_LOG_LOGIC("Forward broadcast. TTL " << (uint16_t)header.GetTtl());
+                        RoutingTableEntry<IpAddress> toBroadcast;
+                        if (m_routingTable.LookupRoute(dst, toBroadcast))
+                        {
+                            Ptr<IpRoute> route = toBroadcast.GetRoute();
+                            ucb(route, packet, header);
+                        }
+                        else
+                        {
+                            NS_LOG_DEBUG("No route to forward broadcast. Drop packet "
+                                         << p->GetUid());
+                        }
+                    }
+                    else
+                    {
+                        NS_LOG_DEBUG("TTL exceeded. Drop packet " << p->GetUid());
+                    }
+                    return true;
                 }
-                else
-                {
-                    NS_LOG_DEBUG("TTL exceeded. Drop packet " << p->GetUid());
-                }
-                return true;
+            }
+            else
+            {
+                // TODO Ipv6
             }
         }
     }
 
     // Unicast local delivery
-    if (m_ip->IsDestinationAddress(dst, iif))
+    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
-        UpdateRouteLifeTime(origin, m_activeRouteTimeout);
-        RoutingTableEntry<IpAddress> toOrigin;
-        if (m_routingTable.LookupValidRoute(origin, toOrigin))
+        if (m_ip->IsDestinationAddress(dst, iif))
         {
-            UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
-            m_nb.Update(toOrigin.GetNextHop(), m_activeRouteTimeout);
+            UpdateRouteLifeTime(origin, m_activeRouteTimeout);
+            RoutingTableEntry<IpAddress> toOrigin;
+            if (m_routingTable.LookupValidRoute(origin, toOrigin))
+            {
+                UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
+                m_nb.Update(toOrigin.GetNextHop(), m_activeRouteTimeout);
+            }
+            if (!lcb.IsNull())
+            {
+                NS_LOG_LOGIC("Unicast local delivery to " << dst);
+                lcb(p, header, iif);
+            }
+            else
+            {
+                NS_LOG_ERROR("Unable to deliver packet locally due to null callback "
+                             << p->GetUid() << " from " << origin);
+                ecb(p, header, Socket::ERROR_NOROUTETOHOST);
+            }
+            return true;
         }
-        if (!lcb.IsNull())
-        {
-            NS_LOG_LOGIC("Unicast local delivery to " << dst);
-            lcb(p, header, iif);
-        }
-        else
-        {
-            NS_LOG_ERROR("Unable to deliver packet locally due to null callback "
-                         << p->GetUid() << " from " << origin);
-            ecb(p, header, Socket::ERROR_NOROUTETOHOST);
-        }
-        return true;
+    }
+    else
+    {
+        // TODO Ipv6
     }
 
     // Check if input device supports IP forwarding
@@ -667,7 +693,7 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
             }
             else
             {
-                // TODO
+                // TODO Ipv6
             }
             return true;
         }
@@ -730,7 +756,7 @@ Aodvv2RoutingProtocol<T>::SetIpv6(Ptr<Ipv6> ipv6)
 
         m_ip = ipv6;
 
-        // TODO
+        // TODO Ipv6
     }
 }
 
@@ -766,26 +792,40 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     NS_ASSERT(socket);
     socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
     socket->BindToNetDevice(l3->GetNetDevice(i));
-    socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
     socket->SetAllowBroadcast(true);
     socket->SetIpRecvTtl(true);
+    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+    {
+        socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
+    }
+    else
+    {
+        // TODO Ipv6
+    }
     m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
 
     // Add local broadcast record to the routing table
     Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
-    RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
-                                    /*dst=*/iface.GetBroadcast(),
-                                    /*vSeqNo=*/true,
-                                    /*seqNo=*/0,
-                                    /*iface=*/iface,
-                                    /*hops=*/1,
-                                    /*nextHop=*/iface.GetBroadcast(),
-                                    /*lifetime=*/Simulator::GetMaximumSimulationTime());
-    m_routingTable.AddRoute(rt);
-
-    if (l3->GetInterface(i)->GetArpCache())
+    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
-        m_nb.AddArpCache(l3->GetInterface(i)->GetArpCache());
+        RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
+                                        /*dst=*/iface.GetBroadcast(),
+                                        /*vSeqNo=*/true,
+                                        /*seqNo=*/0,
+                                        /*iface=*/iface,
+                                        /*hops=*/1,
+                                        /*nextHop=*/iface.GetBroadcast(),
+                                        /*lifetime=*/Simulator::GetMaximumSimulationTime());
+        m_routingTable.AddRoute(rt);
+
+        if (l3->GetInterface(i)->GetArpCache())
+        {
+            m_nb.AddArpCache(l3->GetInterface(i)->GetArpCache());
+        }
+    }
+    else
+    {
+        // TODO Ipv6
     }
 
     // Allow neighbor manager use this interface for layer 2 feedback if possible
@@ -829,7 +869,14 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceDown(uint32_t i)
             mac->TraceDisconnectWithoutContext(
                 "DroppedMpdu",
                 MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError, this));
-            m_nb.DelArpCache(l3->GetInterface(i)->GetArpCache());
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+            {
+                m_nb.DelArpCache(l3->GetInterface(i)->GetArpCache());
+            }
+            else
+            {
+                // TODO Ipv6
+            }
         }
     }
 
@@ -890,23 +937,37 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
             NS_ASSERT(socket);
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
             socket->SetAllowBroadcast(true);
             socket->SetIpRecvTtl(true);
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+            {
+                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
+            }
+            else
+            {
+                // TODO Ipv6
+            }
             m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
 
-            // Add local broadcast record to the routing table
-            Ptr<NetDevice> dev =
-                m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
-            RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
-                                            /*dst=*/iface.GetBroadcast(),
-                                            /*vSeqNo=*/true,
-                                            /*seqNo=*/0,
-                                            /*iface=*/iface,
-                                            /*hops=*/1,
-                                            /*nextHop=*/iface.GetBroadcast(),
-                                            /*lifetime=*/Simulator::GetMaximumSimulationTime());
-            m_routingTable.AddRoute(rt);
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+            {
+                // Add local broadcast record to the routing table
+                Ptr<NetDevice> dev =
+                    m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
+                RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
+                                                /*dst=*/iface.GetBroadcast(),
+                                                /*vSeqNo=*/true,
+                                                /*seqNo=*/0,
+                                                /*iface=*/iface,
+                                                /*hops=*/1,
+                                                /*nextHop=*/iface.GetBroadcast(),
+                                                /*lifetime=*/Simulator::GetMaximumSimulationTime());
+                m_routingTable.AddRoute(rt);
+            }
+            else
+            {
+                // TODO Ipv6
+            }
         }
     }
     else
@@ -956,23 +1017,37 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
             NS_ASSERT(socket);
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
             socket->SetAllowBroadcast(true);
             socket->SetIpRecvTtl(true);
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+            {
+                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
+            }
+            else
+            {
+                // TODO Ipv6
+            }
             m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
 
             // Add local broadcast record to the routing table
             Ptr<NetDevice> dev =
                 m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
-            RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
-                                            /*dst=*/iface.GetBroadcast(),
-                                            /*vSeqNo=*/true,
-                                            /*seqNo=*/0,
-                                            /*iface=*/iface,
-                                            /*hops=*/1,
-                                            /*nextHop=*/iface.GetBroadcast(),
-                                            /*lifetime=*/Simulator::GetMaximumSimulationTime());
-            m_routingTable.AddRoute(rt);
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+            {
+                RoutingTableEntry<IpAddress> rt(/*dev=*/dev,
+                                                /*dst=*/iface.GetBroadcast(),
+                                                /*vSeqNo=*/true,
+                                                /*seqNo=*/0,
+                                                /*iface=*/iface,
+                                                /*hops=*/1,
+                                                /*nextHop=*/iface.GetBroadcast(),
+                                                /*lifetime=*/Simulator::GetMaximumSimulationTime());
+                m_routingTable.AddRoute(rt);
+            }
+            else
+            {
+                // TODO Ipv6
+            }
         }
         if (m_socketAddresses.empty())
         {
@@ -996,7 +1071,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddRoute(IpAddress dst,
                                          uint32_t interface,
                                          IpAddress prefixToUse)
 {
-    // TODO
+    // TODO implement
 }
 
 template <typename T>
@@ -1007,7 +1082,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveRoute(IpAddress dst,
                                             uint32_t interface,
                                             IpAddress prefixToUse)
 {
-    // TODO
+    // TODO implement
 }
 
 template <typename T>
@@ -1181,7 +1256,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         }
         else
         {
-            // TODO
+            // TODO Ipv6
         }
         NS_LOG_DEBUG("Send RREQ with seqNo " << rreqHeader.GetSeqNo() << " to socket");
         m_lastBcastTime = Simulator::Now();
@@ -1569,7 +1644,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             }
         }
         else
-        { // TODO
+        { // TODO Ipv6
         }
         m_lastBcastTime = Simulator::Now();
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
@@ -1962,15 +2037,15 @@ Aodvv2RoutingProtocol<T>::SendPacketFromQueue(IpAddress dst, Ptr<IpRoute> route)
         UnicastForwardCallback ucb = queueEntry.GetUnicastForwardCallback();
         IpHeader header = queueEntry.GetIpHeader();
         header.SetSource(route->GetSource());
-        header.SetTtl(header.GetTtl() +
-                      1); // compensate extra TTL decrement by fake loopback routing
         if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
         {
+            header.SetTtl(header.GetTtl() +
+                          1); // compensate extra TTL decrement by fake loopback routing
             ucb(route, p, header);
         }
         else
         {
-            // TODO
+            // TODO Ipv6
         }
     }
 }
@@ -2082,7 +2157,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
             }
             else
             {
-                // TODO
+                // TODO Ipv6
             }
             socket->SendTo(packet->Copy(), 0, InetTSocketAddress(destination, AODV_PORT));
         }
@@ -2168,7 +2243,7 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
         }
         else
         {
-            // TODO
+            // TODO Ipv6
         }
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
                             &Aodvv2RoutingProtocol<T>::SendTo,
