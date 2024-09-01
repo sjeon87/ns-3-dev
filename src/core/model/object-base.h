@@ -93,6 +93,19 @@
         }                                                                                          \
     } Object##type##param##RegistrationVariable
 
+#define NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(namespace, type, param)                          \
+    template class type<param>;                                                                    \
+    static struct Object##namespace##type##param##RegistrationClass                                \
+    {                                                                                              \
+        Object##namespace##type##param##RegistrationClass()                                        \
+        {                                                                                          \
+            ns3::TypeId tid = type<param>::GetTypeId();                                            \
+            tid.SetSize(sizeof(type<param>));                                                      \
+            tid.GetParent();                                                                       \
+        }                                                                                          \
+    }                                                                                              \
+    Object##namepsace##type##param##RegistrationVariable
+
 /**
  * \ingroup object
  * \brief Explicitly instantiate a template class with two template parameters

@@ -52,8 +52,8 @@ namespace aodvv2
 {
 NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingProtocol");
 
-// NS_OBJECT_TEMPLATE_CLASS_DEFINE(Aodvv2RoutingProtocol, Ipv4RoutingProtocol);
-// NS_OBJECT_TEMPLATE_CLASS_DEFINE(Aodvv2RoutingProtocol, Ipv6RoutingProtocol);
+NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv4RoutingProtocol);
+NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv6RoutingProtocol);
 
 /// UDP Port for AODV control traffic
 template <typename T>
@@ -2304,8 +2304,8 @@ Aodvv2RoutingProtocol<T>::DoInitialize()
     IpRoutingProtocol::DoInitialize();
 }
 
-template class Aodvv2RoutingProtocol<Ipv4RoutingProtocol>;
-template class Aodvv2RoutingProtocol<Ipv6RoutingProtocol>;
+template int64_t Aodvv2RoutingProtocol<Ipv4RoutingProtocol>::AssignStreams(int64_t stream);
+template int64_t Aodvv2RoutingProtocol<Ipv6RoutingProtocol>::AssignStreams(int64_t stream);
 
 } // namespace aodvv2
 } // namespace ns3

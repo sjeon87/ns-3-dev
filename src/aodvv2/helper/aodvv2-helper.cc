@@ -19,8 +19,7 @@
  */
 #include "aodvv2-helper.h"
 
-#include "../model/aodvv2-routing-protocol.h"
-
+#include "ns3/aodvv2-routing-protocol.h"
 #include "ns3/ipv4-list-routing.h"
 #include "ns3/names.h"
 #include "ns3/node-list.h"
