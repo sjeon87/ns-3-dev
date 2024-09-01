@@ -104,7 +104,7 @@
             tid.GetParent();                                                                       \
         }                                                                                          \
     }                                                                                              \
-    Object##namepsace##type##param##RegistrationVariable
+    Object##namespace##type##param##RegistrationVariable
 
 /**
  * \ingroup object
