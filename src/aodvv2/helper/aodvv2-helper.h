@@ -14,8 +14,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Pavel Boyko <boyko@iitp.ru>, written after OlsrHelper by Mathieu Lacage
- * <mathieu.lacage@sophia.inria.fr>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #ifndef AODVV2_HELPER_H
@@ -31,7 +31,7 @@ namespace ns3
 {
 /**
  * \ingroup aodvv2
- * \brief Helper class that adds AODV routing to nodes.
+ * \brief Helper class that adds AODVv2 routing to nodes.
  */
 template <typename T>
 class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T> ||
@@ -71,7 +71,7 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
      * \param name the name of the attribute to set
      * \param value the value of the attribute to set.
      *
-     * This method controls the attributes of ns3::aodv::RoutingProtocol
+     * This method controls the attributes of ns3::aodvv2::Aodvv2RoutingProtocol
      */
     void Set(std::string name, const AttributeValue& value);
     /**
@@ -81,14 +81,14 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
      * should have previously been called by the user.
      *
      * \param stream first stream index to use
-     * \param c NodeContainer of the set of nodes for which AODV
+     * \param c NodeContainer of the set of nodes for which AODVv2
      *          should be modified to use a fixed stream
      * \return the number of stream indices assigned by this helper
      */
     int64_t AssignStreams(NodeContainer c, int64_t stream);
 
   private:
-    /** the factory to create AODV routing object */
+    /** the factory to create AODVv2 routing object */
     ObjectFactory m_agentFactory;
 };
 

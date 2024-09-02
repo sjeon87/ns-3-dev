@@ -15,14 +15,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #ifndef AODVV2_ID_CACHE_H
@@ -39,7 +35,7 @@ namespace ns3
 namespace aodvv2
 {
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  *
  * \brief Unique packets identification cache used for simple duplicate detection.
  */

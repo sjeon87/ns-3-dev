@@ -15,8 +15,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #ifndef AODVV2_DPD_H
@@ -36,7 +36,7 @@ namespace ns3
 namespace aodvv2
 {
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  *
  * \brief Helper class used to remember already seen packets and detect duplicates.
  *

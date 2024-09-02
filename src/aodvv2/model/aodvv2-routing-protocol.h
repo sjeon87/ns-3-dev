@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 Università degli Studi di Firenze
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,14 +15,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 #ifndef AODVV2_ROUTING_PROTOCOL_H
 #define AODVV2_ROUTING_PROTOCOL_H
@@ -58,7 +54,7 @@ namespace aodvv2
 /**
  * \ingroup aodvv2
  *
- * \brief AODV routing protocol
+ * \brief AODVv2 routing protocol
  */
 template <typename T>
 class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4RoutingProtocol, T> ||
@@ -132,7 +128,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * \return the object TypeId
      */
     static TypeId GetTypeId();
-    static const uint32_t AODV_PORT;
+    static const uint32_t AODVV2_PORT;
 
     /// constructor
     Aodvv2RoutingProtocol();

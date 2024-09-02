@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 Università degli Studi di Firenze
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,14 +15,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #include "aodvv2-routing-protocol.h"
@@ -55,13 +51,13 @@ NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingProtocol");
 NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv4RoutingProtocol);
 NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv6RoutingProtocol);
 
-/// UDP Port for AODV control traffic
+/// UDP Port for AODVv2 control traffic
 template <typename T>
-const uint32_t Aodvv2RoutingProtocol<T>::AODV_PORT = 269;
+const uint32_t Aodvv2RoutingProtocol<T>::AODVV2_PORT = 269;
 
 /**
  * \ingroup aodvv2
- * \brief Tag used by AODV implementation
+ * \brief Tag used by AODVv2 implementation
  */
 class DeferredRouteOutputTag : public Tag
 {
@@ -371,7 +367,7 @@ Aodvv2RoutingProtocol<T>::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Tim
     *stream->GetStream() << "Node: " << m_ip->template GetObject<Node>()->GetId()
                          << "; Time: " << Now().As(unit) << ", Local time: "
                          << m_ip->template GetObject<Node>()->GetLocalTime().As(unit)
-                         << ", AODV Routing table" << std::endl;
+                         << ", AODVv2 Routing table" << std::endl;
 
     m_routingTable.Print(stream, unit);
     *stream->GetStream() << std::endl;
@@ -414,7 +410,7 @@ Aodvv2RoutingProtocol<T>::RouteOutput(Ptr<Packet> p,
     if (m_socketAddresses.empty())
     {
         sockerr = Socket::ERROR_NOROUTETOHOST;
-        NS_LOG_LOGIC("No aodv interfaces");
+        NS_LOG_LOGIC("No aodvv2 interfaces");
         Ptr<IpRoute> route;
         return route;
     }
@@ -498,7 +494,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
     NS_LOG_FUNCTION(this << p->GetUid() << header.GetDestination() << idev->GetAddress());
     if (m_socketAddresses.empty())
     {
-        NS_LOG_LOGIC("No aodv interfaces");
+        NS_LOG_LOGIC("No aodvv2 interfaces");
         return false;
     }
     NS_ASSERT(m_ip);
@@ -527,7 +523,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
         return true;
     }
 
-    // AODV is not a multicast routing protocol
+    // AODVv2 is not a multicast routing protocol
     if (dst.IsMulticast())
     {
         return false;
@@ -571,9 +567,9 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                     {
                         UdpHeader udpHeader;
                         p->PeekHeader(udpHeader);
-                        if (udpHeader.GetDestinationPort() == AODV_PORT)
+                        if (udpHeader.GetDestinationPort() == AODVV2_PORT)
                         {
-                            // AODV packets sent in broadcast are already managed
+                            // AODVv2 packets sent in broadcast are already managed
                             return true;
                         }
                     }
@@ -771,7 +767,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     Ptr<IpL3Protocol> l3 = m_ip->template GetObject<IpL3Protocol>();
     if (l3->GetNAddresses(i) > 1)
     {
-        NS_LOG_WARN("AODV does not work with more then one address per each interface.");
+        NS_LOG_WARN("AODVv2 does not work with more then one address per each interface.");
     }
     IpInterfaceAddress iface = l3->GetAddress(i, 0);
     if (iface.GetAddress() == IpAddress("127.0.0.1"))
@@ -785,7 +781,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     NS_ASSERT(socket);
     socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
     socket->BindToNetDevice(l3->GetNetDevice(i));
-    socket->Bind(InetTSocketAddress(iface.GetAddress(), AODV_PORT));
+    socket->Bind(InetTSocketAddress(iface.GetAddress(), AODVV2_PORT));
     socket->SetAllowBroadcast(true);
     socket->SetIpRecvTtl(true);
     m_socketAddresses.insert(std::make_pair(socket, iface));
@@ -799,7 +795,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     socket->SetIpRecvTtl(true);
     if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
-        socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
+        socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
     }
     else
     {
@@ -897,7 +893,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceDown(uint32_t i)
 
     if (m_socketAddresses.empty())
     {
-        NS_LOG_LOGIC("No aodv interfaces");
+        NS_LOG_LOGIC("No aodvv2 interfaces");
         m_nb.Clear();
         m_routingTable.Clear();
         return;
@@ -931,7 +927,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
             NS_ASSERT(socket);
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODV_PORT));
+            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODVV2_PORT));
             socket->SetAllowBroadcast(true);
             m_socketAddresses.insert(std::make_pair(socket, iface));
 
@@ -944,7 +940,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
             socket->SetIpRecvTtl(true);
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
-                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
+                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
             }
             else
             {
@@ -975,7 +971,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
     }
     else
     {
-        NS_LOG_LOGIC("AODV does not work with more then one address per each interface. Ignore "
+        NS_LOG_LOGIC("AODVv2 does not work with more then one address per each interface. Ignore "
                      "added address");
     }
 }
@@ -1010,7 +1006,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             // Bind to any IP address so that broadcasts can be received
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODV_PORT));
+            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODVV2_PORT));
             socket->SetAllowBroadcast(true);
             socket->SetIpRecvTtl(true);
             m_socketAddresses.insert(std::make_pair(socket, iface));
@@ -1024,7 +1020,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
             socket->SetIpRecvTtl(true);
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
-                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODV_PORT));
+                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
             }
             else
             {
@@ -1054,7 +1050,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
         }
         if (m_socketAddresses.empty())
         {
-            NS_LOG_LOGIC("No aodv interfaces");
+            NS_LOG_LOGIC("No aodvv2 interfaces");
             m_nb.Clear();
             m_routingTable.Clear();
             return;
@@ -1062,7 +1058,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
     }
     else
     {
-        NS_LOG_LOGIC("Remove address not participating in AODV operation");
+        NS_LOG_LOGIC("Remove address not participating in AODVv2 operation");
     }
 }
 
@@ -1114,17 +1110,17 @@ Aodvv2RoutingProtocol<T>::LoopbackRoute(const IpHeader& hdr, Ptr<NetDevice> oif)
     rt->SetDestination(hdr.GetDestination());
     //
     // Source address selection here is tricky.  The loopback route is
-    // returned when AODV does not have a route; this causes the packet
+    // returned when AODVv2 does not have a route; this causes the packet
     // to be looped back and handled (cached) in RouteInput() method
     // while a route is found. However, connection-oriented protocols
     // like TCP need to create an endpoint four-tuple (src, src port,
     // dst, dst port) and create a pseudo-header for checksumming.  So,
-    // AODV needs to guess correctly what the eventual source address
+    // AODVv2 needs to guess correctly what the eventual source address
     // will be.
     //
     // For single interface, single address nodes, this is not a problem.
     // When there are possibly multiple outgoing interfaces, the policy
-    // implemented here is to pick the first available AODV interface.
+    // implemented here is to pick the first available AODVv2 interface.
     // If RouteOutput() caller specified an outgoing interface, that
     // further constrains the selection of source address
     //
@@ -1147,7 +1143,7 @@ Aodvv2RoutingProtocol<T>::LoopbackRoute(const IpHeader& hdr, Ptr<NetDevice> oif)
     {
         rt->SetSource(j->second.GetAddress());
     }
-    NS_ASSERT_MSG(rt->GetSource() != IpAddress(), "Valid AODV source address not found");
+    NS_ASSERT_MSG(rt->GetSource() != IpAddress(), "Valid AODVv2 source address not found");
     rt->SetGateway(IpAddress("127.0.0.1"));
     rt->SetOutputDevice(m_lo);
     return rt;
@@ -1226,7 +1222,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     rreqHeader.SetSeqNo(m_seqNo);
     m_requestId++;
 
-    // Send RREQ as subnet directed broadcast from each interface used by aodv
+    // Send RREQ as subnet directed broadcast from each interface used by aodvv2
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
         Ptr<Socket> socket = j->first;
@@ -1277,7 +1273,7 @@ template <typename T>
 void
 Aodvv2RoutingProtocol<T>::SendTo(Ptr<Socket> socket, Ptr<Packet> packet, IpAddress destination)
 {
-    socket->SendTo(packet, 0, InetTSocketAddress(destination, AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(destination, AODVV2_PORT));
 }
 
 template <typename T>
@@ -1343,8 +1339,8 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
     {
         NS_ASSERT_MSG(false, "Received a packet from an unknown socket");
     }
-    NS_LOG_DEBUG("AODV node " << this << " received a AODV packet from " << sender << " to "
-                              << receiver);
+    NS_LOG_DEBUG("AODVv2 node " << this << " received a AODVv2 packet from " << sender << " to "
+                                << receiver);
 
     UpdateRouteToNeighbor(sender, receiver);
 
@@ -1353,7 +1349,8 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
 
     if (tlvHeader.MessageSize() == 0)
     {
-        NS_LOG_DEBUG("AODV message " << packet->GetUid() << " with no tlv message received. Drop");
+        NS_LOG_DEBUG("AODVv2 message " << packet->GetUid()
+                                       << " with no tlv message received. Drop");
         return; // drop
     }
     u_int8_t tlvType = tlvHeader.MessageFront()->GetType();
@@ -1689,7 +1686,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
 }
 
 template <typename T>
@@ -1727,7 +1724,7 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(RoutingTableEntry<IpAddres
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
 }
 
 template <typename T>
@@ -1746,7 +1743,7 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     m_routingTable.LookupRoute(neighbor, toNeighbor);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toNeighbor.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(neighbor, AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(neighbor, AODVV2_PORT));
 }
 
 template <typename T>
@@ -1879,7 +1876,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
 }
 
 template <typename T>
@@ -2135,7 +2132,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
         Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
         NS_ASSERT(socket);
         NS_LOG_LOGIC("Unicast RERR to the source of the data transmission");
-        socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
+        socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
     }
     else
     {
@@ -2162,7 +2159,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
             {
                 // TODO Ipv6
             }
-            socket->SendTo(packet->Copy(), 0, InetTSocketAddress(destination, AODV_PORT));
+            socket->SendTo(packet->Copy(), 0, InetTSocketAddress(destination, AODVV2_PORT));
         }
     }
 }
