@@ -1074,7 +1074,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddRoute(IpAddress dst,
                                          uint32_t interface,
                                          IpAddress prefixToUse)
 {
-    // TODO implement
+    // TODO Ipv6
 }
 
 template <typename T>
@@ -1085,7 +1085,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveRoute(IpAddress dst,
                                             uint32_t interface,
                                             IpAddress prefixToUse)
 {
-    // TODO implement
+    // TODO Ipv6
 }
 
 template <typename T>

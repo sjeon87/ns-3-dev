@@ -79,22 +79,14 @@ RequestQueue<T>::DropPacketWithDst(T dst)
     Purge();
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
     {
-        if constexpr (std::is_same<T, Ipv4Address>::value || std::is_same<T, Ipv6Address>::value)
+        if (i->GetIpHeader().GetDestination() == dst)
         {
-            if (i->GetIpHeader().GetDestination() == dst)
-            {
-                Drop(*i, "DropPacketWithDst ");
-            }
+            Drop(*i, "DropPacketWithDst ");
         }
     }
     auto new_end =
         std::remove_if(m_queue.begin(), m_queue.end(), [&](const QueueEntry<IpHeader>& en) {
-            if constexpr (std::is_same<T, Ipv4Address>::value ||
-                          std::is_same<T, Ipv6Address>::value)
-            {
-                return en.GetIpHeader().GetDestination() == dst;
-            }
-            return false;
+            return en.GetIpHeader().GetDestination() == dst;
         });
     m_queue.erase(new_end, m_queue.end());
 }
@@ -106,14 +98,11 @@ RequestQueue<T>::Dequeue(T dst, QueueEntry<IpHeader>& entry)
     Purge();
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
     {
-        if constexpr (std::is_same<T, Ipv4Address>::value || std::is_same<T, Ipv6Address>::value)
+        if (i->GetIpHeader().GetDestination() == dst)
         {
-            if (i->GetIpHeader().GetDestination() == dst)
-            {
-                entry = *i;
-                m_queue.erase(i);
-                return true;
-            }
+            entry = *i;
+            m_queue.erase(i);
+            return true;
         }
     }
     return false;
@@ -125,9 +114,9 @@ RequestQueue<T>::Find(T dst)
 {
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
     {
-        if constexpr (std::is_same<T, Ipv4Address>::value || std::is_same<T, Ipv6Address>::value)
+        if (i->GetIpHeader().GetDestination() == dst)
         {
-            return i->GetIpHeader().GetDestination() == dst;
+            return true;
         }
     }
     return false;
@@ -180,12 +169,8 @@ template <typename T>
 void
 RequestQueue<T>::Drop(QueueEntry<IpHeader> en, std::string reason)
 {
-    if constexpr (std::is_same<T, Ipv4Address>::value || std::is_same<T, Ipv6Address>::value)
-    {
-        NS_LOG_LOGIC(reason << en.GetPacket()->GetUid() << " "
-                            << en.GetIpHeader().GetDestination());
-        en.GetErrorCallback()(en.GetPacket(), en.GetIpHeader(), Socket::ERROR_NOROUTETOHOST);
-    }
+    NS_LOG_LOGIC(reason << en.GetPacket()->GetUid() << " " << en.GetIpHeader().GetDestination());
+    en.GetErrorCallback()(en.GetPacket(), en.GetIpHeader(), Socket::ERROR_NOROUTETOHOST);
 }
 
 template class RequestQueue<Ipv4Address>;

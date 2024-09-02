@@ -67,14 +67,7 @@ RoutingTableEntry<T>::RoutingTableEntry(Ptr<NetDevice> dev,
     m_ipRoute = Create<IpRoute>();
     m_ipRoute->SetDestination(dst);
     m_ipRoute->SetGateway(nextHop);
-    if constexpr (std::is_same_v<T, Ipv4Address>)
-    {
-        m_ipRoute->SetSource(m_iface.GetLocal());
-    }
-    else if constexpr (std::is_same_v<T, Ipv6Address>)
-    {
-        m_ipRoute->SetSource(m_iface.GetAddress());
-    }
+    m_ipRoute->SetSource(m_iface.GetAddress());
     m_ipRoute->SetOutputDevice(dev);
 }
 
@@ -208,14 +201,7 @@ RoutingTableEntry<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* 
     std::ostringstream expire;
     dest << m_ipRoute->GetDestination();
     gw << m_ipRoute->GetGateway();
-    if constexpr (std::is_same_v<T, Ipv4Address>)
-    {
-        iface << m_iface.GetLocal();
-    }
-    else if constexpr (std::is_same_v<T, Ipv6Address>)
-    {
-        iface << m_iface.GetAddress();
-    }
+    iface << m_iface.GetAddress();
     expire << std::setprecision(2) << (m_lifeTime - Simulator::Now()).As(unit);
     *os << std::setw(16) << dest.str();
     *os << std::setw(16) << gw.str();
