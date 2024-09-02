@@ -46,6 +46,7 @@ namespace aodvv2
  */
 template <typename T>
 class DuplicatePacketDetection
+    : public std::enable_if_t<std::is_same_v<Ipv4Header, T> || std::is_same_v<Ipv6Header, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4RoutingProtocol or Ipv6RoutingProtocol
     static constexpr bool IsIpv4 = std::is_same_v<Ipv4Header, T>;

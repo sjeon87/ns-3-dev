@@ -507,16 +507,6 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the lifetime
-     * \return the lifetime
-     */
-    Time GetLifeTime() const
-    {
-        Time t(MilliSeconds(0)); // TODO
-        return t;
-    }
-
-    /**
      * \brief Comparison operator
      * \param o RREP header to compare
      * \return true if the RREP headers are equal

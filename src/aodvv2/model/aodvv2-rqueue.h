@@ -44,6 +44,7 @@ namespace aodvv2
  */
 template <typename T>
 class QueueEntry
+    : public std::enable_if_t<std::is_same_v<Ipv4Header, T> || std::is_same_v<Ipv6Header, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Header or Ipv6Header
     static constexpr bool IsIpv4 = std::is_same_v<Ipv4Header, T>;
@@ -204,6 +205,7 @@ class QueueEntry
  */
 template <typename T>
 class RequestQueue
+    : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
     static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
