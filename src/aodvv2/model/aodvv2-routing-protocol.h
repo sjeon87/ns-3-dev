@@ -87,6 +87,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Alias for Ipv4RoutingProtocol and Ipv6RoutingProtocol classes
     using IpRoutingProtocol =
         typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
+    /// Alias for InetSocketAddress and Inet6SocketAddress classes
     using InetTSocketAddress =
         typename std::conditional_t<IsIpv4, InetSocketAddress, Inet6SocketAddress>;
 
@@ -136,13 +137,51 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// constructor
     Aodvv2RoutingProtocol();
     ~Aodvv2RoutingProtocol();
+
+    /**
+     * \sa Ipv4RoutingProtocol::DoDispose
+     * \sa Ipv6RoutingProtocol::DoDispose
+     */
     void DoDispose();
 
-    // Inherited from IpRoutingProtocol
+    /* From Ipv4RoutingProtocol and Ipv6RoutingProtocol */
+    /**
+     * \brief Query routing cache for an existing route, for an outbound packet
+     * \param p packet to be routed.  Note that this method may modify the packet.
+     *          Callers may also pass in a null pointer.
+     * \param header input parameter (used to form key to search for the route)
+     * \param oif Output interface Netdevice.  May be zero, or may be bound via
+     *            socket options to a particular output interface.
+     * \param sockerr Output parameter; socket errno
+     *
+     * \returns a code that indicates what happened in the lookup
+     *
+     * \sa Ipv4RoutingProtocol::RouteOutput
+     * \sa Ipv6RoutingProtocol::RouteOutput
+     */
     virtual Ptr<IpRoute> RouteOutput(Ptr<Packet> p,
                                      const IpHeader& header,
                                      Ptr<NetDevice> oif,
                                      Socket::SocketErrno& sockerr);
+    /**
+     * \brief Route an input packet (to be forwarded or locally delivered)
+     * \param p received packet
+     * \param header input parameter used to form a search key for a route
+     * \param idev Pointer to ingress network device
+     * \param ucb Callback for the case in which the packet is to be forwarded
+     *            as unicast
+     * \param mcb Callback for the case in which the packet is to be forwarded
+     *            as multicast
+     * \param lcb Callback for the case in which the packet is to be locally
+     *            delivered
+     * \param ecb Callback to call if there is an error in forwarding
+     *
+     * \returns true if Aodvv2RoutingProtocol class takes responsibility for
+     *          forwarding or delivering the packet, false otherwise
+     *
+     * \sa Ipv4RoutingProtocol::RouteInput
+     * \sa Ipv6RoutingProtocol::RouteInput
+     */
     virtual bool RouteInput(Ptr<const Packet> p,
                             const IpHeader& header,
                             Ptr<const NetDevice> idev,
@@ -150,11 +189,53 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                             const MulticastForwardCallback& mcb,
                             const LocalDeliverCallback& lcb,
                             const ErrorCallback& ecb);
+    /**
+     * \param interface the index of the interface we are being notified about
+     *
+     * \sa Ipv4RoutingProtocol::NotifyInterfaceUp
+     * \sa Ipv6RoutingProtocol::NotifyInterfaceUp
+     */
     virtual void NotifyInterfaceUp(uint32_t interface);
+    /**
+     * \param interface the index of the interface we are being notified about
+     *
+     * \sa Ipv4RoutingProtocol::NotifyInterfaceDown
+     * \sa Ipv6RoutingProtocol::NotifyInterfaceDown
+     */
     virtual void NotifyInterfaceDown(uint32_t interface);
+    /**
+     * \param interface the index of the interface we are being notified about
+     * \param address a new address being added to an interface
+     *
+     * \sa Ipv4RoutingProtocol::NotifyAddAddress
+     * \sa Ipv6RoutingProtocol::NotifyAddAddress
+     */
     virtual void NotifyAddAddress(uint32_t interface, IpInterfaceAddress address);
+    /**
+     * \param interface the index of the interface we are being notified about
+     * \param address a new address being added to an interface
+     *
+     * \sa Ipv4RoutingProtocol::NotifyRemoveAddress
+     * \sa Ipv6RoutingProtocol::NotifyRemoveAddress
+     */
     virtual void NotifyRemoveAddress(uint32_t interface, IpInterfaceAddress address);
+    /* From IPv4RoutingProtocol */
+    /**
+     * \brief Typically, invoked directly or indirectly from ns3::Ipv4::SetRoutingProtocol
+     *
+     * \param ipv4 the ipv4 object this routing protocol is being associated with
+     *
+     * \sa Ipv4RoutingProtocol::SetIpv4
+     */
     virtual void SetIpv4(Ptr<Ipv4> ipv4);
+    /* From IPv6RoutingProtocol */
+    /**
+     * \brief Typically, invoked directly or indirectly from ns3::Ipv6::SetRoutingProtocol
+     *
+     * \param ipv6 the ipv6 object this routing protocol is being associated with
+     *
+     * \sa Ipv6RoutingProtocol::SetIpv6
+     */
     virtual void SetIpv6(Ptr<Ipv6> ipv6);
 
     /**
@@ -190,7 +271,15 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                                    IpAddress nextHop,
                                    uint32_t interface,
                                    IpAddress prefixToUse = IpAddress::GetZero());
-
+    /**
+     * \brief Print the Routing Table entries
+     *
+     * \param stream The ostream the Routing table is printed to
+     * \param unit The time unit to be used in the report
+     *
+     * \sa Ipv4RoutingProtocol::PrintRoutingTable
+     * \sa Ipv6RoutingProtocol::PrintRoutingTable
+     */
     virtual void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
                                    Time::Unit unit = Time::S) const;
 
@@ -272,6 +361,10 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     int64_t AssignStreams(int64_t stream);
 
   protected:
+    /**
+     * \sa Ipv4RoutingProtocol::DoInitialize
+     * \sa Ipv6RoutingProtocol::DoInitialize
+     */
     void DoInitialize();
 
   private:

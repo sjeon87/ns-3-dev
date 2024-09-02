@@ -93,6 +93,16 @@
         }                                                                                          \
     } Object##type##param##RegistrationVariable
 
+/**
+ * \ingroup object
+ * \brief Explicitly instantiate a template class with one template parameter
+ *       and register the resulting instance with the TypeId system.
+ *      This version of the macro allows the user to specify a namespace
+ *     for the template class.
+ * \param namespace the namespace of the template class
+ * \param type the template class
+ * \param param the first template parameter
+ */
 #define NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(namespace, type, param)                          \
     template class type<param>;                                                                    \
     static struct Object##namespace##type##param##RegistrationClass                                \
