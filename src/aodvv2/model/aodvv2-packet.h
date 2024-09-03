@@ -646,6 +646,14 @@ std::ostream& operator<<(std::ostream& os, const RrepAckHeader<T>&);
 template <typename T>
 class RerrHeader : public Header
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+    /// Alias for PbbAddressBlockIpv4 and PbbAddressBlockIpv6 classes
+    using PbbAddressBlockIp =
+        typename std::conditional_t<IsIpv4, PbbAddressBlockIpv4, PbbAddressBlockIpv6>;
+
   public:
     /// constructor
     RerrHeader();
@@ -655,6 +663,15 @@ class RerrHeader : public Header
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RRER
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RRER header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator i) const override;
@@ -672,6 +689,24 @@ class RerrHeader : public Header
      * \return the no delete flag
      */
     bool GetNoDelete() const;
+
+    /**
+     * \brief Set the sequence number
+     * \param seq the sequence number
+     */
+    void SetSeqNo(uint32_t seq)
+    {
+        m_seqNo = seq;
+    }
+
+    /**
+     * \brief Get the sequence number
+     * \return the sequence number
+     */
+    uint32_t GetSeqNo() const
+    {
+        return m_seqNo;
+    }
 
     /**
      * \brief Add unreachable node address and its sequence number in RERR header
@@ -711,6 +746,14 @@ class RerrHeader : public Header
 
     /// List of Unreachable destination: IP addresses and sequence numbers
     std::map<T, uint32_t> m_unreachableDstSeqNo;
+
+    T m_origIp;          ///< Origin IP Address
+    uint16_t m_origMask; ///< Origin Mask
+    T m_targIp;          ///< Target IP Address
+    uint16_t m_targMask; ///< Target Mask
+    uint8_t m_seqNo; ///< Sequence number
+
+    mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
 /**

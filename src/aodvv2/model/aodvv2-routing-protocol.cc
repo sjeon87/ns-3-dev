@@ -149,7 +149,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_netDiameter(AODVV2_MAX_HOP_COUNT),
       m_nodeTraversalTime(MilliSeconds(40)),
       m_netTraversalTime(AODVV2_RREQ_WAIT_TIME),
-      m_pathDiscoveryTime(Time(u_int8_t(AODVV2_DISCOVERY_ATTEMPTS_MAX) * m_netTraversalTime)),
+      m_pathDiscoveryTime(Time(uint32_t(AODVV2_DISCOVERY_ATTEMPTS_MAX) * m_netTraversalTime)),
       m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeRouteTimeout))),
       m_deletePeriod(Time(5 * m_activeRouteTimeout)),
       m_nextHopWait(m_nodeTraversalTime + MilliSeconds(10)),
@@ -1170,7 +1170,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     // Create RREQ header
     RreqHeader<IpAddress> rreqHeader;
     rreqHeader.SetTargIp(dst);
-    rreqHeader.SetTargMask(32);
+    rreqHeader.SetTargMask(32); // TODO update if needed
 
     RoutingTableEntry<IpAddress> rt;
     // Using the Hop field in Routing Table to manage the expanding ring search
@@ -1229,7 +1229,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         IpInterfaceAddress iface = j->second;
 
         rreqHeader.SetOrigIp(iface.GetAddress());
-        rreqHeader.SetOrigMask(32);
+        rreqHeader.SetOrigMask(32); // TODO update if needed
         m_rreqIdCache.IsDuplicate(iface.GetAddress(), m_requestId);
 
         Ptr<Packet> packet = Create<Packet>();
