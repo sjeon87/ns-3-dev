@@ -36,8 +36,6 @@
 namespace ns3
 {
 
-class WifiMacHeader;
-
 namespace aodvv2
 {
 
@@ -133,7 +131,7 @@ class Neighbors
      * Get callback to ProcessTxError
      * \returns the callback function
      */
-    Callback<void, const WifiMacHeader&> GetTxErrorCallback() const
+    Callback<void, const Header&> GetTxErrorCallback() const
     {
         return m_txErrorCallback;
     }
@@ -160,7 +158,7 @@ class Neighbors
     /// link failure callback
     Callback<void, T> m_handleLinkFailure;
     /// TX error callback
-    Callback<void, const WifiMacHeader&> m_txErrorCallback;
+    Callback<void, const Header&> m_txErrorCallback;
     /// Timer for neighbor's list. Schedule Purge().
     Timer m_ntimer;
     /// vector of entries
@@ -182,11 +180,6 @@ class Neighbors
      * \returns the MAC address for the IP address
      */
     Mac48Address LookupMacAddress(Ipv6Address addr);
-    /**
-     * Process layer 2 TX error notification
-     * \param hdr header of the packet
-     */
-    void ProcessTxError(const WifiMacHeader& hdr);
 };
 
 } // namespace aodvv2

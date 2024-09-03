@@ -23,7 +23,6 @@
 
 #include "aodvv2-routing-protocol.h"
 
-#include "ns3/adhoc-wifi-mac.h"
 #include "ns3/boolean.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/log.h"
@@ -35,8 +34,6 @@
 #include "ns3/udp-header.h"
 #include "ns3/udp-l4-protocol.h"
 #include "ns3/udp-socket-factory.h"
-#include "ns3/wifi-mpdu.h"
-#include "ns3/wifi-net-device.h"
 
 #include <algorithm>
 #include <limits>
@@ -827,27 +824,10 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
         // TODO Ipv6
     }
 
-    // Allow neighbor manager use this interface for layer 2 feedback if possible
-    Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice>();
-    if (!wifi)
-    {
-        return;
-    }
-    Ptr<WifiMac> mac = wifi->GetMac();
-    if (!mac)
-    {
-        return;
-    }
-
-    mac->TraceConnectWithoutContext("DroppedMpdu",
-                                    MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError, this));
-}
-
-template <typename T>
-void
-Aodvv2RoutingProtocol<T>::NotifyTxError(WifiMacDropReason reason, Ptr<const WifiMpdu> mpdu)
-{
-    m_nb.GetTxErrorCallback()(mpdu->GetHeader());
+    // TODO
+    // mac->TraceConnectWithoutContext("DroppedMpdu",
+    //                                 MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError,
+    //                                 this));
 }
 
 template <typename T>
@@ -859,24 +839,13 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceDown(uint32_t i)
     // Disable layer 2 link state monitoring (if possible)
     Ptr<IpL3Protocol> l3 = m_ip->template GetObject<IpL3Protocol>();
     Ptr<NetDevice> dev = l3->GetNetDevice(i);
-    Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice>();
-    if (wifi)
+    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
-        Ptr<WifiMac> mac = wifi->GetMac()->GetObject<AdhocWifiMac>();
-        if (mac)
-        {
-            mac->TraceDisconnectWithoutContext(
-                "DroppedMpdu",
-                MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError, this));
-            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-            {
-                m_nb.DelArpCache(l3->GetInterface(i)->GetArpCache());
-            }
-            else
-            {
-                // TODO Ipv6
-            }
-        }
+        m_nb.DelArpCache(l3->GetInterface(i)->GetArpCache());
+    }
+    else
+    {
+        // TODO Ipv6
     }
 
     // Close socket

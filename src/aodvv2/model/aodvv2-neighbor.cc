@@ -24,7 +24,6 @@
 #include "aodvv2-neighbor.h"
 
 #include "ns3/log.h"
-#include "ns3/wifi-mac-header.h"
 
 #include <algorithm>
 
@@ -41,7 +40,6 @@ Neighbors<T>::Neighbors(Time delay)
 {
     m_ntimer.SetDelay(delay);
     m_ntimer.SetFunction(&Neighbors::Purge, this);
-    m_txErrorCallback = MakeCallback(&Neighbors::ProcessTxError, this);
 }
 
 template <typename T>
@@ -208,22 +206,6 @@ Neighbors<Ipv6Address>::LookupMacAddress(Ipv6Address addr)
 {
     // TODO IPv6 MAC address lookup logic
     return Mac48Address();
-}
-
-template <typename T>
-void
-Neighbors<T>::ProcessTxError(const WifiMacHeader& hdr)
-{
-    Mac48Address addr = hdr.GetAddr1();
-
-    for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
-    {
-        if (i->m_hardwareAddress == addr)
-        {
-            i->close = true;
-        }
-    }
-    Purge();
 }
 
 template class Neighbors<Ipv4Address>;

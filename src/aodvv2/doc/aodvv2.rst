@@ -50,9 +50,6 @@ The model uses the following heuristics:
   RREQ for is a neighbor, the cause may be a unidirectional link.
   This heuristic is taken from AODV implementation and can be disabled.
 
-The layer 2 feedback implementation relies on the ``TxErrHeader`` trace source,
-currently supported in AdhocWifiMac only.
-
 Scope and Limitations
 +++++++++++++++++++++
 
