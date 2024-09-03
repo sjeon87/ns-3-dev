@@ -39,29 +39,43 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief AODVv2 enums
- */
-enum Aodvv2Type
-{
-    AODVV2_MAX_HOP_COUNT = 20, //!< MAX_HOP_COUNT
-};
-
-/**
- * \ingroup aodvv2
  * \brief AODVv2 timers
  */
 enum Aodvv2Timers
 {
-    AODVV2_ACTIVE_INTERVAL = 5,       //!< ACTIVE_INTERVAL
-    AODVV2_MAX_IDLETIME = 200,        //!< MAX_IDLETIME
-    AODVV2_MAX_BLACKLIST_TIME = 200,  //!< MAX_BLACKLIST_TIME
-    AODVV2_MAX_SEQNUM_LIFETIME = 300, //!< MAX_SEQNUM_LIFETIME
-    AODVV2_RERR_TIMEOUT = 3,          //!< RERR_TIMEOUT
-    AODVV2_RTEMSG_ENTRY_TIME = 12,    //!< RteMsg_ENTRY_TIME
-    AODVV2_RREQ_WAIT_TIME = 2,        //!< RREQ_WAIT_TIME
-    AODVV2_RREP_ACK_SENT_TIMEOUT = 1, //!< RREP_Ack_SENT_TIMEOUT
-    AODVV2_RREQ_HOLDDOWN_TIME = 10,   //!< RREQ_HOLDDOWN_TIME
+    AODVV2_ACTIVE_INTERVAL = 5,       //!< Interval between two packets to keep a route active.
+    AODVV2_MAX_IDLETIME = 200,        //!< Max idle time before the route is considered Invalid.
+    AODVV2_MAX_BLACKLIST_TIME = 200,  //!< Max blacklist time before the route is considered Heard.
+    AODVV2_MAX_SEQNUM_LIFETIME = 300, //!< Max time without a sequence number update.
+    AODVV2_RERR_TIMEOUT = 3,          //!< Request Error Timeout
+    AODVV2_RTEMSG_ENTRY_TIME = 12,    //!< Min time to keep a multicast entry.
+    AODVV2_RREQ_WAIT_TIME = 2,        //!< Time to wait for a RREQ.
+    AODVV2_RREP_ACK_SENT_TIMEOUT = 1, //!< Time to wait for a RREP_ACK.
+    AODVV2_RREQ_HOLDDOWN_TIME = 10,   //!< Time to wait before sending a new RREQ after a RREQ.
 };
+
+/**
+ * \ingroup aodvv2
+ * \brief AODVv2 constants
+ */
+enum Aodvv2Constants
+{
+    AODVV2_DISCOVERY_ATTEMPTS_MAX = 3, //!< Max attempts to discover a route
+    AODVV2_RREP_RETRIES = 2,           //!< Max attempts to send a RREP
+    AODVV2_MAX_HOP_COUNT = 20,         //!< Max hop count for a RREQ or RREP
+};
+
+/**
+ * \ingroup aodvv2
+ * \brief AODVv2 local settings
+ */
+enum Aodvv2LocalSettings
+{
+    AODVV2_BUFFER_SIZE_PACKETS = 2,    //!< Size of the buffer in packets
+    AODVV2_BUFFER_SIZE_BYTES = 999999, //!< BUFFER_SIZE_BYTES TODO TBD
+};
+
+constexpr double AODVV2_CONTROL_TRAFFIC_LIMIT = 0.1; //!< CONTROL_TRAFFIC_LIMIT
 
 /**
  * \ingroup aodvv2
