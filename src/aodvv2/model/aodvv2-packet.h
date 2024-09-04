@@ -749,8 +749,6 @@ class RerrHeader : public Header
 
     T m_origIp;          ///< Origin IP Address
     uint16_t m_origMask; ///< Origin Mask
-    T m_targIp;          ///< Target IP Address
-    uint16_t m_targMask; ///< Target Mask
     uint8_t m_seqNo;     ///< Sequence number
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header

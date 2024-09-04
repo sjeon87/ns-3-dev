@@ -606,30 +606,34 @@ RerrHeader<T>::CreateTlvHeader() const
     // **************************************************************************************
 
     // ****************************** AddressList Address Block ******************************
-    Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
-    msg1a2->AddressPushBack(this->m_targIp);
-    msg1a2->PrefixPushBack(this->m_targMask);
+    // for each unreachable destination
+    for (auto j = m_unreachableDstSeqNo.begin(); j != m_unreachableDstSeqNo.end(); ++j)
+    {
+        Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
+        msg1a2->AddressPushBack((*j).first);
+        msg1a2->PrefixPushBack(32); // TODO
 
-    // Add ADDRESS_TYPE TLV
-    Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
-    msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
-    uint8_t msg1a2tlv1val[] = {AODVV2_UNREACHABLE};
-    msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
-    msg1a2->TlvPushBack(msg1a2tlv1);
+        // Add ADDRESS_TYPE TLV
+        Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
+        msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
+        uint8_t msg1a2tlv1val[] = {AODVV2_UNREACHABLE};
+        msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
+        msg1a2->TlvPushBack(msg1a2tlv1);
 
-    // Add SEQ_NUM TLV
-    Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
-    msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-    uint8_t msg1a2tlv2val[] = {0}; // TODO
-    msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
-    msg1a1->TlvPushBack(msg1a2tlv2);
+        // Add SEQ_NUM TLV
+        Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
+        msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
+        uint8_t msg1a2tlv2val[] = {(uint8_t)(*j).second};
+        msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
+        msg1a1->TlvPushBack(msg1a2tlv2);
 
-    // Add PATH_METRIC TLV
-    Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
-    msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
-    msg1a1->TlvPushBack(msg1a2tlv3);
+        // Add PATH_METRIC TLV
+        Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
+        msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
+        msg1a1->TlvPushBack(msg1a2tlv3);
 
-    msg1->AddressBlockPushBack(msg1a2);
+        msg1->AddressBlockPushBack(msg1a2);
+    }
     // **************************************************************************************
 
     // Add msg to tlv header

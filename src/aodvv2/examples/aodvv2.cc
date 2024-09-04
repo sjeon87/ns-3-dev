@@ -17,6 +17,7 @@
  * This is an example script for AODVv2 manet routing protocol.
  *
  * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #include "ns3/aodvv2-module.h"
