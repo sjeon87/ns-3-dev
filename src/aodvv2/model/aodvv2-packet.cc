@@ -204,8 +204,7 @@ RreqHeader<T>::Deserialize(Buffer::Iterator start)
     m_tlvHeader->Deserialize(i);
 
     uint32_t dist = i.GetDistanceFrom(start);
-    std::cout << dist << " " << GetSerializedSize() << std::endl;
-    // NS_ASSERT(dist == GetSerializedSize());
+    NS_ASSERT(dist == GetSerializedSize());
     return dist;
 }
 
@@ -395,8 +394,7 @@ RrepHeader<T>::Deserialize(Buffer::Iterator start)
     m_tlvHeader->Deserialize(i);
 
     uint32_t dist = i.GetDistanceFrom(start);
-    std::cout << dist << " " << GetSerializedSize() << std::endl;
-    // NS_ASSERT(dist == GetSerializedSize());
+    NS_ASSERT(dist == GetSerializedSize());
     return dist;
 }
 
@@ -499,7 +497,10 @@ uint32_t
 RrepAckHeader<T>::Deserialize(Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
-    m_reserved = i.ReadU8();
+
+    m_tlvHeader = Create<PbbPacket>();
+    m_tlvHeader->Deserialize(i);
+
     uint32_t dist = i.GetDistanceFrom(start);
     NS_ASSERT(dist == GetSerializedSize());
     return dist;
@@ -644,6 +645,7 @@ template <typename T>
 void
 RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
+    // TODO get addresses and set m_unreachableDstSeqNo
     CreateTlvHeader();
 }
 
@@ -652,18 +654,9 @@ uint32_t
 RerrHeader<T>::Deserialize(Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
-    m_flag = i.ReadU8();
-    m_reserved = i.ReadU8();
-    uint8_t dest = i.ReadU8();
-    m_unreachableDstSeqNo.clear();
-    T address;
-    uint32_t seqNo;
-    for (uint8_t k = 0; k < dest; ++k)
-    {
-        ReadFrom(i, address);
-        seqNo = i.ReadNtohU32();
-        m_unreachableDstSeqNo.insert(std::make_pair(address, seqNo));
-    }
+
+    m_tlvHeader = Create<PbbPacket>();
+    m_tlvHeader->Deserialize(i);
 
     uint32_t dist = i.GetDistanceFrom(start);
     NS_ASSERT(dist == GetSerializedSize());

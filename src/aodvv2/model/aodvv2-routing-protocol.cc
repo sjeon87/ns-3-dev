@@ -1868,7 +1868,8 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
 {
     NS_LOG_FUNCTION(this << " from " << src);
     RerrHeader<IpAddress> rerrHeader;
-    p->RemoveHeader(rerrHeader);
+    rerrHeader.SetTlvHeader(tlvHeader);
+
     std::map<IpAddress, uint32_t> dstWithNextHopSrc;
     std::map<IpAddress, uint32_t> unreachable;
     m_routingTable.GetListOfDestinationWithNextHop(src, dstWithNextHopSrc);
@@ -2045,6 +2046,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
             SocketIpTtlTag tag;
             tag.SetTtl(1);
             packet->AddPacketTag(tag);
+            rerrHeader.CreateTlvHeader();
             packet->AddHeader(rerrHeader);
             SendRerrMessage(packet, precursors);
             rerrHeader.Clear();
@@ -2063,6 +2065,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         SocketIpTtlTag tag;
         tag.SetTtl(1);
         packet->AddPacketTag(tag);
+        rerrHeader.CreateTlvHeader();
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
@@ -2095,6 +2098,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
     SocketIpTtlTag tag;
     tag.SetTtl(1);
     packet->AddPacketTag(tag);
+    rerrHeader.CreateTlvHeader();
     packet->AddHeader(rerrHeader);
     if (m_routingTable.LookupValidRoute(origin, toOrigin))
     {
