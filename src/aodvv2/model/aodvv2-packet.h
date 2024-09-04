@@ -678,6 +678,43 @@ class RerrHeader : public Header
     uint32_t Deserialize(Buffer::Iterator start) override;
     void Print(std::ostream& os) const override;
 
+    // Fields
+    /**
+     * \brief Set the origin IP address
+     * \param ip the origin IP address
+     */
+    void SetOrigIp(T ip)
+    {
+        m_origIp = ip;
+    }
+
+    /**
+     * \brief Get the origin IP address
+     * \return the origin IP address
+     */
+    T GetOrigIp() const
+    {
+        return m_origIp;
+    }
+
+    /**
+     * \brief Set the origin mask
+     * \param mask the origin mask
+     */
+    void SetOrigMask(uint16_t mask)
+    {
+        m_origMask = mask;
+    }
+
+    /**
+     * \brief Get the origin mask
+     * \return the origin mask
+     */
+    uint16_t GetOrigMask() const
+    {
+        return m_origMask;
+    }
+
     // No delete flag
     /**
      * \brief Set the no delete flag
