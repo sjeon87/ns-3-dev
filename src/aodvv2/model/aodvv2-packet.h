@@ -231,6 +231,42 @@ class RreqHeader : public Header
     }
 
     /**
+     * \brief Set the origin sequence number
+     * \param seq the origin sequence number
+     */
+    void SetOrigSeqNo(uint8_t seq)
+    {
+        m_origSeqNo = seq;
+    }
+
+    /**
+     * \brief Set the origin sequence number
+     * \param seq the origin sequence number
+     */
+    uint8_t GetOrigSeqNo() const
+    {
+        return m_origSeqNo;
+    }
+
+    /**
+     * \brief Set the origin path metric
+     * \param metric the origin path metric
+     */
+    void SetOrigPathMetric(uint8_t metric)
+    {
+        m_origPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the origin path metric
+     * \return the origin path metric
+     */
+    uint8_t GetOrigPathMetric() const
+    {
+        return m_origPathMetric;
+    }
+
+    /**
      * \brief Set the target IP address
      * \param ip the target IP address
      */
@@ -264,6 +300,42 @@ class RreqHeader : public Header
     uint16_t GetTargMask() const
     {
         return m_targMask;
+    }
+
+    /**
+     * \brief Set the target sequence number
+     * \param seq the target sequence number
+     */
+    void SetTargSeqNo(uint8_t seq)
+    {
+        m_targSeqNo = seq;
+    }
+
+    /**
+     * \brief Get the target sequence number
+     * \return the target sequence number
+     */
+    uint8_t GetTargSeqNo() const
+    {
+        return m_targSeqNo;
+    }
+
+    /**
+     * \brief Set the target path metric
+     * \param metric the target path metric
+     */
+    void SetTargPathMetric(uint8_t metric)
+    {
+        m_targPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the target path metric
+     * \return the target path metric
+     */
+    uint8_t GetTargPathMetric() const
+    {
+        return m_targPathMetric;
     }
 
     /**
@@ -310,12 +382,16 @@ class RreqHeader : public Header
     bool operator==(const RreqHeader& o) const;
 
   private:
-    T m_origIp;          ///< Origin IP Address
-    uint16_t m_origMask; ///< Origin Mask
-    T m_targIp;          ///< Target IP Address
-    uint16_t m_targMask; ///< Target Mask
-    uint8_t m_seqNo;     ///< Sequence number
-    uint8_t m_hopCount;  ///< Hop Count
+    T m_origIp;               ///< Origin IP Address
+    uint16_t m_origMask;      ///< Origin Mask
+    uint8_t m_origSeqNo;      ///< Origin Sequence number
+    uint8_t m_origPathMetric; ///< Origin Path Metric
+    T m_targIp;               ///< Target IP Address
+    uint16_t m_targMask;      ///< Target Mask
+    uint8_t m_targSeqNo;      ///< Target Sequence number
+    uint8_t m_targPathMetric; ///< Target Path Metric
+    uint8_t m_seqNo;          ///< Sequence number
+    uint8_t m_hopCount;       ///< Hop Count
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
@@ -436,6 +512,42 @@ class RrepHeader : public Header
     }
 
     /**
+     * \brief Set the origin sequence number
+     * \param seq the origin sequence number
+     */
+    void SetOrigSeqNo(uint8_t seq)
+    {
+        m_origSeqNo = seq;
+    }
+
+    /**
+     * \brief Set the origin sequence number
+     * \param seq the origin sequence number
+     */
+    uint8_t GetOrigSeqNo() const
+    {
+        return m_origSeqNo;
+    }
+
+    /**
+     * \brief Set the origin path metric
+     * \param metric the origin path metric
+     */
+    void SetOrigPathMetric(uint8_t metric)
+    {
+        m_origPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the origin path metric
+     * \return the origin path metric
+     */
+    uint8_t GetOrigPathMetric() const
+    {
+        return m_origPathMetric;
+    }
+
+    /**
      * \brief Set the target IP address
      * \param ip the target IP address
      */
@@ -469,6 +581,42 @@ class RrepHeader : public Header
     uint16_t GetTargMask() const
     {
         return m_targMask;
+    }
+
+    /**
+     * \brief Set the target sequence number
+     * \param seq the target sequence number
+     */
+    void SetTargSeqNo(uint8_t seq)
+    {
+        m_targSeqNo = seq;
+    }
+
+    /**
+     * \brief Get the target sequence number
+     * \return the target sequence number
+     */
+    uint8_t GetTargSeqNo() const
+    {
+        return m_targSeqNo;
+    }
+
+    /**
+     * \brief Set the target path metric
+     * \param metric the target path metric
+     */
+    void SetTargPathMetric(uint8_t metric)
+    {
+        m_targPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the target path metric
+     * \return the target path metric
+     */
+    uint8_t GetTargPathMetric() const
+    {
+        return m_targPathMetric;
     }
 
     /**
@@ -526,8 +674,12 @@ class RrepHeader : public Header
   private:
     T m_origIp;                         ///< Origin IP Address
     uint16_t m_origMask;                ///< Origin Mask
+    uint8_t m_origSeqNo;                ///< Origin Sequence number
+    uint8_t m_origPathMetric;           ///< Origin Path Metric
     T m_targIp;                         ///< Target IP Address
     uint16_t m_targMask;                ///< Target Mask
+    uint8_t m_targSeqNo;                ///< Target Sequence number
+    uint8_t m_targPathMetric;           ///< Target Path Metric
     uint8_t m_seqNo;                    ///< Sequence number
     uint8_t m_hopCount;                 ///< Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
@@ -611,7 +763,6 @@ class RrepAckHeader : public Header
     bool operator==(const RrepAckHeader& o) const;
 
   private:
-    uint8_t m_reserved;                 ///< Not used (must be 0)
     uint8_t m_seqNo;                    ///< Sequence number
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
@@ -715,17 +866,41 @@ class RerrHeader : public Header
         return m_origMask;
     }
 
-    // No delete flag
     /**
-     * \brief Set the no delete flag
-     * \param f the no delete flag
+     * \brief Set the origin sequence number
+     * \param seq the origin sequence number
      */
-    void SetNoDelete(bool f);
+    void SetOrigSeqNo(uint8_t seq)
+    {
+        m_origSeqNo = seq;
+    }
+
     /**
-     * \brief Get the no delete flag
-     * \return the no delete flag
+     * \brief Set the origin sequence number
+     * \param seq the origin sequence number
      */
-    bool GetNoDelete() const;
+    uint8_t GetOrigSeqNo() const
+    {
+        return m_origSeqNo;
+    }
+
+    /**
+     * \brief Set the origin path metric
+     * \param metric the origin path metric
+     */
+    void SetOrigPathMetric(uint8_t metric)
+    {
+        m_origPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the origin path metric
+     * \return the origin path metric
+     */
+    uint8_t GetOrigPathMetric() const
+    {
+        return m_origPathMetric;
+    }
 
     /**
      * \brief Set the sequence number
@@ -778,15 +953,14 @@ class RerrHeader : public Header
     bool operator==(const RerrHeader& o) const;
 
   private:
-    uint8_t m_flag;     ///< No delete flag
-    uint8_t m_reserved; ///< Not used (must be 0)
-
     /// List of Unreachable destination: IP addresses and sequence numbers
     std::map<T, uint32_t> m_unreachableDstSeqNo;
 
-    T m_origIp;          ///< Origin IP Address
-    uint16_t m_origMask; ///< Origin Mask
-    uint8_t m_seqNo;     ///< Sequence number
+    T m_origIp;               ///< Origin IP Address
+    uint16_t m_origMask;      ///< Origin Mask
+    uint8_t m_origSeqNo;      ///< Origin Sequence number
+    uint8_t m_origPathMetric; ///< Origin Path Metric
+    uint8_t m_seqNo;          ///< Sequence number
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };

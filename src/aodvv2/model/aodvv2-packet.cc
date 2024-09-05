@@ -193,10 +193,6 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             }
         }
 
-        std::cout << "SeqNum: " << seqNum << " hasSeqNum: " << hasSeqNum << std::endl;
-        std::cout << "PathMetric: " << pathMetric << " hasPathMetric: " << hasPathMetric
-                  << std::endl;
-
         if (hasAddrType)
         {
             switch (addrType)
@@ -204,12 +200,26 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             case AODVV2_ORIGPREFIX:
                 this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetOrigMask(addressBlock->PrefixFront());
-                // TODO save seqNum e pathMetric
+                if (hasSeqNum)
+                {
+                    this->SetOrigSeqNo(seqNum);
+                }
+                if (hasPathMetric)
+                {
+                    this->SetOrigPathMetric(pathMetric);
+                }
                 break;
             case AODVV2_TARGPREFIX:
                 this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetTargMask(addressBlock->PrefixFront());
-                // TODO save seqNum e pathMetric
+                if (hasSeqNum)
+                {
+                    this->SetTargSeqNo(seqNum);
+                }
+                if (hasPathMetric)
+                {
+                    this->SetTargPathMetric(pathMetric);
+                }
                 break;
             }
         }
@@ -407,10 +417,6 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             }
         }
 
-        std::cout << "SeqNum: " << seqNum << " hasSeqNum: " << hasSeqNum << std::endl;
-        std::cout << "PathMetric: " << pathMetric << " hasPathMetric: " << hasPathMetric
-                  << std::endl;
-
         if (hasAddrType)
         {
             switch (addrType)
@@ -418,12 +424,26 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             case AODVV2_ORIGPREFIX:
                 this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetOrigMask(addressBlock->PrefixFront());
-                // TODO save seqNum and pathMetric
+                if (hasSeqNum)
+                {
+                    this->SetOrigSeqNo(seqNum);
+                }
+                if (hasPathMetric)
+                {
+                    this->SetOrigPathMetric(pathMetric);
+                }
                 break;
             case AODVV2_TARGPREFIX:
                 this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetTargMask(addressBlock->PrefixFront());
-                // TODO save seqNum and pathMetric
+                if (hasSeqNum)
+                {
+                    this->SetTargSeqNo(seqNum);
+                }
+                if (hasPathMetric)
+                {
+                    this->SetTargPathMetric(pathMetric);
+                }
                 break;
             }
         }
@@ -479,7 +499,6 @@ template class RrepHeader<Ipv6Address>;
 
 template <typename T>
 RrepAckHeader<T>::RrepAckHeader()
-    : m_reserved(0)
 {
 }
 
@@ -564,7 +583,7 @@ template <typename T>
 bool
 RrepAckHeader<T>::operator==(const RrepAckHeader& o) const
 {
-    return m_reserved == o.m_reserved;
+    return m_seqNo == o.m_seqNo;
 }
 
 template <typename T>
@@ -583,8 +602,6 @@ template class RrepAckHeader<Ipv6Address>;
 //-----------------------------------------------------------------------------
 template <typename T>
 RerrHeader<T>::RerrHeader()
-    : m_flag(0),
-      m_reserved(0)
 {
 }
 
@@ -612,21 +629,14 @@ template <typename T>
 uint32_t
 RerrHeader<T>::GetSerializedSize() const
 {
-    return (3 + 8 * GetDestCount());
+    return m_tlvHeader->GetSerializedSize();
 }
 
 template <typename T>
 void
 RerrHeader<T>::Serialize(Buffer::Iterator i) const
 {
-    i.WriteU8(m_flag);
-    i.WriteU8(m_reserved);
-    i.WriteU8(GetDestCount());
-    for (auto j = m_unreachableDstSeqNo.begin(); j != m_unreachableDstSeqNo.end(); ++j)
-    {
-        WriteTo(i, (*j).first);
-        i.WriteHtonU32((*j).second);
-    }
+    m_tlvHeader->Serialize(i);
 }
 
 template <typename T>
@@ -722,10 +732,6 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             }
         }
 
-        std::cout << "SeqNum: " << seqNum << " hasSeqNum: " << hasSeqNum << std::endl;
-        std::cout << "PathMetric: " << pathMetric << " hasPathMetric: " << hasPathMetric
-                  << std::endl;
-
         if (hasAddrType)
         {
             switch (addrType)
@@ -733,11 +739,18 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             case AODVV2_PKTSOURCE:
                 this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetOrigMask(addressBlock->PrefixFront());
-                // TODO save seqNum and pathMetric
+                if (hasSeqNum)
+                {
+                    this->SetOrigSeqNo(seqNum);
+                }
+                if (hasPathMetric)
+                {
+                    this->SetOrigPathMetric(pathMetric);
+                }
                 break;
             case AODVV2_TARGPREFIX:
-                // TODO add address to unreachable list
-                // TODO save seqNum and pathMetric
+                this->AddUnDestination(T::ConvertFrom(addressBlock->AddressFront()), seqNum);
+                // TODO if needed save pathMetric
                 break;
             }
         }
@@ -769,28 +782,6 @@ RerrHeader<T>::Print(std::ostream& os) const
     {
         os << (*j).first << ", " << (*j).second;
     }
-    os << "No delete flag " << (*this).GetNoDelete();
-}
-
-template <typename T>
-void
-RerrHeader<T>::SetNoDelete(bool f)
-{
-    if (f)
-    {
-        m_flag |= (1 << 0);
-    }
-    else
-    {
-        m_flag &= ~(1 << 0);
-    }
-}
-
-template <typename T>
-bool
-RerrHeader<T>::GetNoDelete() const
-{
-    return (m_flag & (1 << 0));
 }
 
 template <typename T>
@@ -826,15 +817,13 @@ void
 RerrHeader<T>::Clear()
 {
     m_unreachableDstSeqNo.clear();
-    m_flag = 0;
-    m_reserved = 0;
 }
 
 template <typename T>
 bool
 RerrHeader<T>::operator==(const RerrHeader& o) const
 {
-    if (m_flag != o.m_flag || m_reserved != o.m_reserved || GetDestCount() != o.GetDestCount())
+    if (GetDestCount() != o.GetDestCount())
     {
         return false;
     }
