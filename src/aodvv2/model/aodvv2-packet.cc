@@ -168,7 +168,9 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
-        std::optional<uint8_t> addrType, seqNum, pathMetric;
+        bool hasAddrType = false, hasSeqNum = false, hasPathMetric = false;
+        uint8_t addrType = 0, seqNum = 0, pathMetric = 0;
+
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
         {
@@ -177,30 +179,39 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             if (tlv->GetType() == AODVV2_ADDRESS_TYPE)
             {
                 addrType = tlv->GetValue().Begin().ReadU8();
+                hasAddrType = true;
             }
             else if (tlv->GetType() == AODVV2_SEQ_NUM)
             {
                 seqNum = tlv->GetValue().Begin().ReadU8();
+                hasSeqNum = true;
             }
             else if (tlv->GetType() == AODVV2_PATH_METRIC)
             {
                 pathMetric = tlv->GetValue().Begin().ReadU8();
+                hasPathMetric = true;
             }
         }
 
-        switch (addrType.value())
-        {
-        case AODVV2_ORIGPREFIX:
-            this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
-            this->SetOrigMask(addressBlock->PrefixFront());
-            // TODO save seqNum and pathMetric
+        std::cout << "SeqNum: " << seqNum << " hasSeqNum: " << hasSeqNum << std::endl;
+        std::cout << "PathMetric: " << pathMetric << " hasPathMetric: " << hasPathMetric
+                  << std::endl;
 
-            break;
-        case AODVV2_TARGPREFIX:
-            this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
-            this->SetTargMask(addressBlock->PrefixFront());
-            // TODO save seqNum and pathMetric
-            break;
+        if (hasAddrType)
+        {
+            switch (addrType)
+            {
+            case AODVV2_ORIGPREFIX:
+                this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
+                this->SetOrigMask(addressBlock->PrefixFront());
+                // TODO save seqNum e pathMetric
+                break;
+            case AODVV2_TARGPREFIX:
+                this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
+                this->SetTargMask(addressBlock->PrefixFront());
+                // TODO save seqNum e pathMetric
+                break;
+            }
         }
     }
 
@@ -371,7 +382,9 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
-        std::optional<uint8_t> addrType, seqNum, pathMetric;
+        bool hasAddrType = false, hasSeqNum = false, hasPathMetric = false;
+        uint8_t addrType = 0, seqNum = 0, pathMetric = 0;
+
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
         {
@@ -380,29 +393,39 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             if (tlv->GetType() == AODVV2_ADDRESS_TYPE)
             {
                 addrType = tlv->GetValue().Begin().ReadU8();
+                hasAddrType = true;
             }
             else if (tlv->GetType() == AODVV2_SEQ_NUM)
             {
                 seqNum = tlv->GetValue().Begin().ReadU8();
+                hasSeqNum = true;
             }
             else if (tlv->GetType() == AODVV2_PATH_METRIC)
             {
                 pathMetric = tlv->GetValue().Begin().ReadU8();
+                hasPathMetric = true;
             }
         }
 
-        switch (addrType.value())
+        std::cout << "SeqNum: " << seqNum << " hasSeqNum: " << hasSeqNum << std::endl;
+        std::cout << "PathMetric: " << pathMetric << " hasPathMetric: " << hasPathMetric
+                  << std::endl;
+
+        if (hasAddrType)
         {
-        case AODVV2_ORIGPREFIX:
-            this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
-            this->SetOrigMask(addressBlock->PrefixFront());
-            // TODO save seqNum and pathMetric
-            break;
-        case AODVV2_TARGPREFIX:
-            this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
-            this->SetTargMask(addressBlock->PrefixFront());
-            // TODO save seqNum and pathMetric
-            break;
+            switch (addrType)
+            {
+            case AODVV2_ORIGPREFIX:
+                this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
+                this->SetOrigMask(addressBlock->PrefixFront());
+                // TODO save seqNum and pathMetric
+                break;
+            case AODVV2_TARGPREFIX:
+                this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
+                this->SetTargMask(addressBlock->PrefixFront());
+                // TODO save seqNum and pathMetric
+                break;
+            }
         }
     }
 
@@ -674,7 +697,9 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
-        std::optional<uint8_t> addrType, seqNum, pathMetric;
+        bool hasAddrType = false, hasSeqNum = false, hasPathMetric = false;
+        uint8_t addrType = 0, seqNum = 0, pathMetric = 0;
+
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
         {
@@ -683,28 +708,38 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             if (tlv->GetType() == AODVV2_ADDRESS_TYPE)
             {
                 addrType = tlv->GetValue().Begin().ReadU8();
+                hasAddrType = true;
             }
             else if (tlv->GetType() == AODVV2_SEQ_NUM)
             {
                 seqNum = tlv->GetValue().Begin().ReadU8();
+                hasSeqNum = true;
             }
             else if (tlv->GetType() == AODVV2_PATH_METRIC)
             {
                 pathMetric = tlv->GetValue().Begin().ReadU8();
+                hasPathMetric = true;
             }
         }
 
-        switch (addrType.value())
+        std::cout << "SeqNum: " << seqNum << " hasSeqNum: " << hasSeqNum << std::endl;
+        std::cout << "PathMetric: " << pathMetric << " hasPathMetric: " << hasPathMetric
+                  << std::endl;
+
+        if (hasAddrType)
         {
-        case AODVV2_PKTSOURCE:
-            this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
-            this->SetOrigMask(addressBlock->PrefixFront());
-            // TODO save seqNum and pathMetric
-            break;
-        case AODVV2_TARGPREFIX:
-            // TODO add address to unreachable list
-            // TODO save seqNum and pathMetric
-            break;
+            switch (addrType)
+            {
+            case AODVV2_PKTSOURCE:
+                this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
+                this->SetOrigMask(addressBlock->PrefixFront());
+                // TODO save seqNum and pathMetric
+                break;
+            case AODVV2_TARGPREFIX:
+                // TODO add address to unreachable list
+                // TODO save seqNum and pathMetric
+                break;
+            }
         }
     }
 
