@@ -204,7 +204,7 @@ template <>
 Mac48Address
 Neighbors<Ipv6Address>::LookupMacAddress(Ipv6Address addr)
 {
-    // TODO IPv6 MAC address lookup logic
+    // TODO IPv6
     return Mac48Address();
 }
 

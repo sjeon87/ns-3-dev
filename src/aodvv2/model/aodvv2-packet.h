@@ -72,7 +72,7 @@ enum Aodvv2Constants
 enum Aodvv2LocalSettings
 {
     AODVV2_BUFFER_SIZE_PACKETS = 2,    //!< Size of the buffer in packets
-    AODVV2_BUFFER_SIZE_BYTES = 999999, //!< BUFFER_SIZE_BYTES TODO TBD
+    AODVV2_BUFFER_SIZE_BYTES = 999999, //!< BUFFER_SIZE_BYTES TBD
 };
 
 constexpr double AODVV2_CONTROL_TRAFFIC_LIMIT = 0.1; //!< CONTROL_TRAFFIC_LIMIT
@@ -665,15 +665,6 @@ class RrepHeader : public Header
     uint8_t GetHopCount() const
     {
         return m_hopCount;
-    }
-
-    /**
-     * \brief Get the destination sequence number
-     * \return the destination sequence number
-     */
-    uint32_t GetDstSeqno() const
-    {
-        return 0; // TODO
     }
 
     /**

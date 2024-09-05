@@ -824,7 +824,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
         // TODO Ipv6
     }
 
-    // TODO
+    // TODO me:
     // mac->TraceConnectWithoutContext("DroppedMpdu",
     //                                 MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError,
     //                                 this));
@@ -1139,7 +1139,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     // Create RREQ header
     RreqHeader<IpAddress> rreqHeader;
     rreqHeader.SetTargIp(dst);
-    rreqHeader.SetTargMask(32); // TODO update if needed
+    rreqHeader.SetTargMask(32); // TODO me: update if needed
 
     RoutingTableEntry<IpAddress> rt;
     // Using the Hop field in Routing Table to manage the expanding ring search
@@ -1198,7 +1198,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         IpInterfaceAddress iface = j->second;
 
         rreqHeader.SetOrigIp(iface.GetAddress());
-        rreqHeader.SetOrigMask(32); // TODO update if needed
+        rreqHeader.SetOrigMask(32); // TODO me: update if needed
         m_rreqIdCache.IsDuplicate(iface.GetAddress(), m_requestId);
 
         Ptr<Packet> packet = Create<Packet>();
@@ -1744,7 +1744,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*dev=*/dev,
         /*dst=*/dst,
         /*vSeqNo=*/true,
-        /*seqNo=*/rrepHeader.GetDstSeqno(),
+        /*seqNo=*/rrepHeader.GetSeqNo(),
         /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
         /*hops=*/hop,
         /*nextHop=*/sender,
@@ -1760,14 +1760,14 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
 
             // (ii) the Destination Sequence Number in the RREP is greater than the node's copy
             // of the destination sequence number and the known value is valid,
-            ((int32_t(rrepHeader.GetDstSeqno()) - int32_t(toDst.GetSeqNo())) > 0) ||
+            ((int32_t(rrepHeader.GetSeqNo()) - int32_t(toDst.GetSeqNo())) > 0) ||
 
             // (iii) the sequence numbers are the same, but the route is marked as inactive.
-            (rrepHeader.GetDstSeqno() == toDst.GetSeqNo() && toDst.GetFlag() != CONFIRMED) ||
+            (rrepHeader.GetSeqNo() == toDst.GetSeqNo() && toDst.GetFlag() != CONFIRMED) ||
 
             // (iv) the sequence numbers are the same, and the New Hop Count is smaller than the
             // hop count in route table entry.
-            (rrepHeader.GetDstSeqno() == toDst.GetSeqNo() && hop < toDst.GetHop()))
+            (rrepHeader.GetSeqNo() == toDst.GetSeqNo() && hop < toDst.GetHop()))
         {
             m_routingTable.Update(newEntry);
         }

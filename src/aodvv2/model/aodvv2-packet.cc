@@ -124,7 +124,7 @@ RreqHeader<T>::CreateTlvHeader() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a1tlv3 = Create<PbbAddressTlv>();
     msg1a1tlv3->SetType(AODVV2_PATH_METRIC);
-    uint8_t msg1a1tlv3val[] = {1}; // TODO evaluate metric
+    uint8_t msg1a1tlv3val[] = {1}; // TODO me: evaluate metric
     msg1a1tlv3->SetValue(msg1a1tlv3val, sizeof(msg1a1tlv3val));
     msg1a1->TlvPushBack(msg1a1tlv3);
 
@@ -144,7 +144,7 @@ RreqHeader<T>::CreateTlvHeader() const
     msg1a2->TlvPushBack(msg1a2tlv1);
 
     // Add SEQ_NUM TLV
-    /* TODO optional, use only with invalid route
+    /* TODO me: optional, use only with invalid route
     Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
     msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
     uint8_t msg1a2tlv2val[] = {0};
@@ -155,7 +155,7 @@ RreqHeader<T>::CreateTlvHeader() const
     // **************************************************************************************
 
     // ****************************** SeqNoRtr Address Block ******************************
-    /* Ptr<PbbAddressBlockIp> msg1a3 = Create<PbbAddressBlockIp>(); TODO
+    /* Ptr<PbbAddressBlockIp> msg1a3 = Create<PbbAddressBlockIp>(); TODO me: understand what to add
     msg1a3->AddressPushBack(this->m_targIp);
     msg1a3->PrefixPushBack(this->m_targMask);
 
@@ -175,8 +175,12 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
-        bool hasAddrType = false, hasSeqNum = false, hasPathMetric = false;
-        uint8_t addrType = 0, seqNum = 0, pathMetric = 0;
+        bool hasAddrType = false;
+        bool hasSeqNum = false;
+        bool hasPathMetric = false;
+        uint8_t addrType = 0;
+        uint8_t seqNum = 0;
+        uint8_t pathMetric = 0;
 
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
@@ -386,7 +390,7 @@ RrepHeader<T>::CreateTlvHeader() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
     msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
-    uint8_t msg1a2tlv3val[] = {1}; // TODO evaluate metric
+    uint8_t msg1a2tlv3val[] = {1}; // TODO me: evaluate metric
     msg1a2tlv3->SetValue(msg1a2tlv3val, sizeof(msg1a2tlv3val));
     msg1a1->TlvPushBack(msg1a2tlv3);
 
@@ -406,8 +410,12 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
-        bool hasAddrType = false, hasSeqNum = false, hasPathMetric = false;
-        uint8_t addrType = 0, seqNum = 0, pathMetric = 0;
+        bool hasAddrType = false;
+        bool hasSeqNum = false;
+        bool hasPathMetric = false;
+        uint8_t addrType = 0;
+        uint8_t seqNum = 0;
+        uint8_t pathMetric = 0;
 
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
@@ -692,7 +700,7 @@ RerrHeader<T>::CreateTlvHeader() const
     {
         Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
         msg1a2->AddressPushBack((*j).first);
-        msg1a2->PrefixPushBack(32); // TODO
+        msg1a2->PrefixPushBack(32); // TODO me: update if needed
 
         // Add ADDRESS_TYPE TLV
         Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
@@ -729,8 +737,12 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
-        bool hasAddrType = false, hasSeqNum = false, hasPathMetric = false;
-        uint8_t addrType = 0, seqNum = 0, pathMetric = 0;
+        bool hasAddrType = false;
+        bool hasSeqNum = false;
+        bool hasPathMetric = false;
+        uint8_t addrType = 0;
+        uint8_t seqNum = 0;
+        uint8_t pathMetric = 0;
 
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
@@ -772,7 +784,7 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 break;
             case AODVV2_TARGPREFIX:
                 this->AddUnDestination(T::ConvertFrom(addressBlock->AddressFront()), seqNum);
-                // TODO if needed save pathMetric
+                // TODO me: if needed save pathMetric
                 break;
             }
         }
