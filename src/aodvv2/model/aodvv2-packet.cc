@@ -155,7 +155,8 @@ RreqHeader<T>::CreateTlvHeader() const
     // **************************************************************************************
 
     // ****************************** SeqNoRtr Address Block ******************************
-    /* Ptr<PbbAddressBlockIp> msg1a3 = Create<PbbAddressBlockIp>(); TODO me: understand what to add
+    /*  TODO me: optional, understand what to do
+    Ptr<PbbAddressBlockIp> msg1a3 = Create<PbbAddressBlockIp>();
     msg1a3->AddressPushBack(this->m_targIp);
     msg1a3->PrefixPushBack(this->m_targMask);
 

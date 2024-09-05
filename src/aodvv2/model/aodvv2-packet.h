@@ -247,7 +247,7 @@ class RreqHeader : public Header
 
     /**
      * \brief Set the origin sequence number
-     * \param seq the origin sequence number
+     * \return the origin sequence number
      */
     uint8_t GetOrigSeqNo() const
     {
@@ -534,7 +534,7 @@ class RrepHeader : public Header
 
     /**
      * \brief Set the origin sequence number
-     * \param seq the origin sequence number
+     * \return the origin sequence number
      */
     uint8_t GetOrigSeqNo() const
     {
@@ -885,7 +885,7 @@ class RerrHeader : public Header
 
     /**
      * \brief Set the origin sequence number
-     * \param seq the origin sequence number
+     * \return the origin sequence number
      */
     uint8_t GetOrigSeqNo() const
     {
