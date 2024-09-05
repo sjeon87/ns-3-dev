@@ -174,6 +174,12 @@ class RreqHeader : public Header
                uint8_t hopCount = 0);
 
     /**
+     * constructor
+     * \param tlvHeader the TLV header
+     */
+    RreqHeader(PbbPacket tlvHeader);
+
+    /**
      * \brief Get the type ID.
      * \return the object TypeId
      */
@@ -454,6 +460,12 @@ class RrepHeader : public Header
                uint16_t targMask = 0,
                uint32_t seqNo = 0,
                uint8_t hopCount = 0);
+    /**
+     * constructor
+     * \param tlvHeader the TLV header
+     */
+    RrepHeader(PbbPacket tlvHeader);
+
     /**
      * \brief Get the type ID.
      * \return the object TypeId
@@ -808,6 +820,11 @@ class RerrHeader : public Header
   public:
     /// constructor
     RerrHeader();
+    /**
+     * constructor
+     * \param tlvHeader the TLV header
+     */
+    RerrHeader(PbbPacket tlvHeader);
 
     /**
      * \brief Get the type ID.

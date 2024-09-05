@@ -1206,7 +1206,6 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         tag.SetTtl(ttl);
         packet->AddPacketTag(tag);
 
-        rreqHeader.CreateTlvHeader();
         packet->AddHeader(rreqHeader);
 
         // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
@@ -1417,8 +1416,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                       PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this);
-    RreqHeader<IpAddress> rreqHeader;
-    rreqHeader.SetTlvHeader(tlvHeader);
+    RreqHeader<IpAddress> rreqHeader(tlvHeader);
 
     // A node ignores all RREQs received from any node in its blacklist
     RoutingTableEntry<IpAddress> toPrev;
@@ -1651,7 +1649,6 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     SocketIpTtlTag tag;
     tag.SetTtl(toOrigin.GetHop());
     packet->AddPacketTag(tag);
-    rrepHeader.CreateTlvHeader();
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1689,7 +1686,6 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(RoutingTableEntry<IpAddres
     SocketIpTtlTag tag;
     tag.SetTtl(toOrigin.GetHop());
     packet->AddPacketTag(tag);
-    rrepHeader.CreateTlvHeader();
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1706,7 +1702,6 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     SocketIpTtlTag tag;
     tag.SetTtl(1);
     packet->AddPacketTag(tag);
-    h.CreateTlvHeader();
     packet->AddHeader(h);
     RoutingTableEntry<IpAddress> toNeighbor;
     m_routingTable.LookupRoute(neighbor, toNeighbor);
@@ -1723,8 +1718,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
                                     PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this << " src " << sender);
-    RrepHeader<IpAddress> rrepHeader;
-    rrepHeader.SetTlvHeader(tlvHeader);
+    RrepHeader<IpAddress> rrepHeader(tlvHeader);
 
     IpAddress dst = rrepHeader.GetTargIp();
     NS_LOG_LOGIC("RREP destination " << dst << " RREP origin " << rrepHeader.GetOrigIp());
@@ -1841,7 +1835,6 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     SocketIpTtlTag ttl;
     ttl.SetTtl(tag.GetTtl() - 1);
     packet->AddPacketTag(ttl);
-    rrepHeader.CreateTlvHeader();
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1867,8 +1860,7 @@ void
 Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this << " from " << src);
-    RerrHeader<IpAddress> rerrHeader;
-    rerrHeader.SetTlvHeader(tlvHeader);
+    RerrHeader<IpAddress> rerrHeader(tlvHeader);
 
     std::map<IpAddress, uint32_t> dstWithNextHopSrc;
     std::map<IpAddress, uint32_t> unreachable;
@@ -2046,7 +2038,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
             SocketIpTtlTag tag;
             tag.SetTtl(1);
             packet->AddPacketTag(tag);
-            rerrHeader.CreateTlvHeader();
             packet->AddHeader(rerrHeader);
             SendRerrMessage(packet, precursors);
             rerrHeader.Clear();
@@ -2065,7 +2056,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         SocketIpTtlTag tag;
         tag.SetTtl(1);
         packet->AddPacketTag(tag);
-        rerrHeader.CreateTlvHeader();
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
@@ -2098,7 +2088,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
     SocketIpTtlTag tag;
     tag.SetTtl(1);
     packet->AddPacketTag(tag);
-    rerrHeader.CreateTlvHeader();
     packet->AddHeader(rerrHeader);
     if (m_routingTable.LookupValidRoute(origin, toOrigin))
     {

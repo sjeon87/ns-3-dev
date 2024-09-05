@@ -50,6 +50,12 @@ RreqHeader<T>::RreqHeader(T origIp,
 {
 }
 
+template <typename T>
+RreqHeader<T>::RreqHeader(PbbPacket tlvHeader)
+{
+    SetTlvHeader(tlvHeader);
+}
+
 // NS_OBJECT_ENSURE_REGISTERED(RreqHeader);
 
 template <typename T>
@@ -74,6 +80,7 @@ template <typename T>
 uint32_t
 RreqHeader<T>::GetSerializedSize() const
 {
+    this->CreateTlvHeader();
     return m_tlvHeader->GetSerializedSize();
 }
 
@@ -290,6 +297,12 @@ RrepHeader<T>::RrepHeader(T origIp,
 {
 }
 
+template <typename T>
+RrepHeader<T>::RrepHeader(PbbPacket tlvHeader)
+{
+    SetTlvHeader(tlvHeader);
+}
+
 // NS_OBJECT_ENSURE_REGISTERED(RrepHeader);
 
 template <typename T>
@@ -314,6 +327,7 @@ template <typename T>
 uint32_t
 RrepHeader<T>::GetSerializedSize() const
 {
+    this->CreateTlvHeader();
     return m_tlvHeader->GetSerializedSize();
 }
 
@@ -526,6 +540,7 @@ template <typename T>
 uint32_t
 RrepAckHeader<T>::GetSerializedSize() const
 {
+    this->CreateTlvHeader();
     return m_tlvHeader->GetSerializedSize();
 }
 
@@ -605,6 +620,12 @@ RerrHeader<T>::RerrHeader()
 {
 }
 
+template <typename T>
+RerrHeader<T>::RerrHeader(PbbPacket tlvHeader)
+{
+    SetTlvHeader(tlvHeader);
+}
+
 // NS_OBJECT_ENSURE_REGISTERED(RerrHeader);
 
 template <typename T>
@@ -629,6 +650,7 @@ template <typename T>
 uint32_t
 RerrHeader<T>::GetSerializedSize() const
 {
+    this->CreateTlvHeader();
     return m_tlvHeader->GetSerializedSize();
 }
 
