@@ -1477,14 +1477,14 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     {
         if (toOrigin.GetValidSeqNo())
         {
-            if (int32_t(rreqHeader.GetSeqNo()) - int32_t(toOrigin.GetSeqNo()) > 0)
+            if (int32_t(rreqHeader.GetOrigSeqNo()) - int32_t(toOrigin.GetSeqNo()) > 0)
             {
-                toOrigin.SetSeqNo(rreqHeader.GetSeqNo());
+                toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
             }
         }
         else
         {
-            toOrigin.SetSeqNo(rreqHeader.GetSeqNo());
+            toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
         }
         toOrigin.SetValidSeqNo(true);
         toOrigin.SetNextHop(src);
