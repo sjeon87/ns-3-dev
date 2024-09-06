@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -524,42 +524,6 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the origin sequence number
-     * \param seq the origin sequence number
-     */
-    void SetOrigSeqNo(uint8_t seq)
-    {
-        m_origSeqNo = seq;
-    }
-
-    /**
-     * \brief Set the origin sequence number
-     * \return the origin sequence number
-     */
-    uint8_t GetOrigSeqNo() const
-    {
-        return m_origSeqNo;
-    }
-
-    /**
-     * \brief Set the origin path metric
-     * \param metric the origin path metric
-     */
-    void SetOrigPathMetric(uint8_t metric)
-    {
-        m_origPathMetric = metric;
-    }
-
-    /**
-     * \brief Get the origin path metric
-     * \return the origin path metric
-     */
-    uint8_t GetOrigPathMetric() const
-    {
-        return m_origPathMetric;
-    }
-
-    /**
      * \brief Set the target IP address
      * \param ip the target IP address
      */
@@ -677,8 +641,6 @@ class RrepHeader : public Header
   private:
     T m_origIp;                         ///< Origin IP Address
     uint16_t m_origMask;                ///< Origin Mask
-    uint8_t m_origSeqNo;                ///< Origin Sequence number
-    uint8_t m_origPathMetric;           ///< Origin Path Metric
     T m_targIp;                         ///< Target IP Address
     uint16_t m_targMask;                ///< Target Mask
     uint8_t m_targSeqNo;                ///< Target Sequence number
@@ -875,60 +837,6 @@ class RerrHeader : public Header
     }
 
     /**
-     * \brief Set the origin sequence number
-     * \param seq the origin sequence number
-     */
-    void SetOrigSeqNo(uint8_t seq)
-    {
-        m_origSeqNo = seq;
-    }
-
-    /**
-     * \brief Set the origin sequence number
-     * \return the origin sequence number
-     */
-    uint8_t GetOrigSeqNo() const
-    {
-        return m_origSeqNo;
-    }
-
-    /**
-     * \brief Set the origin path metric
-     * \param metric the origin path metric
-     */
-    void SetOrigPathMetric(uint8_t metric)
-    {
-        m_origPathMetric = metric;
-    }
-
-    /**
-     * \brief Get the origin path metric
-     * \return the origin path metric
-     */
-    uint8_t GetOrigPathMetric() const
-    {
-        return m_origPathMetric;
-    }
-
-    /**
-     * \brief Set the sequence number
-     * \param seq the sequence number
-     */
-    void SetSeqNo(uint32_t seq)
-    {
-        m_seqNo = seq;
-    }
-
-    /**
-     * \brief Get the sequence number
-     * \return the sequence number
-     */
-    uint32_t GetSeqNo() const
-    {
-        return m_seqNo;
-    }
-
-    /**
      * \brief Add unreachable node address and its sequence number in RERR header
      * \param dst unreachable IP address
      * \param seqNo unreachable sequence number
@@ -964,11 +872,8 @@ class RerrHeader : public Header
     /// List of Unreachable destination: IP addresses and sequence numbers
     std::map<T, uint32_t> m_unreachableDstSeqNo;
 
-    T m_origIp;               ///< Origin IP Address
-    uint16_t m_origMask;      ///< Origin Mask
-    uint8_t m_origSeqNo;      ///< Origin Sequence number
-    uint8_t m_origPathMetric; ///< Origin Path Metric
-    uint8_t m_seqNo;          ///< Sequence number
+    T m_origIp;          ///< Origin IP Address
+    uint16_t m_origMask; ///< Origin Mask
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };

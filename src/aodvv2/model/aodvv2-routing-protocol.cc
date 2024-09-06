@@ -1453,7 +1453,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
      *  1. the Originator Sequence Number from the RREQ is compared to the corresponding destination
      * sequence number in the route table entry and copied if greater than the existing value there
      *  2. the valid sequence number field is set to true;
-     *  3. the next hop in the routing table becomes the node from which the  RREQ was received
+     *  3. the next hop in the routing table becomes the node from which the RREQ was received
      *  4. the hop count is copied from the Hop Count in the RREQ message;
      *  5. the Lifetime is set to be the maximum of (ExistingLifetime, MinimalLifetime), where
      *     MinimalLifetime = current time + 2*NetTraversalTime - 2*HopCount*NodeTraversalTime
@@ -1506,7 +1506,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             dev,
             src,
             false,
-            rreqHeader.GetSeqNo(),
+            rreqHeader.GetOrigSeqNo(),
             m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
             1,
             src,
@@ -1517,7 +1517,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     {
         toNeighbor.SetLifeTime(m_activeRouteTimeout);
         toNeighbor.SetValidSeqNo(false);
-        toNeighbor.SetSeqNo(rreqHeader.GetSeqNo());
+        toNeighbor.SetSeqNo(rreqHeader.GetOrigSeqNo());
         toNeighbor.SetFlag(CONFIRMED);
         toNeighbor.SetOutputDevice(m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
         toNeighbor.SetInterface(m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
@@ -1565,19 +1565,17 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
          * the value received in the incoming RREQ is larger than the value currently maintained by
          * the forwarding node.
          */
-        /* if ((rreqHeader.GetUnknownSeqno() ||
-             (int32_t(toDst.GetSeqNo()) - int32_t(rreqHeader.GetSeqNo()) >= 0)) &&
+        if (((int32_t(toDst.GetSeqNo()) - int32_t(rreqHeader.GetSeqNo()) >= 0)) &&
             toDst.GetValidSeqNo())
         {
-            if (!rreqHeader.GetDestinationOnly() && toDst.GetFlag() == CONFIRMED)
+            if (toDst.GetFlag() == CONFIRMED)
             {
                 m_routingTable.LookupRoute(origin, toOrigin);
-                SendReplyByIntermediateNode(toDst, toOrigin, rreqHeader.GetGratuitousRrep());
+                SendReplyByIntermediateNode(toDst, toOrigin);
                 return;
             }
             rreqHeader.SetSeqNo(toDst.GetSeqNo());
-            rreqHeader.SetUnknownSeqno(false);
-        } */
+        }
     }
 
     SocketIpTtlTag tag;

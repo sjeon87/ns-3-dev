@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -147,7 +147,7 @@ RreqHeader<T>::CreateTlvHeader() const
     /* TODO me: optional, use only with invalid route
     Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
     msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-    uint8_t msg1a2tlv2val[] = {0};
+    uint8_t msg1a2tlv2val[] = {this->m_origSeqNo};
     msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
     msg1a2->TlvPushBack(msg1a2tlv2); */
 
@@ -447,14 +447,6 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             case AODVV2_ORIGPREFIX:
                 this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetOrigMask(addressBlock->PrefixFront());
-                if (hasSeqNum)
-                {
-                    this->SetOrigSeqNo(seqNum);
-                }
-                if (hasPathMetric)
-                {
-                    this->SetOrigPathMetric(pathMetric);
-                }
                 break;
             case AODVV2_TARGPREFIX:
                 this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
@@ -675,7 +667,7 @@ void
 RerrHeader<T>::CreateTlvHeader() const
 {
     m_tlvHeader = Create<PbbPacket>();
-    m_tlvHeader->SetSequenceNumber(this->m_seqNo);
+    // m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
     Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RERR);
@@ -739,7 +731,6 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
         bool hasAddrType = false;
-        bool hasSeqNum = false;
         bool hasPathMetric = false;
         uint8_t addrType = 0;
         uint8_t seqNum = 0;
@@ -758,7 +749,6 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             else if (tlv->GetType() == AODVV2_SEQ_NUM)
             {
                 seqNum = tlv->GetValue().Begin().ReadU8();
-                hasSeqNum = true;
             }
             else if (tlv->GetType() == AODVV2_PATH_METRIC)
             {
@@ -774,18 +764,15 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             case AODVV2_PKTSOURCE:
                 this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetOrigMask(addressBlock->PrefixFront());
-                if (hasSeqNum)
-                {
-                    this->SetOrigSeqNo(seqNum);
-                }
-                if (hasPathMetric)
-                {
-                    this->SetOrigPathMetric(pathMetric);
-                }
                 break;
             case AODVV2_TARGPREFIX:
                 this->AddUnDestination(T::ConvertFrom(addressBlock->AddressFront()), seqNum);
-                // TODO me: if needed save pathMetric
+                if (hasPathMetric)
+                {
+                    std::cout << pathMetric << std::endl;
+                    // TODO me: if needed save pathMetric for each address
+                }
+
                 break;
             }
         }
