@@ -1484,6 +1484,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         }
         else
         {
+            rreqHeader.SetSendTargSeqNum(true);
             toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
         }
         toOrigin.SetValidSeqNo(true);

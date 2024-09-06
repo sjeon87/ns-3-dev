@@ -381,6 +381,24 @@ class RreqHeader : public Header
     }
 
     /**
+     * \brief Set the send target sequence number flag
+     * \param send the send target sequence number flag
+     */
+    void SetSendTargSeqNum(bool send)
+    {
+        m_sendTargSeqNum = send;
+    }
+
+    /**
+     * \brief Get the send target sequence number flag
+     * \return the send target sequence number flag
+     */
+    bool GetSendTargSeqNum() const
+    {
+        return m_sendTargSeqNum;
+    }
+
+    /**
      * \brief Comparison operator
      * \param o RREQ header to compare
      * \return true if the RREQ headers are equal
@@ -398,6 +416,7 @@ class RreqHeader : public Header
     uint8_t m_targPathMetric; ///< Target Path Metric
     uint8_t m_seqNo;          ///< Sequence number
     uint8_t m_hopCount;       ///< Hop Count
+    bool m_sendTargSeqNum;    ///< Send Target Sequence Number
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };

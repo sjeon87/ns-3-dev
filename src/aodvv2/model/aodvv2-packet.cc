@@ -144,12 +144,14 @@ RreqHeader<T>::CreateTlvHeader() const
     msg1a2->TlvPushBack(msg1a2tlv1);
 
     // Add SEQ_NUM TLV
-    /* TODO me: optional, use only with invalid route
-    Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
-    msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-    uint8_t msg1a2tlv2val[] = {this->m_origSeqNo};
-    msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
-    msg1a2->TlvPushBack(msg1a2tlv2); */
+    if (this->m_sendTargSeqNum)
+    {
+        Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
+        msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
+        uint8_t msg1a2tlv2val[] = {this->m_origSeqNo};
+        msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
+        msg1a2->TlvPushBack(msg1a2tlv2);
+    }
 
     msg1->AddressBlockPushBack(msg1a2);
     // **************************************************************************************
