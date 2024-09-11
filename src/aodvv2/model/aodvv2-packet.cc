@@ -158,6 +158,8 @@ RreqHeader<T>::CreateTlvHeader() const
 
     // ****************************** SeqNoRtr Address Block ******************************
     /*  TODO me: optional, understand what to do
+    check if the ip src is equal to the ip of this router
+    this is meant to save the ip of the router connected to an external network
     Ptr<PbbAddressBlockIp> msg1a3 = Create<PbbAddressBlockIp>();
     msg1a3->AddressPushBack(this->m_targIp);
     msg1a3->PrefixPushBack(this->m_targMask);

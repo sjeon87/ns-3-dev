@@ -44,7 +44,7 @@ namespace aodvv2
 enum Aodvv2Timers
 {
     AODVV2_ACTIVE_INTERVAL = 5,       //!< Interval between two packets to keep a route active.
-    AODVV2_MAX_IDLETIME = 200,        //!< Max idle time before the route is considered Invalid.
+    AODVV2_MAX_IDLETIME = 200,        //!< Max idle time before the route is considered Blacklisted.
     AODVV2_MAX_BLACKLIST_TIME = 200,  //!< Max blacklist time before the route is considered Heard.
     AODVV2_MAX_SEQNUM_LIFETIME = 300, //!< Max time without a sequence number update.
     AODVV2_RERR_TIMEOUT = 3,          //!< Request Error Timeout
@@ -114,7 +114,6 @@ enum AddressTlvType
  * \brief Address Block TLV Value
  */
 enum AddressTlvValue
-
 {
     AODVV2_ORIGPREFIX = 0,
     AODVV2_TARGPREFIX = 1,

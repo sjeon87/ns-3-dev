@@ -409,7 +409,7 @@ class RoutingTableEntry
     Ptr<IpRoute> m_ipRoute;
     /// Output interface address
     IpInterfaceAddress m_iface;
-    /// Routing flags: valid, invalid or in search
+    /// Routing flags: confirmed, blacklisted or heard
     RouteFlags m_flag;
 
     /// List of precursors

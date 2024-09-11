@@ -148,9 +148,9 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_netTraversalTime(AODVV2_RREQ_WAIT_TIME),
       m_pathDiscoveryTime(Time(uint32_t(AODVV2_DISCOVERY_ATTEMPTS_MAX) * m_netTraversalTime)),
       m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeRouteTimeout))),
-      m_deletePeriod(Time(5 * m_activeRouteTimeout)),
+      m_deletePeriod(AODVV2_MAX_BLACKLIST_TIME),
       m_nextHopWait(m_nodeTraversalTime + MilliSeconds(10)),
-      m_blackListTimeout(Time(m_rreqRetries * m_netTraversalTime)),
+      m_blackListTimeout(Time(AODVV2_MAX_IDLETIME)),
       m_maxQueueLen(64),
       m_maxQueueTime(Seconds(30)),
       m_destinationOnly(false),
@@ -459,15 +459,7 @@ Aodvv2RoutingProtocol<T>::DeferredRouteOutput(Ptr<const Packet> p,
     bool result = m_queue.Enqueue(newEntry);
     if (result)
     {
-        if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-        {
-            NS_LOG_LOGIC("Add packet " << p->GetUid() << " to queue. Protocol "
-                                       << (uint16_t)header.GetProtocol());
-        }
-        else
-        {
-            // TODO Ipv6
-        }
+        NS_LOG_LOGIC("Add packet " << p->GetUid() << " to queue.");
         RoutingTableEntry<IpAddress> rt;
         bool result = m_routingTable.LookupRoute(header.GetDestination(), rt);
         if (!result || ((rt.GetFlag() != HEARD) && result))
@@ -591,43 +583,36 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                     }
                     return true;
                 }
-            }
-            else
-            {
-                // TODO Ipv6
-            }
-        }
-    }
 
-    // Unicast local delivery
-    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-    {
-        if (m_ip->IsDestinationAddress(dst, iif))
-        {
-            UpdateRouteLifeTime(origin, m_activeRouteTimeout);
-            RoutingTableEntry<IpAddress> toOrigin;
-            if (m_routingTable.LookupValidRoute(origin, toOrigin))
-            {
-                UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
-                m_nb.Update(toOrigin.GetNextHop(), m_activeRouteTimeout);
-            }
-            if (!lcb.IsNull())
-            {
-                NS_LOG_LOGIC("Unicast local delivery to " << dst);
-                lcb(p, header, iif);
+                // Unicast local delivery
+                if (m_ip->IsDestinationAddress(dst, iif))
+                {
+                    UpdateRouteLifeTime(origin, m_activeRouteTimeout);
+                    RoutingTableEntry<IpAddress> toOrigin;
+                    if (m_routingTable.LookupValidRoute(origin, toOrigin))
+                    {
+                        UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
+                        m_nb.Update(toOrigin.GetNextHop(), m_activeRouteTimeout);
+                    }
+                    if (!lcb.IsNull())
+                    {
+                        NS_LOG_LOGIC("Unicast local delivery to " << dst);
+                        lcb(p, header, iif);
+                    }
+                    else
+                    {
+                        NS_LOG_ERROR("Unable to deliver packet locally due to null callback "
+                                     << p->GetUid() << " from " << origin);
+                        ecb(p, header, Socket::ERROR_NOROUTETOHOST);
+                    }
+                    return true;
+                }
             }
             else
             {
-                NS_LOG_ERROR("Unable to deliver packet locally due to null callback "
-                             << p->GetUid() << " from " << origin);
-                ecb(p, header, Socket::ERROR_NOROUTETOHOST);
+                // TODO Ipv6 multicast and unicast
             }
-            return true;
         }
-    }
-    else
-    {
-        // TODO Ipv6
     }
 
     // Check if input device supports IP forwarding
@@ -722,7 +707,7 @@ Aodvv2RoutingProtocol<T>::SetIpv4(Ptr<Ipv4> ipv4)
 
         // Create lo route. It is asserted that the only one interface up for now is loopback
         NS_ASSERT(m_ip->GetNInterfaces() == 1 &&
-                  m_ip->GetAddress(0, 0).GetAddress() == Ipv4Address("127.0.0.1"));
+                  m_ip->GetAddress(0, 0).GetAddress() == IpAddress::GetLoopback());
         m_lo = m_ip->GetNetDevice(0);
         NS_ASSERT(m_lo);
         // Remember lo route
@@ -764,10 +749,10 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     Ptr<IpL3Protocol> l3 = m_ip->template GetObject<IpL3Protocol>();
     if (l3->GetNAddresses(i) > 1)
     {
-        NS_LOG_WARN("AODVv2 does not work with more then one address per each interface.");
+        NS_LOG_WARN("AODVv2 does not work with more than one address per each interface.");
     }
     IpInterfaceAddress iface = l3->GetAddress(i, 0);
-    if (iface.GetAddress() == IpAddress("127.0.0.1"))
+    if (iface.GetAddress() == IpAddress::GetLoopback())
     {
         return;
     }
@@ -886,7 +871,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
         Ptr<Socket> socket = FindSocketWithInterfaceAddress(iface);
         if (!socket)
         {
-            if (iface.GetAddress() == IpAddress("127.0.0.1"))
+            if (iface.GetAddress() == IpAddress::GetLoopback())
             {
                 return;
             }
@@ -1113,7 +1098,7 @@ Aodvv2RoutingProtocol<T>::LoopbackRoute(const IpHeader& hdr, Ptr<NetDevice> oif)
         rt->SetSource(j->second.GetAddress());
     }
     NS_ASSERT_MSG(rt->GetSource() != IpAddress(), "Valid AODVv2 source address not found");
-    rt->SetGateway(IpAddress("127.0.0.1"));
+    rt->SetGateway(IpAddress::GetLoopback());
     rt->SetOutputDevice(m_lo);
     return rt;
 }
@@ -1610,7 +1595,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             }
         }
         else
-        { // TODO Ipv6
+        {
+            // TODO Ipv6
         }
         m_lastBcastTime = Simulator::Now();
         Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
