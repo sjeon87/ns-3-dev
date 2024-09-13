@@ -160,6 +160,43 @@ class RreqHeader : public Header
     void Print(std::ostream& os) const override;
 
     // Fields
+
+    /**
+     * \brief Set the router IP address
+     * \param ip the router IP address
+     */
+    void SetRtrIp(T ip)
+    {
+        m_rtrIp = ip;
+    }
+
+    /**
+     * \brief Get the router IP address
+     * \return the router IP address
+     */
+    T GetRtrIp() const
+    {
+        return m_rtrIp;
+    }
+
+    /**
+     * \brief Set the router mask
+     * \param mask the router mask
+     */
+    void SetRtrMask(uint16_t mask)
+    {
+        m_rtrMask = mask;
+    }
+
+    /**
+     * \brief Get the router mask
+     * \return the router mask
+     */
+    uint16_t GetRtrMask() const
+    {
+        return m_rtrMask;
+    }
+
     /**
      * \brief Set the origin IP address
      * \param ip the origin IP address
@@ -366,6 +403,8 @@ class RreqHeader : public Header
     bool operator==(const RreqHeader& o) const;
 
   private:
+    T m_rtrIp;                ///< Router IP Address
+    uint16_t m_rtrMask;       ///< Router Mask
     T m_origIp;               ///< Origin IP Address
     uint16_t m_origMask;      ///< Origin Mask
     uint8_t m_origSeqNo;      ///< Origin Sequence number

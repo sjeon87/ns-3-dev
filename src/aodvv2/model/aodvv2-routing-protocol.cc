@@ -1166,6 +1166,10 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
         rreqHeader.SetOrigIp(iface.GetAddress());
         rreqHeader.SetOrigMask(32); // TODO me: update if needed
+        rreqHeader.SetRtrIp(
+            m_ip->GetAddress(m_ip->GetInterfaceForAddress(iface.GetAddress()), 0).GetAddress());
+        rreqHeader.SetRtrMask(32); // TODO me: update if needed
+
         m_rreqIdCache.IsDuplicate(iface.GetAddress(), m_requestId);
 
         Ptr<Packet> packet = Create<Packet>();
