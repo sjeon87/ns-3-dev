@@ -135,26 +135,31 @@ NS_OBJECT_ENSURE_REGISTERED(DeferredRouteOutputTag);
 //-----------------------------------------------------------------------------
 template <typename T>
 Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
-    : m_rreqRetries(AODVV2_DISCOVERY_ATTEMPTS_MAX),
-      m_ttlStart(1),
-      m_ttlIncrement(2),
-      m_ttlThreshold(7),
+    : m_discoveryAttemptsMax(3),
+      m_rrepRetries(2),
+      m_maxHopCount(20),
       m_timeoutBuffer(2),
-      m_rreqRateLimit(1 / AODVV2_CONTROL_TRAFFIC_LIMIT),
-      m_rerrRateLimit(1 / AODVV2_CONTROL_TRAFFIC_LIMIT),
-      m_activeRouteTimeout(Seconds(AODVV2_ACTIVE_INTERVAL)),
-      m_netDiameter(AODVV2_MAX_HOP_COUNT),
+      m_controlTrafficLimit(0.1),
+      m_rreqRateLimit(1 / m_controlTrafficLimit),
+      m_rerrRateLimit(1 / m_controlTrafficLimit),
+      m_activeRouteTimeout(Seconds(5)),
+      m_netDiameter(m_maxHopCount),
       m_nodeTraversalTime(MilliSeconds(40)),
-      m_netTraversalTime(AODVV2_RREQ_WAIT_TIME),
-      m_pathDiscoveryTime(Time(uint32_t(AODVV2_DISCOVERY_ATTEMPTS_MAX) * m_netTraversalTime)),
+      m_netTraversalTime(Seconds(2)),
+      m_pathDiscoveryTime(Time(m_discoveryAttemptsMax * m_netTraversalTime)),
       m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeRouteTimeout))),
-      m_deletePeriod(AODVV2_MAX_BLACKLIST_TIME),
       m_nextHopWait(m_nodeTraversalTime + MilliSeconds(10)),
-      m_blackListTimeout(Time(AODVV2_MAX_IDLETIME)),
-      m_maxQueueLen(64),
+      m_rreqHolddownTime(Seconds(10)),
+      m_rrepAckSentTimeout(Seconds(1)),
+      m_rerrTimeout(Seconds(3)),
+      m_maxIdleTime(Seconds(200)),
+      m_maxBlacklistTime(Seconds(200)),
+      m_maxSeqnumLifetime(Seconds(300)),
+      m_maxQueueLen(2),
       m_maxQueueTime(Seconds(30)),
+      m_rtemsgEntryTime(Seconds(12)),
       m_destinationOnly(false),
-      m_routingTable(m_deletePeriod),
+      m_routingTable(m_maxBlacklistTime),
       m_queue(m_maxQueueLen, m_maxQueueTime),
       m_requestId(0),
       m_seqNo(0),
@@ -190,23 +195,6 @@ Aodvv2RoutingProtocol<T>::GetTypeId()
             .SetParent<T>()
             .SetGroupName("Aodvv2")
             .template AddConstructor<Aodvv2RoutingProtocol<T>>()
-            .AddAttribute("TtlStart",
-                          "Initial TTL value for RREQ.",
-                          UintegerValue(1),
-                          MakeUintegerAccessor(&Aodvv2RoutingProtocol<T>::m_ttlStart),
-                          MakeUintegerChecker<uint16_t>())
-            .AddAttribute("TtlIncrement",
-                          "TTL increment for each attempt using the expanding ring search for RREQ "
-                          "dissemination.",
-                          UintegerValue(2),
-                          MakeUintegerAccessor(&Aodvv2RoutingProtocol<T>::m_ttlIncrement),
-                          MakeUintegerChecker<uint16_t>())
-            .AddAttribute("TtlThreshold",
-                          "Maximum TTL value for expanding ring search, TTL = NetDiameter is used "
-                          "beyond this value.",
-                          UintegerValue(7),
-                          MakeUintegerAccessor(&Aodvv2RoutingProtocol<T>::m_ttlThreshold),
-                          MakeUintegerChecker<uint16_t>())
             .AddAttribute("TimeoutBuffer",
                           "Provide a buffer for the timeout.",
                           UintegerValue(2),
@@ -215,7 +203,7 @@ Aodvv2RoutingProtocol<T>::GetTypeId()
             .AddAttribute("RreqRetries",
                           "Maximum number of retransmissions of RREQ to discover a route",
                           UintegerValue(2),
-                          MakeUintegerAccessor(&Aodvv2RoutingProtocol<T>::m_rreqRetries),
+                          MakeUintegerAccessor(&Aodvv2RoutingProtocol<T>::m_discoveryAttemptsMax),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("RreqRateLimit",
                           "Maximum number of RREQ per second.",
@@ -251,20 +239,15 @@ Aodvv2RoutingProtocol<T>::GetTypeId()
                           TimeValue(Seconds(11.2)),
                           MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_myRouteTimeout),
                           MakeTimeChecker())
-            .AddAttribute("BlackListTimeout",
-                          "Time for which the node is put into the blacklist = RreqRetries * "
-                          "NetTraversalTime",
+            .AddAttribute("MaxIdleTime",
+                          "Time for which the node is put into the blacklist",
                           TimeValue(Seconds(5.6)),
-                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_blackListTimeout),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_maxIdleTime),
                           MakeTimeChecker())
-            .AddAttribute("DeletePeriod",
-                          "DeletePeriod is intended to provide an upper bound on the time for "
-                          "which an upstream node A "
-                          "can have a neighbor B as an active next hop for destination D, while B "
-                          "has invalidated the route to D."
-                          " = 5 * ActiveRouteTimeout",
+            .AddAttribute("MaxBlacklistTime",
+                          "Time for which the node is removed from the blacklist",
                           TimeValue(Seconds(15)),
-                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_deletePeriod),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_maxBlacklistTime),
                           MakeTimeChecker())
             .AddAttribute("NetDiameter",
                           "Net diameter measures the maximum possible number of hops between two "
@@ -1128,26 +1111,26 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
     RoutingTableEntry<IpAddress> rt;
     // Using the Hop field in Routing Table to manage the expanding ring search
-    uint16_t ttl = m_ttlStart;
+    uint16_t hops = 1;
     if (m_routingTable.LookupRoute(dst, rt))
     {
         if (rt.GetFlag() != HEARD)
         {
-            ttl = std::min<uint16_t>(rt.GetHop() + m_ttlIncrement, m_netDiameter);
+            hops = std::min<uint16_t>(rt.GetHop() + 2, m_netDiameter);
         }
         else
         {
-            ttl = rt.GetHop() + m_ttlIncrement;
-            if (ttl > m_ttlThreshold)
+            hops = rt.GetHop() + 2;
+            if (hops > m_maxHopCount)
             {
-                ttl = m_netDiameter;
+                hops = m_netDiameter;
             }
         }
-        if (ttl == m_netDiameter)
+        if (hops == m_netDiameter)
         {
             rt.IncrementRreqCnt();
         }
-        rt.SetHop(ttl);
+        rt.SetHop(hops);
         rt.SetFlag(HEARD);
         rt.SetLifeTime(m_pathDiscoveryTime);
         m_routingTable.Update(rt);
@@ -1160,11 +1143,10 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                                               /*vSeqNo=*/false,
                                               /*seqNo=*/0,
                                               /*iface=*/IpInterfaceAddress(),
-                                              /*hops=*/ttl,
+                                              /*hops=*/hops,
                                               /*nextHop=*/IpAddress(),
                                               /*lifetime=*/m_pathDiscoveryTime);
-        // Check if TtlStart == NetDiameter
-        if (ttl == m_netDiameter)
+        if (hops == m_netDiameter)
         {
             newEntry.IncrementRreqCnt();
         }
@@ -1187,9 +1169,6 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         m_rreqIdCache.IsDuplicate(iface.GetAddress(), m_requestId);
 
         Ptr<Packet> packet = Create<Packet>();
-        SocketIpTtlTag tag;
-        tag.SetTtl(ttl);
-        packet->AddPacketTag(tag);
 
         packet->AddHeader(rreqHeader);
 
@@ -1564,22 +1543,11 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         }
     }
 
-    SocketIpTtlTag tag;
-    p->RemovePacketTag(tag);
-    if (tag.GetTtl() < 2)
-    {
-        NS_LOG_DEBUG("TTL exceeded. Drop RREQ origin " << src << " destination " << dst);
-        return;
-    }
-
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
         Ptr<Socket> socket = j->first;
         IpInterfaceAddress iface = j->second;
         Ptr<Packet> packet = Create<Packet>();
-        SocketIpTtlTag ttl;
-        ttl.SetTtl(tag.GetTtl() - 1);
-        packet->AddPacketTag(ttl);
         packet->AddHeader(rreqHeader);
         // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
         IpAddress destination;
@@ -1631,9 +1599,6 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*targMask=*/32);
     rrepHeader.SetHopCount(hopCount);
     Ptr<Packet> packet = Create<Packet>();
-    SocketIpTtlTag tag;
-    tag.SetTtl(toOrigin.GetHop());
-    packet->AddPacketTag(tag);
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1659,7 +1624,7 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(RoutingTableEntry<IpAddres
         RoutingTableEntry<IpAddress> toNextHop;
         m_routingTable.LookupRoute(toOrigin.GetNextHop(), toNextHop);
         toNextHop.m_ackTimer.SetFunction(&Aodvv2RoutingProtocol<T>::AckTimerExpire, this);
-        toNextHop.m_ackTimer.SetArguments(toNextHop.GetDestination(), m_blackListTimeout);
+        toNextHop.m_ackTimer.SetArguments(toNextHop.GetDestination(), m_maxIdleTime);
         toNextHop.m_ackTimer.SetDelay(m_nextHopWait);
     }
     toDst.InsertPrecursor(toOrigin.GetNextHop());
@@ -1668,9 +1633,6 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(RoutingTableEntry<IpAddres
     m_routingTable.Update(toOrigin);
 
     Ptr<Packet> packet = Create<Packet>();
-    SocketIpTtlTag tag;
-    tag.SetTtl(toOrigin.GetHop());
-    packet->AddPacketTag(tag);
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1684,9 +1646,6 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     NS_LOG_FUNCTION(this << " to " << neighbor);
     RrepAckHeader<IpAddress> h;
     Ptr<Packet> packet = Create<Packet>();
-    SocketIpTtlTag tag;
-    tag.SetTtl(1);
-    packet->AddPacketTag(tag);
     packet->AddHeader(h);
     RoutingTableEntry<IpAddress> toNeighbor;
     m_routingTable.LookupRoute(neighbor, toNeighbor);
@@ -1807,19 +1766,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         toNextHopToOrigin.InsertPrecursor(toDst.GetNextHop());
         m_routingTable.Update(toNextHopToOrigin);
     }
-    SocketIpTtlTag tag;
-    p->RemovePacketTag(tag);
-    if (tag.GetTtl() < 2)
-    {
-        NS_LOG_DEBUG("TTL exceeded. Drop RREP destination " << dst << " origin "
-                                                            << rrepHeader.GetOrigIp());
-        return;
-    }
 
     Ptr<Packet> packet = Create<Packet>();
-    SocketIpTtlTag ttl;
-    ttl.SetTtl(tag.GetTtl() - 1);
-    packet->AddPacketTag(ttl);
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1868,9 +1816,6 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
         if (!rerrHeader.AddUnDestination(i->first, i->second))
         {
             Ptr<Packet> packet = Create<Packet>();
-            SocketIpTtlTag tag;
-            tag.SetTtl(1);
-            packet->AddPacketTag(tag);
             packet->AddHeader(rerrHeader);
             SendRerrMessage(packet, precursors);
             rerrHeader.Clear();
@@ -1886,9 +1831,6 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
     if (rerrHeader.GetDestCount() != 0)
     {
         Ptr<Packet> packet = Create<Packet>();
-        SocketIpTtlTag tag;
-        tag.SetTtl(1);
-        packet->AddPacketTag(tag);
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
@@ -1908,15 +1850,15 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
         return;
     }
     /*
-     *  If a route discovery has been attempted RreqRetries times at the maximum TTL without
+     *  If a route discovery has been attempted RreqRetries times at the maximum diameter without
      *  receiving any RREP, all data packets destined for the corresponding destination SHOULD
      * be dropped from the buffer and a Destination Unreachable message SHOULD be delivered to
      * the application.
      */
-    if (toDst.GetRreqCnt() == m_rreqRetries)
+    if (toDst.GetRreqCnt() == m_discoveryAttemptsMax)
     {
         NS_LOG_LOGIC("route discovery to " << dst << " has been attempted RreqRetries ("
-                                           << m_rreqRetries << ") times with ttl "
+                                           << m_discoveryAttemptsMax << ") times with diameter "
                                            << m_netDiameter);
         m_addressReqTimer.erase(dst);
         m_routingTable.DeleteRoute(dst);
@@ -1927,7 +1869,7 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
 
     if (toDst.GetFlag() == HEARD)
     {
-        NS_LOG_LOGIC("Resend RREQ to " << dst << " previous ttl " << toDst.GetHop());
+        NS_LOG_LOGIC("Resend RREQ to " << dst << " previous diameter " << toDst.GetHop());
         SendRequest(dst);
     }
     else
@@ -1986,8 +1928,6 @@ Aodvv2RoutingProtocol<T>::SendPacketFromQueue(IpAddress dst, Ptr<IpRoute> route)
         header.SetSource(route->GetSource());
         if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
         {
-            header.SetTtl(header.GetTtl() +
-                          1); // compensate extra TTL decrement by fake loopback routing
             ucb(route, p, header);
         }
         else
@@ -2020,9 +1960,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         {
             NS_LOG_LOGIC("Send RERR message with maximum size.");
             Ptr<Packet> packet = Create<Packet>();
-            SocketIpTtlTag tag;
-            tag.SetTtl(1);
-            packet->AddPacketTag(tag);
             packet->AddHeader(rerrHeader);
             SendRerrMessage(packet, precursors);
             rerrHeader.Clear();
@@ -2038,9 +1975,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
     if (rerrHeader.GetDestCount() != 0)
     {
         Ptr<Packet> packet = Create<Packet>();
-        SocketIpTtlTag tag;
-        tag.SetTtl(1);
-        packet->AddPacketTag(tag);
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
@@ -2070,9 +2004,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
     rerrHeader.AddUnDestination(dst, dstSeqNo);
     RoutingTableEntry<IpAddress> toOrigin;
     Ptr<Packet> packet = Create<Packet>();
-    SocketIpTtlTag tag;
-    tag.SetTtl(1);
-    packet->AddPacketTag(tag);
     packet->AddHeader(rerrHeader);
     if (m_routingTable.LookupValidRoute(origin, toOrigin))
     {

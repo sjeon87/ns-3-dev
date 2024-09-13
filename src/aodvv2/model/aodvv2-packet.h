@@ -39,46 +39,6 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief AODVv2 timers
- */
-enum Aodvv2Timers
-{
-    AODVV2_ACTIVE_INTERVAL = 5,       //!< Interval between two packets to keep a route active.
-    AODVV2_MAX_IDLETIME = 200,        //!< Max idle time before the route is considered Blacklisted.
-    AODVV2_MAX_BLACKLIST_TIME = 200,  //!< Max blacklist time before the route is considered Heard.
-    AODVV2_MAX_SEQNUM_LIFETIME = 300, //!< Max time without a sequence number update.
-    AODVV2_RERR_TIMEOUT = 3,          //!< Request Error Timeout
-    AODVV2_RTEMSG_ENTRY_TIME = 12,    //!< Min time to keep a multicast entry.
-    AODVV2_RREQ_WAIT_TIME = 2,        //!< Time to wait for a RREQ.
-    AODVV2_RREP_ACK_SENT_TIMEOUT = 1, //!< Time to wait for a RREP_ACK.
-    AODVV2_RREQ_HOLDDOWN_TIME = 10,   //!< Time to wait before sending a new RREQ after a RREQ.
-};
-
-/**
- * \ingroup aodvv2
- * \brief AODVv2 constants
- */
-enum Aodvv2Constants
-{
-    AODVV2_DISCOVERY_ATTEMPTS_MAX = 3, //!< Max attempts to discover a route
-    AODVV2_RREP_RETRIES = 2,           //!< Max attempts to send a RREP
-    AODVV2_MAX_HOP_COUNT = 20,         //!< Max hop count for a RREQ or RREP
-};
-
-/**
- * \ingroup aodvv2
- * \brief AODVv2 local settings
- */
-enum Aodvv2LocalSettings
-{
-    AODVV2_BUFFER_SIZE_PACKETS = 2,    //!< Size of the buffer in packets
-    AODVV2_BUFFER_SIZE_BYTES = 999999, //!< BUFFER_SIZE_BYTES TBD
-};
-
-constexpr double AODVV2_CONTROL_TRAFFIC_LIMIT = 0.1; //!< CONTROL_TRAFFIC_LIMIT
-
-/**
- * \ingroup aodvv2
  * \brief MessageType enumeration
  */
 enum MessageType
@@ -170,7 +130,8 @@ class RreqHeader : public Header
                T targIp = T(),
                uint16_t targMask = 0,
                uint32_t seqNo = 0,
-               uint8_t hopCount = 0);
+               uint8_t hopCount = 0,
+               uint8_t maxHopCount = 20);
 
     /**
      * constructor
@@ -415,8 +376,9 @@ class RreqHeader : public Header
     uint8_t m_targPathMetric; ///< Target Path Metric
     uint8_t m_seqNo;          ///< Sequence number
     uint8_t m_hopCount;       ///< Hop Count
-    bool m_sendTargSeqNum;    ///< Send Target Sequence Number
 
+    uint8_t m_maxHopCount;              ///< Max Hop Count
+    bool m_sendTargSeqNum;              ///< Send Target Sequence Number
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
@@ -477,7 +439,8 @@ class RrepHeader : public Header
                T targIp = T(),
                uint16_t targMask = 0,
                uint32_t seqNo = 0,
-               uint8_t hopCount = 0);
+               uint8_t hopCount = 0,
+               uint8_t maxHopCount = 20);
     /**
      * constructor
      * \param tlvHeader the TLV header
@@ -657,14 +620,16 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    T m_origIp;                         ///< Origin IP Address
-    uint16_t m_origMask;                ///< Origin Mask
-    T m_targIp;                         ///< Target IP Address
-    uint16_t m_targMask;                ///< Target Mask
-    uint8_t m_targSeqNo;                ///< Target Sequence number
-    uint8_t m_targPathMetric;           ///< Target Path Metric
-    uint8_t m_seqNo;                    ///< Sequence number
-    uint8_t m_hopCount;                 ///< Hop Count
+    T m_origIp;               ///< Origin IP Address
+    uint16_t m_origMask;      ///< Origin Mask
+    T m_targIp;               ///< Target IP Address
+    uint16_t m_targMask;      ///< Target Mask
+    uint8_t m_targSeqNo;      ///< Target Sequence number
+    uint8_t m_targPathMetric; ///< Target Path Metric
+    uint8_t m_seqNo;          ///< Sequence number
+    uint8_t m_hopCount;       ///< Hop Count
+
+    uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
@@ -698,7 +663,7 @@ class RrepAckHeader : public Header
 
   public:
     /// constructor
-    RrepAckHeader();
+    RrepAckHeader(uint8_t maxHopCount = 20);
 
     /**
      * \brief Get the type ID.
@@ -746,7 +711,9 @@ class RrepAckHeader : public Header
     bool operator==(const RrepAckHeader& o) const;
 
   private:
-    uint8_t m_seqNo;                    ///< Sequence number
+    uint8_t m_seqNo; ///< Sequence number
+
+    uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
@@ -790,12 +757,12 @@ class RerrHeader : public Header
 
   public:
     /// constructor
-    RerrHeader();
+    RerrHeader(uint8_t maxHopCount = 20);
     /**
      * constructor
      * \param tlvHeader the TLV header
      */
-    RerrHeader(PbbPacket tlvHeader);
+    RerrHeader(PbbPacket tlvHeader, uint8_t maxHopCount = 20);
 
     /**
      * \brief Get the type ID.
@@ -893,6 +860,7 @@ class RerrHeader : public Header
     T m_origIp;          ///< Origin IP Address
     uint16_t m_origMask; ///< Origin Mask
 
+    uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 

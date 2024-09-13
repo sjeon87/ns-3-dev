@@ -362,16 +362,13 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
   private:
     // Protocol parameters.
-    uint32_t m_rreqRetries; ///< Maximum number of retransmissions of RREQ with TTL = NetDiameter to
-                            ///< discover a route
-    uint16_t m_ttlStart;    ///< Initial TTL value for RREQ.
-    uint16_t m_ttlIncrement; ///< TTL increment for each attempt using the expanding ring search for
-                             ///< RREQ dissemination.
-    uint16_t m_ttlThreshold; ///< Maximum TTL value for expanding ring search, TTL = NetDiameter is
-                             ///< used beyond this value.
-    uint16_t m_timeoutBuffer;  ///< Provide a buffer for the timeout.
-    uint16_t m_rreqRateLimit;  ///< Maximum number of RREQ per second.
-    uint16_t m_rerrRateLimit;  ///< Maximum number of REER per second.
+    uint32_t m_discoveryAttemptsMax; ///< Maximum number of retransmissions of RREQ
+    uint32_t m_rrepRetries;          ///< Maximum number of retransmissions of RREP
+    uint32_t m_maxHopCount;          ///< Maximum number of hops allowed for a route
+    uint16_t m_timeoutBuffer;        ///< Provide a buffer for the timeout.
+    double_t m_controlTrafficLimit;  ///< Maximum number of control packets that can be sent
+    uint16_t m_rreqRateLimit;        ///< Maximum number of RREQ per second.
+    uint16_t m_rerrRateLimit;        ///< Maximum number of REER per second.
     Time m_activeRouteTimeout; ///< Period of time during which the route is considered to be valid.
     uint32_t m_netDiameter; ///< Net diameter measures the maximum possible number of hops between
                             ///< two nodes in the network
@@ -388,17 +385,23 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * can have a neighbor B as an active next hop for destination D, while B has invalidated the
      * route to D.
      */
-    Time m_deletePeriod;
-    Time m_nextHopWait;      ///< Period of our waiting for the neighbour's RREP_ACK
-    Time m_blackListTimeout; ///< Time for which the node is put into the blacklist
-    uint32_t m_maxQueueLen;  ///< The maximum number of packets that we allow a routing protocol to
-                             ///< buffer.
-    Time m_maxQueueTime;     ///< The maximum period of time that a routing protocol is allowed to
-                             ///< buffer a packet for.
-    bool m_destinationOnly;  ///< Indicates only the destination may respond to this RREQ.
-    bool m_gratuitousReply;  ///< Indicates whether a gratuitous RREP should be unicast to the node
-                             ///< originated route discovery.
-    bool m_enableBroadcast;  ///< Indicates whether a a broadcast data packets forwarding enable
+    Time m_nextHopWait;        ///< Period of our waiting for the neighbour's RREP_ACK
+    Time m_rreqHolddownTime;   ///< Period of time to consider an RREQ expired
+    Time m_rrepAckSentTimeout; ///< Period of time to consider an RREP_ACK expired
+    Time m_rerrTimeout;        ///< Period of time to consider an RERR expired
+    Time m_maxIdleTime;        ///< Time for which the node is put into the blacklist
+    Time m_maxBlacklistTime;   ///< Time for which the node is removed from the blacklist
+    Time m_maxSeqnumLifetime;  ///< Maximum time a sequence number is considered valid
+    uint32_t m_maxQueueLen; ///< The maximum number of packets that we allow a routing protocol to
+                            ///< buffer.
+    Time m_maxQueueTime;    ///< The maximum period of time that a routing protocol is allowed to
+                            ///< buffer a packet for.
+    Time m_rtemsgEntryTime; ///< The maximum period of time that a routing protocol is allowed to
+                            ///< buffer a multicast packet for.
+    bool m_destinationOnly; ///< Indicates only the destination may respond to this RREQ.
+    bool m_gratuitousReply; ///< Indicates whether a gratuitous RREP should be unicast to the node
+                            ///< originated route discovery.
+    bool m_enableBroadcast; ///< Indicates whether a a broadcast data packets forwarding enable
 
     /// IP protocol
     Ptr<Ip> m_ip;
