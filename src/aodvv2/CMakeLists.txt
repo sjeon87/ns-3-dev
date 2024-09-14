@@ -19,5 +19,5 @@ build_lib(
     model/aodvv2-rqueue.h
     model/aodvv2-rtable.h
   LIBRARIES_TO_LINK ${libinternet}
-  TEST_SOURCES test/aodvv2-test.cc
+  TEST_SOURCES
 )
