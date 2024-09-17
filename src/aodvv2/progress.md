@@ -60,7 +60,7 @@ We need to implement tests for the protocol to ensure that it works as expected.
 
 - Sending packets in a working network
 
-- Sending packets in the previos network with some broken link
+- Sending packets in the previous network with some broken link
 
 - Managing packets from an external network (without AODVv2)
 
