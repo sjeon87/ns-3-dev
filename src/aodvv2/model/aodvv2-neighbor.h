@@ -26,8 +26,7 @@
 
 #include "ns3/arp-cache.h"
 #include "ns3/callback.h"
-#include "ns3/ipv4-address.h"
-#include "ns3/ipv6-address.h"
+#include "ns3/internet-module.h"
 #include "ns3/simulator.h"
 #include "ns3/timer.h"
 
@@ -38,6 +37,16 @@ namespace ns3
 
 namespace aodvv2
 {
+/**
+ * \ingroup aodvv2
+ * \brief Route record states
+ */
+enum NeighborStates
+{
+    BLACKLISTED = 0, //!< link is invalid and unidirectional
+    HEARD = 1,       //!< initial state
+    CONFIRMED = 2,   //!< link is valid and bidirectional
+};
 
 class RoutingProtocol;
 
@@ -51,6 +60,9 @@ class Neighbors
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
     static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+    /// Alias for Ipv4InterfaceAddress and Ipv6InterfaceAddress classes
+    using IpInterfaceAddress =
+        typename std::conditional_t<IsIpv4, Ipv4InterfaceAddress, Ipv6InterfaceAddress>;
 
   public:
     /**
@@ -64,35 +76,41 @@ class Neighbors
     {
         /// Neighbor T address
         T m_neighborAddress;
-        /// Neighbor MAC address
-        Mac48Address m_hardwareAddress;
-        /// Neighbor expire time
-        Time m_expireTime;
-        /// Neighbor close indicator
-        bool close;
+        /// Neighbor state
+        NeighborStates m_state;
+        /// Neighbor timeout
+        Time m_timeout;
+        /// Neighbor interface
+        IpInterfaceAddress m_interface;
+        /// Neighbor Ack Sequence Number
+        uint32_t m_ackSeqNo;
+        /// Neighbor Heard RERR Sequence Number
+        uint32_t m_heardRERRSeqNo;
 
         /**
          * \brief Neighbor structure constructor
          *
          * \param ip T entry
          * \param mac Mac48Address entry
-         * \param t Time expire time
+         * \param t Time timeout
          */
-        Neighbor(T ip, Mac48Address mac, Time t)
+        Neighbor(T ip, IpInterfaceAddress interface, Time t)
             : m_neighborAddress(ip),
-              m_hardwareAddress(mac),
-              m_expireTime(t),
-              close(false)
+              m_state(HEARD),
+              m_timeout(t),
+              m_interface(interface),
+              m_ackSeqNo(rand() % 1000),
+              m_heardRERRSeqNo(0)
         {
         }
     };
 
     /**
-     * Return expire time for neighbor node with address addr, if exists, else return 0.
+     * Return timeout for neighbor node with address addr, if exists, else return 0.
      * \param addr the IP address of the neighbor node
-     * \returns the expire time for the neighbor node
+     * \returns the timeout for the neighbor node
      */
-    Time GetExpireTime(T addr);
+    Time GetTimeout(T addr);
     /**
      * Check that node with address addr is neighbor
      * \param addr the IP address to check
@@ -100,11 +118,11 @@ class Neighbors
      */
     bool IsNeighbor(T addr);
     /**
-     * Update expire time for entry with address addr, if it exists, else add new entry
+     * Update timeout for entry with address addr, if it exists, else add new entry
      * \param addr the IP address to check
-     * \param expire the expire time for the address
+     * \param timeout the timeout for the address
      */
-    void Update(T addr, Time expire);
+    void Update(T addr, Time timeout);
     /// Remove all expired entries
     void Purge();
     /// Schedule m_ntimer.
@@ -165,21 +183,6 @@ class Neighbors
     std::vector<Neighbor> m_nb;
     /// list of ARP cached to be used for layer 2 notifications processing
     std::vector<Ptr<ArpCache>> m_arp;
-
-    /**
-     * Find MAC address by IP using list of ARP caches
-     *
-     * \param addr the IP address to lookup
-     * \returns the MAC address for the IP address
-     */
-    Mac48Address LookupMacAddress(Ipv4Address addr);
-    /**
-     * Find MAC address by IP using list of ARP caches
-     *
-     * \param addr the IP address to lookup
-     * \returns the MAC address for the IP address
-     */
-    Mac48Address LookupMacAddress(Ipv6Address addr);
 };
 
 } // namespace aodvv2

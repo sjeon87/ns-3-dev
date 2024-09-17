@@ -59,14 +59,14 @@ Neighbors<T>::IsNeighbor(T addr)
 
 template <typename T>
 Time
-Neighbors<T>::GetExpireTime(T addr)
+Neighbors<T>::GetTimeout(T addr)
 {
     Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
         if (i->m_neighborAddress == addr)
         {
-            return (i->m_expireTime - Simulator::Now());
+            return (i->m_timeout - Simulator::Now());
         }
     }
     return Seconds(0);
@@ -80,18 +80,15 @@ Neighbors<T>::Update(T addr, Time expire)
     {
         if (i->m_neighborAddress == addr)
         {
-            i->m_expireTime = std::max(expire + Simulator::Now(), i->m_expireTime);
-            if (i->m_hardwareAddress == Mac48Address())
-            {
-                i->m_hardwareAddress = LookupMacAddress(i->m_neighborAddress);
-            }
+            i->m_timeout = std::max(expire + Simulator::Now(), i->m_timeout);
             return;
         }
     }
 
     NS_LOG_LOGIC("Open link to " << addr);
+    /* TODO me: input interface address
     Neighbor neighbor(addr, LookupMacAddress(addr), expire + Simulator::Now());
-    m_nb.push_back(neighbor);
+    m_nb.push_back(neighbor); */
     Purge();
 }
 
@@ -108,7 +105,7 @@ struct CloseNeighbor
      */
     bool operator()(const Neighbors<Ipv4Address>::Neighbor& nb) const
     {
-        return ((nb.m_expireTime < Simulator::Now()) || nb.close);
+        return nb.m_timeout < Simulator::Now();
     }
 
     /**
@@ -119,7 +116,7 @@ struct CloseNeighbor
      */
     bool operator()(const Neighbors<Ipv6Address>::Neighbor& nb) const
     {
-        return ((nb.m_expireTime < Simulator::Now()) || nb.close);
+        return nb.m_timeout < Simulator::Now();
     }
 };
 
@@ -169,43 +166,6 @@ void
 Neighbors<T>::DelArpCache(Ptr<ArpCache> a)
 {
     m_arp.erase(std::remove(m_arp.begin(), m_arp.end(), a), m_arp.end());
-}
-
-/**
- * Find MAC address by IP using list of ARP caches
- *
- * \param addr the IP address to lookup
- * \returns the MAC address for the IP address
- */
-template <>
-Mac48Address
-Neighbors<Ipv4Address>::LookupMacAddress(Ipv4Address addr)
-{
-    Mac48Address hwaddr;
-    for (auto i = m_arp.begin(); i != m_arp.end(); ++i)
-    {
-        ArpCache::Entry* entry = (*i)->Lookup(addr);
-        if (entry != nullptr && (entry->IsAlive() || entry->IsPermanent()) && !entry->IsExpired())
-        {
-            hwaddr = Mac48Address::ConvertFrom(entry->GetMacAddress());
-            break;
-        }
-    }
-    return hwaddr;
-}
-
-/**
- * Find MAC address by IP using list of ARP caches
- *
- * \param addr the IP address to lookup
- * \returns the MAC address for the IP address
- */
-template <>
-Mac48Address
-Neighbors<Ipv6Address>::LookupMacAddress(Ipv6Address addr)
-{
-    // TODO IPv6
-    return Mac48Address();
 }
 
 template class Neighbors<Ipv4Address>;

@@ -81,7 +81,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     using IpRoutingProtocol =
         typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
     /// Alias for InetSocketAddress and Inet6SocketAddress classes
-    using InetTSocketAddress =
+    using InetVxSocketAddress =
         typename std::conditional_t<IsIpv4, InetSocketAddress, Inet6SocketAddress>;
 
     /// Callback for IPv4 unicast packets to be forwarded

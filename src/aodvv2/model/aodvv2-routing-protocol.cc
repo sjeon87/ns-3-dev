@@ -745,7 +745,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     NS_ASSERT(socket);
     socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
     socket->BindToNetDevice(l3->GetNetDevice(i));
-    socket->Bind(InetTSocketAddress(iface.GetAddress(), AODVV2_PORT));
+    socket->Bind(InetVxSocketAddress(iface.GetAddress(), AODVV2_PORT));
     socket->SetAllowBroadcast(true);
     socket->SetIpRecvTtl(true);
     m_socketAddresses.insert(std::make_pair(socket, iface));
@@ -759,7 +759,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     socket->SetIpRecvTtl(true);
     if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
-        socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
+        socket->Bind(InetVxSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
     }
     else
     {
@@ -862,7 +862,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
             NS_ASSERT(socket);
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODVV2_PORT));
+            socket->Bind(InetVxSocketAddress(iface.GetAddress(), AODVV2_PORT));
             socket->SetAllowBroadcast(true);
             m_socketAddresses.insert(std::make_pair(socket, iface));
 
@@ -875,7 +875,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
             socket->SetIpRecvTtl(true);
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
-                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
+                socket->Bind(InetVxSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
             }
             else
             {
@@ -940,7 +940,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
             socket->SetRecvCallback(MakeCallback(&Aodvv2RoutingProtocol<T>::RecvAodvv2, this));
             // Bind to any IP address so that broadcasts can be received
             socket->BindToNetDevice(l3->GetNetDevice(i));
-            socket->Bind(InetTSocketAddress(iface.GetAddress(), AODVV2_PORT));
+            socket->Bind(InetVxSocketAddress(iface.GetAddress(), AODVV2_PORT));
             socket->SetAllowBroadcast(true);
             socket->SetIpRecvTtl(true);
             m_socketAddresses.insert(std::make_pair(socket, iface));
@@ -954,7 +954,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
             socket->SetIpRecvTtl(true);
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
-                socket->Bind(InetTSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
+                socket->Bind(InetVxSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
             }
             else
             {
@@ -1204,7 +1204,7 @@ template <typename T>
 void
 Aodvv2RoutingProtocol<T>::SendTo(Ptr<Socket> socket, Ptr<Packet> packet, IpAddress destination)
 {
-    socket->SendTo(packet, 0, InetTSocketAddress(destination, AODVV2_PORT));
+    socket->SendTo(packet, 0, InetVxSocketAddress(destination, AODVV2_PORT));
 }
 
 template <typename T>
@@ -1245,7 +1245,7 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
     NS_LOG_FUNCTION(this << socket);
     Address sourceAddress;
     Ptr<Packet> packet = socket->RecvFrom(sourceAddress);
-    InetTSocketAddress inetSourceAddr = InetTSocketAddress::ConvertFrom(sourceAddress);
+    InetVxSocketAddress inetSourceAddr = InetVxSocketAddress::ConvertFrom(sourceAddress);
     IpAddress sender;
     if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
@@ -1595,7 +1595,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
+    socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
 }
 
 template <typename T>
@@ -1629,7 +1629,7 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(RoutingTableEntry<IpAddres
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
+    socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
 }
 
 template <typename T>
@@ -1644,7 +1644,7 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     m_routingTable.LookupRoute(neighbor, toNeighbor);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toNeighbor.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(neighbor, AODVV2_PORT));
+    socket->SendTo(packet, 0, InetVxSocketAddress(neighbor, AODVV2_PORT));
 }
 
 template <typename T>
@@ -1763,7 +1763,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
-    socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
+    socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
 }
 
 template <typename T>
@@ -2002,7 +2002,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
         Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
         NS_ASSERT(socket);
         NS_LOG_LOGIC("Unicast RERR to the source of the data transmission");
-        socket->SendTo(packet, 0, InetTSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
+        socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
     }
     else
     {
@@ -2029,7 +2029,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
             {
                 // TODO Ipv6
             }
-            socket->SendTo(packet->Copy(), 0, InetTSocketAddress(destination, AODVV2_PORT));
+            socket->SendTo(packet->Copy(), 0, InetVxSocketAddress(destination, AODVV2_PORT));
         }
     }
 }
