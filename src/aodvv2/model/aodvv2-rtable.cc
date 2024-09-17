@@ -43,28 +43,25 @@ namespace aodvv2
 template <typename T>
 RoutingTableEntry<T>::RoutingTableEntry(Ptr<NetDevice> dev,
                                         T dst,
-                                        bool vSeqNo,
                                         uint32_t seqNo,
                                         IpInterfaceAddress iface,
                                         uint16_t hops,
                                         T nextHop,
                                         Time lifetime)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
-      m_validSeqNo(vSeqNo),
       m_seqNo(seqNo),
+      m_nextHopIface(iface),
+      m_lastUsed(lifetime + Simulator::Now()),
+      m_state(ACTIVE),
       m_hops(hops),
-      m_lifeTime(lifetime + Simulator::Now()),
-      m_iface(iface),
-      m_flag(CONFIRMED),
-      m_reqCount(0),
-      m_blackListState(false),
-      m_blackListTimeout(Simulator::Now())
+      m_reqCount(0)
 {
     m_ipRoute = Create<IpRoute>();
     m_ipRoute->SetDestination(dst);
     m_ipRoute->SetGateway(nextHop);
-    m_ipRoute->SetSource(m_iface.GetAddress());
+    m_ipRoute->SetSource(m_nextHopIface.GetAddress());
     m_ipRoute->SetOutputDevice(dev);
+    m_prefixLength = 32; // TODO me: update if needed
 }
 
 template <typename T>
@@ -171,13 +168,13 @@ void
 RoutingTableEntry<T>::Invalidate(Time badLinkLifetime)
 {
     NS_LOG_FUNCTION(this << badLinkLifetime.As(Time::S));
-    if (m_flag == BLACKLISTED)
+    if (m_state == INVALID)
     {
         return;
     }
-    m_flag = BLACKLISTED;
+    m_state = INVALID;
     m_reqCount = 0;
-    m_lifeTime = badLinkLifetime + Simulator::Now();
+    m_lastUsed = badLinkLifetime + Simulator::Now();
 }
 
 template <typename T>
@@ -197,24 +194,28 @@ RoutingTableEntry<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* 
     std::ostringstream expire;
     dest << m_ipRoute->GetDestination();
     gw << m_ipRoute->GetGateway();
-    iface << m_iface.GetAddress();
-    expire << std::setprecision(2) << (m_lifeTime - Simulator::Now()).As(unit);
+    iface << m_nextHopIface.GetAddress();
+    expire << std::setprecision(2) << (m_lastUsed - Simulator::Now()).As(unit);
     *os << std::setw(16) << dest.str();
     *os << std::setw(16) << gw.str();
     *os << std::setw(16) << iface.str();
     *os << std::setw(16);
-    switch (m_flag)
+    switch (m_state)
     {
-    case CONFIRMED: {
+    case ACTIVE: {
         *os << "UP";
         break;
     }
-    case BLACKLISTED: {
+    case IDLE: {
+        *os << "UP";
+        break;
+    }
+    case INVALID: {
         *os << "DOWN";
         break;
     }
-    case HEARD: {
-        *os << "HEARD";
+    case UNCONFIRMED: {
+        *os << "UNCONFIRMED";
         break;
     }
     }
@@ -270,8 +271,8 @@ RoutingTable<T>::LookupValidRoute(T id, RoutingTableEntry<T>& rt)
         return false;
     }
     NS_LOG_LOGIC("Route to " << id << " flag is "
-                             << ((rt.GetFlag() == CONFIRMED) ? "valid" : "not valid"));
-    return (rt.GetFlag() == CONFIRMED);
+                             << ((rt.GetFlag() == ACTIVE) ? "valid" : "not valid"));
+    return (rt.GetFlag() == ACTIVE);
 }
 
 template <typename T>
@@ -295,7 +296,7 @@ RoutingTable<T>::AddRoute(RoutingTableEntry<T>& rt)
 {
     NS_LOG_FUNCTION(this);
     Purge();
-    if (rt.GetFlag() != HEARD)
+    if (rt.GetFlag() != UNCONFIRMED)
     {
         rt.SetRreqCnt(0);
     }
@@ -315,7 +316,7 @@ RoutingTable<T>::Update(RoutingTableEntry<T>& rt)
         return false;
     }
     i->second = rt;
-    if (i->second.GetFlag() != HEARD)
+    if (i->second.GetFlag() != UNCONFIRMED)
     {
         NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " set RreqCnt to 0");
         i->second.SetRreqCnt(0);
@@ -325,7 +326,7 @@ RoutingTable<T>::Update(RoutingTableEntry<T>& rt)
 
 template <typename T>
 bool
-RoutingTable<T>::SetEntryState(T id, RouteFlags state)
+RoutingTable<T>::SetEntryState(T id, RouteStates state)
 {
     NS_LOG_FUNCTION(this);
     auto i = m_ipAddressEntry.find(id);
@@ -367,7 +368,7 @@ RoutingTable<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachabl
     {
         for (auto j = unreachable.begin(); j != unreachable.end(); ++j)
         {
-            if ((i->first == j->first) && (i->second.GetFlag() == CONFIRMED))
+            if ((i->first == j->first) && (i->second.GetFlag() == ACTIVE))
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -411,15 +412,15 @@ RoutingTable<T>::Purge()
     }
     for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end();)
     {
-        if (i->second.GetLifeTime() < Seconds(0))
+        if (i->second.GetLastUsed() < Seconds(0))
         {
-            if (i->second.GetFlag() == BLACKLISTED)
+            if (i->second.GetFlag() == INVALID)
             {
                 auto tmp = i;
                 ++i;
                 m_ipAddressEntry.erase(tmp);
             }
-            else if (i->second.GetFlag() == CONFIRMED)
+            else if (i->second.GetFlag() == ACTIVE)
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -448,15 +449,15 @@ RoutingTable<T>::Purge(std::map<T, RoutingTableEntry<T>>& table) const
     }
     for (auto i = table.begin(); i != table.end();)
     {
-        if (i->second.GetLifeTime() < Seconds(0))
+        if (i->second.GetLastUsed() < Seconds(0))
         {
-            if (i->second.GetFlag() == BLACKLISTED)
+            if (i->second.GetFlag() == INVALID)
             {
                 auto tmp = i;
                 ++i;
                 table.erase(tmp);
             }
-            else if (i->second.GetFlag() == CONFIRMED)
+            else if (i->second.GetFlag() == ACTIVE)
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -485,8 +486,8 @@ RoutingTable<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
         NS_LOG_LOGIC("Mark link unidirectional to  " << neighbor << " fails; not found");
         return false;
     }
-    i->second.SetUnidirectional(true);
-    i->second.SetBlacklistTimeout(blacklistTimeout);
+    i->second.SetFlag(INVALID);
+    i->second.SetLastUsed(blacklistTimeout);
     i->second.SetRreqCnt(0);
     NS_LOG_LOGIC("Set link to " << neighbor << " to unidirectional");
     return true;

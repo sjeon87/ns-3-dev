@@ -44,11 +44,12 @@ namespace aodvv2
  * \ingroup aodvv2
  * \brief Route record states
  */
-enum RouteFlags
+enum RouteStates
 {
-    CONFIRMED = 0,   //!< CONFIRMED
-    BLACKLISTED = 1, //!< BLACKLISTED
-    HEARD = 2,       //!< HEARD
+    UNCONFIRMED = 0, //!< still not bidirectional
+    IDLE = 1,        //!< route is valid but not used in the last ACTIVE_INTERVAL
+    ACTIVE = 2,      //!< route is valid and used in the last ACTIVE_INTERVAL
+    INVALID = 3,     //!< route expired or broken
 };
 
 /**
@@ -83,7 +84,6 @@ class RoutingTableEntry
      */
     RoutingTableEntry(Ptr<NetDevice> dev = nullptr,
                       T dst = T(),
-                      bool vSeqNo = false,
                       uint32_t seqNo = 0,
                       IpInterfaceAddress iface = IpInterfaceAddress(),
                       uint16_t hops = 0,
@@ -202,7 +202,7 @@ class RoutingTableEntry
      */
     IpInterfaceAddress GetInterface() const
     {
-        return m_iface;
+        return m_nextHopIface;
     }
 
     /**
@@ -211,16 +211,7 @@ class RoutingTableEntry
      */
     void SetInterface(IpInterfaceAddress iface)
     {
-        m_iface = iface;
-    }
-
-    /**
-     * Set the valid sequence number
-     * \param s the sequence number
-     */
-    void SetValidSeqNo(bool s)
-    {
-        m_validSeqNo = s;
+        m_nextHopIface = iface;
     }
 
     /**
@@ -229,7 +220,7 @@ class RoutingTableEntry
      */
     bool GetValidSeqNo() const
     {
-        return m_validSeqNo;
+        return m_seqNo != 0;
     }
 
     /**
@@ -269,39 +260,39 @@ class RoutingTableEntry
     }
 
     /**
-     * Set the lifetime
-     * \param lt The lifetime
+     * Set the lastUsed
+     * \param lu The lastUsed
      */
-    void SetLifeTime(Time lt)
+    void SetLastUsed(Time lu)
     {
-        m_lifeTime = lt + Simulator::Now();
+        m_lastUsed = lu;
     }
 
     /**
-     * Get the lifetime
-     * \returns the lifetime
+     * Get the lastUsed
+     * \returns the lastUsed
      */
-    Time GetLifeTime() const
+    Time GetLastUsed() const
     {
-        return m_lifeTime - Simulator::Now();
+        return m_lastUsed;
     }
 
     /**
      * Set the route flags
      * \param flag the route flags
      */
-    void SetFlag(RouteFlags flag)
+    void SetFlag(RouteStates state)
     {
-        m_flag = flag;
+        m_state = state;
     }
 
     /**
      * Get the route flags
      * \returns the route flags
      */
-    RouteFlags GetFlag() const
+    RouteStates GetFlag() const
     {
-        return m_flag;
+        return m_state;
     }
 
     /**
@@ -330,42 +321,6 @@ class RoutingTableEntry
         m_reqCount++;
     }
 
-    /**
-     * Set the unidirectional flag
-     * \param u the uni directional flag
-     */
-    void SetUnidirectional(bool u)
-    {
-        m_blackListState = u;
-    }
-
-    /**
-     * Get the unidirectional flag
-     * \returns the unidirectional flag
-     */
-    bool IsUnidirectional() const
-    {
-        return m_blackListState;
-    }
-
-    /**
-     * Set the blacklist timeout
-     * \param t the blacklist timeout value
-     */
-    void SetBlacklistTimeout(Time t)
-    {
-        m_blackListTimeout = t;
-    }
-
-    /**
-     * Get the blacklist timeout value
-     * \returns the blacklist timeout value
-     */
-    Time GetBlacklistTimeout() const
-    {
-        return m_blackListTimeout;
-    }
-
     /// RREP_ACK timer
     Timer m_ackTimer;
 
@@ -387,19 +342,6 @@ class RoutingTableEntry
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 
   private:
-    /// Valid Destination Sequence Number flag
-    bool m_validSeqNo;
-    /// Destination Sequence Number, if m_validSeqNo = true
-    uint32_t m_seqNo;
-    /// Hop Count (number of hops needed to reach destination)
-    uint16_t m_hops;
-    /**
-     * \brief Expiration or deletion time of the route
-     * Lifetime field in the routing table plays dual role:
-     * for an active route it is the expiration time, and for an invalid route
-     * it is the deletion time.
-     */
-    Time m_lifeTime;
     /** Ip route, include
      *   - destination address
      *   - source address
@@ -407,21 +349,31 @@ class RoutingTableEntry
      *   - output device
      */
     Ptr<IpRoute> m_ipRoute;
+    /// Destination address prefix length
+    uint32_t m_prefixLength;
+    /// Destination Sequence Number
+    uint32_t m_seqNo;
     /// Output interface address
-    IpInterfaceAddress m_iface;
-    /// Routing flags: confirmed, blacklisted or heard
-    RouteFlags m_flag;
-
+    IpInterfaceAddress m_nextHopIface;
+    /// Time it was last used to forward a packet
+    Time m_lastUsed;
+    /// Time the seqNum was last updated
+    Time m_lastSeqNumUpdate;
+    /// Type of metric used for route
+    uint8_t m_metricType;
+    /// Cost of route expressed in units
+    uint32_t m_metric;
     /// List of precursors
     std::vector<T> m_precursorList;
-    /// When I can send another request
-    Time m_routeRequestTimeout;
+    /// ip address of the originator router
+    T m_seqNoRtr;
+    /// Routing state: unconfirmed, idle, active, invalid
+    RouteStates m_state;
+
+    /// Hop Count (number of hops needed to reach destination)
+    uint16_t m_hops;
     /// Number of route requests
     uint8_t m_reqCount;
-    /// Indicate if this entry is in "blacklist"
-    bool m_blackListState;
-    /// Time for which the node is put into the blacklist
-    Time m_blackListTimeout;
 };
 
 /**
@@ -507,7 +459,7 @@ class RoutingTable
      * \param state the routing flags
      * \return true on success
      */
-    bool SetEntryState(T dst, RouteFlags state);
+    bool SetEntryState(T dst, RouteStates state);
     /**
      * Lookup routing entries with next hop Address dst and not empty list of precursors.
      *

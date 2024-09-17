@@ -129,7 +129,7 @@ class RreqHeader : public Header
                uint16_t origMask = 0,
                T targIp = T(),
                uint16_t targMask = 0,
-               uint32_t seqNo = 0,
+               uint32_t seqNo = 1,
                uint8_t hopCount = 0,
                uint8_t maxHopCount = 20);
 
@@ -477,7 +477,7 @@ class RrepHeader : public Header
                uint16_t origMask = 0,
                T targIp = T(),
                uint16_t targMask = 0,
-               uint32_t seqNo = 0,
+               uint32_t seqNo = 1,
                uint8_t hopCount = 0,
                uint8_t maxHopCount = 20);
     /**
