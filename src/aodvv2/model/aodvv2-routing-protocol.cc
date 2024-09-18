@@ -789,11 +789,6 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     {
         // TODO Ipv6
     }
-
-    // TODO me:
-    // mac->TraceConnectWithoutContext("DroppedMpdu",
-    //                                 MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError,
-    //                                 this));
 }
 
 template <typename T>

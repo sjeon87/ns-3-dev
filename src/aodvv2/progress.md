@@ -54,24 +54,24 @@ AODVv2 has not been designed to be interoperable with AODV. However, it would be
 
 - Management of external packets (ch. 9)
 
-- Testing
+- Testing:
 
-We need to implement tests for the protocol to ensure that it works as expected. This includes testing the protocol in various scenarios, such as:
+  - We need to implement tests for the protocol to ensure that it works as expected. This includes testing the protocol in various scenarios, such as:
 
-- Sending packets in a working network
+    - Sending packets in a working network
 
-- Sending packets in the previous network with some broken link
+    - Sending packets in the previous network with some broken link
 
-- Managing packets from an external network (without AODVv2)
+    - Managing packets from an external network (without AODVv2)
 
-- more...
+    - more...
 
-And in all scenarios, verifying:
+  - And in all scenarios, verifying:
 
-- The state update of a route (by events or by timeouts)
+    - The state update of a route (by events or by timeouts)
 
-- The packets queue management
+    - The packets queue management
 
-- The route selection (by metrics)
+    - The route selection (by metrics)
 
-- more...
+    - more...
