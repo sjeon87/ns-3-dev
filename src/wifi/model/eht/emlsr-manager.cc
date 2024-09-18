@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2023 Universita' degli Studi di Napoli Federico II
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Stefano Avallone <stavallo@unina.it>
  */
@@ -76,7 +65,7 @@ EmlsrManager::GetTypeId()
                               TypeId::ATTR_CONSTRUCT, // prevent setting after construction
                           UintegerValue(20),
                           MakeUintegerAccessor(&EmlsrManager::m_auxPhyMaxWidth),
-                          MakeUintegerChecker<uint16_t>(20, 160))
+                          MakeUintegerChecker<MHz_u>(20, 160))
             .AddAttribute("AuxPhyMaxModClass",
                           "The maximum modulation class supported by Aux PHYs. Use "
                           "WIFI_MOD_CLASS_OFDM for non-HT.",
@@ -103,6 +92,14 @@ EmlsrManager::GetTypeId()
                           BooleanValue(true),
                           MakeBooleanAccessor(&EmlsrManager::SetAuxPhyTxCapable,
                                               &EmlsrManager::GetAuxPhyTxCapable),
+                          MakeBooleanChecker())
+            .AddAttribute("InDeviceInterference",
+                          "Whether in-device interference is such that a PHY cannot decode "
+                          "anything and cannot decrease the backoff counter when another PHY "
+                          "of the same device is transmitting.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&EmlsrManager::SetInDeviceInterference,
+                                              &EmlsrManager::GetInDeviceInterference),
                           MakeBooleanChecker())
             .AddAttribute(
                 "EmlsrLinkSet",
@@ -169,6 +166,13 @@ EmlsrManager::SetWifiMac(Ptr<StaWifiMac> mac)
     m_staMac->TraceConnectWithoutContext("AckedMpdu", MakeCallback(&EmlsrManager::TxOk, this));
     m_staMac->TraceConnectWithoutContext("DroppedMpdu",
                                          MakeCallback(&EmlsrManager::TxDropped, this));
+    DoSetWifiMac(mac);
+}
+
+void
+EmlsrManager::DoSetWifiMac(Ptr<StaWifiMac> mac)
+{
+    NS_LOG_FUNCTION(this << mac);
 }
 
 void
@@ -207,6 +211,18 @@ bool
 EmlsrManager::GetAuxPhyTxCapable() const
 {
     return m_auxPhyTxCapable;
+}
+
+void
+EmlsrManager::SetInDeviceInterference(bool enable)
+{
+    m_inDeviceInterference = enable;
+}
+
+bool
+EmlsrManager::GetInDeviceInterference() const
+{
+    return m_inDeviceInterference;
 }
 
 const std::set<uint8_t>&
@@ -366,7 +382,6 @@ EmlsrManager::NotifyIcfReceived(uint8_t linkId)
         if (id != linkId && m_staMac->IsEmlsrLink(id))
         {
             m_staMac->BlockTxOnLink(id, WifiQueueBlockedReason::USING_OTHER_EMLSR_LINK);
-            m_staMac->GetChannelAccessManager(id)->NotifyStartUsingOtherEmlsrLink();
         }
     }
 
@@ -410,7 +425,6 @@ EmlsrManager::NotifyUlTxopStart(uint8_t linkId, std::optional<Time> timeToCtsEnd
         if (id != linkId && m_staMac->IsEmlsrLink(id))
         {
             m_staMac->BlockTxOnLink(id, WifiQueueBlockedReason::USING_OTHER_EMLSR_LINK);
-            m_staMac->GetChannelAccessManager(id)->NotifyStartUsingOtherEmlsrLink();
         }
     }
 
@@ -497,7 +511,6 @@ EmlsrManager::NotifyTxopEnd(uint8_t linkId, bool ulTxopNotStarted, bool ongoingD
         {
             if ((id != linkId) && m_staMac->IsEmlsrLink(id))
             {
-                m_staMac->GetChannelAccessManager(id)->NotifyStopUsingOtherEmlsrLink();
                 linkIds.insert(id);
             }
         }
@@ -620,7 +633,7 @@ EmlsrManager::SwitchMainPhy(uint8_t linkId,
     }
 
     SetCcaEdThresholdOnLinkSwitch(mainPhy, linkId);
-    NotifyMainPhySwitch(*currMainPhyLinkId, linkId);
+    NotifyMainPhySwitch(*currMainPhyLinkId, linkId, timeToSwitchEnd);
 }
 
 void

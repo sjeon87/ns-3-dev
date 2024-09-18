@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2019 Orange Labs
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Rediet <getachew.redieteab@orange.com>
  */
@@ -27,25 +16,24 @@
 namespace
 {
 /**
- * Get the center frequency (in MHz) of each segment covered by the provided channel width (in
- * MHz). If the specified channel width is contained in a single frequency segment, a single
- * center frequency is returned. If the specified channel width is spread over multiple
- * frequency segments (e.g. 160 MHz if operating channel is 80+80MHz), multiple center
- * frequencies are returned.
+ * Get the center frequency of each segment covered by the provided channel width. If the specified
+ * channel width is contained in a single frequency segment, a single center frequency is returned.
+ * If the specified channel width is spread over multiple frequency segments (e.g. 160 MHz if
+ * operating channel is 80+80MHz), multiple center frequencies are returned.
  *
  * \param channel the operating channel of the PHY
- * \param channelWidth the channel width in MHz
- * \return the center frequency (in MHz) of each segment covered by the given width
+ * \param channelWidth the channel width
+ * \return the center frequency of each segment covered by the given width
  */
-std::vector<uint16_t>
+std::vector<ns3::MHz_u>
 GetChannelCenterFrequenciesPerSegment(const ns3::WifiPhyOperatingChannel& channel,
-                                      ns3::ChannelWidthMhz channelWidth)
+                                      ns3::MHz_u channelWidth)
 {
     if (!channel.IsSet())
     {
         return {};
     }
-    std::vector<uint16_t> freqs{};
+    std::vector<ns3::MHz_u> freqs{};
     const auto width = std::min(channelWidth, channel.GetWidth(0));
     const auto primarySegmentIndex = channel.GetPrimarySegmentIndex(width);
     const auto secondarySegmentIndex = channel.GetSecondarySegmentIndex(width);
@@ -58,7 +46,8 @@ GetChannelCenterFrequenciesPerSegment(const ns3::WifiPhyOperatingChannel& channe
     {
         const auto segmentFrequency = channel.GetFrequency(segmentIndex);
         const auto segmentWidth = channel.GetWidth(segmentIndex);
-        const auto segmentOffset = (primarySegmentIndex * (segmentWidth / channelWidth));
+        // segmentOffset has to be an (unsigned) integer to ensure correct calculation
+        const uint8_t segmentOffset = (primarySegmentIndex * (segmentWidth / channelWidth));
         const auto freq =
             segmentFrequency - (segmentWidth / 2.) + (primaryIndex - segmentOffset + 0.5) * width;
         freqs.push_back(freq);
@@ -181,24 +170,24 @@ WifiPpdu::GetModulation() const
     return m_modulation;
 }
 
-ChannelWidthMhz
+MHz_u
 WifiPpdu::GetTxChannelWidth() const
 {
     return m_txChannelWidth;
 }
 
-std::vector<uint16_t>
+std::vector<MHz_u>
 WifiPpdu::GetTxCenterFreqs() const
 {
     return m_txCenterFreqs;
 }
 
 bool
-WifiPpdu::DoesOverlapChannel(uint16_t minFreq, uint16_t maxFreq) const
+WifiPpdu::DoesOverlapChannel(MHz_u minFreq, MHz_u maxFreq) const
 {
     NS_LOG_FUNCTION(this << minFreq << maxFreq);
     // all segments have the same width
-    const auto txChannelWidth = (m_txChannelWidth / m_txCenterFreqs.size());
+    const MHz_u txChannelWidth = (m_txChannelWidth / m_txCenterFreqs.size());
     for (auto txCenterFreq : m_txCenterFreqs)
     {
         const auto minTxFreq = txCenterFreq - txChannelWidth / 2;

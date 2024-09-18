@@ -2,18 +2,7 @@
  * Copyright (c) 2006, 2009 INRIA
  * Copyright (c) 2009 MIRKO BANCHI
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Mirko Banchi <mk.banchi@gmail.com>
@@ -35,6 +24,7 @@
 #include "wifi-net-device.h"
 #include "wifi-phy.h"
 
+#include "ns3/ap-emlsr-manager.h"
 #include "ns3/eht-configuration.h"
 #include "ns3/eht-frame-exchange-manager.h"
 #include "ns3/he-configuration.h"
@@ -235,6 +225,11 @@ ApWifiMac::DoDispose()
     m_beaconTxop->Dispose();
     m_beaconTxop = nullptr;
     m_enableBeaconGeneration = false;
+    if (m_apEmlsrManager)
+    {
+        m_apEmlsrManager->Dispose();
+    }
+    m_apEmlsrManager = nullptr;
     WifiMac::DoDispose();
 }
 
@@ -254,6 +249,20 @@ ApWifiMac::ApLinkEntity&
 ApWifiMac::GetLink(uint8_t linkId) const
 {
     return static_cast<ApLinkEntity&>(WifiMac::GetLink(linkId));
+}
+
+void
+ApWifiMac::SetApEmlsrManager(Ptr<ApEmlsrManager> apEmlsrManager)
+{
+    NS_LOG_FUNCTION(this << apEmlsrManager);
+    m_apEmlsrManager = apEmlsrManager;
+    m_apEmlsrManager->SetWifiMac(this);
+}
+
+Ptr<ApEmlsrManager>
+ApWifiMac::GetApEmlsrManager() const
+{
+    return m_apEmlsrManager;
 }
 
 void
@@ -841,10 +850,10 @@ ApWifiMac::GetHtOperation(uint8_t linkId) const
     {
         uint8_t nss = (mcs.GetMcsValue() / 8) + 1;
         NS_ASSERT(nss > 0 && nss < 5);
-        uint64_t dataRate =
-            mcs.GetDataRate(phy->GetChannelWidth(),
-                            GetHtConfiguration()->GetShortGuardIntervalSupported() ? 400 : 800,
-                            nss);
+        uint64_t dataRate = mcs.GetDataRate(
+            phy->GetChannelWidth(),
+            NanoSeconds(GetHtConfiguration()->GetShortGuardIntervalSupported() ? 400 : 800),
+            nss);
         if (dataRate > maxSupportedRate)
         {
             maxSupportedRate = dataRate;
@@ -870,7 +879,9 @@ ApWifiMac::GetHtOperation(uint8_t linkId) const
                 NS_ASSERT(nss > 0 && nss < 5);
                 uint64_t dataRate = mcs.GetDataRate(
                     remoteStationManager->GetChannelWidthSupported(sta.second),
-                    remoteStationManager->GetShortGuardIntervalSupported(sta.second) ? 400 : 800,
+                    NanoSeconds(remoteStationManager->GetShortGuardIntervalSupported(sta.second)
+                                    ? 400
+                                    : 800),
                     nss);
                 if (dataRate > maxSupportedRateByHtSta)
                 {
@@ -928,14 +939,22 @@ ApWifiMac::GetVhtOperation(uint8_t linkId) const
     // For 160 MHz BSS bandwidth and the Channel Width subfield equal to 1,
     // indicates the channel center frequency index of the 80 MHz channel
     // segment that contains the primary channel.
+    // For 80+80 MHz BSS bandwidth and the Channel Width subfield equal to 1 or 3,
+    // indicates the channel center frequency index for the primary 80 MHz channel of the VHT BSS.
     operation.SetChannelCenterFrequencySegment0(
         (bssBandwidth == 160) ? phy->GetPrimaryChannelNumber(80) : phy->GetChannelNumber());
     // For a 20, 40, or 80 MHz BSS bandwidth, this subfield is set to 0.
     // For a 160 MHz BSS bandwidth and the Channel Width subfield equal to 1,
     // indicates the channel center frequency index of the 160 MHz channel on
     // which the VHT BSS operates.
-    operation.SetChannelCenterFrequencySegment1((bssBandwidth == 160) ? phy->GetChannelNumber()
-                                                                      : 0);
+    // For an 80+80 MHz BSS bandwidth and the Channel Width subfield equal to 1 or 3,
+    // indicates the channel center frequency index of the secondary 80 MHz channel of the VHT BSS.
+    const auto& operatingChannel = phy->GetOperatingChannel();
+    const auto is80Plus80 =
+        operatingChannel.GetWidthType() == WifiChannelWidthType::CW_80_PLUS_80MHZ;
+    operation.SetChannelCenterFrequencySegment1(
+        (bssBandwidth == 160) ? is80Plus80 ? operatingChannel.GetNumber(1) : phy->GetChannelNumber()
+                              : 0);
     uint8_t maxSpatialStream = phy->GetMaxSupportedRxSpatialStreams();
     for (const auto& sta : GetLink(linkId).staList)
     {
@@ -2320,8 +2339,8 @@ ApWifiMac::ReceiveEmlOmn(MgtEmlOmn& frame, const Mac48Address& sender, uint8_t l
     // when the transmission of the Ack following the received EML Notification frame is
     // completed. For this purpose, we connect a callback to the PHY TX begin trace to catch
     // the Ack transmitted after the EML Notification frame.
-    CallbackBase cb = Callback<void, WifiConstPsduMap, WifiTxVector, double>(
-        [=, this](WifiConstPsduMap psduMap, WifiTxVector txVector, double /* txPowerW */) {
+    CallbackBase cb = Callback<void, WifiConstPsduMap, WifiTxVector, Watt_u>(
+        [=, this](WifiConstPsduMap psduMap, WifiTxVector txVector, Watt_u /* txPower */) {
             NS_ASSERT_MSG(psduMap.size() == 1 && psduMap.begin()->second->GetNMpdus() == 1 &&
                               psduMap.begin()->second->GetHeader(0).IsAck(),
                           "Expected a Normal Ack after EML Notification frame");

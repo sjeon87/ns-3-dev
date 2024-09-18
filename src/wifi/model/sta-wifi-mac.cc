@@ -2,18 +2,7 @@
  * Copyright (c) 2006, 2009 INRIA
  * Copyright (c) 2009 MIRKO BANCHI
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Mirko Banchi <mk.banchi@gmail.com>
@@ -1462,8 +1451,8 @@ StaWifiMac::SetPmModeAfterAssociation(uint8_t linkId)
     // STAs operating on setup links may need to transition to a new PM mode after the
     // acknowledgement of the Association Response. For this purpose, we connect a callback to
     // the PHY TX begin trace to catch the Ack transmitted after the Association Response.
-    CallbackBase cb = Callback<void, WifiConstPsduMap, WifiTxVector, double>(
-        [=, this](WifiConstPsduMap psduMap, WifiTxVector txVector, double /* txPowerW */) {
+    CallbackBase cb = Callback<void, WifiConstPsduMap, WifiTxVector, Watt_u>(
+        [=, this](WifiConstPsduMap psduMap, WifiTxVector txVector, Watt_u /* txPower */) {
             NS_ASSERT_MSG(psduMap.size() == 1 && psduMap.begin()->second->GetNMpdus() == 1 &&
                               psduMap.begin()->second->GetHeader(0).IsAck(),
                           "Expected a Normal Ack after Association Response frame");

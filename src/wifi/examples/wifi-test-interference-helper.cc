@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2015
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Sébastien Deronne <sebastien.deronne@gmail.com>
  */
@@ -83,24 +72,24 @@ class InterferenceExperiment
     struct Input
     {
         Input();
-        Time interval;          ///< interval
-        double xA;              ///< x A
-        double xB;              ///< x B
-        std::string txModeA;    ///< transmit mode A
-        std::string txModeB;    ///< transmit mode B
-        double txPowerLevelA;   ///< transmit power level A
-        double txPowerLevelB;   ///< transmit power level B
-        uint32_t packetSizeA;   ///< packet size A
-        uint32_t packetSizeB;   ///< packet size B
-        uint16_t channelA;      ///< channel number A
-        uint16_t channelB;      ///< channel number B
-        ChannelWidthMhz widthA; ///< channel width A
-        ChannelWidthMhz widthB; ///< channel width B
-        WifiStandard standard;  ///< standard
-        WifiPhyBand band;       ///< band
-        WifiPreamble preamble;  ///< preamble
-        bool captureEnabled;    ///< whether physical layer capture is enabled
-        double captureMargin;   ///< margin used for physical layer capture
+        Time interval;         ///< interval
+        meter_u xA;            ///< x A
+        meter_u xB;            ///< x B
+        std::string txModeA;   ///< transmit mode A
+        std::string txModeB;   ///< transmit mode B
+        double txPowerLevelA;  ///< transmit power level A
+        double txPowerLevelB;  ///< transmit power level B
+        uint32_t packetSizeA;  ///< packet size A
+        uint32_t packetSizeB;  ///< packet size B
+        uint16_t channelA;     ///< channel number A
+        uint16_t channelB;     ///< channel number B
+        MHz_u widthA;          ///< channel width A
+        MHz_u widthB;          ///< channel width B
+        WifiStandard standard; ///< standard
+        WifiPhyBand band;      ///< band
+        WifiPreamble preamble; ///< preamble
+        bool captureEnabled;   ///< whether physical layer capture is enabled
+        double captureMargin;  ///< margin used for physical layer capture
     };
 
     InterferenceExperiment();
@@ -317,13 +306,13 @@ main(int argc, char* argv[])
     InterferenceExperiment::Input input;
     std::string str_standard = "WIFI_PHY_STANDARD_80211a";
     std::string str_preamble = "WIFI_PREAMBLE_LONG";
-    uint64_t delay = 0; // microseconds
+    Time delay{"0us"};
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("delay",
-                 "Delay in microseconds between frame transmission from sender A and frame "
-                 "transmission from sender B",
-                 delay);
+    cmd.AddValue(
+        "delay",
+        "Delay between frame transmission from sender A and frame transmission from sender B",
+        delay);
     cmd.AddValue("xA", "The position of transmitter A (< 0)", input.xA);
     cmd.AddValue("xB", "The position of transmitter B (> 0)", input.xB);
     cmd.AddValue("packetSizeA", "Packet size in bytes of transmitter A", input.packetSizeA);
@@ -349,7 +338,7 @@ main(int argc, char* argv[])
                  expectRxBSuccessful);
     cmd.Parse(argc, argv);
 
-    input.interval = MicroSeconds(delay);
+    input.interval = delay;
 
     if (input.xA >= 0 || input.xB <= 0)
     {

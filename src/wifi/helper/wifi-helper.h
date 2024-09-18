@@ -2,18 +2,7 @@
  * Copyright (c) 2008 INRIA
  * Copyright (c) 2009 MIRKO BANCHI
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Mirko Banchi <mk.banchi@gmail.com>
@@ -331,7 +320,7 @@ class WifiHelper
      *
      * The default state is defined as being an Adhoc MAC layer with an ARF rate control algorithm
      * and both objects using their default attribute values.
-     * By default, configure MAC and PHY for 802.11a.
+     * By default, configure MAC and PHY for 802.11ax.
      */
     WifiHelper();
 
@@ -438,7 +427,7 @@ class WifiHelper
      * WifiMac::ConfigureStandard(standard) being called on each
      * installed MAC object.
      *
-     * The default standard of 802.11a will be applied if SetStandard()
+     * The default standard of 802.11ax will be applied if SetStandard()
      * is not called.
      *
      * Note that WifiMac::ConfigureStandard () will overwrite certain
@@ -454,6 +443,17 @@ class WifiHelper
      * \sa Config::Set
      */
     virtual void SetStandard(WifiStandard standard);
+
+    /**
+     * \param standard String representation of the Wi-Fi standard
+     *
+     * This method overloads WifiHelper::SetStandard(WifiStandard standard) by allowing
+     * selected string names. For example, the strings "802.11ax", "11ax", and "HE"
+     * are equivalent and map to WIFI_STANDARD_80211ax. See the documentation of the specified
+     * function to see how it interacts with attribute configuration.
+     * \sa WifiHelper::SetStandard(WifiStandard standard)
+     */
+    void SetStandard(const std::string& standard);
 
     /**
      * Helper function used to configure the HT options listed as attributes of

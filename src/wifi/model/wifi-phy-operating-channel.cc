@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2021
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Stefano Avallone <stavallo@unina.it>
  *          Sébastien Deronne <sebastien.deronne@gmail.com>
@@ -392,7 +381,7 @@ WifiPhyOperatingChannel::Set(const std::vector<FrequencyChannelInfo>& segments,
 }
 
 void
-WifiPhyOperatingChannel::SetDefault(ChannelWidthMhz width, WifiStandard standard, WifiPhyBand band)
+WifiPhyOperatingChannel::SetDefault(MHz_u width, WifiStandard standard, WifiPhyBand band)
 {
     NS_LOG_FUNCTION(this << width << standard << band);
     Set({{GetDefaultChannelNumber(width, standard, band), 0, width, band}}, standard);
@@ -400,7 +389,7 @@ WifiPhyOperatingChannel::SetDefault(ChannelWidthMhz width, WifiStandard standard
 
 uint8_t
 WifiPhyOperatingChannel::GetDefaultChannelNumber(
-    ChannelWidthMhz width,
+    MHz_u width,
     WifiStandard standard,
     WifiPhyBand band,
     std::optional<uint8_t> previousChannelNumber /* = std::nullopt */)
@@ -444,8 +433,8 @@ WifiPhyOperatingChannel::GetDefaultChannelNumber(
 
 WifiPhyOperatingChannel::ConstIterator
 WifiPhyOperatingChannel::FindFirst(uint8_t number,
-                                   uint16_t frequency,
-                                   ChannelWidthMhz width,
+                                   MHz_u frequency,
+                                   MHz_u width,
                                    WifiStandard standard,
                                    WifiPhyBand band,
                                    ConstIterator start)
@@ -498,14 +487,14 @@ WifiPhyOperatingChannel::GetNumber(std::size_t segment /* = 0 */) const
     return (*std::next(m_channelIts.begin(), segment))->number;
 }
 
-uint16_t
+MHz_u
 WifiPhyOperatingChannel::GetFrequency(std::size_t segment /* = 0 */) const
 {
     NS_ASSERT(IsSet());
     return (*std::next(m_channelIts.begin(), segment))->frequency;
 }
 
-ChannelWidthMhz
+MHz_u
 WifiPhyOperatingChannel::GetWidth(std::size_t /* segment = 0 */) const
 {
     NS_ASSERT(IsSet());
@@ -554,11 +543,11 @@ WifiPhyOperatingChannel::GetNumbers() const
     return channelNumbers;
 }
 
-std::vector<uint16_t>
+std::vector<MHz_u>
 WifiPhyOperatingChannel::GetFrequencies() const
 {
     NS_ASSERT(IsSet());
-    std::vector<uint16_t> centerFrequencies{};
+    std::vector<MHz_u> centerFrequencies{};
     std::transform(m_channelIts.cbegin(),
                    m_channelIts.cend(),
                    std::back_inserter(centerFrequencies),
@@ -566,11 +555,11 @@ WifiPhyOperatingChannel::GetFrequencies() const
     return centerFrequencies;
 }
 
-std::vector<ChannelWidthMhz>
+std::vector<MHz_u>
 WifiPhyOperatingChannel::GetWidths() const
 {
     NS_ASSERT(IsSet());
-    std::vector<ChannelWidthMhz> channelWidths{};
+    std::vector<MHz_u> channelWidths{};
     std::transform(m_channelIts.cbegin(),
                    m_channelIts.cend(),
                    std::back_inserter(channelWidths),
@@ -578,22 +567,21 @@ WifiPhyOperatingChannel::GetWidths() const
     return channelWidths;
 }
 
-ChannelWidthMhz
+MHz_u
 WifiPhyOperatingChannel::GetTotalWidth() const
 {
     NS_ASSERT(IsSet());
-    return std::accumulate(
-        m_channelIts.cbegin(),
-        m_channelIts.cend(),
-        0,
-        [](ChannelWidthMhz sum, const auto& channel) { return sum + channel->width; });
+    return std::accumulate(m_channelIts.cbegin(),
+                           m_channelIts.cend(),
+                           0,
+                           [](MHz_u sum, const auto& channel) { return sum + channel->width; });
 }
 
 WifiChannelWidthType
 WifiPhyOperatingChannel::GetWidthType() const
 {
     NS_ASSERT(IsSet());
-    switch (GetTotalWidth())
+    switch (static_cast<uint16_t>(GetTotalWidth()))
     {
     case 20:
         return WifiChannelWidthType::CW_20MHZ;
@@ -619,9 +607,9 @@ WifiPhyOperatingChannel::GetWidthType() const
 }
 
 uint8_t
-WifiPhyOperatingChannel::GetPrimaryChannelIndex(ChannelWidthMhz primaryChannelWidth) const
+WifiPhyOperatingChannel::GetPrimaryChannelIndex(MHz_u primaryChannelWidth) const
 {
-    if (primaryChannelWidth % 20 != 0)
+    if (static_cast<uint16_t>(primaryChannelWidth) % 20 != 0)
     {
         NS_LOG_DEBUG("The operating channel width is not a multiple of 20 MHz; return 0");
         return 0;
@@ -631,7 +619,7 @@ WifiPhyOperatingChannel::GetPrimaryChannelIndex(ChannelWidthMhz primaryChannelWi
 
     // the index of primary40 is half the index of primary20; the index of
     // primary80 is half the index of primary40, ...
-    ChannelWidthMhz width = 20;
+    MHz_u width = 20;
     uint8_t index = m_primary20Index;
 
     while (width < primaryChannelWidth)
@@ -643,7 +631,7 @@ WifiPhyOperatingChannel::GetPrimaryChannelIndex(ChannelWidthMhz primaryChannelWi
 }
 
 uint8_t
-WifiPhyOperatingChannel::GetSecondaryChannelIndex(ChannelWidthMhz secondaryChannelWidth) const
+WifiPhyOperatingChannel::GetSecondaryChannelIndex(MHz_u secondaryChannelWidth) const
 {
     const uint8_t primaryIndex = GetPrimaryChannelIndex(secondaryChannelWidth);
     const uint8_t secondaryIndex =
@@ -661,7 +649,7 @@ WifiPhyOperatingChannel::SetPrimary20Index(uint8_t index)
 }
 
 uint8_t
-WifiPhyOperatingChannel::GetPrimarySegmentIndex(ChannelWidthMhz primaryChannelWidth) const
+WifiPhyOperatingChannel::GetPrimarySegmentIndex(MHz_u primaryChannelWidth) const
 {
     if (m_channelIts.size() < 2)
     {
@@ -674,7 +662,7 @@ WifiPhyOperatingChannel::GetPrimarySegmentIndex(ChannelWidthMhz primaryChannelWi
 }
 
 uint8_t
-WifiPhyOperatingChannel::GetSecondarySegmentIndex(ChannelWidthMhz primaryChannelWidth) const
+WifiPhyOperatingChannel::GetSecondarySegmentIndex(MHz_u primaryChannelWidth) const
 {
     NS_ABORT_MSG_IF(primaryChannelWidth > GetWidth(),
                     "Primary channel width cannot be larger than the width of a frequency segment");
@@ -688,36 +676,34 @@ WifiPhyOperatingChannel::GetSecondarySegmentIndex(ChannelWidthMhz primaryChannel
     return (secondaryIndex >= (numIndices / 2)) ? 1 : 0;
 }
 
-uint16_t
-WifiPhyOperatingChannel::GetPrimaryChannelCenterFrequency(ChannelWidthMhz primaryChannelWidth) const
+MHz_u
+WifiPhyOperatingChannel::GetPrimaryChannelCenterFrequency(MHz_u primaryChannelWidth) const
 {
     const auto segmentIndex = GetPrimarySegmentIndex(primaryChannelWidth);
     // we assume here that all segments have the same width
     const auto segmentWidth = GetWidth(segmentIndex);
-    const auto segmentOffset = (segmentIndex * (segmentWidth / primaryChannelWidth));
+    // segmentOffset has to be an (unsigned) integer to ensure correct calculation
+    const uint8_t segmentOffset = (segmentIndex * (segmentWidth / primaryChannelWidth));
     return GetFrequency(segmentIndex) - segmentWidth / 2. +
            (GetPrimaryChannelIndex(primaryChannelWidth) - segmentOffset + 0.5) *
                primaryChannelWidth;
 }
 
-uint16_t
-WifiPhyOperatingChannel::GetSecondaryChannelCenterFrequency(
-    ChannelWidthMhz secondaryChannelWidth) const
+MHz_u
+WifiPhyOperatingChannel::GetSecondaryChannelCenterFrequency(MHz_u secondaryChannelWidth) const
 {
     const auto segmentIndex = GetSecondarySegmentIndex(secondaryChannelWidth);
     // we assume here that all segments have the same width
     const auto segmentWidth = GetWidth(segmentIndex);
-    const auto segmentOffset = (segmentIndex * (segmentWidth / secondaryChannelWidth));
-    const auto primaryChannelIndex = GetPrimaryChannelIndex(secondaryChannelWidth);
-    const auto primaryCenterFrequency =
-        GetFrequency(segmentIndex) - segmentWidth / 2. +
-        (primaryChannelIndex - segmentOffset + 0.5) * secondaryChannelWidth;
-    return (primaryChannelIndex % 2 == 0) ? (primaryCenterFrequency + secondaryChannelWidth)
-                                          : (primaryCenterFrequency - secondaryChannelWidth);
+    // segmentOffset has to be an (unsigned) integer to ensure correct calculation
+    const uint8_t segmentOffset = (segmentIndex * (segmentWidth / secondaryChannelWidth));
+    return GetFrequency(segmentIndex) - segmentWidth / 2. +
+           (GetSecondaryChannelIndex(secondaryChannelWidth) - segmentOffset + 0.5) *
+               secondaryChannelWidth;
 }
 
 uint8_t
-WifiPhyOperatingChannel::GetPrimaryChannelNumber(ChannelWidthMhz primaryChannelWidth,
+WifiPhyOperatingChannel::GetPrimaryChannelNumber(MHz_u primaryChannelWidth,
                                                  WifiStandard standard) const
 {
     NS_ABORT_MSG_IF(primaryChannelWidth > GetWidth(),
@@ -729,8 +715,36 @@ WifiPhyOperatingChannel::GetPrimaryChannelNumber(ChannelWidthMhz primaryChannelW
     return primaryChanIt->number;
 }
 
+WifiPhyOperatingChannel
+WifiPhyOperatingChannel::GetPrimaryChannel(MHz_u primaryChannelWidth) const
+{
+    NS_ASSERT_MSG(IsSet(), "No channel set");
+    NS_ASSERT_MSG(primaryChannelWidth <= GetTotalWidth(),
+                  "Requested primary channel width ("
+                      << primaryChannelWidth << " MHz) exceeds total width (" << GetTotalWidth()
+                      << " MHz)");
+
+    if (primaryChannelWidth == GetTotalWidth())
+    {
+        return *this;
+    }
+
+    const auto frequency = GetPrimaryChannelCenterFrequency(primaryChannelWidth);
+    auto primaryChanIt =
+        FindFirst(0, frequency, primaryChannelWidth, WIFI_STANDARD_UNSPECIFIED, GetPhyBand());
+    NS_ABORT_MSG_IF(primaryChanIt == m_frequencyChannels.end(), "Primary channel number not found");
+
+    WifiPhyOperatingChannel primaryChannel(primaryChanIt);
+
+    const auto primaryIndex = m_primary20Index - (GetPrimaryChannelIndex(primaryChannelWidth) *
+                                                  (primaryChannelWidth / 20));
+    primaryChannel.SetPrimary20Index(primaryIndex);
+
+    return primaryChannel;
+}
+
 std::set<uint8_t>
-WifiPhyOperatingChannel::GetAll20MHzChannelIndicesInPrimary(ChannelWidthMhz width) const
+WifiPhyOperatingChannel::GetAll20MHzChannelIndicesInPrimary(MHz_u width) const
 {
     if (width > GetTotalWidth())
     {
@@ -738,21 +752,21 @@ WifiPhyOperatingChannel::GetAll20MHzChannelIndicesInPrimary(ChannelWidthMhz widt
         return {};
     }
 
-    ChannelWidthMhz currWidth = 20; // MHz
+    MHz_u currWidth = 20;
     std::set<uint8_t> indices;
     indices.insert(m_primary20Index);
 
     while (currWidth < width)
     {
         indices.merge(GetAll20MHzChannelIndicesInSecondary(indices));
-        currWidth <<= 1;
+        currWidth *= 2;
     }
 
     return indices;
 }
 
 std::set<uint8_t>
-WifiPhyOperatingChannel::GetAll20MHzChannelIndicesInSecondary(ChannelWidthMhz width) const
+WifiPhyOperatingChannel::GetAll20MHzChannelIndicesInSecondary(MHz_u width) const
 {
     return GetAll20MHzChannelIndicesInSecondary(GetAll20MHzChannelIndicesInPrimary(width));
 }
@@ -767,13 +781,13 @@ WifiPhyOperatingChannel::GetAll20MHzChannelIndicesInSecondary(
     }
 
     uint8_t size = 1;
-    ChannelWidthMhz primaryWidth = 20; // MHz
+    MHz_u primaryWidth = 20;
 
     // find the width of the primary channel corresponding to the size of the given set
     while (size != primaryIndices.size())
     {
         size <<= 1;
-        primaryWidth <<= 1;
+        primaryWidth *= 2;
 
         if (primaryWidth >= GetTotalWidth())
         {
@@ -793,7 +807,7 @@ WifiPhyOperatingChannel::GetAll20MHzChannelIndicesInSecondary(
 }
 
 std::set<uint8_t>
-WifiPhyOperatingChannel::Get20MHzIndicesCoveringRu(HeRu::RuSpec ru, ChannelWidthMhz width) const
+WifiPhyOperatingChannel::Get20MHzIndicesCoveringRu(HeRu::RuSpec ru, MHz_u width) const
 {
     auto ruType = ru.GetRuType();
 
@@ -936,7 +950,15 @@ operator<<(std::ostream& os, const WifiPhyOperatingChannel& channel)
                 os << "segment " << segmentId << " ";
             }
             os << "channel " << +channel.GetNumber() << " frequency " << channel.GetFrequency()
-               << " width " << channel.GetWidth() << " band " << channel.GetPhyBand() << " ";
+               << " width " << channel.GetWidth() << " band " << channel.GetPhyBand();
+            if ((segmentId == 0) && (static_cast<uint16_t>(channel.GetTotalWidth()) % 20 == 0))
+            {
+                os << " primary20 " << +channel.GetPrimaryChannelIndex(20);
+            }
+            if (segmentId < numSegments - 1)
+            {
+                os << " ";
+            }
         }
     }
     else

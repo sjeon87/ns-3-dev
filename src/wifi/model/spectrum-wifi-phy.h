@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2005,2006 INRIA
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Ghada Badawy <gbadawy@gmail.com>
@@ -77,9 +66,9 @@ class SpectrumWifiPhy : public WifiPhy
     void SetDevice(const Ptr<WifiNetDevice> device) override;
     void StartTx(Ptr<const WifiPpdu> ppdu) override;
     Ptr<Channel> GetChannel() const override;
-    ChannelWidthMhz GetGuardBandwidth(ChannelWidthMhz currentChannelWidth) const override;
-    std::tuple<double, double, double> GetTxMaskRejectionParams() const override;
-    WifiSpectrumBandInfo GetBand(ChannelWidthMhz bandWidth, uint8_t bandIndex = 0) override;
+    MHz_u GetGuardBandwidth(MHz_u currentChannelWidth) const override;
+    std::tuple<dBr_u, dBr_u, dBr_u> GetTxMaskRejectionParams() const override;
+    WifiSpectrumBandInfo GetBand(MHz_u bandWidth, uint8_t bandIndex = 0) override;
     FrequencyRange GetCurrentFrequencyRange() const override;
     WifiSpectrumBandFrequencies ConvertIndicesToFrequencies(
         const WifiSpectrumBandIndices& indices) const override;
@@ -141,10 +130,10 @@ class SpectrumWifiPhy : public WifiPhy
      * portion specified by the caller. It takes care to configure the RX spectrum model of the PHY
      * interface and to update the bands tracked in interference helper.
      *
-     * \param frequencies the center frequency of each segment in MHz the PHY interface should use
-     * \param width the total channel width in MHz the PHY interface should use
+     * \param frequencies the center frequency of each segment the PHY interface should use
+     * \param width the total channel width the PHY interface should use
      */
-    void ConfigureInterface(const std::vector<uint16_t>& frequencies, ChannelWidthMhz width);
+    void ConfigureInterface(const std::vector<MHz_u>& frequencies, MHz_u width);
 
     /**
      * This function is sending the signal to the Spectrum channel
@@ -180,14 +169,14 @@ class SpectrumWifiPhy : public WifiPhy
      * Determine the number of bands between the two segments if the operating channel is made of
      * non-contiguous segments, otherwise the function returns zero.
      *
-     * \param centerFrequencies the center frequency of each segment in MHz
-     * \param totalWidth the width of the operating channel in MHz
+     * \param centerFrequencies the center frequency of each segment
+     * \param totalWidth the width of the operating channel
      * \param subcarrierSpacing the subcarrier spacing
      * \return the number of bands between the two segments if the operating channel is made of
      * non-contiguous segments, zero otherwise
      */
-    static uint32_t GetNumBandsBetweenSegments(const std::vector<uint16_t>& centerFrequencies,
-                                               ChannelWidthMhz totalWidth,
+    static uint32_t GetNumBandsBetweenSegments(const std::vector<MHz_u>& centerFrequencies,
+                                               MHz_u totalWidth,
                                                uint32_t subcarrierSpacing);
 
     /**
@@ -217,13 +206,12 @@ class SpectrumWifiPhy : public WifiPhy
      * Perform run-time spectrum model change
      * \param spectrumPhyInterface the spectrum PHY interface for which the spectrum model should be
      * changed
-     * \param centerFrequencies the center frequency of each segment in MHz the PHY interface should
-     * use
-     * \param channelWidth the total channel width in MHz the PHY interface should use
+     * \param centerFrequencies the center frequency of each segment the PHY interface should use
+     * \param channelWidth the total channel width the PHY interface should use
      */
     void ResetSpectrumModel(Ptr<WifiSpectrumPhyInterface> spectrumPhyInterface,
-                            const std::vector<uint16_t>& centerFrequencies,
-                            ChannelWidthMhz channelWidth);
+                            const std::vector<MHz_u>& centerFrequencies,
+                            MHz_u channelWidth);
 
     /**
      * This function is called to update the bands handled by the InterferenceHelper.
@@ -235,11 +223,11 @@ class SpectrumWifiPhy : public WifiPhy
      * This function computes the RU bands that belong to a given spectrum PHY interface.
      *
      * \param spectrumPhyInterface the spectrum PHY interface to consider to compute the RU bands
-     * \param guardBandwidth width of the guard band in MHz
+     * \param guardBandwidth width of the guard band
      * \returns the computed RU bands for the spectrum PHY interface
      */
     HeRuBands GetHeRuBands(Ptr<WifiSpectrumPhyInterface> spectrumPhyInterface,
-                           ChannelWidthMhz guardBandwidth);
+                           MHz_u guardBandwidth);
 
     /**
      * This function computes the bands that belong to a given spectrum PHY interface.
@@ -253,13 +241,13 @@ class SpectrumWifiPhy : public WifiPhy
      * Get the info of a given band that belongs to a given spectrum PHY interface
      *
      * \param spectrumPhyInterface the spectrum PHY interface
-     * \param bandWidth the width of the band to be returned (MHz)
+     * \param bandWidth the width of the band to be returned
      * \param bandIndex the index of the band to be returned
      *
      * \return the info that defines the band
      */
     WifiSpectrumBandInfo GetBandForInterface(Ptr<WifiSpectrumPhyInterface> spectrumPhyInterface,
-                                             ChannelWidthMhz bandWidth,
+                                             MHz_u bandWidth,
                                              uint8_t bandIndex = 0);
 
     /**
@@ -286,12 +274,12 @@ class SpectrumWifiPhy : public WifiPhy
     /**
      * Get the spectrum PHY interface that covers a band portion of the RF channel
      *
-     * \param frequency the center frequency in MHz of the RF channel band
-     * \param width the width in MHz of the RF channel band
+     * \param frequency the center frequency of the RF channel band
+     * \param width the width of the RF channel band
      * \return the spectrum PHY interface that covers the indicated band of the RF channel
      */
-    Ptr<WifiSpectrumPhyInterface> GetInterfaceCoveringChannelBand(uint16_t frequency,
-                                                                  ChannelWidthMhz width) const;
+    Ptr<WifiSpectrumPhyInterface> GetInterfaceCoveringChannelBand(MHz_u frequency,
+                                                                  MHz_u width) const;
 
     /**
      * Notify the spectrum channel has switched
@@ -303,18 +291,18 @@ class SpectrumWifiPhy : public WifiPhy
     bool m_disableWifiReception;           //!< forces this PHY to fail to sync on any signal
     bool m_trackSignalsInactiveInterfaces; //!< flag whether signals coming from inactive spectrum
                                            //!< PHY interfaces are tracked
-    std::vector<uint16_t> m_frequenciesBeforeSwitch;   //!< center frequency before channel switch
-    std::vector<ChannelWidthMhz> m_widthsBeforeSwitch; //!< channel width before channel switch
+    std::vector<MHz_u> m_frequenciesBeforeSwitch; //!< center frequency before channel switch
+    std::vector<MHz_u> m_widthsBeforeSwitch;      //!< channel width before channel switch
 
     TracedCallback<Ptr<const SpectrumSignalParameters>, uint32_t, double, Time>
         m_signalCb; //!< Signal callback
 
-    double m_txMaskInnerBandMinimumRejection; //!< The minimum rejection (in dBr) for the inner band
-                                              //!< of the transmit spectrum mask
-    double m_txMaskOuterBandMinimumRejection; //!< The minimum rejection (in dBr) for the outer band
-                                              //!< of the transmit spectrum mask
-    double m_txMaskOuterBandMaximumRejection; //!< The maximum rejection (in dBr) for the outer band
-                                              //!< of the transmit spectrum mask
+    dBr_u m_txMaskInnerBandMinimumRejection; //!< The minimum rejection for the inner band of the
+                                             //!< transmit spectrum mask
+    dBr_u m_txMaskOuterBandMinimumRejection; //!< The minimum rejection for the outer band of the
+                                             //!< transmit spectrum mask
+    dBr_u m_txMaskOuterBandMaximumRejection; //!< The maximum rejection for the outer band of the
+                                             //!< transmit spectrum mask
 
     Callback<void> m_channelSwitchedCallback; //!< Callback when channel switched
 };

@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2009 Duy Nguyen
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Duy Nguyen <duy@soe.ucsc.edu>
  *          Matías Richart <mrichart@fing.edu.uy>
@@ -405,7 +394,7 @@ MinstrelWifiManager::GetDataTxVector(MinstrelWifiRemoteStation* station)
         mode,
         GetDefaultTxPowerLevel(),
         GetPreambleForTransmission(mode.GetModulationClass(), GetShortPreambleEnabled()),
-        800,
+        NanoSeconds(800),
         1,
         1,
         0,
@@ -436,7 +425,7 @@ MinstrelWifiManager::GetRtsTxVector(MinstrelWifiRemoteStation* station)
         mode,
         GetDefaultTxPowerLevel(),
         GetPreambleForTransmission(mode.GetModulationClass(), GetShortPreambleEnabled()),
-        800,
+        NanoSeconds(800),
         1,
         1,
         0,
@@ -818,7 +807,7 @@ MinstrelWifiManager::DoReportDataOk(WifiRemoteStation* st,
                                     double ackSnr,
                                     WifiMode ackMode,
                                     double dataSnr,
-                                    ChannelWidthMhz dataChannelWidth,
+                                    MHz_u dataChannelWidth,
                                     uint8_t dataNss)
 {
     NS_LOG_FUNCTION(this << st << ackSnr << ackMode << dataSnr << dataChannelWidth << +dataNss);
@@ -932,7 +921,7 @@ MinstrelWifiManager::UpdateRetry(MinstrelWifiRemoteStation* station)
 }
 
 WifiTxVector
-MinstrelWifiManager::DoGetDataTxVector(WifiRemoteStation* st, ChannelWidthMhz allowedWidth)
+MinstrelWifiManager::DoGetDataTxVector(WifiRemoteStation* st, MHz_u allowedWidth)
 {
     NS_LOG_FUNCTION(this << st << allowedWidth);
     auto station = static_cast<MinstrelWifiRemoteStation*>(st);

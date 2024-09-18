@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2008 INRIA
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
@@ -34,6 +23,7 @@
 #include "ns3/he-configuration.h"
 #include "ns3/ht-configuration.h"
 #include "ns3/log.h"
+#include "ns3/object-vector.h"
 #include "ns3/packet.h"
 #include "ns3/pointer.h"
 #include "ns3/shuffle.h"
@@ -136,6 +126,18 @@ WifiMac::GetTypeId()
                           PointerValue(),
                           MakePointerAccessor(&WifiMac::GetBKQueue, &WifiMac::SetBkQueue),
                           MakePointerChecker<QosTxop>())
+            .AddAttribute(
+                "ChannelAccessManagers",
+                "The Channel Access Manager(s) attached to this device.",
+                ObjectVectorValue(),
+                MakeObjectVectorAccessor(&WifiMac::GetChannelAccessManager, &WifiMac::GetNLinks),
+                MakeObjectVectorChecker<ChannelAccessManager>())
+            .AddAttribute(
+                "FrameExchangeManagers",
+                "The Frame Exchange Manager(s) attached to this device.",
+                ObjectVectorValue(),
+                MakeObjectVectorAccessor(&WifiMac::GetFrameExchangeManager, &WifiMac::GetNLinks),
+                MakeObjectVectorChecker<FrameExchangeManager>())
             .AddAttribute(
                 "MpduBufferSize",
                 "The size (in number of MPDUs) of the buffer used for each BlockAck "
@@ -1136,7 +1138,12 @@ WifiMac::SwapLinks(std::map<uint8_t, uint8_t> links)
 {
     NS_LOG_FUNCTION(this);
 
-    std::map<uint8_t, uint8_t> actualPairs;
+    // save the initial mapping between link IDs and link Entities
+    std::map<uint8_t, std::reference_wrapper<const LinkEntity>> origLinkRefMap;
+    for (const auto& [id, link] : m_links)
+    {
+        origLinkRefMap.insert_or_assign(id, *link.get());
+    }
 
     while (!links.empty())
     {
@@ -1160,8 +1167,6 @@ WifiMac::SwapLinks(std::map<uint8_t, uint8_t> links)
             auto [it, inserted] =
                 m_links.emplace(to, nullptr); // insert an element with key to if not present
             m_links[to].swap(linkToMove);     // to is the link to move now
-            actualPairs.emplace(from, to);
-            UpdateLinkId(to);
             links.erase(from);
             if (!linkToMove)
             {
@@ -1177,7 +1182,6 @@ WifiMac::SwapLinks(std::map<uint8_t, uint8_t> links)
             {
                 // no new position specified for 'to', use the current empty cell
                 m_links[empty].swap(linkToMove);
-                actualPairs.emplace(to, empty);
                 break;
             }
 
@@ -1191,6 +1195,22 @@ WifiMac::SwapLinks(std::map<uint8_t, uint8_t> links)
     {
         m_linkIds.insert(id);
     }
+
+    std::map<uint8_t, uint8_t> actualPairs;
+    for (const auto& [from, ref] : origLinkRefMap)
+    {
+        // find the pointer in the current link map
+        for (const auto& [to, link] : m_links)
+        {
+            if (link.get() == &ref.get())
+            {
+                actualPairs[from] = to; // link 'from' became link 'to'
+                UpdateLinkId(to);
+                break;
+            }
+        }
+    }
+    NS_ASSERT_MSG(actualPairs.size() == m_links.size(), "Missing some link(s)");
 
     if (m_txop)
     {
@@ -1616,6 +1636,25 @@ WifiMac::UnblockUnicastTxOnLinks(WifiQueueBlockedReason reason,
                                    Txop::CHECK_MEDIUM_BUSY); // generate backoff if medium busy
         }
     }
+}
+
+bool
+WifiMac::GetTxBlockedOnLink(AcIndex ac,
+                            const WifiContainerQueueId& queueId,
+                            uint8_t linkId,
+                            WifiQueueBlockedReason reason) const
+{
+    auto mask = m_scheduler->GetQueueLinkMask(ac, queueId, linkId);
+
+    if (!mask.has_value())
+    {
+        return true; // the link may have not been setup
+    }
+    if (reason == WifiQueueBlockedReason::REASONS_COUNT)
+    {
+        return mask->any();
+    }
+    return mask->test(static_cast<std::size_t>(reason));
 }
 
 void
@@ -2110,7 +2149,7 @@ WifiMac::GetHtCapabilities(uint8_t linkId) const
         uint8_t nss = (mcs.GetMcsValue() / 8) + 1;
         NS_ASSERT(nss > 0 && nss < 5);
         uint64_t dataRate = mcs.GetDataRate(htConfiguration->Get40MHzOperationSupported() ? 40 : 20,
-                                            sgiSupported ? 400 : 800,
+                                            NanoSeconds(sgiSupported ? 400 : 800),
                                             nss);
         if (dataRate > maxSupportedRate)
         {
@@ -2187,7 +2226,7 @@ WifiMac::GetVhtCapabilities(uint8_t linkId) const
         capabilities.SetTxMcsMap(maxMcs, nss);
     }
     uint64_t maxSupportedRateLGI = 0; // in bit/s
-    uint16_t maxWidth = vhtConfiguration->Get160MHzOperationSupported() ? 160 : 80;
+    MHz_u maxWidth = vhtConfiguration->Get160MHzOperationSupported() ? 160 : 80;
     for (const auto& mcs : phy->GetMcsList(WIFI_MOD_CLASS_VHT))
     {
         if (!mcs.IsAllowed(maxWidth, 1))
@@ -2240,7 +2279,7 @@ WifiMac::GetHeCapabilities(uint8_t linkId) const
     }
     capabilities.SetChannelWidthSet(channelWidthSet);
     capabilities.SetLdpcCodingInPayload(htConfiguration->GetLdpcSupported());
-    if (heConfiguration->GetGuardInterval() == NanoSeconds(800))
+    if (heConfiguration->GetGuardInterval().GetNanoSeconds() == 800)
     {
         // todo: We assume for now that if we support 800ns GI then 1600ns GI is supported as well
         // todo: Assuming reception support for both 1x HE LTF and 4x HE LTF 800 ns

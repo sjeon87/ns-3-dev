@@ -27,6 +27,10 @@ set(source_files
     model/channel-access-manager.cc
     model/ctrl-headers.cc
     model/edca-parameter-set.cc
+    model/eht/advanced-ap-emlsr-manager.cc
+    model/eht/advanced-emlsr-manager.cc
+    model/eht/ap-emlsr-manager.cc
+    model/eht/default-ap-emlsr-manager.cc
     model/eht/default-emlsr-manager.cc
     model/eht/eht-capabilities.cc
     model/eht/eht-configuration.cc
@@ -186,6 +190,10 @@ set(header_files
     model/channel-access-manager.h
     model/ctrl-headers.h
     model/edca-parameter-set.h
+    model/eht/advanced-ap-emlsr-manager.h
+    model/eht/advanced-emlsr-manager.h
+    model/eht/ap-emlsr-manager.h
+    model/eht/default-ap-emlsr-manager.h
     model/eht/default-emlsr-manager.h
     model/eht/eht-capabilities.h
     model/eht/eht-configuration.h
@@ -323,11 +331,13 @@ set(header_files
     model/wifi-tx-timer.h
     model/wifi-tx-vector.h
     model/wifi-types.h
+    model/wifi-units.h
     model/wifi-utils.h
     model/yans-error-rate-model.h
     model/yans-wifi-channel.h
     model/yans-wifi-phy.h
     model/wifi-spectrum-value-helper.h
+    test/wifi-mlo-test.h
 )
 
 build_lib(

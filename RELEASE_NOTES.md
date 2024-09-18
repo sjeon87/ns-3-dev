@@ -21,13 +21,13 @@ Release 3-dev
 This release is intended to work on systems with the following minimal
 requirements (Note: not all ns-3 features are available on all systems):
 
-- g++-10.1 or later, or LLVM/clang++-10 or later
+- g++-10.1 or later, or LLVM/clang++-11 or later
 - Python 3.8 or later
 - CMake 3.13 or later
 - (macOS only) Xcode 13.1.6 or later
-- (Windows only) Msys2/MinGW64 toolchain or WSL2
+- (Windows only) Msys2/MinGW64 and Msys2/UCRT64 toolchains or WSL2
 
-This release has discontinued support for g++-9 compilers and for Python 3.6 and 3.7.
+This release has discontinued support for g++-9 and clang-10 compilers and for Python 3.6 and 3.7.
 
 Python API requires [Cppyy](https://cppyy.readthedocs.io/en/latest/installation.html) and has only
 been tested on Linux. As of this release, the latest known version to work with ns-3 is cppyy==3.1.2.
@@ -35,6 +35,9 @@ been tested on Linux. As of this release, the latest known version to work with 
 ### New user-visible features
 
 - (lr-wpan) !2082 - MAC SET GET attributes added
+- (core) !1904 - Added support for Laplacian and Largest Extreme Value random variables (`LaplacianRandomVariable`, `LargestExtremeValueRandomVariable`)
+- (wifi) - Added support for 80+80 MHz
+- (lr-wpan) !2123 - CCA vulnerability window test and doc
 
 ### Bugs fixed
 
@@ -43,6 +46,19 @@ been tested on Linux. As of this release, the latest known version to work with 
 - (wifi) Avoid firing WifiMac::DroppedMpdu trace twice in some cases
 - (wifi) Fix assignment of AIDs to non-AP STAs/MLDs to ensure they are unique
 - (wifi) Fix starting Sequence Number when ADDBA Response arrives after timeout
+- (uan) !2087 - Fix Thorp attenuation formula
+- (uan) !2088 - Fix PER calculation of M-QAM
+- (uan) !2127 - Fix bug in energy update in UanPhyGen::RxEndEvent()
+- (uan) !2121 - Wrong Eb/N0 calculation in UanPhyPerCommonModes::CalcPer()
+- (wifi) !2068 - Introduce use of weak type aliases for SI units
+- (wifi) Fix default association manager not properly handling non-AP MLDs not supporting 160 MHz operations
+- (wifi) Fix round robin multi-user scheduler sending Basic/BSRP TFs to EMLSR clients using another link
+- (wifi) Fix round robin multi-user scheduler sending Basic/BSRP TFs when no TID is mapped in the UL direction
+- (wifi) MU scheduler maintains a separate access request timer for each link
+- (wifi) Prevent cases where the TX window is stalled in case the ``BaThreshold`` attribute of the default ack manager is non-zero
+- (wifi) Fix retrieval of buffer status info from QoS Null frames sent in TB PPDUs in the multi-link case
+- (wifi) Avoid repeatedly sending BSRP TF in a TXOP when access is requested by MU scheduler
+- (wifi) Fix Txop Link entity swapping in some specific cases
 
 Release 3.42
 ------------

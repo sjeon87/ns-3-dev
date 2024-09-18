@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2021 Universita' degli Studi di Napoli Federico II
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Stefano Avallone <stavallo@unina.it>
  */
@@ -168,7 +157,7 @@ ReducedNeighborReport::SetOperatingChannel(std::size_t nbrApInfoId,
                         << "band " << channel.GetPhyBand());
 
     // find the primary channel number
-    uint16_t startingFreq = 0;
+    MHz_u startingFreq = 0;
 
     switch (channel.GetPhyBand())
     {
@@ -200,7 +189,7 @@ ReducedNeighborReport::GetOperatingChannel(std::size_t nbrApInfoId) const
     NS_ASSERT(nbrApInfoId < m_nbrApInfoFields.size());
 
     WifiPhyBand band = WIFI_PHY_BAND_UNSPECIFIED;
-    ChannelWidthMhz width = 0;
+    MHz_u width = 0;
 
     switch (m_nbrApInfoFields.at(nbrApInfoId).operatingClass)
     {
@@ -256,7 +245,7 @@ ReducedNeighborReport::GetOperatingChannel(std::size_t nbrApInfoId) const
 
     NS_ABORT_IF(band == WIFI_PHY_BAND_UNSPECIFIED || width == 0);
 
-    uint16_t startingFreq = 0;
+    MHz_u startingFreq = 0;
 
     switch (band)
     {
@@ -276,10 +265,10 @@ ReducedNeighborReport::GetOperatingChannel(std::size_t nbrApInfoId) const
     }
 
     uint8_t primaryChannelNumber = m_nbrApInfoFields.at(nbrApInfoId).channelNumber;
-    uint16_t primaryChannelCenterFrequency = startingFreq + primaryChannelNumber * 5;
+    MHz_u primaryChannelCenterFrequency = startingFreq + primaryChannelNumber * 5;
 
     uint8_t channelNumber = 0;
-    uint16_t frequency = 0;
+    MHz_u frequency = 0;
 
     for (const auto& channel : WifiPhyOperatingChannel::m_frequencyChannels)
     {
@@ -301,7 +290,7 @@ ReducedNeighborReport::GetOperatingChannel(std::size_t nbrApInfoId) const
                 // frequency channels overlap in the 2.4 GHz band, hence we have to check
                 // that the given primary channel center frequency can be the center frequency
                 // of the primary20 channel of the channel under consideration
-                switch (width)
+                switch (static_cast<uint16_t>(width))
                 {
                 case 20:
                     if (channel.frequency == primaryChannelCenterFrequency)
@@ -335,8 +324,8 @@ ReducedNeighborReport::GetOperatingChannel(std::size_t nbrApInfoId) const
     WifiPhyOperatingChannel channel;
     channel.Set({{channelNumber, frequency, width, band}}, WIFI_STANDARD_UNSPECIFIED);
 
-    uint16_t channelLowestFreq = frequency - width / 2;
-    uint16_t primaryChannelLowestFreq = primaryChannelCenterFrequency - 10;
+    MHz_u channelLowestFreq = frequency - width / 2;
+    MHz_u primaryChannelLowestFreq = primaryChannelCenterFrequency - 10;
     channel.SetPrimary20Index((primaryChannelLowestFreq - channelLowestFreq) / 20);
 
     return channel;
