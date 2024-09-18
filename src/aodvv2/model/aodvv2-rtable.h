@@ -80,7 +80,7 @@ class RoutingTableEntry
      * \param iface the interface
      * \param hops the number of hops
      * \param nextHop the IP address of the next hop
-     * \param lifetime the lifetime of the entry
+     * \param lastUsed the lastUsed time of the entry
      */
     RoutingTableEntry(Ptr<NetDevice> dev = nullptr,
                       T dst = T(),
@@ -88,7 +88,7 @@ class RoutingTableEntry
                       IpInterfaceAddress iface = IpInterfaceAddress(),
                       uint16_t hops = 0,
                       T nextHop = T(),
-                      Time lifetime = Simulator::Now());
+                      Time lastUsed = Simulator::Now());
 
     ~RoutingTableEntry();
 
@@ -394,16 +394,16 @@ class RoutingTable
   public:
     /**
      * constructor
-     * \param t the routing table entry lifetime
+     * \param t the routing table entry time
      */
     RoutingTable(Time t);
 
-    ///\name Handle lifetime of invalid route
+    ///\name Handle time of invalid route
     //\{
     /**
-     * Get the lifetime of a bad link
+     * Get the lastUsed time of a bad link
      *
-     * \return the lifetime of a bad link
+     * \return the lastUsed time of a bad link
      */
     Time GetBadLinkLifetime() const
     {
@@ -411,9 +411,9 @@ class RoutingTable
     }
 
     /**
-     * Set the lifetime of a bad link
+     * Set the lastUsed time of a bad link
      *
-     * \param t the lifetime of a bad link
+     * \param t the lastUsed time of a bad link
      */
     void SetBadLinkLifetime(Time t)
     {
@@ -472,7 +472,7 @@ class RoutingTable
      * 1. The destination sequence number of this routing entry, if it
      *    exists and is valid, is incremented.
      * 2. The entry is invalidated by marking the route entry as invalid
-     * 3. The Lifetime field is updated to current time plus DELETE_PERIOD.
+     * 3. The lastUsed time field is updated to current time plus DELETE_PERIOD.
      * \param unreachable routes to invalidate
      */
     void InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable);
@@ -488,7 +488,7 @@ class RoutingTable
         m_ipAddressEntry.clear();
     }
 
-    /// Delete all outdated entries and invalidate valid entry if Lifetime is expired
+    /// Delete all outdated entries and invalidate valid entry if lastUsed time is expired
     void Purge();
     /** Mark entry as unidirectional (e.g. add this neighbor to "blacklist" for blacklistTimeout
      * period)

@@ -47,11 +47,11 @@ RoutingTableEntry<T>::RoutingTableEntry(Ptr<NetDevice> dev,
                                         IpInterfaceAddress iface,
                                         uint16_t hops,
                                         T nextHop,
-                                        Time lifetime)
+                                        Time lastUsed)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
       m_nextHopIface(iface),
-      m_lastUsed(lifetime + Simulator::Now()),
+      m_lastUsed(lastUsed + Simulator::Now()),
       m_state(ACTIVE),
       m_hops(hops),
       m_reqCount(0)
