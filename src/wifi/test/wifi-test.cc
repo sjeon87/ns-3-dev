@@ -2,18 +2,7 @@
  * Copyright (c) 2005,2006 INRIA
  *               2010      NICTA
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Quincy Tse <quincy.tse@nicta.com.au>
@@ -1535,8 +1524,7 @@ class Bug2843TestCase : public TestCase
      * A tuple of {starting frequency, channelWidth, Number of subbands in SpectrumModel, modulation
      * type}
      */
-    typedef std::tuple<double, ChannelWidthMhz, uint32_t, WifiModulationClass>
-        FreqWidthSubbandModulationTuple;
+    typedef std::tuple<Hz_u, MHz_u, uint32_t, WifiModulationClass> FreqWidthSubbandModulationTuple;
     std::vector<FreqWidthSubbandModulationTuple>
         m_distinctTuples; ///< vector of distinct {starting frequency, channelWidth, Number of
                           ///< subbands in SpectrumModel, modulation type} tuples
@@ -1558,7 +1546,7 @@ class Bug2843TestCase : public TestCase
                          Ptr<NetDevice> sourceDevice,
                          Address& destination) const;
 
-    ChannelWidthMhz m_channelWidth; ///< channel width (in MHz)
+    MHz_u m_channelWidth; ///< channel width
 };
 
 Bug2843TestCase::Bug2843TestCase()
@@ -1577,7 +1565,7 @@ Bug2843TestCase::StoreDistinctTuple(std::string context, Ptr<SpectrumSignalParam
     // Extract starting frequency and number of subbands
     Ptr<const SpectrumModel> c = txParams->psd->GetSpectrumModel();
     std::size_t numBands = c->GetNumBands();
-    double startingFreq = c->Begin()->fl;
+    const Hz_u startingFreq = c->Begin()->fl;
 
     // Get channel bandwidth and modulation class
     Ptr<const WifiSpectrumSignalParameters> wifiTxParams =
@@ -1620,7 +1608,7 @@ Bug2843TestCase::SendPacketBurst(uint8_t numPackets,
 void
 Bug2843TestCase::DoRun()
 {
-    ChannelWidthMhz channelWidth = 40; // at least 40 MHz expected here
+    MHz_u channelWidth = 40; // at least 40 MHz expected here
 
     NodeContainer wifiStaNode;
     wifiStaNode.Create(1);
@@ -2975,9 +2963,9 @@ class IdealRateManagerChannelWidthTest : public TestCase
   private:
     /**
      * Change the configured channel width for all nodes
-     * \param channelWidth the channel width (in MHz)
+     * \param channelWidth the channel width
      */
-    void ChangeChannelWidth(ChannelWidthMhz channelWidth);
+    void ChangeChannelWidth(MHz_u channelWidth);
 
     /**
      * Triggers the transmission of a 1000 Byte-long data packet from the source device
@@ -3017,10 +3005,11 @@ IdealRateManagerChannelWidthTest::~IdealRateManagerChannelWidthTest()
 }
 
 void
-IdealRateManagerChannelWidthTest::ChangeChannelWidth(ChannelWidthMhz channelWidth)
+IdealRateManagerChannelWidthTest::ChangeChannelWidth(MHz_u channelWidth)
 {
     Config::Set("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelSettings",
-                StringValue("{0, " + std::to_string(channelWidth) + ", BAND_5GHZ, 0}"));
+                StringValue("{0, " + std::to_string(static_cast<uint16_t>(channelWidth)) +
+                            ", BAND_5GHZ, 0}"));
 }
 
 void
@@ -3588,7 +3577,7 @@ class HeRuMcsDataRateTestCase : public TestCase
     bool CheckDataRate(HeRu::RuType ruType,
                        std::string mcs,
                        uint8_t nss,
-                       uint16_t guardInterval,
+                       Time guardInterval,
                        uint16_t expectedDataRate);
     void DoRun() override;
 };
@@ -3602,7 +3591,7 @@ bool
 HeRuMcsDataRateTestCase::CheckDataRate(HeRu::RuType ruType,
                                        std::string mcs,
                                        uint8_t nss,
-                                       uint16_t guardInterval,
+                                       Time guardInterval,
                                        uint16_t expectedDataRate)
 {
     uint8_t staId = 1;
@@ -3640,18 +3629,18 @@ HeRuMcsDataRateTestCase::DoRun()
     bool retval = true;
 
     // 26-tone RU, browse over all MCSs, GIs and Nss's (up to 4, current max)
-    retval = retval && CheckDataRate(HeRu::RU_26_TONE, "HeMcs0", 1, 800, 9) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs1", 1, 1600, 17) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs2", 1, 3200, 23) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs3", 1, 3200, 30) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs4", 2, 1600, 100) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs5", 3, 1600, 200) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs6", 4, 1600, 300) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs7", 4, 3200, 300) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs8", 4, 1600, 400) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs9", 4, 3200, 400) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs10", 4, 1600, 500) &&
-             CheckDataRate(HeRu::RU_26_TONE, "HeMcs11", 4, 3200, 500);
+    retval = retval && CheckDataRate(HeRu::RU_26_TONE, "HeMcs0", 1, NanoSeconds(800), 9) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs1", 1, NanoSeconds(1600), 17) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs2", 1, NanoSeconds(3200), 23) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs3", 1, NanoSeconds(3200), 30) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs4", 2, NanoSeconds(1600), 100) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs5", 3, NanoSeconds(1600), 200) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs6", 4, NanoSeconds(1600), 300) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs7", 4, NanoSeconds(3200), 300) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs8", 4, NanoSeconds(1600), 400) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs9", 4, NanoSeconds(3200), 400) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs10", 4, NanoSeconds(1600), 500) &&
+             CheckDataRate(HeRu::RU_26_TONE, "HeMcs11", 4, NanoSeconds(3200), 500);
 
     NS_TEST_EXPECT_MSG_EQ(
         retval,
@@ -3659,12 +3648,12 @@ HeRuMcsDataRateTestCase::DoRun()
         "26-tone RU  data rate verification for different MCSs, GIs, and Nss's failed");
 
     // Check other RU sizes
-    retval = retval && CheckDataRate(HeRu::RU_52_TONE, "HeMcs2", 1, 1600, 50) &&
-             CheckDataRate(HeRu::RU_106_TONE, "HeMcs9", 1, 800, 500) &&
-             CheckDataRate(HeRu::RU_242_TONE, "HeMcs5", 1, 1600, 650) &&
-             CheckDataRate(HeRu::RU_484_TONE, "HeMcs3", 1, 1600, 650) &&
-             CheckDataRate(HeRu::RU_996_TONE, "HeMcs5", 1, 3200, 2450) &&
-             CheckDataRate(HeRu::RU_2x996_TONE, "HeMcs3", 1, 3200, 2450);
+    retval = retval && CheckDataRate(HeRu::RU_52_TONE, "HeMcs2", 1, NanoSeconds(1600), 50) &&
+             CheckDataRate(HeRu::RU_106_TONE, "HeMcs9", 1, NanoSeconds(800), 500) &&
+             CheckDataRate(HeRu::RU_242_TONE, "HeMcs5", 1, NanoSeconds(1600), 650) &&
+             CheckDataRate(HeRu::RU_484_TONE, "HeMcs3", 1, NanoSeconds(1600), 650) &&
+             CheckDataRate(HeRu::RU_996_TONE, "HeMcs5", 1, NanoSeconds(3200), 2450) &&
+             CheckDataRate(HeRu::RU_2x996_TONE, "HeMcs3", 1, NanoSeconds(3200), 2450);
 
     NS_TEST_EXPECT_MSG_EQ(retval,
                           true,

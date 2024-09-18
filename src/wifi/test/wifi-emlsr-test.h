@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2023 Universita' degli Studi di Napoli Federico II
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Stefano Avallone <stavallo@unina.it>
  */
@@ -517,6 +506,19 @@ class EmlsrDlTxopTest : public EmlsrOperationsTestBase
  *   not transmitted successfully. Specifically, we check that the main PHY is completing the
  *   channel switch when the (unsuccessful) reception of the CTS ends and that a new RTS/CTS
  *   exchange is carried out to protect the transmission of the last data frame.
+ * - While the main PHY is operating on the same link as an aux PHY (which does not switch
+ *   channel), the aux PHY is put in sleep mode as soon as the main PHY starts operating on the
+ *   link, stays in sleep mode until the TXOP ends and is resumed from sleep mode right after the
+ *   end of the DL/UL TXOP.
+ * - When an aux PHY that is not TX capable gains a TXOP, it checks whether the main PHY can switch
+ *   to the non-primary link a start an UL TXOP. If the main PHY is switching, the aux PHY waits
+ *   until the channel switch is completed and checks again; if the remaining backoff time on the
+ *   primary link is greater than the channel switch delay, the main PHY is requested to switch to
+ *   the non-primary link of the aux PHY. When the channel switch is completed, if the medium is
+ *   idle on the non-primary link and the backoff is zero, the main PHY starts an UL TXOP after a
+ *   PIFS period; otherwise, the main PHY starts an UL TXOP when the backoff timer counts down to
+ *   zero. The QoS data frame sent by the main PHY is not protected by RTS and the bandwidth it
+ *   occupies is not affected by possible limitations on the aux PHY TX bandwidth capabilities.
  */
 class EmlsrUlTxopTest : public EmlsrOperationsTestBase
 {
@@ -528,8 +530,8 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
     {
         std::set<uint8_t>
             linksToEnableEmlsrOn;       //!< IDs of links on which EMLSR mode should be enabled
-        uint16_t channelWidth;          //!< width (MHz) of the channels used by MLDs
-        uint16_t auxPhyChannelWidth;    //!< max width (MHz) supported by aux PHYs
+        MHz_u channelWidth;             //!< width of the channels used by MLDs
+        MHz_u auxPhyChannelWidth;       //!< max width supported by aux PHYs
         Time mediumSyncDuration;        //!< duration of the MediumSyncDelay timer
         uint8_t msdMaxNTxops;           //!< Max number of TXOPs that an EMLSR client is allowed
                                         //!< to attempt to initiate while the MediumSyncDelay
@@ -570,6 +572,18 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
      * \param linkId the ID of the given link
      */
     void CheckRtsFrames(Ptr<const WifiMpdu> mpdu, const WifiTxVector& txVector, uint8_t linkId);
+
+    /**
+     * Check that appropriate actions are taken by the AP MLD transmitting an initial
+     * Control frame to an EMLSR client on the given link.
+     *
+     * \param mpdu the MPDU carrying the MU-RTS TF
+     * \param txVector the TXVECTOR used to send the PPDU
+     * \param linkId the ID of the given link
+     */
+    void CheckInitialControlFrame(Ptr<const WifiMpdu> mpdu,
+                                  const WifiTxVector& txVector,
+                                  uint8_t linkId);
 
     /**
      * Check that appropriate actions are taken by the EMLSR client when receiving a CTS
@@ -617,8 +631,8 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
     void BackoffGenerated(uint32_t backoff, uint8_t linkId);
 
     std::set<uint8_t> m_emlsrLinks; /**< IDs of the links on which EMLSR mode has to be enabled */
-    uint16_t m_channelWidth;        //!< width (MHz) of the channels used by MLDs
-    uint16_t m_auxPhyChannelWidth;  //!< max width (MHz) supported by aux PHYs
+    MHz_u m_channelWidth;           //!< width of the channels used by MLDs
+    MHz_u m_auxPhyChannelWidth;     //!< max width supported by aux PHYs
     Time m_mediumSyncDuration;      //!< duration of the MediumSyncDelay timer
     uint8_t m_msdMaxNTxops;         //!< Max number of TXOPs that an EMLSR client is allowed
                                     //!< to attempt to initiate while the MediumSyncDelay
@@ -640,6 +654,7 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
                                           //!< gains the right to start a TXOP but it does not
                                           //!< transmit any frame
     std::optional<bool> m_corruptCts;     //!< whether the transmitted CTS must be corrupted
+    Time m_5thQosFrameTxTime;             //!< start transmission time of the 5th QoS data frame
 };
 
 /**
@@ -671,7 +686,7 @@ class EmlsrLinkSwitchTest : public EmlsrOperationsTestBase
                           //!<  the Main PHY was operating before moving to the link of the Aux PHY
         bool resetCamState; //!< whether to reset the state of the ChannelAccessManager associated
                             //!< with the link on which the main PHY has just switched to
-        uint16_t auxPhyMaxChWidth; //!< max channel width (MHz) supported by aux PHYs
+        MHz_u auxPhyMaxChWidth; //!< max channel width supported by aux PHYs
     };
 
     /**
@@ -726,7 +741,7 @@ class EmlsrLinkSwitchTest : public EmlsrOperationsTestBase
                                the Main PHY was operating before moving to the link of Aux PHY */
     bool m_resetCamState; /**< whether to reset the state of the ChannelAccessManager associated
                                with the link on which the main PHY has just switched to */
-    uint16_t m_auxPhyMaxChWidth;  //!< max channel width (MHz) supported by aux PHYs
+    MHz_u m_auxPhyMaxChWidth;     //!< max channel width supported by aux PHYs
     std::size_t m_countQoSframes; //!< counter for QoS data frames
     std::size_t m_txPsdusPos;     //!< a position in the vector of TX PSDUs
 };

@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2017 Orange Labs
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Rediet <getachew.redieteab@orange.com>
  */
@@ -43,12 +32,12 @@ class WifiOfdmMaskSlopesTestCase : public TestCase
 {
   public:
     /**
-     * typedef for a pair of sub-band index and relative power value (dBr)
+     * typedef for a pair of sub-band index and relative power value
      */
-    typedef std::pair<uint32_t, double> IndexPowerPair;
+    typedef std::pair<uint32_t, dBr_u> IndexPowerPair;
 
     /**
-     * typedef for a vector of pairs of sub-band index and relative power value (dBr)
+     * typedef for a vector of pairs of sub-band index and relative power value
      */
     typedef std::vector<IndexPowerPair> IndexPowerVect;
 
@@ -58,11 +47,11 @@ class WifiOfdmMaskSlopesTestCase : public TestCase
      * \param name test reference name
      * \param standard selected standard
      * \param band selected PHY band
-     * \param channelWidth total channel width (in MHz)
-     * \param centerFrequencies the center frequency (in MHz) per contiguous segment
+     * \param channelWidth total channel width
+     * \param centerFrequencies the center frequency per contiguous segment
      * \param maskRefs vector of expected power values and corresponding indexes of generated PSD
      *                     (only start and stop indexes/values given)
-     * \param tolerance tolerance (in dB)
+     * \param tolerance tolerance
      * \param precision precision (in decimals)
      * \param puncturedSubchannels bitmap indicating whether a 20 MHz subchannel is punctured or not
      * (only for 802.11ax and later)
@@ -70,10 +59,10 @@ class WifiOfdmMaskSlopesTestCase : public TestCase
     WifiOfdmMaskSlopesTestCase(const std::string& name,
                                WifiStandard standard,
                                WifiPhyBand band,
-                               ChannelWidthMhz channelWidth,
-                               const std::vector<uint16_t>& centerFrequencies,
+                               MHz_u channelWidth,
+                               const std::vector<MHz_u>& centerFrequencies,
                                const IndexPowerVect& maskRefs,
-                               double tolerance,
+                               dB_u tolerance,
                                std::size_t precision,
                                const std::vector<bool>& puncturedSubchannels = std::vector<bool>{});
     ~WifiOfdmMaskSlopesTestCase() override = default;
@@ -88,24 +77,23 @@ class WifiOfdmMaskSlopesTestCase : public TestCase
      *
      * \param vect vector of sub-band index and relative power value pairs to which interpolated
      values should be appended
-     * \param start pair of sub-band index and relative power value (dBr) for interval start
-     * \param stop pair of sub-band index and relative power value (dBr) for interval stop
+     * \param start pair of sub-band index and relative power value for interval start
+     * \param stop pair of sub-band index and relative power value for interval stop
     */
     void InterpolateAndAppendValues(IndexPowerVect& vect,
                                     IndexPowerPair start,
                                     IndexPowerPair stop) const;
 
-    WifiStandard m_standard;        ///< the wifi standard to test
-    WifiPhyBand m_band;             ///< the wifi PHY band to test
-    ChannelWidthMhz m_channelWidth; ///< the total channel width (MHz) to test
-    std::vector<uint16_t>
-        m_centerFreqs; ///< the center frequency (MHz) per contiguous segment to test
+    WifiStandard m_standard;          ///< the wifi standard to test
+    WifiPhyBand m_band;               ///< the wifi PHY band to test
+    MHz_u m_channelWidth;             ///< the total channel width to test
+    std::vector<MHz_u> m_centerFreqs; ///< the center frequency per contiguous segment to test
     std::vector<bool>
         m_puncturedSubchannels; ///< bitmap indicating whether a 20 MHz subchannel is punctured or
                                 ///< not (only used for 802.11ax and later)
     Ptr<SpectrumValue> m_actualSpectrum; ///< actual spectrum value
     IndexPowerVect m_expectedPsd;        ///< expected power values
-    double m_tolerance;                  ///< tolerance (in dB)
+    dB_u m_tolerance;                    ///< tolerance
     std::size_t m_precision;             ///< precision for double calculations (in decimals)
 };
 
@@ -113,10 +101,10 @@ WifiOfdmMaskSlopesTestCase::WifiOfdmMaskSlopesTestCase(
     const std::string& name,
     WifiStandard standard,
     WifiPhyBand band,
-    ChannelWidthMhz channelWidth,
-    const std::vector<uint16_t>& centerFrequencies,
+    MHz_u channelWidth,
+    const std::vector<MHz_u>& centerFrequencies,
     const IndexPowerVect& maskRefs,
-    double tolerance,
+    dB_u tolerance,
     std::size_t precision,
     const std::vector<bool>& puncturedSubchannels)
     : TestCase(std::string("SpectrumValue ") + name),
@@ -141,22 +129,22 @@ WifiOfdmMaskSlopesTestCase::DoSetup()
     NS_ASSERT(!m_centerFreqs.empty());
     NS_ASSERT(m_expectedPsd.size() % 2 == 0); // start/stop pairs expected
 
-    double outerBandMaximumRejection = 0.0;
+    dBr_u outerBandMaximumRejection = 0.0;
     switch (m_band)
     {
     default:
     case WIFI_PHY_BAND_5GHZ:
-        outerBandMaximumRejection = -40; // in dBr
+        outerBandMaximumRejection = -40;
         break;
     case WIFI_PHY_BAND_2_4GHZ:
-        outerBandMaximumRejection = (m_standard >= WIFI_STANDARD_80211n) ? -45 : -40; // in dBr
+        outerBandMaximumRejection = (m_standard >= WIFI_STANDARD_80211n) ? -45 : -40;
         break;
     case WIFI_PHY_BAND_6GHZ:
-        outerBandMaximumRejection = -40; // in dBr
+        outerBandMaximumRejection = -40;
         break;
     }
 
-    double refTxPowerW = 1; // have to work in dBr when comparing though
+    Watt_u refTxPower{1}; // have to work in dBr when comparing though
     switch (m_standard)
     {
     case WIFI_STANDARD_80211p:
@@ -165,7 +153,7 @@ WifiOfdmMaskSlopesTestCase::DoSetup()
         m_actualSpectrum =
             WifiSpectrumValueHelper::CreateOfdmTxPowerSpectralDensity(m_centerFreqs.front(),
                                                                       m_channelWidth,
-                                                                      refTxPowerW,
+                                                                      refTxPower,
                                                                       m_channelWidth,
                                                                       -20.0,
                                                                       -28.0,
@@ -178,7 +166,7 @@ WifiOfdmMaskSlopesTestCase::DoSetup()
         m_actualSpectrum =
             WifiSpectrumValueHelper::CreateOfdmTxPowerSpectralDensity(m_centerFreqs.front(),
                                                                       m_channelWidth,
-                                                                      refTxPowerW,
+                                                                      refTxPower,
                                                                       m_channelWidth,
                                                                       -20.0,
                                                                       -28.0,
@@ -191,7 +179,7 @@ WifiOfdmMaskSlopesTestCase::DoSetup()
         m_actualSpectrum =
             WifiSpectrumValueHelper::CreateOfdmTxPowerSpectralDensity(m_centerFreqs.front(),
                                                                       m_channelWidth,
-                                                                      refTxPowerW,
+                                                                      refTxPower,
                                                                       m_channelWidth,
                                                                       -20.0,
                                                                       -28.0,
@@ -203,7 +191,7 @@ WifiOfdmMaskSlopesTestCase::DoSetup()
         m_actualSpectrum =
             WifiSpectrumValueHelper::CreateHtOfdmTxPowerSpectralDensity(m_centerFreqs,
                                                                         m_channelWidth,
-                                                                        refTxPowerW,
+                                                                        refTxPower,
                                                                         m_channelWidth,
                                                                         -20.0,
                                                                         -28.0,
@@ -217,7 +205,7 @@ WifiOfdmMaskSlopesTestCase::DoSetup()
         m_actualSpectrum =
             WifiSpectrumValueHelper::CreateHtOfdmTxPowerSpectralDensity(m_centerFreqs,
                                                                         m_channelWidth,
-                                                                        refTxPowerW,
+                                                                        refTxPower,
                                                                         m_channelWidth,
                                                                         -20.0,
                                                                         -28.0,
@@ -232,7 +220,7 @@ WifiOfdmMaskSlopesTestCase::DoSetup()
         m_actualSpectrum =
             WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity(m_centerFreqs,
                                                                         m_channelWidth,
-                                                                        refTxPowerW,
+                                                                        refTxPower,
                                                                         m_channelWidth,
                                                                         -20.0,
                                                                         -28.0,
@@ -288,22 +276,22 @@ void
 WifiOfdmMaskSlopesTestCase::DoRun()
 {
     NS_LOG_FUNCTION(this);
-    double currentPowerDbr = 0.0; // have to work in dBr so as to compare with expected slopes
-    double maxPowerW = (*m_actualSpectrum)[0];
+    dBr_u currentPower = 0.0; // have to work in dBr so as to compare with expected slopes
+    Watt_u maxPower = (*m_actualSpectrum)[0];
     for (auto&& vit = m_actualSpectrum->ConstValuesBegin();
          vit != m_actualSpectrum->ConstValuesEnd();
          ++vit)
     {
-        maxPowerW = std::max(maxPowerW, *vit);
+        maxPower = std::max(maxPower, *vit);
     }
 
     NS_LOG_INFO("Compare expected PSD");
     for (const auto& [subcarrier, expectedValue] : m_expectedPsd)
     {
-        currentPowerDbr = 10.0 * std::log10((*m_actualSpectrum)[subcarrier] / maxPowerW);
+        currentPower = 10.0 * std::log10((*m_actualSpectrum)[subcarrier] / maxPower);
         NS_LOG_LOGIC("For " << subcarrier << ", expected: " << expectedValue
-                            << " vs obtained: " << currentPowerDbr);
-        NS_TEST_EXPECT_MSG_EQ_TOL(currentPowerDbr,
+                            << " vs obtained: " << currentPower);
+        NS_TEST_EXPECT_MSG_EQ_TOL(currentPower,
                                   expectedValue,
                                   m_tolerance,
                                   "Spectrum value mismatch for subcarrier " << subcarrier);
@@ -334,8 +322,8 @@ WifiTransmitMaskTestSuite::WifiTransmitMaskTestSuite()
     NS_LOG_INFO("Creating WifiTransmitMaskTestSuite");
 
     WifiOfdmMaskSlopesTestCase::IndexPowerVect maskSlopes;
-    double tol = 10e-2; // in dB
-    double prec = 10;   // in decimals
+    dB_u tol = 10e-2;
+    double prec = 10; // in decimals
 
     // ============================================================================================
     // 11p 5MHz

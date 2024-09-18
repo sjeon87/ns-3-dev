@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2022 Universita' degli Studi di Napoli Federico II
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Stefano Avallone <stavallo@unina.it>
  */
@@ -27,6 +16,10 @@
 
 namespace ns3
 {
+
+/// aRxPHYStartDelay value to use when waiting for a new frame in the context of EMLSR operations
+/// (Sec. 35.3.17 of 802.11be D3.1)
+extern const Time EMLSR_RX_PHY_START_DELAY;
 
 class MgtEmlOmn;
 
@@ -49,7 +42,7 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
 
     void SetLinkId(uint8_t linkId) override;
     Ptr<WifiMpdu> CreateAliasIfNeeded(Ptr<WifiMpdu> mpdu) const override;
-    bool StartTransmission(Ptr<Txop> edca, ChannelWidthMhz allowedWidth) override;
+    bool StartTransmission(Ptr<Txop> edca, MHz_u allowedWidth) override;
 
     /**
      * Send an EML Operating Mode Notification frame to the given station.
@@ -60,15 +53,14 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
     void SendEmlOmn(const Mac48Address& dest, const MgtEmlOmn& frame);
 
     /**
-     * Get the RSSI (in dBm) of the most recent packet received from the station having
-     * the given address. If there is no such information for the given station and the
-     * station is affiliated with an MLD, return the RSSI (in dBm) of the most recent
-     * packet received from another station of the same MLD.
+     * Get the RSSI of the most recent packet received from the station having the given address. If
+     * there is no such information for the given station and the station is affiliated with an MLD,
+     * return the RSSI of the most recent packet received from another station of the same MLD.
      *
      * \param address of the remote station
-     * \return the RSSI (in dBm) of the most recent packet received from the remote station
+     * \return the RSSI of the most recent packet received from the remote station
      */
-    std::optional<double> GetMostRecentRssi(const Mac48Address& address) const override;
+    std::optional<dBm_u> GetMostRecentRssi(const Mac48Address& address) const override;
 
     /**
      * \param psdu the given PSDU
@@ -97,6 +89,37 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
      */
     bool UsingOtherEmlsrLink() const;
 
+    /**
+     * Check if the frame received (or being received) is sent by an EMLSR client to start an
+     * UL TXOP. If so, take the appropriate actions (e.g., block transmission to the EMLSR client
+     * on the other links). This method is intended to be called when an MPDU (possibly within
+     * an A-MPDU) is received or when the reception of the MAC header in an MPDU is notified.
+     *
+     * \param hdr the MAC header of the received (or being received) MPDU
+     * \param txVector the TXVECTOR used to transmit the frame received (or being received)
+     * \return whether the frame received (or being received) is sent by an EMLSR client to start
+     *         an UL TXOP
+     */
+    bool CheckEmlsrClientStartingTxop(const WifiMacHeader& hdr, const WifiTxVector& txVector);
+
+    /**
+     * This method is intended to be called when an AP MLD detects that an EMLSR client previously
+     * involved in the current TXOP will start waiting for the transition delay interval (to switch
+     * back to listening operation) after the given delay.
+     * This method blocks the transmissions on all the EMLSR links of the given EMLSR client until
+     * the transition delay advertised by the EMLSR client expires.
+     *
+     * \param address the link MAC address of the given EMLSR client
+     * \param delay the given delay
+     */
+    void EmlsrSwitchToListening(const Mac48Address& address, const Time& delay);
+
+    /**
+     * \return a reference to the event indicating the possible end of the current TXOP (of
+     *         which this device is not the holder)
+     */
+    EventId& GetOngoingTxopEndEvent();
+
   protected:
     void DoDispose() override;
     void RxStartIndication(WifiTxVector txVector, Time psduDuration) override;
@@ -119,32 +142,18 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
     void NavResetTimeout() override;
     void IntraBssNavResetTimeout() override;
     void SendCtsAfterRts(const WifiMacHeader& rtsHdr, WifiMode rtsTxMode, double rtsSnr) override;
-
-    /**
-     * This method is intended to be called when an AP MLD detects that an EMLSR client previously
-     * involved in the current TXOP will start waiting for the transition delay interval (to switch
-     * back to listening operation) after the given delay.
-     * This method blocks the transmissions on all the EMLSR links of the given EMLSR client until
-     * the transition delay advertised by the EMLSR client expires.
-     *
-     * \param address the link MAC address of the given EMLSR client
-     * \param delay the given delay
-     */
-    void EmlsrSwitchToListening(const Mac48Address& address, const Time& delay);
+    void PsduRxError(Ptr<const WifiPsdu> psdu) override;
 
   private:
     /**
-     * Check if the frame received (or being received) is sent by an EMLSR client to start an
-     * UL TXOP. If so, take the appropriate actions (e.g., block transmission to the EMLSR client
-     * on the other links). This method is intended to be called when an MPDU (possibly within
-     * an A-MPDU) is received or when the reception of the MAC header in an MPDU is notified.
+     * Generate an in-device interference of the given power on the given link for the given
+     * duration.
      *
-     * \param hdr the MAC header of the received (or being received) MPDU
-     * \param txVector the TXVECTOR used to transmit the frame received (or being received)
-     * \return whether the frame received (or being received) is sent by an EMLSR client to start
-     *         an UL TXOP
+     * \param linkId the ID of the link on which in-device interference is generated
+     * \param duration the duration of the in-device interference
+     * \param txPower the TX power
      */
-    bool CheckEmlsrClientStartingTxop(const WifiMacHeader& hdr, const WifiTxVector& txVector);
+    void GenerateInDeviceInterference(uint8_t linkId, Time duration, Watt_u txPower);
 
     /**
      * Update the TXOP end timer when starting a frame transmission.

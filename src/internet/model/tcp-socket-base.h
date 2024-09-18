@@ -2,18 +2,7 @@
  * Copyright (c) 2007 Georgia Tech Research Corporation
  * Copyright (c) 2010 Adrian Sai-wah Tam
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Adrian Sai-wah Tam <adrian.sw.tam@gmail.com>
  */
@@ -1145,7 +1134,8 @@ class TcpSocketBase : public TcpSocket
      */
     void DoRetransmit();
 
-    /** \brief Add options to TcpHeader
+    /**
+     * \brief Add options to TcpHeader
      *
      * Test each option, and if it is enabled on our side, add it
      * to the header
@@ -1232,7 +1222,8 @@ class TcpSocketBase : public TcpSocket
      */
     void AddOptionSack(TcpHeader& header);
 
-    /** \brief Process the timestamp option from other side
+    /**
+     * \brief Process the timestamp option from other side
      *
      * Get the timestamp and the echo, then save timestamp (which will
      * be the echo value in our out-packets) and save the echoed timestamp,

@@ -1,29 +1,19 @@
 /*
  * Copyright (c) 2010 INRIA
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
+ * SPDX-License-Identifier: GPL-2.0-only
  */
+
+#ifndef INT64X64_128_H
+#define INT64X64_128_H
 
 #include "ns3/core-config.h"
 
-#if !defined(INT64X64_128_H) && defined(INT64X64_USE_128) && !defined(PYTHON_SCAN)
 /**
  * \ingroup highprec
  * Use uint128_t for int64x64_t implementation
  */
-#define INT64X64_128_H
+#if defined(INT64X64_USE_128) && !defined(PYTHON_SCAN)
 
 #include <cmath> // pow
 #include <stdint.h>
@@ -227,7 +217,8 @@ class int64x64_t
     inline double GetDouble() const
     {
         const bool negative = _v < 0;
-        const uint128_t value = negative ? -_v : _v;
+        const int128_t vTemp = _v + (_v == std::numeric_limits<int128_t>::min());
+        const uint128_t value = negative ? -vTemp : vTemp;
         const long double fhi = value >> 64;
         const long double flo = (value & HP_MASK_LO) / HP_MAX_64;
         long double retval = fhi;
@@ -460,4 +451,5 @@ class int64x64_t
 
 } // namespace ns3
 
+#endif /* defined(INT64X64_USE_128) && !defined(PYTHON_SCAN) */
 #endif /* INT64X64_128_H */

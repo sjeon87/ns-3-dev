@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2005,2006 INRIA
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
@@ -107,7 +96,7 @@ class PhyListener : public ns3::WifiPhyListener
         }
     }
 
-    void NotifyTxStart(Time duration, double txPowerDbm) override
+    void NotifyTxStart(Time duration, dBm_u txPower) override
     {
         if (m_active)
         {
@@ -187,6 +176,15 @@ ChannelAccessManager::GetTypeId()
                           BooleanValue(false),
                           MakeBooleanAccessor(&ChannelAccessManager::SetGenerateBackoffOnNoTx,
                                               &ChannelAccessManager::GetGenerateBackoffOnNoTx),
+                          MakeBooleanChecker())
+            .AddAttribute("ProactiveBackoff",
+                          "Specify whether a new backoff value is generated when a CCA busy "
+                          "period starts, the backoff counter is zero and the station is not a "
+                          "TXOP holder. This is useful to generate a new backoff value when, "
+                          "e.g., the backoff counter reaches zero, the station does not transmit "
+                          "and subsequently the medium becomes busy.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&ChannelAccessManager::m_proactiveBackoff),
                           MakeBooleanChecker());
     return tid;
 }
@@ -199,7 +197,6 @@ ChannelAccessManager::ChannelAccessManager()
       m_lastRxReceivedOk(true),
       m_lastTxEnd(0),
       m_lastSwitchingEnd(0),
-      m_usingOtherEmlsrLink(false),
       m_sleeping(false),
       m_off(false),
       m_linkId(0)
@@ -632,7 +629,7 @@ ChannelAccessManager::GetAccessGrantStart(bool ignoreNav) const
 }
 
 Time
-ChannelAccessManager::GetBackoffStartFor(Ptr<Txop> txop)
+ChannelAccessManager::GetBackoffStartFor(Ptr<Txop> txop) const
 {
     return GetBackoffStartFor(txop, GetAccessGrantStart());
 }
@@ -651,7 +648,7 @@ ChannelAccessManager::GetBackoffStartFor(Ptr<Txop> txop, Time accessGrantStart) 
 }
 
 Time
-ChannelAccessManager::GetBackoffEndFor(Ptr<Txop> txop)
+ChannelAccessManager::GetBackoffEndFor(Ptr<Txop> txop) const
 {
     return GetBackoffEndFor(txop, GetAccessGrantStart());
 }
@@ -746,7 +743,7 @@ ChannelAccessManager::DoRestartAccessTimeoutIfNeeded()
     }
 }
 
-ChannelWidthMhz
+MHz_u
 ChannelAccessManager::GetLargestIdlePrimaryChannel(Time interval, Time end)
 {
     NS_LOG_FUNCTION(this << interval.As(Time::US) << end.As(Time::S));
@@ -761,7 +758,7 @@ ChannelAccessManager::GetLargestIdlePrimaryChannel(Time interval, Time end)
     // also be called before starting a TXOP gained through EDCA.
     UpdateLastIdlePeriod();
 
-    ChannelWidthMhz width = 0;
+    MHz_u width = 0;
 
     // we iterate over the different types of channels in the same order as they
     // are listed in WifiChannelListType
@@ -907,6 +904,21 @@ ChannelAccessManager::NotifyCcaBusyStartNow(Time duration,
             m_lastPer20MHzBusyEnd[chIdx] = now + per20MhzDurations[chIdx];
         }
     }
+
+    if (m_proactiveBackoff)
+    {
+        // have all EDCAFs that are not carrying out a TXOP and have the backoff counter set to
+        // zero proactively generate a new backoff value
+        for (auto txop : m_txops)
+        {
+            if (txop->GetAccessStatus(m_linkId) != Txop::GRANTED &&
+                txop->GetBackoffSlots(m_linkId) == 0)
+            {
+                NS_LOG_DEBUG("Generate backoff for " << txop->GetWifiMacQueue()->GetAc());
+                txop->GenerateBackoff(m_linkId);
+            }
+        }
+    }
 }
 
 void
@@ -1013,13 +1025,9 @@ ChannelAccessManager::NotifySleepNow()
 {
     NS_LOG_FUNCTION(this);
     m_sleeping = true;
-    // Cancel timeout
-    if (m_accessTimeout.IsPending())
-    {
-        m_accessTimeout.Cancel();
-    }
-
     // Reset backoffs
+    ResetAllBackoffs();
+    m_feManager->NotifySleepNow();
     for (auto txop : m_txops)
     {
         txop->NotifySleep(m_linkId);
@@ -1130,20 +1138,6 @@ ChannelAccessManager::NotifyCtsTimeoutResetNow()
     NS_LOG_FUNCTION(this);
     m_lastCtsTimeoutEnd = Simulator::Now();
     DoRestartAccessTimeoutIfNeeded();
-}
-
-void
-ChannelAccessManager::NotifyStartUsingOtherEmlsrLink()
-{
-    NS_LOG_FUNCTION(this);
-    m_usingOtherEmlsrLink = true;
-}
-
-void
-ChannelAccessManager::NotifyStopUsingOtherEmlsrLink()
-{
-    NS_LOG_FUNCTION(this);
-    m_usingOtherEmlsrLink = false;
 }
 
 void

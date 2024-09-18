@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2016 University of Washington
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Tom Henderson <tomhend@u.washington.edu>
  *          Matías Richart <mrichart@fing.edu.uy>
@@ -74,10 +63,6 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("WifiManagerExample");
 
-// 290K @ 20 MHz
-const double NOISE_DBM_Hz = -174.0; //!< Default value for noise.
-double noiseDbm = NOISE_DBM_Hz;     //!< Value for noise.
-
 double g_intervalBytes = 0;  //!< Bytes received in an interval.
 uint64_t g_intervalRate = 0; //!< Rate in an interval.
 
@@ -109,7 +94,7 @@ RateChange(uint64_t oldVal, uint64_t newVal)
 /// Step structure
 struct Step
 {
-    double stepSize; ///< step size in dBm
+    dBm_u stepSize;  ///< step size
     double stepTime; ///< step size in seconds
 };
 
@@ -137,9 +122,9 @@ struct StandardInfo
     StandardInfo(std::string name,
                  WifiStandard standard,
                  WifiPhyBand band,
-                 ChannelWidthMhz width,
-                 double snrLow,
-                 double snrHigh,
+                 MHz_u width,
+                 dB_u snrLow,
+                 dB_u snrHigh,
                  double xMin,
                  double xMax,
                  double yMax)
@@ -158,9 +143,9 @@ struct StandardInfo
     std::string m_name;      ///< name
     WifiStandard m_standard; ///< standard
     WifiPhyBand m_band;      ///< PHY band
-    ChannelWidthMhz m_width; ///< channel width in MHz
-    double m_snrLow;         ///< lowest SNR
-    double m_snrHigh;        ///< highest SNR
+    MHz_u m_width;           ///< channel width
+    dB_u m_snrLow;           ///< lowest SNR
+    dB_u m_snrHigh;          ///< highest SNR
     double m_xMin;           ///< X minimum
     double m_xMax;           ///< X maximum
     double m_yMax;           ///< Y maximum
@@ -170,20 +155,22 @@ struct StandardInfo
  * Change the signal model and report the rate.
  *
  * \param rssModel The new RSS model.
- * \param step The step tp use.
+ * \param step The step to use.
  * \param rss The RSS.
+ * \param noise The noise.
  * \param rateDataset The rate dataset.
  * \param actualDataset The actual dataset.
  */
 void
 ChangeSignalAndReportRate(Ptr<FixedRssLossModel> rssModel,
                           Step step,
-                          double rss,
+                          dBm_u rss,
+                          dBm_u noise,
                           Gnuplot2dDataset& rateDataset,
                           Gnuplot2dDataset& actualDataset)
 {
     NS_LOG_FUNCTION(rssModel << step.stepSize << step.stepTime << rss);
-    double snr = rss - noiseDbm;
+    dB_u snr = rss - noise;
     rateDataset.Add(snr, g_intervalRate / 1e6);
     // Calculate received rate since last interval
     double currentRate = ((g_intervalBytes * 8) / step.stepTime) / 1e6; // Mb/s
@@ -198,6 +185,7 @@ ChangeSignalAndReportRate(Ptr<FixedRssLossModel> rssModel,
                         rssModel,
                         step,
                         (rss - step.stepSize),
+                        noise,
                         rateDataset,
                         actualDataset);
 }
@@ -210,7 +198,7 @@ main(int argc, char* argv[])
     uint32_t steps;
     uint32_t rtsThreshold = 999999; // disabled even for large A-MPDU
     uint32_t maxAmpduSize = 65535;
-    double stepSize = 1;        // dBm
+    dBm_u stepSize = 1;
     double stepTime = 1;        // seconds
     uint32_t packetSize = 1024; // bytes
     bool broadcast = false;
@@ -739,13 +727,16 @@ main(int argc, char* argv[])
         wndServer->GetHeConfiguration()->SetGuardInterval(NanoSeconds(serverShortGuardInterval));
         wndClient->GetHeConfiguration()->SetGuardInterval(NanoSeconds(clientShortGuardInterval));
     }
-    NS_LOG_DEBUG("Channel width " << wifiPhyPtrClient->GetChannelWidth() << " noiseDbm "
-                                  << noiseDbm);
-    NS_LOG_DEBUG("NSS " << wifiPhyPtrClient->GetMaxSupportedTxSpatialStreams());
 
     // Configure signal and noise, and schedule first iteration
-    noiseDbm += 10 * log10(clientSelectedStandard.m_width * 1000000);
-    double rssCurrent = (clientSelectedStandard.m_snrHigh + noiseDbm);
+    const auto BOLTZMANN = 1.3803e-23;
+    const dBm_per_Hz_u noiseDensity = WToDbm(BOLTZMANN * 290); // 290K @ 20 MHz
+    const dBm_u noise = noiseDensity + (10 * log10(clientSelectedStandard.m_width * 1000000));
+
+    NS_LOG_DEBUG("Channel width " << wifiPhyPtrClient->GetChannelWidth() << " noise " << noise);
+    NS_LOG_DEBUG("NSS " << wifiPhyPtrClient->GetMaxSupportedTxSpatialStreams());
+
+    const dBm_u rssCurrent = (clientSelectedStandard.m_snrHigh + noise);
     rssLossModel->SetRss(rssCurrent);
     NS_LOG_INFO("Setting initial Rss to " << rssCurrent);
     // Move the STA by stepsSize meters every stepTime seconds
@@ -754,6 +745,7 @@ main(int argc, char* argv[])
                         rssLossModel,
                         step,
                         rssCurrent,
+                        noise,
                         rateDataset,
                         actualDataset);
 

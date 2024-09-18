@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2019 University of Washington
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Sébastien Deronne <sebastien.deronne@gmail.com>
  */
@@ -61,11 +50,11 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("WifiPhyOfdmaTest");
 
 static const uint8_t DEFAULT_CHANNEL_NUMBER = 36;
-static const uint32_t DEFAULT_FREQUENCY = 5180; // MHz
+static const MHz_u DEFAULT_FREQUENCY = 5180;
 static const WifiPhyBand DEFAULT_WIFI_BAND = WIFI_PHY_BAND_5GHZ;
-static const ChannelWidthMhz DEFAULT_CHANNEL_WIDTH = 20; // MHz
-static const ChannelWidthMhz DEFAULT_GUARD_WIDTH =
-    DEFAULT_CHANNEL_WIDTH; // MHz (expanded to channel width to model spectrum mask)
+static const MHz_u DEFAULT_CHANNEL_WIDTH = 20;
+static const MHz_u DEFAULT_GUARD_WIDTH =
+    DEFAULT_CHANNEL_WIDTH; // expanded to channel width to model spectrum mask
 
 /**
  * HE PHY slightly modified so as to return a given
@@ -186,14 +175,14 @@ class OfdmaSpectrumWifiPhy : public SpectrumWifiPhy
     /**
      * Wrapper to InterferenceHelper method.
      *
-     * \param energyW the minimum energy (W) requested
+     * \param energy the minimum energy requested
      * \param band identify the requested band
      *
      * \returns the expected amount of time the observed
      *          energy on the medium for a given band will
      *          be higher than the requested threshold.
      */
-    Time GetEnergyDuration(double energyW, WifiSpectrumBandInfo band);
+    Time GetEnergyDuration(Watt_u energy, WifiSpectrumBandInfo band);
 
     /**
      * \return a const pointer to the HE PHY instance
@@ -279,9 +268,9 @@ OfdmaSpectrumWifiPhy::GetCurrentEvent()
 }
 
 Time
-OfdmaSpectrumWifiPhy::GetEnergyDuration(double energyW, WifiSpectrumBandInfo band)
+OfdmaSpectrumWifiPhy::GetEnergyDuration(Watt_u energy, WifiSpectrumBandInfo band)
 {
-    return m_interference->GetEnergyDuration(energyW, band);
+    return m_interference->GetEnergyDuration(energy, band);
 }
 
 Ptr<const HePhy>
@@ -442,9 +431,9 @@ class TestDlOfdmaPhyTransmission : public TestCase
     Ptr<OfdmaSpectrumWifiPhy> m_phySta3;    ///< PHY of STA 3
     Ptr<WaveformGenerator> m_phyInterferer; ///< PHY of interferer
 
-    uint16_t m_frequency;           ///< frequency in MHz
-    ChannelWidthMhz m_channelWidth; ///< channel width in MHz
-    Time m_expectedPpduDuration;    ///< expected duration to send MU PPDU
+    MHz_u m_frequency;           ///< frequency
+    MHz_u m_channelWidth;        ///< channel width
+    Time m_expectedPpduDuration; ///< expected duration to send MU PPDU
 };
 
 TestDlOfdmaPhyTransmission::TestDlOfdmaPhyTransmission()
@@ -483,16 +472,16 @@ TestDlOfdmaPhyTransmission::SendMuPpdu(uint16_t rxStaId1, uint16_t rxStaId2)
 {
     NS_LOG_FUNCTION(this << rxStaId1 << rxStaId2);
     WifiConstPsduMap psdus;
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_MU,
-                                         800,
-                                         1,
-                                         1,
-                                         0,
-                                         m_channelWidth,
-                                         false,
-                                         false);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_MU,
+                          NanoSeconds(800),
+                          1,
+                          1,
+                          0,
+                          m_channelWidth,
+                          false,
+                          false};
     HeRu::RuType ruType = HeRu::RU_106_TONE;
     if (m_channelWidth == 20)
     {
@@ -960,9 +949,9 @@ TestDlOfdmaPhyTransmission::RunOne()
     Bands bands;
     bands.push_back(bandInfo);
 
-    Ptr<SpectrumModel> SpectrumInterferenceRu1 = Create<SpectrumModel>(bands);
-    Ptr<SpectrumValue> interferencePsdRu1 = Create<SpectrumValue>(SpectrumInterferenceRu1);
-    double interferencePower = 0.1; // watts
+    auto SpectrumInterferenceRu1 = Create<SpectrumModel>(bands);
+    auto interferencePsdRu1 = Create<SpectrumValue>(SpectrumInterferenceRu1);
+    Watt_u interferencePower{0.1};
     *interferencePsdRu1 = interferencePower / ((m_channelWidth / 2) * 20e6);
 
     Simulator::Schedule(Seconds(3.0) + MicroSeconds(50),
@@ -1314,8 +1303,8 @@ class TestDlOfdmaPhyPuncturing : public TestCase
     Ptr<OfdmaSpectrumWifiPhy> m_phySta2;    ///< PHY of STA 2
     Ptr<WaveformGenerator> m_phyInterferer; ///< PHY of interferer
 
-    uint16_t m_frequency;           ///< frequency in MHz
-    ChannelWidthMhz m_channelWidth; ///< channel width in MHz
+    MHz_u m_frequency;    ///< frequency
+    MHz_u m_channelWidth; ///< channel width
 
     uint8_t m_indexSubchannel; ///< Index of the subchannel (starting from 0) that should contain an
                                ///< interference and be punctured during the test run
@@ -1358,16 +1347,16 @@ TestDlOfdmaPhyPuncturing::SendMuPpdu(uint16_t rxStaId1,
 {
     NS_LOG_FUNCTION(this << rxStaId1 << rxStaId2);
     WifiConstPsduMap psdus;
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_MU,
-                                         800,
-                                         1,
-                                         1,
-                                         0,
-                                         m_channelWidth,
-                                         false,
-                                         false);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_MU,
+                          NanoSeconds(800),
+                          1,
+                          1,
+                          0,
+                          m_channelWidth,
+                          false,
+                          false};
 
     HeRu::RuType ruType =
         puncturedSubchannels.empty()
@@ -1662,9 +1651,9 @@ TestDlOfdmaPhyPuncturing::RunOne()
     Bands bands;
     bands.push_back(bandInfo);
 
-    Ptr<SpectrumModel> spectrumInterference = Create<SpectrumModel>(bands);
-    Ptr<SpectrumValue> interferencePsd = Create<SpectrumValue>(spectrumInterference);
-    double interferencePower = 0.1; // watts
+    auto spectrumInterference = Create<SpectrumModel>(bands);
+    auto interferencePsd = Create<SpectrumValue>(spectrumInterference);
+    Watt_u interferencePower{0.1};
     *interferencePsd = interferencePower / 10e6;
 
     Simulator::Schedule(Seconds(0.0),
@@ -1746,7 +1735,8 @@ TestDlOfdmaPhyPuncturing::RunOne()
     // Send MU PPDU with two PSDUs addressed to STA 1 and STA 2 with preamble puncturing:
     // the punctured 20 MHz subchannel is the one that has interference
     std::vector<bool> puncturedSubchannels;
-    for (std::size_t i = 0; i < (m_channelWidth / 20); ++i)
+    const std::size_t num20MhzSubchannels = m_channelWidth / 20;
+    for (std::size_t i = 0; i < num20MhzSubchannels; ++i)
     {
         if (i == m_indexSubchannel)
         {
@@ -2050,16 +2040,16 @@ void
 TestUlOfdmaPpduUid::SendMuPpdu()
 {
     WifiConstPsduMap psdus;
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_MU,
-                                         800,
-                                         1,
-                                         1,
-                                         0,
-                                         DEFAULT_CHANNEL_WIDTH,
-                                         false,
-                                         false);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_MU,
+                          NanoSeconds(800),
+                          1,
+                          1,
+                          0,
+                          DEFAULT_CHANNEL_WIDTH,
+                          false,
+                          false};
 
     uint16_t rxStaId1 = 1;
     HeRu::RuSpec ru1(HeRu::RU_106_TONE, 1, true);
@@ -2102,18 +2092,18 @@ TestUlOfdmaPpduUid::SendTbPpdu()
     WifiConstPsduMap psdus1;
     WifiConstPsduMap psdus2;
 
-    WifiTxVector txVector1 = WifiTxVector(HePhy::GetHeMcs7(),
-                                          0,
-                                          WIFI_PREAMBLE_HE_TB,
-                                          1600,
-                                          1,
-                                          1,
-                                          0,
-                                          DEFAULT_CHANNEL_WIDTH,
-                                          false,
-                                          false);
-    WifiTxVector txVector2 = txVector1;
-    WifiTxVector trigVector = txVector2;
+    WifiTxVector txVector1{HePhy::GetHeMcs7(),
+                           0,
+                           WIFI_PREAMBLE_HE_TB,
+                           NanoSeconds(1600),
+                           1,
+                           1,
+                           0,
+                           DEFAULT_CHANNEL_WIDTH,
+                           false,
+                           false};
+    WifiTxVector txVector2{txVector1};
+    WifiTxVector trigVector{txVector2};
 
     uint16_t rxStaId1 = 1;
     HeRu::RuSpec ru1(HeRu::RU_106_TONE, 1, false);
@@ -2124,13 +2114,13 @@ TestUlOfdmaPpduUid::SendTbPpdu()
     trigVector.SetMode(HePhy::GetHeMcs7(), rxStaId1);
     trigVector.SetNss(1, rxStaId1);
 
-    Ptr<Packet> pkt1 = Create<Packet>(1000);
+    auto pkt1 = Create<Packet>(1000);
     WifiMacHeader hdr1;
     hdr1.SetType(WIFI_MAC_QOSDATA);
     hdr1.SetQosTid(0);
     hdr1.SetAddr1(Mac48Address("00:00:00:00:00:00"));
     hdr1.SetSequenceNumber(1);
-    Ptr<WifiPsdu> psdu1 = Create<WifiPsdu>(pkt1, hdr1);
+    auto psdu1 = Create<WifiPsdu>(pkt1, hdr1);
     psdus1.insert(std::make_pair(rxStaId1, psdu1));
 
     uint16_t rxStaId2 = 2;
@@ -2142,24 +2132,24 @@ TestUlOfdmaPpduUid::SendTbPpdu()
     trigVector.SetMode(HePhy::GetHeMcs9(), rxStaId2);
     trigVector.SetNss(1, rxStaId2);
 
-    Ptr<Packet> pkt2 = Create<Packet>(1500);
+    auto pkt2 = Create<Packet>(1500);
     WifiMacHeader hdr2;
     hdr2.SetType(WIFI_MAC_QOSDATA);
     hdr2.SetQosTid(0);
     hdr2.SetAddr1(Mac48Address("00:00:00:00:00:00"));
     hdr2.SetSequenceNumber(2);
-    Ptr<WifiPsdu> psdu2 = Create<WifiPsdu>(pkt2, hdr2);
+    auto psdu2 = Create<WifiPsdu>(pkt2, hdr2);
     psdus2.insert(std::make_pair(rxStaId2, psdu2));
 
-    Time txDuration1 = m_phySta1->CalculateTxDuration(psdu1->GetSize(),
-                                                      txVector1,
-                                                      m_phySta1->GetPhyBand(),
-                                                      rxStaId1);
-    Time txDuration2 = m_phySta2->CalculateTxDuration(psdu2->GetSize(),
-                                                      txVector2,
-                                                      m_phySta1->GetPhyBand(),
-                                                      rxStaId2);
-    Time txDuration = std::max(txDuration1, txDuration2);
+    const auto txDuration1 = m_phySta1->CalculateTxDuration(psdu1->GetSize(),
+                                                            txVector1,
+                                                            m_phySta1->GetPhyBand(),
+                                                            rxStaId1);
+    const auto txDuration2 = m_phySta2->CalculateTxDuration(psdu2->GetSize(),
+                                                            txVector2,
+                                                            m_phySta1->GetPhyBand(),
+                                                            rxStaId2);
+    const auto txDuration = std::max(txDuration1, txDuration2);
 
     txVector1.SetLength(
         HePhy::ConvertHeTbPpduDurationToLSigLength(txDuration, txVector1, m_phySta1->GetPhyBand())
@@ -2179,24 +2169,24 @@ void
 TestUlOfdmaPpduUid::SendSuPpdu(uint16_t txStaId)
 {
     WifiConstPsduMap psdus;
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_SU,
-                                         800,
-                                         1,
-                                         1,
-                                         0,
-                                         DEFAULT_CHANNEL_WIDTH,
-                                         false,
-                                         false);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_SU,
+                          NanoSeconds(800),
+                          1,
+                          1,
+                          0,
+                          DEFAULT_CHANNEL_WIDTH,
+                          false,
+                          false};
 
-    Ptr<Packet> pkt = Create<Packet>(1000);
+    auto pkt = Create<Packet>(1000);
     WifiMacHeader hdr;
     hdr.SetType(WIFI_MAC_QOSDATA);
     hdr.SetQosTid(0);
     hdr.SetAddr1(Mac48Address::GetBroadcast());
     hdr.SetSequenceNumber(1);
-    Ptr<WifiPsdu> psdu = Create<WifiPsdu>(pkt, hdr);
+    auto psdu = Create<WifiPsdu>(pkt, hdr);
     psdus.insert(std::make_pair(SU_STA_ID, psdu));
 
     switch (txStaId)
@@ -2278,10 +2268,10 @@ class TestMultipleHeTbPreambles : public TestCase
      * \param uid the UID used to identify a set of HE TB PPDUs belonging to the same UL-MU
      * transmission
      * \param staId the STA ID
-     * \param txPowerWatts the TX power in watts
+     * \param txPower the TX power
      * \param payloadSize the size of the payload in bytes
      */
-    void RxHeTbPpdu(uint64_t uid, uint16_t staId, double txPowerWatts, size_t payloadSize);
+    void RxHeTbPpdu(uint64_t uid, uint16_t staId, Watt_u txPower, size_t payloadSize);
 
     /**
      * Receive OFDMA part of HE TB PPDU function.
@@ -2335,7 +2325,7 @@ TestMultipleHeTbPreambles::TestMultipleHeTbPreambles()
       m_trigVector(HePhy::GetHeMcs7(),
                    0,
                    WIFI_PREAMBLE_HE_TB,
-                   1600,
+                   NanoSeconds(1600),
                    1,
                    1,
                    0,
@@ -2393,20 +2383,20 @@ TestMultipleHeTbPreambles::CheckBytesDropped(size_t expectedBytesDropped)
 void
 TestMultipleHeTbPreambles::RxHeTbPpdu(uint64_t uid,
                                       uint16_t staId,
-                                      double txPowerWatts,
+                                      Watt_u txPower,
                                       size_t payloadSize)
 {
     WifiConstPsduMap psdus;
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_TB,
-                                         1600,
-                                         1,
-                                         1,
-                                         0,
-                                         DEFAULT_CHANNEL_WIDTH,
-                                         false,
-                                         false);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_TB,
+                          NanoSeconds(1600),
+                          1,
+                          1,
+                          0,
+                          DEFAULT_CHANNEL_WIDTH,
+                          false,
+                          false};
 
     HeRu::RuSpec ru(HeRu::RU_106_TONE, staId, false);
     txVector.SetRu(ru, staId);
@@ -2415,36 +2405,36 @@ TestMultipleHeTbPreambles::RxHeTbPpdu(uint64_t uid,
 
     m_trigVector.SetHeMuUserInfo(staId, {ru, 7, 1});
 
-    Ptr<Packet> pkt = Create<Packet>(payloadSize);
+    auto pkt = Create<Packet>(payloadSize);
     WifiMacHeader hdr;
     hdr.SetType(WIFI_MAC_QOSDATA);
     hdr.SetQosTid(0);
     hdr.SetAddr1(Mac48Address("00:00:00:00:00:00"));
     hdr.SetSequenceNumber(1);
-    Ptr<WifiPsdu> psdu = Create<WifiPsdu>(pkt, hdr);
+    auto psdu = Create<WifiPsdu>(pkt, hdr);
     psdus.insert(std::make_pair(staId, psdu));
 
-    Time ppduDuration =
+    auto ppduDuration =
         m_phy->CalculateTxDuration(psdu->GetSize(), txVector, m_phy->GetPhyBand(), staId);
-    Ptr<HePpdu> ppdu = Create<HePpdu>(psdus,
-                                      txVector,
-                                      m_phy->GetOperatingChannel(),
-                                      ppduDuration,
-                                      uid,
-                                      HePpdu::PSD_NON_HE_PORTION);
+    auto ppdu = Create<HePpdu>(psdus,
+                               txVector,
+                               m_phy->GetOperatingChannel(),
+                               ppduDuration,
+                               uid,
+                               HePpdu::PSD_NON_HE_PORTION);
 
     // Send non-OFDMA part
-    Time nonOfdmaDuration = m_phy->GetHePhy()->CalculateNonHeDurationForHeTb(txVector);
-    uint32_t centerFrequency =
+    const auto nonOfdmaDuration = m_phy->GetHePhy()->CalculateNonHeDurationForHeTb(txVector);
+    const auto centerFrequency =
         m_phy->GetHePhy()->GetCenterFrequenciesForNonHePart(ppdu, staId).front();
-    ChannelWidthMhz ruWidth = HeRu::GetBandwidth(txVector.GetRu(staId).GetRuType());
-    ChannelWidthMhz channelWidth = ruWidth < 20 ? 20 : ruWidth;
+    MHz_u ruWidth = HeRu::GetBandwidth(txVector.GetRu(staId).GetRuType());
+    MHz_u channelWidth = ruWidth < 20 ? 20 : ruWidth;
     Ptr<SpectrumValue> rxPsd = WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity(
         centerFrequency,
         channelWidth,
-        txPowerWatts,
+        txPower,
         m_phy->GetGuardBandwidth(channelWidth));
-    Ptr<WifiSpectrumSignalParameters> rxParams = Create<WifiSpectrumSignalParameters>();
+    auto rxParams = Create<WifiSpectrumSignalParameters>();
     rxParams->psd = rxPsd;
     rxParams->txPhy = nullptr;
     rxParams->duration = nonOfdmaDuration;
@@ -2461,16 +2451,16 @@ TestMultipleHeTbPreambles::RxHeTbPpdu(uint64_t uid,
     m_phy->StartRx(rxParams, nullptr);
 
     // Schedule OFDMA part
-    Ptr<HePpdu> ppduOfdma = DynamicCast<HePpdu>(ppdu->Copy()); // since flag will be modified
+    auto ppduOfdma = DynamicCast<HePpdu>(ppdu->Copy()); // since flag will be modified
     ppduOfdma->SetTxPsdFlag(HePpdu::PSD_HE_PORTION);
     const auto band = m_phy->GetHePhy()->GetRuBandForRx(txVector, staId);
-    Ptr<SpectrumValue> rxPsdOfdma =
+    auto rxPsdOfdma =
         WifiSpectrumValueHelper::CreateHeMuOfdmTxPowerSpectralDensity({DEFAULT_FREQUENCY},
                                                                       DEFAULT_CHANNEL_WIDTH,
-                                                                      txPowerWatts,
+                                                                      txPower,
                                                                       DEFAULT_GUARD_WIDTH,
                                                                       band.indices);
-    Ptr<WifiSpectrumSignalParameters> rxParamsOfdma = Create<WifiSpectrumSignalParameters>();
+    auto rxParamsOfdma = Create<WifiSpectrumSignalParameters>();
     rxParamsOfdma->psd = rxPsd;
     rxParamsOfdma->txPhy = nullptr;
     rxParamsOfdma->duration = ppduDuration - nonOfdmaDuration;
@@ -2549,7 +2539,7 @@ TestMultipleHeTbPreambles::DoRun()
     int64_t streamNumber = 0;
     m_phy->AssignStreams(streamNumber);
 
-    double txPowerWatts = 0.01;
+    Watt_u txPower{0.01};
 
     {
         // Verify a single UL MU transmission with two stations belonging to the same BSS
@@ -2559,14 +2549,14 @@ TestMultipleHeTbPreambles::DoRun()
                             this,
                             uids[0],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1001);
         Simulator::Schedule(Seconds(1) + NanoSeconds(100),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[0],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1002);
         // Check that we received a single UL MU transmission with the corresponding UID
         Simulator::Schedule(Seconds(1.0) + MicroSeconds(1),
@@ -2587,28 +2577,28 @@ TestMultipleHeTbPreambles::DoRun()
                             this,
                             uids[0],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1001);
         Simulator::Schedule(Seconds(2) + NanoSeconds(100),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[0],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1002);
         Simulator::Schedule(Seconds(2) + NanoSeconds(200),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             1,
-                            txPowerWatts / 2,
+                            txPower / 2,
                             1003);
         Simulator::Schedule(Seconds(2) + NanoSeconds(300),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             2,
-                            txPowerWatts / 2,
+                            txPower / 2,
                             1004);
         // Check that we received the correct reception of 2 UL MU transmissions with the
         // corresponding UIDs
@@ -2631,28 +2621,28 @@ TestMultipleHeTbPreambles::DoRun()
                             this,
                             uids[0],
                             1,
-                            txPowerWatts / 2,
+                            txPower / 2,
                             1001);
         Simulator::Schedule(Seconds(3) + NanoSeconds(100),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[0],
                             2,
-                            txPowerWatts / 2,
+                            txPower / 2,
                             1002);
         Simulator::Schedule(Seconds(3) + NanoSeconds(200),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1003);
         Simulator::Schedule(Seconds(3) + NanoSeconds(300),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1004);
         // Check that we received the correct reception of 2 UL MU transmissions with the
         // corresponding UIDs
@@ -2675,28 +2665,28 @@ TestMultipleHeTbPreambles::DoRun()
                             this,
                             uids[0],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1001);
         Simulator::Schedule(Seconds(4) + NanoSeconds(100),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[0],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1002);
         Simulator::Schedule(Seconds(4) + MicroSeconds(5),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1003);
         Simulator::Schedule(Seconds(4) + MicroSeconds(5) + NanoSeconds(100),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1004);
         // Check that we received the correct reception of the first UL MU transmission with the
         // corresponding UID (second one dropped)
@@ -2723,28 +2713,28 @@ TestMultipleHeTbPreambles::DoRun()
                             this,
                             uids[0],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1001);
         Simulator::Schedule(Seconds(5) + NanoSeconds(100),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[0],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1002);
         Simulator::Schedule(Seconds(5) + MicroSeconds(50),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1003);
         Simulator::Schedule(Seconds(5) + MicroSeconds(50) + NanoSeconds(100),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[1],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1004);
         // Check that we received the correct reception of the first UL MU transmission with the
         // corresponding UID (second one dropped)
@@ -2771,14 +2761,14 @@ TestMultipleHeTbPreambles::DoRun()
                             this,
                             uids[0],
                             1,
-                            txPowerWatts,
+                            txPower,
                             1001);
         Simulator::Schedule(Seconds(6) + NanoSeconds(500),
                             &TestMultipleHeTbPreambles::RxHeTbPpdu,
                             this,
                             uids[0],
                             2,
-                            txPowerWatts,
+                            txPower,
                             1002);
         // Check that we received a single UL MU transmission with the corresponding UID
         Simulator::Schedule(Seconds(6.0) + MicroSeconds(1),
@@ -2836,9 +2826,9 @@ class OfdmaTestPhyListener : public ns3::WifiPhyListener
         m_lastRxSuccess = false;
     }
 
-    void NotifyTxStart(Time duration, double txPowerDbm) override
+    void NotifyTxStart(Time duration, dBm_u txPower) override
     {
-        NS_LOG_FUNCTION(this << duration << txPowerDbm);
+        NS_LOG_FUNCTION(this << duration << txPower);
     }
 
     void NotifyCcaBusyStart(Time duration,
@@ -3013,9 +3003,9 @@ class TestUlOfdmaPhyTransmission : public TestCase
     /**
      * Set the PSD limit
      * \param phy the PHY
-     * \param psdLimit the PSD limit in dBm/MHz
+     * \param psdLimit the PSD limit
      */
-    void SetPsdLimit(Ptr<WifiPhy> phy, double psdLimit);
+    void SetPsdLimit(Ptr<WifiPhy> phy, dBm_per_MHz_u psdLimit);
 
     /**
      * Generate interference function
@@ -3057,20 +3047,20 @@ class TestUlOfdmaPhyTransmission : public TestCase
      * Check the received power for the non-OFDMA of the HE TB PPDUs over the given band
      * \param phy the PHY
      * \param band the indices of the band over which the power is measured
-     * \param expectedRxPower the expected received power in W
+     * \param expectedRxPower the expected received power
      */
     void CheckNonOfdmaRxPower(Ptr<OfdmaSpectrumWifiPhy> phy,
                               WifiSpectrumBandInfo band,
-                              double expectedRxPower);
+                              Watt_u expectedRxPower);
     /**
      * Check the received power for the OFDMA part of the HE TB PPDUs over the given band
      * \param phy the PHY
      * \param band the indices of the band over which the power is measured
-     * \param expectedRxPower the expected received power in W
+     * \param expectedRxPower the expected received power
      */
     void CheckOfdmaRxPower(Ptr<OfdmaSpectrumWifiPhy> phy,
                            WifiSpectrumBandInfo band,
-                           double expectedRxPower);
+                           Watt_u expectedRxPower);
 
     /**
      * Verify all events are cleared at end of TX or RX
@@ -3165,16 +3155,16 @@ class TestUlOfdmaPhyTransmission : public TestCase
      * Schedule power measurement related checks.
      *
      * \param delay the reference delay used to schedule the events
-     * \param rxPowerNonOfdmaRu1 the received power (in watts) on the non-OFDMA part of RU1
-     * \param rxPowerNonOfdmaRu2 the received power (in watts) on the non-OFDMA part of RU2
-     * \param rxPowerOfdmaRu1 the received power (in watts) on RU1
-     * \param rxPowerOfdmaRu2 the received power (in watts) on RU2
+     * \param rxPowerNonOfdmaRu1 the received power on the non-OFDMA part of RU1
+     * \param rxPowerNonOfdmaRu2 the received power on the non-OFDMA part of RU2
+     * \param rxPowerOfdmaRu1 the received power on RU1
+     * \param rxPowerOfdmaRu2 the received power on RU2
      */
     void SchedulePowerMeasurementChecks(Time delay,
-                                        double rxPowerNonOfdmaRu1,
-                                        double rxPowerNonOfdmaRu2,
-                                        double rxPowerOfdmaRu1,
-                                        double rxPowerOfdmaRu2);
+                                        Watt_u rxPowerNonOfdmaRu1,
+                                        Watt_u rxPowerNonOfdmaRu2,
+                                        Watt_u rxPowerOfdmaRu1,
+                                        Watt_u rxPowerOfdmaRu2);
     /**
      * Log scenario description
      *
@@ -3199,9 +3189,9 @@ class TestUlOfdmaPhyTransmission : public TestCase
     uint32_t m_countRxBytesFromSta1;   ///< count RX bytes from STA 1
     uint32_t m_countRxBytesFromSta2;   ///< count RX bytes from STA 2
 
-    uint16_t m_frequency;           ///< frequency in MHz
-    ChannelWidthMhz m_channelWidth; ///< channel width in MHz
-    Time m_expectedPpduDuration;    ///< expected duration to send MU PPDU
+    MHz_u m_frequency;           ///< frequency
+    MHz_u m_channelWidth;        ///< channel width
+    Time m_expectedPpduDuration; ///< expected duration to send MU PPDU
 };
 
 TestUlOfdmaPhyTransmission::TestUlOfdmaPhyTransmission()
@@ -3227,20 +3217,20 @@ TestUlOfdmaPhyTransmission::SendHeSuPpdu(uint16_t txStaId,
     NS_LOG_FUNCTION(this << txStaId << payloadSize << uid << +bssColor);
     WifiConstPsduMap psdus;
 
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_SU,
-                                         800,
-                                         1,
-                                         1,
-                                         0,
-                                         m_channelWidth,
-                                         false,
-                                         false,
-                                         false,
-                                         bssColor);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_SU,
+                          NanoSeconds(800),
+                          1,
+                          1,
+                          0,
+                          m_channelWidth,
+                          false,
+                          false,
+                          false,
+                          bssColor};
 
-    Ptr<Packet> pkt = Create<Packet>(payloadSize);
+    auto pkt = Create<Packet>(payloadSize);
     WifiMacHeader hdr;
     hdr.SetType(WIFI_MAC_QOSDATA);
     hdr.SetQosTid(0);
@@ -3249,7 +3239,7 @@ TestUlOfdmaPhyTransmission::SendHeSuPpdu(uint16_t txStaId,
     addr << "00:00:00:00:00:0" << txStaId;
     hdr.SetAddr2(Mac48Address(addr.str().c_str()));
     hdr.SetSequenceNumber(1);
-    Ptr<WifiPsdu> psdu = Create<WifiPsdu>(pkt, hdr);
+    auto psdu = Create<WifiPsdu>(pkt, hdr);
     psdus.insert(std::make_pair(SU_STA_ID, psdu));
 
     Ptr<OfdmaSpectrumWifiPhy> phy;
@@ -3278,20 +3268,20 @@ TestUlOfdmaPhyTransmission::GetTxVectorForHeTbPpdu(uint16_t txStaId,
                                                    std::size_t index,
                                                    uint8_t bssColor) const
 {
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_TB,
-                                         1600,
-                                         1,
-                                         1,
-                                         0,
-                                         m_channelWidth,
-                                         false,
-                                         false,
-                                         false,
-                                         bssColor);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_TB,
+                          NanoSeconds(1600),
+                          1,
+                          1,
+                          0,
+                          m_channelWidth,
+                          false,
+                          false,
+                          false,
+                          bssColor};
 
-    HeRu::RuType ruType = HeRu::RU_106_TONE;
+    auto ruType = HeRu::RU_106_TONE;
     if (m_channelWidth == 20)
     {
         ruType = HeRu::RU_106_TONE;
@@ -3313,7 +3303,7 @@ TestUlOfdmaPhyTransmission::GetTxVectorForHeTbPpdu(uint16_t txStaId,
         NS_ASSERT_MSG(false, "Unsupported channel width");
     }
 
-    bool primary80MHz = true;
+    auto primary80MHz = true;
     if (m_channelWidth == 160 && index == 2)
     {
         primary80MHz = false;
@@ -3338,7 +3328,7 @@ TestUlOfdmaPhyTransmission::SetTrigVector(uint8_t bssColor, TrigVectorInfo error
     WifiTxVector txVector(HePhy::GetHeMcs7(),
                           0,
                           WIFI_PREAMBLE_HE_TB,
-                          1600,
+                          NanoSeconds(1600),
                           1,
                           1,
                           0,
@@ -3539,9 +3529,9 @@ TestUlOfdmaPhyTransmission::CheckRxFromSta2(uint32_t expectedSuccess,
 void
 TestUlOfdmaPhyTransmission::CheckNonOfdmaRxPower(Ptr<OfdmaSpectrumWifiPhy> phy,
                                                  WifiSpectrumBandInfo band,
-                                                 double expectedRxPower)
+                                                 Watt_u expectedRxPower)
 {
-    Ptr<Event> event = phy->GetCurrentEvent();
+    auto event = phy->GetCurrentEvent();
     NS_ASSERT(event);
     auto rxPower = event->GetRxPowerW(band);
     NS_LOG_FUNCTION(this << band << expectedRxPower << rxPower);
@@ -3557,7 +3547,7 @@ TestUlOfdmaPhyTransmission::CheckNonOfdmaRxPower(Ptr<OfdmaSpectrumWifiPhy> phy,
 void
 TestUlOfdmaPhyTransmission::CheckOfdmaRxPower(Ptr<OfdmaSpectrumWifiPhy> phy,
                                               WifiSpectrumBandInfo band,
-                                              double expectedRxPower)
+                                              Watt_u expectedRxPower)
 {
     /**
      * The current event cannot be used since it points to the preamble part of the HE TB PPDU.
@@ -3695,7 +3685,7 @@ TestUlOfdmaPhyTransmission::SetBssColor(Ptr<WifiPhy> phy, uint8_t bssColor)
 }
 
 void
-TestUlOfdmaPhyTransmission::SetPsdLimit(Ptr<WifiPhy> phy, double psdLimit)
+TestUlOfdmaPhyTransmission::SetPsdLimit(Ptr<WifiPhy> phy, dBm_per_MHz_u psdLimit)
 {
     NS_LOG_FUNCTION(this << phy << psdLimit);
     phy->SetAttribute("PowerDensityLimit", DoubleValue(psdLimit));
@@ -3979,22 +3969,22 @@ TestUlOfdmaPhyTransmission::ScheduleTest(Time delay,
 
 void
 TestUlOfdmaPhyTransmission::SchedulePowerMeasurementChecks(Time delay,
-                                                           double rxPowerNonOfdmaRu1,
-                                                           double rxPowerNonOfdmaRu2,
-                                                           double rxPowerOfdmaRu1,
-                                                           double rxPowerOfdmaRu2)
+                                                           Watt_u rxPowerNonOfdmaRu1,
+                                                           Watt_u rxPowerNonOfdmaRu2,
+                                                           Watt_u rxPowerOfdmaRu1,
+                                                           Watt_u rxPowerOfdmaRu2)
 {
-    Time detectionDuration = WifiPhy::GetPreambleDetectionDuration();
-    WifiTxVector txVectorSta1 = GetTxVectorForHeTbPpdu(1, 1, 0);
-    WifiTxVector txVectorSta2 = GetTxVectorForHeTbPpdu(2, 2, 0);
-    Ptr<const HePhy> hePhy = m_phyAp->GetHePhy();
-    Time nonOfdmaDuration = hePhy->CalculateNonHeDurationForHeTb(txVectorSta2);
+    const auto detectionDuration = WifiPhy::GetPreambleDetectionDuration();
+    const auto txVectorSta1 = GetTxVectorForHeTbPpdu(1, 1, 0);
+    const auto txVectorSta2 = GetTxVectorForHeTbPpdu(2, 2, 0);
+    const auto hePhy = m_phyAp->GetHePhy();
+    const auto nonOfdmaDuration = hePhy->CalculateNonHeDurationForHeTb(txVectorSta2);
     NS_ASSERT(nonOfdmaDuration == hePhy->CalculateNonHeDurationForHeTb(txVectorSta1));
 
-    std::vector<double> rxPowerNonOfdma{rxPowerNonOfdmaRu1, rxPowerNonOfdmaRu2};
+    std::vector<Watt_u> rxPowerNonOfdma{rxPowerNonOfdmaRu1, rxPowerNonOfdmaRu2};
     std::vector<WifiSpectrumBandInfo> nonOfdmaBand{hePhy->GetNonOfdmaBand(txVectorSta1, 1),
                                                    hePhy->GetNonOfdmaBand(txVectorSta2, 2)};
-    std::vector<double> rxPowerOfdma{rxPowerOfdmaRu1, rxPowerOfdmaRu2};
+    std::vector<Watt_u> rxPowerOfdma{rxPowerOfdmaRu1, rxPowerOfdmaRu2};
     std::vector<WifiSpectrumBandInfo> ofdmaBand{hePhy->GetRuBandForRx(txVectorSta1, 1),
                                                 hePhy->GetRuBandForRx(txVectorSta2, 2)};
 
@@ -4078,7 +4068,7 @@ TestUlOfdmaPhyTransmission::SchedulePowerMeasurementChecks(Time delay,
          * power received from other transmitting STA (STA 1).
          * Cannot use CheckNonOfdmaRxPower method since current event not set.
          */
-        double rxPowerNonOfdmaSta1Only =
+        const auto rxPowerNonOfdmaSta1Only =
             (m_channelWidth >= 40)
                 ? rxPowerNonOfdma[0]
                 : rxPowerNonOfdma[0] / 2; // both STAs transmit over the same 20 MHz channel
@@ -4293,7 +4283,7 @@ TestUlOfdmaPhyTransmission::RunOne()
 
     Ptr<SpectrumModel> SpectrumInterferenceRu1 = Create<SpectrumModel>(bands);
     Ptr<SpectrumValue> interferencePsdRu1 = Create<SpectrumValue>(SpectrumInterferenceRu1);
-    double interferencePower = 0.1; // watts
+    Watt_u interferencePower{0.1};
     *interferencePsdRu1 = interferencePower / ((m_channelWidth / 2) * 20e6);
 
     Simulator::Schedule(delay + MicroSeconds(50),
@@ -4559,7 +4549,7 @@ TestUlOfdmaPhyTransmission::RunOne()
                         &TestUlOfdmaPhyTransmission::LogScenario,
                         this,
                         "Measure power for reception of HE TB PPDU only on RU 2");
-    double rxPower =
+    auto rxPower =
         DbmToW(19); // 16+1 dBm at STAs and +2 at AP (no loss since all devices are colocated)
     SchedulePowerMeasurementChecks(delay,
                                    (m_channelWidth >= 40) ? 0.0 : rxPower,
@@ -4600,7 +4590,7 @@ TestUlOfdmaPhyTransmission::RunOne()
                   ? DbmToW(19)
                   : DbmToW(18.0103); // 15.0103+1 dBm at STA 2 and +2 at AP for non-OFDMA
                                      // transmitted only on one 20 MHz channel
-    double rxPowerOfdma = rxPower;
+    auto rxPowerOfdma = rxPower;
     if (m_channelWidth <= 40)
     {
         rxPowerOfdma = (m_channelWidth == 20)
@@ -4640,9 +4630,9 @@ TestUlOfdmaPhyTransmission::RunOne()
                         this,
                         "Measure power for reception of HE TB PPDU on both RUs");
     rxPower = DbmToW(19); // 16+1 dBm at STAs and +2 at AP (no loss since all devices are colocated)
-    double rxPowerNonOfdma = (m_channelWidth >= 40)
-                                 ? rxPower
-                                 : rxPower * 2; // both STAs transmit over the same 20 MHz channel
+    const auto rxPowerNonOfdma =
+        (m_channelWidth >= 40) ? rxPower
+                               : rxPower * 2; // both STAs transmit over the same 20 MHz channel
     SchedulePowerMeasurementChecks(delay, rxPowerNonOfdma, rxPowerNonOfdma, rxPower, rxPower);
     ScheduleTest(delay,
                  true,
@@ -4888,24 +4878,24 @@ TestPhyPaddingExclusion::SendHeTbPpdu(uint16_t txStaId,
 {
     WifiConstPsduMap psdus;
 
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_TB,
-                                         1600,
-                                         1,
-                                         1,
-                                         0,
-                                         DEFAULT_CHANNEL_WIDTH,
-                                         false,
-                                         false,
-                                         true);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_TB,
+                          NanoSeconds(1600),
+                          1,
+                          1,
+                          0,
+                          DEFAULT_CHANNEL_WIDTH,
+                          false,
+                          false,
+                          true};
 
     HeRu::RuSpec ru(HeRu::RU_106_TONE, index, false);
     txVector.SetRu(ru, txStaId);
     txVector.SetMode(HePhy::GetHeMcs7(), txStaId);
     txVector.SetNss(1, txStaId);
 
-    Ptr<Packet> pkt = Create<Packet>(payloadSize);
+    auto pkt = Create<Packet>(payloadSize);
     WifiMacHeader hdr;
     hdr.SetType(WIFI_MAC_QOSDATA);
     hdr.SetQosTid(0);
@@ -4914,7 +4904,7 @@ TestPhyPaddingExclusion::SendHeTbPpdu(uint16_t txStaId,
     addr << "00:00:00:00:00:0" << txStaId;
     hdr.SetAddr2(Mac48Address(addr.str().c_str()));
     hdr.SetSequenceNumber(1);
-    Ptr<WifiPsdu> psdu = Create<WifiPsdu>(pkt, hdr);
+    auto psdu = Create<WifiPsdu>(pkt, hdr);
     psdus.insert(std::make_pair(txStaId, psdu));
 
     Ptr<OfdmaSpectrumWifiPhy> phy;
@@ -5187,17 +5177,17 @@ TestPhyPaddingExclusion::DoTeardown()
 void
 TestPhyPaddingExclusion::SetTrigVector(Time ppduDuration)
 {
-    WifiTxVector trigVector(HePhy::GetHeMcs7(),
+    WifiTxVector trigVector{HePhy::GetHeMcs7(),
                             0,
                             WIFI_PREAMBLE_HE_TB,
-                            1600,
+                            NanoSeconds(1600),
                             1,
                             1,
                             0,
                             DEFAULT_CHANNEL_WIDTH,
                             false,
                             false,
-                            true);
+                            true};
     trigVector.SetRu(HeRu::RuSpec(HeRu::RU_106_TONE, 1, false), 1);
     trigVector.SetMode(HePhy::GetHeMcs7(), 1);
     trigVector.SetNss(1, 1);
@@ -5296,7 +5286,7 @@ TestPhyPaddingExclusion::DoRun()
 
     Ptr<SpectrumModel> SpectrumInterferenceRu1 = Create<SpectrumModel>(bands);
     Ptr<SpectrumValue> interferencePsdRu1 = Create<SpectrumValue>(SpectrumInterferenceRu1);
-    double interferencePower = 0.1; // watts
+    Watt_u interferencePower{0.1};
     *interferencePsdRu1 = interferencePower / ((DEFAULT_CHANNEL_WIDTH / 2) * 20e6);
 
     Simulator::Schedule(Seconds(2.0) + MicroSeconds(50) + expectedPpduDuration,
@@ -5401,18 +5391,18 @@ class TestUlOfdmaPowerControl : public TestCase
 
     Ptr<SpectrumWifiPhy> m_phyAp; ///< PHY of AP
 
-    double m_txPowerAp;      ///< transmit power (in dBm) of AP
-    double m_txPowerStart;   ///< minimum transmission power (in dBm) for STAs
-    double m_txPowerEnd;     ///< maximum transmission power (in dBm) for STAs
+    dBm_u m_txPowerAp;       ///< transmit power of AP
+    dBm_u m_txPowerStart;    ///< minimum transmission power for STAs
+    dBm_u m_txPowerEnd;      ///< maximum transmission power for STAs
     uint8_t m_txPowerLevels; ///< number of transmission power levels for STAs
 
-    double m_requestedRssiSta1; ///< requested RSSI (in dBm) from STA 1 at AP for HE TB PPDUs
-    double m_requestedRssiSta2; ///< requested RSSI (in dBm) from STA 2 at AP for HE TB PPDUs
+    dBm_u m_requestedRssiSta1; ///< requested RSSI from STA 1 at AP for HE TB PPDUs
+    dBm_u m_requestedRssiSta2; ///< requested RSSI from STA 2 at AP for HE TB PPDUs
 
-    double m_rssiSta1; ///< expected RSSI (in dBm) from STA 1 at AP for HE TB PPDUs
-    double m_rssiSta2; ///< expected RSSI (in dBm) from STA 2 at AP for HE TB PPDUs
+    dBm_u m_rssiSta1; ///< expected RSSI from STA 1 at AP for HE TB PPDUs
+    dBm_u m_rssiSta2; ///< expected RSSI from STA 2 at AP for HE TB PPDUs
 
-    double m_tol; ///< tolerance (in dB) between received and expected RSSIs
+    dB_u m_tol; ///< tolerance between received and expected RSSIs
 };
 
 TestUlOfdmaPowerControl::TestUlOfdmaPowerControl()
@@ -5457,7 +5447,7 @@ TestUlOfdmaPowerControl::SendMuBar(std::vector<uint16_t> staIds)
     muBar.SetMoreTF(true);
     muBar.SetCsRequired(true);
     muBar.SetUlBandwidth(DEFAULT_CHANNEL_WIDTH);
-    muBar.SetGiAndLtfType(1600, 2);
+    muBar.SetGiAndLtfType(NanoSeconds(1600), 2);
     muBar.SetApTxPower(static_cast<int8_t>(m_txPowerAp));
     muBar.SetUlSpatialReuse(60500);
 
@@ -5496,33 +5486,33 @@ TestUlOfdmaPowerControl::SendMuBar(std::vector<uint16_t> staIds)
         ++index;
     }
 
-    WifiTxVector tbTxVector = muBar.GetHeTbTxVector(staIds.front());
+    WifiTxVector tbTxVector{muBar.GetHeTbTxVector(staIds.front())};
     muBar.SetUlLength(HePhy::ConvertHeTbPpduDurationToLSigLength(MicroSeconds(128),
                                                                  tbTxVector,
                                                                  WIFI_PHY_BAND_5GHZ)
                           .first);
 
     WifiConstPsduMap psdus;
-    WifiTxVector txVector = WifiTxVector(HePhy::GetHeMcs7(),
-                                         0,
-                                         WIFI_PREAMBLE_HE_SU,
-                                         800,
-                                         1,
-                                         1,
-                                         0,
-                                         DEFAULT_CHANNEL_WIDTH,
-                                         false,
-                                         false,
-                                         false,
-                                         m_bssColor);
+    WifiTxVector txVector{HePhy::GetHeMcs7(),
+                          0,
+                          WIFI_PREAMBLE_HE_SU,
+                          NanoSeconds(800),
+                          1,
+                          1,
+                          0,
+                          DEFAULT_CHANNEL_WIDTH,
+                          false,
+                          false,
+                          false,
+                          m_bssColor};
 
-    Ptr<Packet> bar = Create<Packet>();
+    auto bar = Create<Packet>();
     bar->AddHeader(muBar);
 
-    Mac48Address receiver = Mac48Address::GetBroadcast();
+    auto receiver = Mac48Address::GetBroadcast();
     if (staIds.size() == 1)
     {
-        uint16_t aidSta1 = DynamicCast<StaWifiMac>(m_sta1Dev->GetMac())->GetAssociationId();
+        const auto aidSta1 = DynamicCast<StaWifiMac>(m_sta1Dev->GetMac())->GetAssociationId();
         if (staIds.front() == aidSta1)
         {
             receiver = Mac48Address::ConvertFrom(m_sta1Dev->GetAddress());
@@ -5544,10 +5534,10 @@ TestUlOfdmaPowerControl::SendMuBar(std::vector<uint16_t> staIds)
     hdr.SetDsFrom();
     hdr.SetNoRetry();
     hdr.SetNoMoreFragments();
-    Ptr<WifiPsdu> psdu = Create<WifiPsdu>(bar, hdr);
+    auto psdu = Create<WifiPsdu>(bar, hdr);
 
-    Time nav = m_apDev->GetPhy()->GetSifs();
-    uint16_t staId = staIds.front(); // either will do
+    auto nav = m_apDev->GetPhy()->GetSifs();
+    const auto staId = staIds.front(); // either will do
     nav += m_phyAp->CalculateTxDuration(GetBlockAckSize(BlockAckType::COMPRESSED),
                                         tbTxVector,
                                         DEFAULT_WIFI_BAND,
@@ -5565,9 +5555,9 @@ TestUlOfdmaPowerControl::ReceiveOkCallbackAtAp(Ptr<const WifiPsdu> psdu,
                                                std::vector<bool> /*statusPerMpdu*/)
 {
     NS_TEST_ASSERT_MSG_EQ(txVector.GetPreambleType(), WIFI_PREAMBLE_HE_TB, "HE TB PPDU expected");
-    double rssi = rxSignalInfo.rssi;
+    const auto rssi = rxSignalInfo.rssi;
     NS_ASSERT(psdu->GetNMpdus() == 1);
-    WifiMacHeader hdr = psdu->GetHeader(0);
+    const auto& hdr = psdu->GetHeader(0);
     NS_TEST_ASSERT_MSG_EQ(hdr.GetType(), WIFI_MAC_CTL_BACKRESP, "Block ACK expected");
     if (hdr.GetAddr2() == m_sta1Dev->GetAddress())
     {
@@ -5604,15 +5594,14 @@ TestUlOfdmaPowerControl::ReplaceReceiveOkCallbackOfAp()
 void
 TestUlOfdmaPowerControl::DoSetup()
 {
-    Ptr<Node> apNode = CreateObject<Node>();
+    auto apNode = CreateObject<Node>();
     NodeContainer staNodes;
     staNodes.Create(2);
 
-    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
-    Ptr<MatrixPropagationLossModel> lossModel = CreateObject<MatrixPropagationLossModel>();
+    auto spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    auto lossModel = CreateObject<MatrixPropagationLossModel>();
     spectrumChannel->AddPropagationLossModel(lossModel);
-    Ptr<ConstantSpeedPropagationDelayModel> delayModel =
-        CreateObject<ConstantSpeedPropagationDelayModel>();
+    auto delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
     spectrumChannel->SetPropagationDelayModel(delayModel);
 
     SpectrumWifiPhyHelper spectrumPhy;
@@ -5630,7 +5619,7 @@ TestUlOfdmaPowerControl::DoSetup()
 
     WifiMacHelper mac;
     mac.SetType("ns3::StaWifiMac");
-    NetDeviceContainer staDevs = wifi.Install(spectrumPhy, mac, staNodes);
+    auto staDevs = wifi.Install(spectrumPhy, mac, staNodes);
     WifiHelper::AssignStreams(staDevs, 0);
     m_sta1Dev = DynamicCast<WifiNetDevice>(staDevs.Get(0));
     NS_ASSERT(m_sta1Dev);
@@ -5655,7 +5644,7 @@ TestUlOfdmaPowerControl::DoSetup()
 
     MobilityHelper mobility;
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
+    auto positionAlloc = CreateObject<ListPositionAllocator>();
     positionAlloc->Add(Vector(0.0, 0.0, 0.0));
     positionAlloc->Add(Vector(1.0, 0.0, 0.0)); // put close enough in order to use MCS
     positionAlloc->Add(
@@ -5692,8 +5681,8 @@ TestUlOfdmaPowerControl::RunOne(bool setupBa)
     RngSeedManager::SetRun(1);
     int64_t streamNumber = 0;
 
-    Ptr<WifiPhy> phySta1 = m_sta1Dev->GetPhy();
-    Ptr<WifiPhy> phySta2 = m_sta2Dev->GetPhy();
+    auto phySta1 = m_sta1Dev->GetPhy();
+    auto phySta2 = m_sta2Dev->GetPhy();
 
     m_phyAp->AssignStreams(streamNumber);
     phySta1->AssignStreams(streamNumber);
@@ -5711,7 +5700,7 @@ TestUlOfdmaPowerControl::RunOne(bool setupBa)
     phySta2->SetAttribute("TxPowerEnd", DoubleValue(m_txPowerEnd));
     phySta2->SetAttribute("TxPowerLevels", UintegerValue(m_txPowerLevels));
 
-    Time relativeStart = MilliSeconds(0);
+    Time relativeStart{};
     if (setupBa)
     {
         // Set up BA for each station once the association phase has ended
@@ -5728,7 +5717,7 @@ TestUlOfdmaPowerControl::RunOne(bool setupBa)
     }
     else
     {
-        Ptr<ApWifiMac> apMac = DynamicCast<ApWifiMac>(m_apDev->GetMac());
+        auto apMac = DynamicCast<ApWifiMac>(m_apDev->GetMac());
         NS_ASSERT(apMac);
         apMac->SetAttribute("BeaconGeneration", BooleanValue(false));
     }

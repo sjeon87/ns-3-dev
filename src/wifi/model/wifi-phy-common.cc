@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2021
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Sébastien Deronne <sebastien.deronne@gmail.com>
  */
@@ -28,16 +17,16 @@
 namespace ns3
 {
 
-uint16_t
-ConvertGuardIntervalToNanoSeconds(WifiMode mode, const Ptr<WifiNetDevice> device)
+Time
+GetGuardIntervalForMode(WifiMode mode, const Ptr<WifiNetDevice> device)
 {
-    uint16_t gi = 800;
+    auto gi = NanoSeconds(800);
     if (mode.GetModulationClass() >= WIFI_MOD_CLASS_HE)
     {
         Ptr<HeConfiguration> heConfiguration = device->GetHeConfiguration();
         NS_ASSERT(heConfiguration); // If HE/EHT modulation is used, we should have a HE
                                     // configuration attached
-        gi = static_cast<uint16_t>(heConfiguration->GetGuardInterval().GetNanoSeconds());
+        gi = heConfiguration->GetGuardInterval();
     }
     else if (mode.GetModulationClass() == WIFI_MOD_CLASS_HT ||
              mode.GetModulationClass() == WIFI_MOD_CLASS_VHT)
@@ -45,27 +34,23 @@ ConvertGuardIntervalToNanoSeconds(WifiMode mode, const Ptr<WifiNetDevice> device
         Ptr<HtConfiguration> htConfiguration = device->GetHtConfiguration();
         NS_ASSERT(htConfiguration); // If HT/VHT modulation is used, we should have a HT
                                     // configuration attached
-        gi = htConfiguration->GetShortGuardIntervalSupported() ? 400 : 800;
+        gi = NanoSeconds(htConfiguration->GetShortGuardIntervalSupported() ? 400 : 800);
     }
     return gi;
 }
 
-uint16_t
-ConvertGuardIntervalToNanoSeconds(WifiMode mode, bool htShortGuardInterval, Time heGuardInterval)
+Time
+GetGuardIntervalForMode(WifiMode mode, bool htShortGuardInterval, Time heGuardInterval)
 {
-    uint16_t gi;
+    auto gi = NanoSeconds(800);
     if (mode.GetModulationClass() >= WIFI_MOD_CLASS_HE)
     {
-        gi = static_cast<uint16_t>(heGuardInterval.GetNanoSeconds());
+        gi = heGuardInterval;
     }
     else if (mode.GetModulationClass() == WIFI_MOD_CLASS_HT ||
              mode.GetModulationClass() == WIFI_MOD_CLASS_VHT)
     {
-        gi = htShortGuardInterval ? 400 : 800;
-    }
-    else
-    {
-        gi = 800;
+        gi = NanoSeconds(htShortGuardInterval ? 400 : 800);
     }
     return gi;
 }
@@ -247,7 +232,7 @@ GetModulationClassForStandard(WifiStandard standard)
     return modulationClass;
 }
 
-ChannelWidthMhz
+MHz_u
 GetMaximumChannelWidth(WifiModulationClass modulation)
 {
     switch (modulation)
@@ -273,7 +258,7 @@ GetMaximumChannelWidth(WifiModulationClass modulation)
     }
 }
 
-ChannelWidthMhz
+MHz_u
 GetChannelWidthInMhz(WifiChannelWidthType width)
 {
     switch (width)

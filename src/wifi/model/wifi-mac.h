@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2008 INRIA
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
@@ -361,6 +350,22 @@ class WifiMac : public Object
     void UnblockUnicastTxOnLinks(WifiQueueBlockedReason reason,
                                  const Mac48Address& address,
                                  const std::set<uint8_t>& linkIds);
+
+    /**
+     * Check whether the transmission of the packets in the given container queue of the given
+     * Access Category are blocked on the given link for the given reason (if any).
+     *
+     * \param ac the given Access Category
+     * \param queueId the given container queue
+     * \param linkId the ID of the given link
+     * \param reason the reason to block transmissions (REASONS_COUNT indicate no reason)
+     * \return whether transmission is blocked
+     */
+    bool GetTxBlockedOnLink(
+        AcIndex ac,
+        const WifiContainerQueueId& queueId,
+        uint8_t linkId,
+        WifiQueueBlockedReason reason = WifiQueueBlockedReason::REASONS_COUNT) const;
 
     /**
      * Return true if packets can be forwarded to the given destination,

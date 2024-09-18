@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2011 The Boeing Company
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors:
  *  Gary Pei <guangyu.pei@boeing.com>
@@ -668,14 +657,14 @@ class LrWpanMac : public LrWpanMacBase
     /**
      * Check if the packet destination is its coordinator
      *
-     *\param mac The coordinator short MAC Address
+     * \param mac The coordinator short MAC Address
      */
     void SetAssociatedCoor(Mac16Address mac);
 
     /**
      * Check if the packet destination is its coordinator
      *
-     *\param mac The coordinator extended MAC Address
+     * \param mac The coordinator extended MAC Address
      */
     void SetAssociatedCoor(Mac64Address mac);
 
@@ -689,15 +678,15 @@ class LrWpanMac : public LrWpanMacBase
     /**
      * Obtain the number of symbols in the packet which is currently being sent by the MAC layer.
      *
-     *\return packet number of symbols
-     * */
+     * \return packet number of symbols
+     */
     uint64_t GetTxPacketSymbols();
 
     /**
      * Check if the packet to transmit requires acknowledgment
      *
-     *\return True if the Tx packet requires acknowledgment
-     * */
+     * \return True if the Tx packet requires acknowledgment
+     */
     bool IsTxAckReq();
 
     /**

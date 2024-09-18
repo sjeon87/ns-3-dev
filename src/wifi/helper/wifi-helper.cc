@@ -2,18 +2,7 @@
  * Copyright (c) 2008 INRIA
  * Copyright (c) 2009 MIRKO BANCHI
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *          Mirko Banchi <mk.banchi@gmail.com>
@@ -177,10 +166,8 @@ WifiPhyHelper::Set(uint8_t linkId, std::string name, const AttributeValue& v)
 void
 WifiPhyHelper::DisablePreambleDetectionModel()
 {
-    for (auto& preambleDetectionModel : m_preambleDetectionModel)
-    {
-        preambleDetectionModel.SetTypeId(TypeId());
-    }
+    m_preambleDetectionModel.clear();
+    m_preambleDetectionModel.resize(m_phys.size());
 }
 
 void
@@ -281,7 +268,7 @@ WifiPhyHelper::GetRadiotapHeader(RadiotapHeader& header,
         frameFlags |= RadiotapHeader::FRAME_FLAG_SHORT_PREAMBLE;
     }
 
-    if (txVector.GetGuardInterval() == 400)
+    if (txVector.GetGuardInterval().GetNanoSeconds() == 400)
     {
         frameFlags |= RadiotapHeader::FRAME_FLAG_SHORT_GUARD;
     }
@@ -339,7 +326,7 @@ WifiPhyHelper::GetRadiotapHeader(RadiotapHeader& header,
         }
 
         mcsKnown |= RadiotapHeader::MCS_KNOWN_GUARD_INTERVAL;
-        if (txVector.GetGuardInterval() == 400)
+        if (txVector.GetGuardInterval().GetNanoSeconds() == 400)
         {
             mcsFlags |= RadiotapHeader::MCS_FLAGS_GUARD_INTERVAL;
         }
@@ -401,7 +388,7 @@ WifiPhyHelper::GetRadiotapHeader(RadiotapHeader& header,
         }
 
         vhtKnown |= RadiotapHeader::VHT_KNOWN_GUARD_INTERVAL;
-        if (txVector.GetGuardInterval() == 400)
+        if (txVector.GetGuardInterval().GetNanoSeconds() == 400)
         {
             vhtFlags |= RadiotapHeader::VHT_FLAGS_GUARD_INTERVAL;
         }
@@ -517,11 +504,11 @@ WifiPhyHelper::GetRadiotapHeader(RadiotapHeader& header,
         {
             data5 |= RadiotapHeader::HE_DATA5_DATA_BW_RU_ALLOC_160MHZ;
         }
-        if (txVector.GetGuardInterval() == 1600)
+        if (txVector.GetGuardInterval().GetNanoSeconds() == 1600)
         {
             data5 |= RadiotapHeader::HE_DATA5_GI_1_6;
         }
-        else if (txVector.GetGuardInterval() == 3200)
+        else if (txVector.GetGuardInterval().GetNanoSeconds() == 3200)
         {
             data5 |= RadiotapHeader::HE_DATA5_GI_3_2;
         }
@@ -734,10 +721,57 @@ WifiHelper::WifiHelper()
     m_ehtConfig.SetTypeId("ns3::EhtConfiguration");
 }
 
+namespace
+{
+/// Map strings to WifiStandard enum values
+const std::unordered_map<std::string, WifiStandard> WIFI_STANDARDS_NAME_MAP{
+    // clang-format off
+    {"802.11a",  WIFI_STANDARD_80211a},
+    {"11a",      WIFI_STANDARD_80211a},
+
+    {"802.11b",  WIFI_STANDARD_80211b},
+    {"11b",      WIFI_STANDARD_80211b},
+
+    {"802.11g",  WIFI_STANDARD_80211g},
+    {"11g",      WIFI_STANDARD_80211g},
+
+    {"802.11p",  WIFI_STANDARD_80211p},
+    {"11p",      WIFI_STANDARD_80211p},
+
+    {"802.11n",  WIFI_STANDARD_80211n},
+    {"11n",      WIFI_STANDARD_80211n},
+    {"HT",       WIFI_STANDARD_80211n},
+
+    {"802.11ac", WIFI_STANDARD_80211ac},
+    {"11ac",     WIFI_STANDARD_80211ac},
+    {"VHT",      WIFI_STANDARD_80211ac},
+
+    {"802.11ad", WIFI_STANDARD_80211ad},
+    {"11ad",     WIFI_STANDARD_80211ad},
+
+    {"802.11ax", WIFI_STANDARD_80211ax},
+    {"11ax",     WIFI_STANDARD_80211ax},
+    {"HE",       WIFI_STANDARD_80211ax},
+
+    {"802.11be", WIFI_STANDARD_80211be},
+    {"11be",     WIFI_STANDARD_80211be},
+    {"EHT",      WIFI_STANDARD_80211be},
+    // clang-format on
+};
+} // namespace
+
 void
 WifiHelper::SetStandard(WifiStandard standard)
 {
     m_standard = standard;
+}
+
+void
+WifiHelper::SetStandard(const std::string& standard)
+{
+    NS_ABORT_MSG_IF(!WIFI_STANDARDS_NAME_MAP.contains(standard),
+                    "Specified Wi-Fi standard " << standard << " is currently not supported");
+    SetStandard(WIFI_STANDARDS_NAME_MAP.at(standard));
 }
 
 void
@@ -885,7 +919,10 @@ WifiHelper::EnableLogComponents(LogLevel logLevel)
     LogComponentEnable("AarfWifiManager", logLevel);
     LogComponentEnable("AarfcdWifiManager", logLevel);
     LogComponentEnable("AdhocWifiMac", logLevel);
+    LogComponentEnable("AdvancedApEmlsrManager", logLevel);
+    LogComponentEnable("AdvancedEmlsrManager", logLevel);
     LogComponentEnable("AmrrWifiManager", logLevel);
+    LogComponentEnable("ApEmlsrManager", logLevel);
     LogComponentEnable("ApWifiMac", logLevel);
     LogComponentEnable("AparfWifiManager", logLevel);
     LogComponentEnable("ArfWifiManager", logLevel);
@@ -895,6 +932,7 @@ WifiHelper::EnableLogComponents(LogLevel logLevel)
     LogComponentEnable("ChannelAccessManager", logLevel);
     LogComponentEnable("ConstantObssPdAlgorithm", logLevel);
     LogComponentEnable("ConstantRateWifiManager", logLevel);
+    LogComponentEnable("DefaultApEmlsrManager", logLevel);
     LogComponentEnable("DefaultEmlsrManager", logLevel);
     LogComponentEnable("DsssErrorRateModel", logLevel);
     LogComponentEnable("DsssPhy", logLevel);

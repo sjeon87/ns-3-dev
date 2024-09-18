@@ -1,25 +1,16 @@
 /*
  * Copyright (c) 2010 INRIA
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
+ * SPDX-License-Identifier: GPL-2.0-only
  */
 
-#include "ns3/core-config.h"
-#if !defined(INT64X64_CAIRO_H) && defined(INT64X64_USE_CAIRO) && !defined(PYTHON_SCAN)
-/** Using the ns3::int64x64_t based on Cairo 128-bit integers. */
+#ifndef INT64X64_CAIRO_H
 #define INT64X64_CAIRO_H
+
+#include "ns3/core-config.h"
+
+#if defined(INT64X64_USE_CAIRO) && !defined(PYTHON_SCAN)
+/** Using the ns3::int64x64_t based on Cairo 128-bit integers. */
 
 #include "cairo-wideint-private.h"
 
@@ -443,4 +434,5 @@ class int64x64_t
 
 } // namespace ns3
 
+#endif /* defined(INT64X64_USE_CAIRO) && !defined(PYTHON_SCAN) */
 #endif /* INT64X64_CAIRO_H */

@@ -1,18 +1,7 @@
 /*
  * Copyright (c) 2023 Universita' degli Studi di Napoli Federico II
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Stefano Avallone <stavallo@unina.it>
  */
@@ -148,6 +137,16 @@ class EmlsrManager : public Object
     bool GetCamStateReset() const;
 
     /**
+     * Notify that a TXOP is gained on the given link. This method has to determine whether to
+     * start the TXOP or release the channel.
+     *
+     * \param linkId the ID of the given link
+     * \return zero, if the TXOP can be started, or the delay after which the EMLSR restarts
+     *         channel access, otherwise
+     */
+    virtual Time GetDelayUntilAccessRequest(uint8_t linkId) = 0;
+
+    /**
      * Set the member variable indicating whether Aux PHYs are capable of transmitting PPDUs.
      *
      * \param capable whether Aux PHYs are capable of transmitting PPDUs
@@ -158,6 +157,21 @@ class EmlsrManager : public Object
      * \return whether Aux PHYs are capable of transmitting PPDUs
      */
     bool GetAuxPhyTxCapable() const;
+
+    /**
+     * Set the member variable indicating whether in-device interference is such that a PHY cannot
+     * decode anything and cannot decrease the backoff counter when another PHY is transmitting.
+     *
+     * \param enable whether in-device interference is such that a PHY cannot decode anything
+     *               and cannot decrease the backoff counter when another PHY is transmitting
+     */
+    void SetInDeviceInterference(bool enable);
+
+    /**
+     * \return whether in-device interference is such that a PHY cannot decode anything and cannot
+     *         decrease the backoff counter when another PHY is transmitting
+     */
+    bool GetInDeviceInterference() const;
 
     /**
      * Notify the reception of a management frame addressed to us.
@@ -193,6 +207,16 @@ class EmlsrManager : public Object
      *                      a notification of the end of an UL TXOP)
      */
     void NotifyTxopEnd(uint8_t linkId, bool ulTxopNotStarted = false, bool ongoingDlTxop = false);
+
+    /**
+     * This method is intended to notify the EMLSR Manager that an aux PHY that is NOT TX capable
+     * has gained a TXOP on a given link and returns whether the main PHY has been requested to
+     * switch to the given link to take over the TXOP.
+     *
+     * \param linkId the ID of the given link
+     * \return whether main PHY has been requested to switch
+     */
+    virtual bool SwitchMainPhyIfTxopGainedByAuxPhy(uint8_t linkId) = 0;
 
     /**
      * Check whether the MediumSyncDelay timer is running for the STA operating on the given link.
@@ -244,6 +268,13 @@ class EmlsrManager : public Object
 
   protected:
     void DoDispose() override;
+
+    /**
+     * Allow subclasses to take actions when the MAC is set.
+     *
+     * \param mac the wifi MAC
+     */
+    virtual void DoSetWifiMac(Ptr<StaWifiMac> mac);
 
     /**
      * \return the MAC of the non-AP MLD managed by this EMLSR Manager.
@@ -328,7 +359,7 @@ class EmlsrManager : public Object
     Time m_emlsrPaddingDelay;    //!< EMLSR Padding delay
     Time m_emlsrTransitionDelay; //!< EMLSR Transition delay
     uint8_t m_mainPhyId; //!< ID of main PHY (position in the vector of PHYs held by WifiNetDevice)
-    ChannelWidthMhz m_auxPhyMaxWidth;        //!< max channel width (MHz) supported by aux PHYs
+    MHz_u m_auxPhyMaxWidth;                  //!< max channel width supported by aux PHYs
     WifiModulationClass m_auxPhyMaxModClass; //!< max modulation class supported by aux PHYs
     bool m_auxPhyTxCapable;                  //!< whether Aux PHYs are capable of transmitting PPDUs
 
@@ -436,8 +467,9 @@ class EmlsrManager : public Object
      *
      * \param currLinkId the ID of the link on which the main PHY is operating
      * \param nextLinkId the ID of the link on which the main PHY will be operating
+     * \param duration the channel switch duration
      */
-    virtual void NotifyMainPhySwitch(uint8_t currLinkId, uint8_t nextLinkId) = 0;
+    virtual void NotifyMainPhySwitch(uint8_t currLinkId, uint8_t nextLinkId, Time duration) = 0;
 
     /**
      * Information about the status of the MediumSyncDelay timer associated with a link.
@@ -458,10 +490,10 @@ class EmlsrManager : public Object
 
     std::map<uint8_t, MediumSyncDelayStatus>
         m_mediumSyncDelayStatus; //!< the status of MediumSyncDelay timers (link ID-indexed)
-    std::map<Ptr<WifiPhy>, double> m_prevCcaEdThreshold; //!< the CCA sensitivity threshold (dBm)
-                                                         //!< to restore once the MediumSyncDelay
-                                                         //!< timer expires or the PHY moves to a
-                                                         //!< link on which the timer is not running
+    std::map<Ptr<WifiPhy>, dBm_u> m_prevCcaEdThreshold; //!< the CCA sensitivity threshold
+                                                        //!< to restore once the MediumSyncDelay
+                                                        //!< timer expires or the PHY moves to a
+                                                        //!< link on which the timer is not running
 
     std::set<uint8_t> m_emlsrLinks; //!< ID of the EMLSR links (empty if EMLSR mode is disabled)
     std::optional<std::set<uint8_t>> m_nextEmlsrLinks; /**< ID of the links that will become the
@@ -472,6 +504,9 @@ class EmlsrManager : public Object
     EventId m_transitionTimeoutEvent; /**< Timer started after the successful transmission of an
                                            EML Operating Mode Notification frame */
     bool m_resetCamState; //!< whether to reset the state of CAM when main PHY switches channel
+    bool m_inDeviceInterference; //!< whether in-device interference is such that a PHY cannot
+                                 //!< decode anything  and cannot decrease the backoff counter
+                                 //!< when another PHY is transmitting
     std::map<uint8_t, WifiPhyOperatingChannel>
         m_mainPhyChannels; //!< link ID-indexed map of operating channels for the main PHY
     std::map<uint8_t, WifiPhyOperatingChannel>
