@@ -202,10 +202,8 @@ RoutingTableEntry<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* 
     *os << std::setw(16);
     switch (m_state)
     {
-    case ACTIVE: {
-        *os << "UP";
-        break;
-    }
+    // TODO me: understand how to stream the IDLE state
+    case ACTIVE:
     case IDLE: {
         *os << "UP";
         break;

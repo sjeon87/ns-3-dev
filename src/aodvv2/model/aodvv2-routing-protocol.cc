@@ -701,7 +701,7 @@ Aodvv2RoutingProtocol<T>::SetIpv4(Ptr<Ipv4> ipv4)
             /*iface=*/Ipv4InterfaceAddress(Ipv4Address::GetLoopback(), Ipv4Mask("255.0.0.0")),
             /*hops=*/1,
             /*nextHop=*/Ipv4Address::GetLoopback(),
-            /*lifetime=*/Simulator::GetMaximumSimulationTime());
+            /*lastUsed=*/Simulator::GetMaximumSimulationTime());
         m_routingTable.AddRoute(rt);
 
         Simulator::ScheduleNow(&Aodvv2RoutingProtocol<T>::Start, this);
@@ -777,7 +777,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
                                         /*iface=*/iface,
                                         /*hops=*/1,
                                         /*nextHop=*/iface.GetBroadcast(),
-                                        /*lifetime=*/Simulator::GetMaximumSimulationTime());
+                                        /*lastUsed=*/Simulator::GetMaximumSimulationTime());
         m_routingTable.AddRoute(rt);
 
         if (l3->GetInterface(i)->GetArpCache())
@@ -889,7 +889,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
                                                 /*iface=*/iface,
                                                 /*hops=*/1,
                                                 /*nextHop=*/iface.GetBroadcast(),
-                                                /*lifetime=*/Simulator::GetMaximumSimulationTime());
+                                                /*lastUsed=*/Simulator::GetMaximumSimulationTime());
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -968,7 +968,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
                                                 /*iface=*/iface,
                                                 /*hops=*/1,
                                                 /*nextHop=*/iface.GetBroadcast(),
-                                                /*lifetime=*/Simulator::GetMaximumSimulationTime());
+                                                /*lastUsed=*/Simulator::GetMaximumSimulationTime());
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -1135,7 +1135,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                                               /*iface=*/IpInterfaceAddress(),
                                               /*hops=*/hops,
                                               /*nextHop=*/IpAddress(),
-                                              /*lifetime=*/m_pathDiscoveryTime);
+                                              /*lastUsed=*/m_pathDiscoveryTime);
         if (hops == m_netDiameter)
         {
             newEntry.IncrementRreqCnt();
@@ -1338,7 +1338,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
             /*hops=*/1,
             /*nextHop=*/sender,
-            /*lifetime=*/m_activeRouteTimeout);
+            /*lastUsed=*/m_activeRouteTimeout);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1358,7 +1358,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                 /*hops=*/1,
                 /*nextHop=*/sender,
-                /*lifetime=*/std::max(m_activeRouteTimeout, toNeighbor.GetLastUsed()));
+                /*lastUsed=*/std::max(m_activeRouteTimeout, toNeighbor.GetLastUsed()));
             m_routingTable.Update(newEntry);
         }
     }
@@ -1425,7 +1425,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
             /*hops=*/hop,
             /*nextHop=*/src,
-            /*lifetime=*/Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime));
+            /*lastUsed=*/Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime));
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1679,7 +1679,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
         /*hops=*/hop,
         /*nextHop=*/sender,
-        /*lifetime=*/m_netTraversalTime);
+        /*lastUsed=*/m_netTraversalTime);
     RoutingTableEntry<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
     {
