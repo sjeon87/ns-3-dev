@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,14 +15,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #ifndef AODVV2NEIGHBOR_H
@@ -30,7 +26,7 @@
 
 #include "ns3/arp-cache.h"
 #include "ns3/callback.h"
-#include "ns3/ipv4-address.h"
+#include "ns3/internet-module.h"
 #include "ns3/simulator.h"
 #include "ns3/timer.h"
 
@@ -39,19 +35,35 @@
 namespace ns3
 {
 
-class WifiMacHeader;
-
 namespace aodvv2
 {
+/**
+ * \ingroup aodvv2
+ * \brief Route record states
+ */
+enum NeighborStates
+{
+    BLACKLISTED = 0, //!< link is invalid and unidirectional
+    HEARD = 1,       //!< initial state
+    CONFIRMED = 2,   //!< link is valid and bidirectional
+};
 
 class RoutingProtocol;
 
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  * \brief maintain list of active neighbors
  */
+template <typename T>
 class Neighbors
+    : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+    /// Alias for Ipv4InterfaceAddress and Ipv6InterfaceAddress classes
+    using IpInterfaceAddress =
+        typename std::conditional_t<IsIpv4, Ipv4InterfaceAddress, Ipv6InterfaceAddress>;
+
   public:
     /**
      * constructor
@@ -62,49 +74,55 @@ class Neighbors
     /// Neighbor description
     struct Neighbor
     {
-        /// Neighbor IPv4 address
-        Ipv4Address m_neighborAddress;
-        /// Neighbor MAC address
-        Mac48Address m_hardwareAddress;
-        /// Neighbor expire time
-        Time m_expireTime;
-        /// Neighbor close indicator
-        bool close;
+        /// Neighbor T address
+        T m_neighborAddress;
+        /// Neighbor state
+        NeighborStates m_state;
+        /// Neighbor timeout
+        Time m_timeout;
+        /// Neighbor interface
+        IpInterfaceAddress m_interface;
+        /// Neighbor Ack Sequence Number
+        uint32_t m_ackSeqNo;
+        /// Neighbor Heard RERR Sequence Number
+        uint32_t m_heardRERRSeqNo;
 
         /**
          * \brief Neighbor structure constructor
          *
-         * \param ip Ipv4Address entry
+         * \param ip T entry
          * \param mac Mac48Address entry
-         * \param t Time expire time
+         * \param t Time timeout
          */
-        Neighbor(Ipv4Address ip, Mac48Address mac, Time t)
+        Neighbor(T ip, IpInterfaceAddress interface, Time t)
             : m_neighborAddress(ip),
-              m_hardwareAddress(mac),
-              m_expireTime(t),
-              close(false)
+              m_state(HEARD),
+              m_timeout(t),
+              m_interface(interface),
+              m_ackSeqNo(rand() % 1000),
+              m_heardRERRSeqNo(0)
         {
         }
     };
 
     /**
-     * Return expire time for neighbor node with address addr, if exists, else return 0.
+     * Return timeout for neighbor node with address addr, if exists, else return 0.
      * \param addr the IP address of the neighbor node
-     * \returns the expire time for the neighbor node
+     * \returns the timeout for the neighbor node
      */
-    Time GetExpireTime(Ipv4Address addr);
+    Time GetTimeout(T addr);
     /**
      * Check that node with address addr is neighbor
      * \param addr the IP address to check
      * \returns true if the node with IP address is a neighbor
      */
-    bool IsNeighbor(Ipv4Address addr);
+    bool IsNeighbor(T addr);
     /**
-     * Update expire time for entry with address addr, if it exists, else add new entry
+     * Update timeout for entry with address addr, if it exists, else add new entry
      * \param addr the IP address to check
-     * \param expire the expire time for the address
+     * \param timeout the timeout for the address
      */
-    void Update(Ipv4Address addr, Time expire);
+    void Update(T addr, Time timeout);
     /// Remove all expired entries
     void Purge();
     /// Schedule m_ntimer.
@@ -131,7 +149,7 @@ class Neighbors
      * Get callback to ProcessTxError
      * \returns the callback function
      */
-    Callback<void, const WifiMacHeader&> GetTxErrorCallback() const
+    Callback<void, const Header&> GetTxErrorCallback() const
     {
         return m_txErrorCallback;
     }
@@ -140,7 +158,7 @@ class Neighbors
      * Set link failure callback
      * \param cb the callback function
      */
-    void SetCallback(Callback<void, Ipv4Address> cb)
+    void SetCallback(Callback<void, T> cb)
     {
         m_handleLinkFailure = cb;
     }
@@ -149,35 +167,22 @@ class Neighbors
      * Get link failure callback
      * \returns the link failure callback
      */
-    Callback<void, Ipv4Address> GetCallback() const
+    Callback<void, T> GetCallback() const
     {
         return m_handleLinkFailure;
     }
 
   private:
     /// link failure callback
-    Callback<void, Ipv4Address> m_handleLinkFailure;
+    Callback<void, T> m_handleLinkFailure;
     /// TX error callback
-    Callback<void, const WifiMacHeader&> m_txErrorCallback;
+    Callback<void, const Header&> m_txErrorCallback;
     /// Timer for neighbor's list. Schedule Purge().
     Timer m_ntimer;
     /// vector of entries
     std::vector<Neighbor> m_nb;
     /// list of ARP cached to be used for layer 2 notifications processing
     std::vector<Ptr<ArpCache>> m_arp;
-
-    /**
-     * Find MAC address by IP using list of ARP caches
-     *
-     * \param addr the IP address to lookup
-     * \returns the MAC address for the IP address
-     */
-    Mac48Address LookupMacAddress(Ipv4Address addr);
-    /**
-     * Process layer 2 TX error notification
-     * \param hdr header of the packet
-     */
-    void ProcessTxError(const WifiMacHeader& hdr);
 };
 
 } // namespace aodvv2

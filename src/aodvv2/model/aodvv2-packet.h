@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,14 +15,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 #ifndef AODVV2PACKET_H
 #define AODVV2PACKET_H
@@ -31,6 +27,7 @@
 #include "ns3/header.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/nstime.h"
+#include "ns3/packetbb.h"
 
 #include <iostream>
 #include <map>
@@ -41,128 +38,121 @@ namespace aodvv2
 {
 
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  * \brief MessageType enumeration
  */
 enum MessageType
 {
-    AODVTYPE_RREQ = 1,    //!< AODVTYPE_RREQ
-    AODVTYPE_RREP = 2,    //!< AODVTYPE_RREP
-    AODVTYPE_RERR = 3,    //!< AODVTYPE_RERR
-    AODVTYPE_RREP_ACK = 4 //!< AODVTYPE_RREP_ACK
+    AODVV2_TYPE_RREQ = 10,    //!< AODVV2_TYPE_RREQ
+    AODVV2_TYPE_RREP = 11,    //!< AODVV2_TYPE_RREP
+    AODVV2_TYPE_RERR = 12,    //!< AODVV2_TYPE_RERR
+    AODVV2_TYPE_RREP_ACK = 13 //!< AODVV2_TYPE_RREP_ACK
 };
 
 /**
- * \ingroup aodv
- * \brief AODV types
+ * \ingroup aodvv2
+ * \brief Message TLV Type
  */
-class TypeHeader : public Header
+enum MessageTlvType
 {
-  public:
-    /**
-     * constructor
-     * \param t the AODV RREQ type
-     */
-    TypeHeader(MessageType t = AODVTYPE_RREQ);
-
-    /**
-     * \brief Get the type ID.
-     * \return the object TypeId
-     */
-    static TypeId GetTypeId();
-    TypeId GetInstanceTypeId() const override;
-    uint32_t GetSerializedSize() const override;
-    void Serialize(Buffer::Iterator start) const override;
-    uint32_t Deserialize(Buffer::Iterator start) override;
-    void Print(std::ostream& os) const override;
-
-    /**
-     * \returns the type
-     */
-    MessageType Get() const
-    {
-        return m_type;
-    }
-
-    /**
-     * Check that type if valid
-     * \returns true if the type is valid
-     */
-    bool IsValid() const
-    {
-        return m_valid;
-    }
-
-    /**
-     * \brief Comparison operator
-     * \param o header to compare
-     * \return true if the headers are equal
-     */
-    bool operator==(const TypeHeader& o) const;
-
-  private:
-    MessageType m_type; ///< type of the message
-    bool m_valid;       ///< Indicates if the message is valid
+    AODVV2_ACK_REQ = 128
 };
 
 /**
- * \brief Stream output operator
- * \param os output stream
- * \param h the TypeHeader
- * \return updated stream
+ * \ingroup aodvv2
+ * \brief Address Block TLV Type
  */
-std::ostream& operator<<(std::ostream& os, const TypeHeader& h);
+enum AddressTlvType
+{
+    AODVV2_PATH_METRIC = 129,
+    AODVV2_SEQ_NUM = 130,
+    AODVV2_ADDRESS_TYPE = 131,
+};
 
 /**
-* \ingroup aodv
+ * \ingroup aodvv2
+ * \brief Address Block TLV Value
+ */
+enum AddressTlvValue
+{
+    AODVV2_ORIGPREFIX = 0,
+    AODVV2_TARGPREFIX = 1,
+    AODVV2_UNREACHABLE = 2,
+    AODVV2_PKTSOURCE = 3,
+};
+
+/**
+* \ingroup aodvv2
 * \brief   Route Request (RREQ) Message Format
   \verbatim
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |J|R|G|D|U|   Reserved          |   Hop Count   |
+  |                         msg_hop_limit                         |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                            RREQ ID                            |
+  |                          AddressList                          |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                    Destination IP Address                     |
+  |                  PrefixLengthList (optional)                  |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                  Destination Sequence Number                  |
+  |               OrigSeqNum, (optional) TargSeqNum               |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                    Originator IP Address                      |
+  |                          MetricType                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                  Originator Sequence Number                   |
+  |                          OrigMetric                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RreqHeader : public Header
+
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+    /// Alias for PbbAddressBlockIpv4 and PbbAddressBlockIpv6 classes
+    using PbbAddressBlockIp =
+        typename std::conditional_t<IsIpv4, PbbAddressBlockIpv4, PbbAddressBlockIpv6>;
+
   public:
     /**
      * constructor
-     *
-     * \param flags the message flags (0)
-     * \param reserved the reserved bits (0)
+     * \param origIp the origin IP address
+     * \param origMask the origin mask
+     * \param targIp the target IP address
+     * \param targMask the target mask
+     * \param seqNo the sequence number
      * \param hopCount the hop count
-     * \param requestID the request ID
-     * \param dst the destination IP address
-     * \param dstSeqNo the destination sequence number
-     * \param origin the origin IP address
-     * \param originSeqNo the origin sequence number
      */
-    RreqHeader(uint8_t flags = 0,
-               uint8_t reserved = 0,
+    RreqHeader(T origIp = T(),
+               uint16_t origMask = 0,
+               T targIp = T(),
+               uint16_t targMask = 0,
+               uint32_t seqNo = 1,
                uint8_t hopCount = 0,
-               uint32_t requestID = 0,
-               Ipv4Address dst = Ipv4Address(),
-               uint32_t dstSeqNo = 0,
-               Ipv4Address origin = Ipv4Address(),
-               uint32_t originSeqNo = 0);
+               uint8_t maxHopCount = 20);
+
+    /**
+     * constructor
+     * \param tlvHeader the TLV header
+     */
+    RreqHeader(PbbPacket tlvHeader);
 
     /**
      * \brief Get the type ID.
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RREQ
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RREQ header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -170,6 +160,205 @@ class RreqHeader : public Header
     void Print(std::ostream& os) const override;
 
     // Fields
+
+    /**
+     * \brief Set the router IP address
+     * \param ip the router IP address
+     */
+    void SetRtrIp(T ip)
+    {
+        m_rtrIp = ip;
+    }
+
+    /**
+     * \brief Get the router IP address
+     * \return the router IP address
+     */
+    T GetRtrIp() const
+    {
+        return m_rtrIp;
+    }
+
+    /**
+     * \brief Set the router mask
+     * \param mask the router mask
+     */
+    void SetRtrMask(uint16_t mask)
+    {
+        m_rtrMask = mask;
+    }
+
+    /**
+     * \brief Get the router mask
+     * \return the router mask
+     */
+    uint16_t GetRtrMask() const
+    {
+        return m_rtrMask;
+    }
+
+    /**
+     * \brief Set the origin IP address
+     * \param ip the origin IP address
+     */
+    void SetOrigIp(T ip)
+    {
+        m_origIp = ip;
+    }
+
+    /**
+     * \brief Get the origin IP address
+     * \return the origin IP address
+     */
+    T GetOrigIp() const
+    {
+        return m_origIp;
+    }
+
+    /**
+     * \brief Set the origin mask
+     * \param mask the origin mask
+     */
+    void SetOrigMask(uint16_t mask)
+    {
+        m_origMask = mask;
+    }
+
+    /**
+     * \brief Get the origin mask
+     * \return the origin mask
+     */
+    uint16_t GetOrigMask() const
+    {
+        return m_origMask;
+    }
+
+    /**
+     * \brief Set the origin sequence number
+     * \param seq the origin sequence number
+     */
+    void SetOrigSeqNo(uint8_t seq)
+    {
+        m_origSeqNo = seq;
+    }
+
+    /**
+     * \brief Set the origin sequence number
+     * \return the origin sequence number
+     */
+    uint8_t GetOrigSeqNo() const
+    {
+        return m_origSeqNo;
+    }
+
+    /**
+     * \brief Set the origin path metric
+     * \param metric the origin path metric
+     */
+    void SetOrigPathMetric(uint8_t metric)
+    {
+        m_origPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the origin path metric
+     * \return the origin path metric
+     */
+    uint8_t GetOrigPathMetric() const
+    {
+        return m_origPathMetric;
+    }
+
+    /**
+     * \brief Set the target IP address
+     * \param ip the target IP address
+     */
+    void SetTargIp(T ip)
+    {
+        m_targIp = ip;
+    }
+
+    /**
+     * \brief Get the target IP address
+     * \return the target IP address
+     */
+    T GetTargIp() const
+    {
+        return m_targIp;
+    }
+
+    /**
+     * \brief Set the target mask
+     * \param mask the target mask
+     */
+    void SetTargMask(uint16_t mask)
+    {
+        m_targMask = mask;
+    }
+
+    /**
+     * \brief Get the target mask
+     * \return the target mask
+     */
+    uint16_t GetTargMask() const
+    {
+        return m_targMask;
+    }
+
+    /**
+     * \brief Set the target sequence number
+     * \param seq the target sequence number
+     */
+    void SetTargSeqNo(uint8_t seq)
+    {
+        m_targSeqNo = seq;
+    }
+
+    /**
+     * \brief Get the target sequence number
+     * \return the target sequence number
+     */
+    uint8_t GetTargSeqNo() const
+    {
+        return m_targSeqNo;
+    }
+
+    /**
+     * \brief Set the target path metric
+     * \param metric the target path metric
+     */
+    void SetTargPathMetric(uint8_t metric)
+    {
+        m_targPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the target path metric
+     * \return the target path metric
+     */
+    uint8_t GetTargPathMetric() const
+    {
+        return m_targPathMetric;
+    }
+
+    /**
+     * \brief Set the sequence number
+     * \param seq the sequence number
+     */
+    void SetSeqNo(uint32_t seq)
+    {
+        m_seqNo = seq;
+    }
+
+    /**
+     * \brief Get the sequence number
+     * \return the sequence number
+     */
+    uint32_t GetSeqNo() const
+    {
+        return m_seqNo;
+    }
+
     /**
      * \brief Set the hop count
      * \param count the hop count
@@ -189,126 +378,22 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the request ID
-     * \param id the request ID
+     * \brief Set the send target sequence number flag
+     * \param send the send target sequence number flag
      */
-    void SetId(uint32_t id)
+    void SetSendTargSeqNum(bool send)
     {
-        m_requestID = id;
+        m_sendTargSeqNum = send;
     }
 
     /**
-     * \brief Get the request ID
-     * \return the request ID
+     * \brief Get the send target sequence number flag
+     * \return the send target sequence number flag
      */
-    uint32_t GetId() const
+    bool GetSendTargSeqNum() const
     {
-        return m_requestID;
+        return m_sendTargSeqNum;
     }
-
-    /**
-     * \brief Set the destination address
-     * \param a the destination address
-     */
-    void SetDst(Ipv4Address a)
-    {
-        m_dst = a;
-    }
-
-    /**
-     * \brief Get the destination address
-     * \return the destination address
-     */
-    Ipv4Address GetDst() const
-    {
-        return m_dst;
-    }
-
-    /**
-     * \brief Set the destination sequence number
-     * \param s the destination sequence number
-     */
-    void SetDstSeqno(uint32_t s)
-    {
-        m_dstSeqNo = s;
-    }
-
-    /**
-     * \brief Get the destination sequence number
-     * \return the destination sequence number
-     */
-    uint32_t GetDstSeqno() const
-    {
-        return m_dstSeqNo;
-    }
-
-    /**
-     * \brief Set the origin address
-     * \param a the origin address
-     */
-    void SetOrigin(Ipv4Address a)
-    {
-        m_origin = a;
-    }
-
-    /**
-     * \brief Get the origin address
-     * \return the origin address
-     */
-    Ipv4Address GetOrigin() const
-    {
-        return m_origin;
-    }
-
-    /**
-     * \brief Set the origin sequence number
-     * \param s the origin sequence number
-     */
-    void SetOriginSeqno(uint32_t s)
-    {
-        m_originSeqNo = s;
-    }
-
-    /**
-     * \brief Get the origin sequence number
-     * \return the origin sequence number
-     */
-    uint32_t GetOriginSeqno() const
-    {
-        return m_originSeqNo;
-    }
-
-    // Flags
-    /**
-     * \brief Set the gratuitous RREP flag
-     * \param f the gratuitous RREP flag
-     */
-    void SetGratuitousRrep(bool f);
-    /**
-     * \brief Get the gratuitous RREP flag
-     * \return the gratuitous RREP flag
-     */
-    bool GetGratuitousRrep() const;
-    /**
-     * \brief Set the Destination only flag
-     * \param f the Destination only flag
-     */
-    void SetDestinationOnly(bool f);
-    /**
-     * \brief Get the Destination only flag
-     * \return the Destination only flag
-     */
-    bool GetDestinationOnly() const;
-    /**
-     * \brief Set the unknown sequence number flag
-     * \param f the unknown sequence number flag
-     */
-    void SetUnknownSeqno(bool f);
-    /**
-     * \brief Get the unknown sequence number flag
-     * \return the unknown sequence number flag
-     */
-    bool GetUnknownSeqno() const;
 
     /**
      * \brief Comparison operator
@@ -318,14 +403,22 @@ class RreqHeader : public Header
     bool operator==(const RreqHeader& o) const;
 
   private:
-    uint8_t m_flags;        ///< |J|R|G|D|U| bit flags, see RFC
-    uint8_t m_reserved;     ///< Not used (must be 0)
-    uint8_t m_hopCount;     ///< Hop Count
-    uint32_t m_requestID;   ///< RREQ ID
-    Ipv4Address m_dst;      ///< Destination IP Address
-    uint32_t m_dstSeqNo;    ///< Destination Sequence Number
-    Ipv4Address m_origin;   ///< Originator IP Address
-    uint32_t m_originSeqNo; ///< Source Sequence Number
+    T m_rtrIp;                ///< Router IP Address
+    uint16_t m_rtrMask;       ///< Router Mask
+    T m_origIp;               ///< Origin IP Address
+    uint16_t m_origMask;      ///< Origin Mask
+    uint8_t m_origSeqNo;      ///< Origin Sequence number
+    uint8_t m_origPathMetric; ///< Origin Path Metric
+    T m_targIp;               ///< Target IP Address
+    uint16_t m_targMask;      ///< Target Mask
+    uint8_t m_targSeqNo;      ///< Target Sequence number
+    uint8_t m_targPathMetric; ///< Target Path Metric
+    uint8_t m_seqNo;          ///< Sequence number
+    uint8_t m_hopCount;       ///< Hop Count
+
+    uint8_t m_maxHopCount;              ///< Max Hop Count
+    bool m_sendTargSeqNum;              ///< Send Target Sequence Number
+    mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
 /**
@@ -333,51 +426,80 @@ class RreqHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RreqHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RreqHeader<T>&);
 
 /**
-* \ingroup aodv
+* \ingroup aodvv2
 * \brief Route Reply (RREP) Message Format
   \verbatim
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |R|A|    Reserved     |Prefix Sz|   Hop Count   |
+  |                         msg_hop_limit                         |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                     Destination IP address                    |
+  |                          AddressList                          |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                  Destination Sequence Number                  |
+  |                  PrefixLengthList (optional)                  |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                    Originator IP address                      |
+  |                          TargSeqNum                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |                           Lifetime                            |
+  |                          MetricType                           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                          TargMetric                           |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RrepHeader : public Header
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+    /// Alias for PbbAddressBlockIpv4 and PbbAddressBlockIpv6 classes
+    using PbbAddressBlockIp =
+        typename std::conditional_t<IsIpv4, PbbAddressBlockIpv4, PbbAddressBlockIpv6>;
+
   public:
     /**
      * constructor
      *
-     * \param prefixSize the prefix size (0)
-     * \param hopCount the hop count (0)
-     * \param dst the destination IP address
-     * \param dstSeqNo the destination sequence number
-     * \param origin the origin IP address
-     * \param lifetime the lifetime
+     * \param origIp the origin IP address
+     * \param origMask the origin mask
+     * \param targIp the target IP address
+     * \param targMask the target mask
+     * \param seqNo the sequence number
+     * \param hopCount the hop count
      */
-    RrepHeader(uint8_t prefixSize = 0,
+    RrepHeader(T origIp = T(),
+               uint16_t origMask = 0,
+               T targIp = T(),
+               uint16_t targMask = 0,
+               uint32_t seqNo = 1,
                uint8_t hopCount = 0,
-               Ipv4Address dst = Ipv4Address(),
-               uint32_t dstSeqNo = 0,
-               Ipv4Address origin = Ipv4Address(),
-               Time lifetime = MilliSeconds(0));
+               uint8_t maxHopCount = 20);
+    /**
+     * constructor
+     * \param tlvHeader the TLV header
+     */
+    RrepHeader(PbbPacket tlvHeader);
+
     /**
      * \brief Get the type ID.
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RREP
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RREP header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -385,6 +507,132 @@ class RrepHeader : public Header
     void Print(std::ostream& os) const override;
 
     // Fields
+    /**
+     * \brief Set the origin IP address
+     * \param ip the origin IP address
+     */
+    void SetOrigIp(T ip)
+    {
+        m_origIp = ip;
+    }
+
+    /**
+     * \brief Get the origin IP address
+     * \return the origin IP address
+     */
+    T GetOrigIp() const
+    {
+        return m_origIp;
+    }
+
+    /**
+     * \brief Set the origin mask
+     * \param mask the origin mask
+     */
+    void SetOrigMask(uint16_t mask)
+    {
+        m_origMask = mask;
+    }
+
+    /**
+     * \brief Get the origin mask
+     * \return the origin mask
+     */
+    uint16_t GetOrigMask() const
+    {
+        return m_origMask;
+    }
+
+    /**
+     * \brief Set the target IP address
+     * \param ip the target IP address
+     */
+    void SetTargIp(T ip)
+    {
+        m_targIp = ip;
+    }
+
+    /**
+     * \brief Get the target IP address
+     * \return the target IP address
+     */
+    T GetTargIp() const
+    {
+        return m_targIp;
+    }
+
+    /**
+     * \brief Set the target mask
+     * \param mask the target mask
+     */
+    void SetTargMask(uint16_t mask)
+    {
+        m_targMask = mask;
+    }
+
+    /**
+     * \brief Get the target mask
+     * \return the target mask
+     */
+    uint16_t GetTargMask() const
+    {
+        return m_targMask;
+    }
+
+    /**
+     * \brief Set the target sequence number
+     * \param seq the target sequence number
+     */
+    void SetTargSeqNo(uint8_t seq)
+    {
+        m_targSeqNo = seq;
+    }
+
+    /**
+     * \brief Get the target sequence number
+     * \return the target sequence number
+     */
+    uint8_t GetTargSeqNo() const
+    {
+        return m_targSeqNo;
+    }
+
+    /**
+     * \brief Set the target path metric
+     * \param metric the target path metric
+     */
+    void SetTargPathMetric(uint8_t metric)
+    {
+        m_targPathMetric = metric;
+    }
+
+    /**
+     * \brief Get the target path metric
+     * \return the target path metric
+     */
+    uint8_t GetTargPathMetric() const
+    {
+        return m_targPathMetric;
+    }
+
+    /**
+     * \brief Set the sequence number
+     * \param seq the sequence number
+     */
+    void SetSeqNo(uint32_t seq)
+    {
+        m_seqNo = seq;
+    }
+
+    /**
+     * \brief Get the sequence number
+     * \return the sequence number
+     */
+    uint32_t GetSeqNo() const
+    {
+        return m_seqNo;
+    }
+
     /**
      * \brief Set the hop count
      * \param count the hop count
@@ -404,102 +652,6 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the destination address
-     * \param a the destination address
-     */
-    void SetDst(Ipv4Address a)
-    {
-        m_dst = a;
-    }
-
-    /**
-     * \brief Get the destination address
-     * \return the destination address
-     */
-    Ipv4Address GetDst() const
-    {
-        return m_dst;
-    }
-
-    /**
-     * \brief Set the destination sequence number
-     * \param s the destination sequence number
-     */
-    void SetDstSeqno(uint32_t s)
-    {
-        m_dstSeqNo = s;
-    }
-
-    /**
-     * \brief Get the destination sequence number
-     * \return the destination sequence number
-     */
-    uint32_t GetDstSeqno() const
-    {
-        return m_dstSeqNo;
-    }
-
-    /**
-     * \brief Set the origin address
-     * \param a the origin address
-     */
-    void SetOrigin(Ipv4Address a)
-    {
-        m_origin = a;
-    }
-
-    /**
-     * \brief Get the origin address
-     * \return the origin address
-     */
-    Ipv4Address GetOrigin() const
-    {
-        return m_origin;
-    }
-
-    /**
-     * \brief Set the lifetime
-     * \param t the lifetime
-     */
-    void SetLifeTime(Time t);
-    /**
-     * \brief Get the lifetime
-     * \return the lifetime
-     */
-    Time GetLifeTime() const;
-
-    // Flags
-    /**
-     * \brief Set the ack required flag
-     * \param f the ack required flag
-     */
-    void SetAckRequired(bool f);
-    /**
-     * \brief get the ack required flag
-     * \return the ack required flag
-     */
-    bool GetAckRequired() const;
-    /**
-     * \brief Set the prefix size
-     * \param sz the prefix size
-     */
-    void SetPrefixSize(uint8_t sz);
-    /**
-     * \brief Set the prefix size
-     * \return the prefix size
-     */
-    uint8_t GetPrefixSize() const;
-
-    /**
-     * Configure RREP to be a Hello message
-     *
-     * \param src the source IP address
-     * \param srcSeqNo the source sequence number
-     * \param lifetime the lifetime of the message
-     */
-    void SetHello(Ipv4Address src, uint32_t srcSeqNo, Time lifetime);
-
-    /**
      * \brief Comparison operator
      * \param o RREP header to compare
      * \return true if the RREP headers are equal
@@ -507,13 +659,17 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    uint8_t m_flags;      ///< A - acknowledgment required flag
-    uint8_t m_prefixSize; ///< Prefix Size
-    uint8_t m_hopCount;   ///< Hop Count
-    Ipv4Address m_dst;    ///< Destination IP Address
-    uint32_t m_dstSeqNo;  ///< Destination Sequence Number
-    Ipv4Address m_origin; ///< Source IP Address
-    uint32_t m_lifeTime;  ///< Lifetime (in milliseconds)
+    T m_origIp;               ///< Origin IP Address
+    uint16_t m_origMask;      ///< Origin Mask
+    T m_targIp;               ///< Target IP Address
+    uint16_t m_targMask;      ///< Target Mask
+    uint8_t m_targSeqNo;      ///< Target Sequence number
+    uint8_t m_targPathMetric; ///< Target Path Metric
+    uint8_t m_seqNo;          ///< Sequence number
+    uint8_t m_hopCount;       ///< Hop Count
+
+    uint8_t m_maxHopCount;              ///< Max Hop Count
+    mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
 /**
@@ -521,35 +677,70 @@ class RrepHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RrepHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RrepHeader<T>&);
 
 /**
-* \ingroup aodv
+* \ingroup aodvv2
 * \brief Route Reply Acknowledgment (RREP-ACK) Message Format
   \verbatim
   0                   1
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |   Reserved    |
+  |       AckReq (optional)       |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RrepAckHeader : public Header
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+
   public:
     /// constructor
-    RrepAckHeader();
+    RrepAckHeader(uint8_t maxHopCount = 20);
 
     /**
      * \brief Get the type ID.
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RREP_ACK
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RREP_ACK header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
     uint32_t Deserialize(Buffer::Iterator start) override;
     void Print(std::ostream& os) const override;
+
+    /**
+     * \brief Set the sequence number
+     * \param seq the sequence number
+     */
+    void SetSeqNo(uint32_t seq)
+    {
+        m_seqNo = seq;
+    }
+
+    /**
+     * \brief Get the sequence number
+     * \return the sequence number
+     */
+    uint32_t GetSeqNo() const
+    {
+        return m_seqNo;
+    }
 
     /**
      * \brief Comparison operator
@@ -559,7 +750,10 @@ class RrepAckHeader : public Header
     bool operator==(const RrepAckHeader& o) const;
 
   private:
-    uint8_t m_reserved; ///< Not used (must be 0)
+    uint8_t m_seqNo; ///< Sequence number
+
+    uint8_t m_maxHopCount;              ///< Max Hop Count
+    mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
 /**
@@ -567,70 +761,119 @@ class RrepAckHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RrepAckHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RrepAckHeader<T>&);
 
 /**
-* \ingroup aodv
+* \ingroup aodvv2
 * \brief Route Error (RERR) Message Format
   \verbatim
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |     Type      |N|          Reserved           |   DestCount   |
+  |                      PktSource (optional)                     |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |            Unreachable Destination IP Address (1)             |
+  |                          AddressList                          |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |         Unreachable Destination Sequence Number (1)           |
+  |                 PrefixLengthList (optional)                   |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
-  |  Additional Unreachable Destination IP Addresses (if needed)  |
+  |                     SeqNumList (optional)                     |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |Additional Unreachable Destination Sequence Numbers (if needed)|
+  |                         MetricTypeList                        |
   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   \endverbatim
 */
+template <typename T>
 class RerrHeader : public Header
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+    /// Alias for PbbMessageIpv4 and PbbMessageIpv6 classes
+    using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
+    /// Alias for PbbAddressBlockIpv4 and PbbAddressBlockIpv6 classes
+    using PbbAddressBlockIp =
+        typename std::conditional_t<IsIpv4, PbbAddressBlockIpv4, PbbAddressBlockIpv6>;
+
   public:
     /// constructor
-    RerrHeader();
+    RerrHeader(uint8_t maxHopCount = 20);
+    /**
+     * constructor
+     * \param tlvHeader the TLV header
+     */
+    RerrHeader(PbbPacket tlvHeader, uint8_t maxHopCount = 20);
 
     /**
      * \brief Get the type ID.
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+    /**
+     * \brief Create TLV header for RRER
+     */
+    void CreateTlvHeader() const;
+    /**
+     * \brief Dispatch TLV header inside the RRER header
+     * \param tlvHeader the TLV header
+     */
+    void SetTlvHeader(PbbPacket tlvHeader);
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator i) const override;
     uint32_t Deserialize(Buffer::Iterator start) override;
     void Print(std::ostream& os) const override;
 
-    // No delete flag
+    // Fields
     /**
-     * \brief Set the no delete flag
-     * \param f the no delete flag
+     * \brief Set the origin IP address
+     * \param ip the origin IP address
      */
-    void SetNoDelete(bool f);
+    void SetOrigIp(T ip)
+    {
+        m_origIp = ip;
+    }
+
     /**
-     * \brief Get the no delete flag
-     * \return the no delete flag
+     * \brief Get the origin IP address
+     * \return the origin IP address
      */
-    bool GetNoDelete() const;
+    T GetOrigIp() const
+    {
+        return m_origIp;
+    }
+
+    /**
+     * \brief Set the origin mask
+     * \param mask the origin mask
+     */
+    void SetOrigMask(uint16_t mask)
+    {
+        m_origMask = mask;
+    }
+
+    /**
+     * \brief Get the origin mask
+     * \return the origin mask
+     */
+    uint16_t GetOrigMask() const
+    {
+        return m_origMask;
+    }
 
     /**
      * \brief Add unreachable node address and its sequence number in RERR header
-     * \param dst unreachable IPv4 address
+     * \param dst unreachable IP address
      * \param seqNo unreachable sequence number
      * \return false if we already added maximum possible number of unreachable destinations
      */
-    bool AddUnDestination(Ipv4Address dst, uint32_t seqNo);
+    bool AddUnDestination(T dst, uint32_t seqNo);
     /**
      * \brief Delete pair (address + sequence number) from REER header, if the number of unreachable
      * destinations > 0
      * \param un unreachable pair (address + sequence number)
      * \return true on success
      */
-    bool RemoveUnDestination(std::pair<Ipv4Address, uint32_t>& un);
+    bool RemoveUnDestination(std::pair<T, uint32_t>& un);
     /// Clear header
     void Clear();
 
@@ -650,11 +893,14 @@ class RerrHeader : public Header
     bool operator==(const RerrHeader& o) const;
 
   private:
-    uint8_t m_flag;     ///< No delete flag
-    uint8_t m_reserved; ///< Not used (must be 0)
-
     /// List of Unreachable destination: IP addresses and sequence numbers
-    std::map<Ipv4Address, uint32_t> m_unreachableDstSeqNo;
+    std::map<T, uint32_t> m_unreachableDstSeqNo;
+
+    T m_origIp;          ///< Origin IP Address
+    uint16_t m_origMask; ///< Origin Mask
+
+    uint8_t m_maxHopCount;              ///< Max Hop Count
+    mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
 /**
@@ -662,7 +908,8 @@ class RerrHeader : public Header
  * \param os output stream
  * \return updated stream
  */
-std::ostream& operator<<(std::ostream& os, const RerrHeader&);
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const RerrHeader<T>&);
 
 } // namespace aodvv2
 } // namespace ns3

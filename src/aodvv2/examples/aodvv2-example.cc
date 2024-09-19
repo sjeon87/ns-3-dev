@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,9 +14,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * This is an example script for AODV manet routing protocol.
+ * This is an example script for AODVv2 manet routing protocol.
  *
- * Authors: Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #include "ns3/aodvv2-module.h"
@@ -34,13 +35,13 @@
 using namespace ns3;
 
 /**
- * \defgroup aodv-examples AODV Examples
- * \ingroup aodv
+ * \defgroup aodvv2-examples AODVv2 Examples
+ * \ingroup aodvv2
  * \ingroup examples
  */
 
 /**
- * \ingroup aodv-examples
+ * \ingroup aodvv2-examples
  * \ingroup examples
  * \brief Test script.
  *
@@ -133,8 +134,8 @@ Aodvv2Example::Aodvv2Example()
 bool
 Aodvv2Example::Configure(int argc, char** argv)
 {
-    // Enable AODV logs by default. Comment this if too noisy
-    // LogComponentEnable("AodvRoutingProtocol", LOG_LEVEL_ALL);
+    // Enable AODVv2 logs by default. Comment this if too noisy
+    // LogComponentEnable("Aodvv2RoutingProtocol", LOG_LEVEL_ALL);
 
     SeedManager::SetSeed(12345);
     CommandLine cmd(__FILE__);
@@ -227,10 +228,10 @@ Aodvv2Example::CreateDevices()
 void
 Aodvv2Example::InstallInternetStack()
 {
-    Aodvv2Helper aodv;
-    // you can configure AODV attributes here using aodv.Set(name, value)
+    Aodvv2Helper<Ipv4RoutingHelper> aodvv2;
+    // you can configure AODVv2 attributes here using aodvv2.Set(name, value)
     InternetStackHelper stack;
-    stack.SetRoutingHelper(aodv); // has effect on the next Install ()
+    stack.SetRoutingHelper(aodvv2); // has effect on the next Install ()
     stack.Install(nodes);
     Ipv4AddressHelper address;
     address.SetBase("10.0.0.0", "255.0.0.0");

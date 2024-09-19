@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,14 +15,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 #include "aodvv2-rqueue.h"
 
@@ -40,21 +36,23 @@ NS_LOG_COMPONENT_DEFINE("Aodvv2RequestQueue");
 
 namespace aodvv2
 {
+template <typename T>
 uint32_t
-RequestQueue::GetSize()
+RequestQueue<T>::GetSize()
 {
     Purge();
     return m_queue.size();
 }
 
+template <typename T>
 bool
-RequestQueue::Enqueue(QueueEntry& entry)
+RequestQueue<T>::Enqueue(QueueEntry<IpHeader>& entry)
 {
     Purge();
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
     {
         if ((i->GetPacket()->GetUid() == entry.GetPacket()->GetUid()) &&
-            (i->GetIpv4Header().GetDestination() == entry.GetIpv4Header().GetDestination()))
+            (i->GetIpHeader().GetDestination() == entry.GetIpHeader().GetDestination()))
         {
             return false;
         }
@@ -69,31 +67,34 @@ RequestQueue::Enqueue(QueueEntry& entry)
     return true;
 }
 
+template <typename T>
 void
-RequestQueue::DropPacketWithDst(Ipv4Address dst)
+RequestQueue<T>::DropPacketWithDst(T dst)
 {
     NS_LOG_FUNCTION(this << dst);
     Purge();
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
     {
-        if (i->GetIpv4Header().GetDestination() == dst)
+        if (i->GetIpHeader().GetDestination() == dst)
         {
             Drop(*i, "DropPacketWithDst ");
         }
     }
-    auto new_end = std::remove_if(m_queue.begin(), m_queue.end(), [&](const QueueEntry& en) {
-        return en.GetIpv4Header().GetDestination() == dst;
-    });
+    auto new_end =
+        std::remove_if(m_queue.begin(), m_queue.end(), [&](const QueueEntry<IpHeader>& en) {
+            return en.GetIpHeader().GetDestination() == dst;
+        });
     m_queue.erase(new_end, m_queue.end());
 }
 
+template <typename T>
 bool
-RequestQueue::Dequeue(Ipv4Address dst, QueueEntry& entry)
+RequestQueue<T>::Dequeue(T dst, QueueEntry<IpHeader>& entry)
 {
     Purge();
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
     {
-        if (i->GetIpv4Header().GetDestination() == dst)
+        if (i->GetIpHeader().GetDestination() == dst)
         {
             entry = *i;
             m_queue.erase(i);
@@ -103,12 +104,13 @@ RequestQueue::Dequeue(Ipv4Address dst, QueueEntry& entry)
     return false;
 }
 
+template <typename T>
 bool
-RequestQueue::Find(Ipv4Address dst)
+RequestQueue<T>::Find(T dst)
 {
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
     {
-        if (i->GetIpv4Header().GetDestination() == dst)
+        if (i->GetIpHeader().GetDestination() == dst)
         {
             return true;
         }
@@ -127,14 +129,26 @@ struct IsExpired
      * \param e QueueEntry entry
      * \return true if expired, false otherwise
      */
-    bool operator()(const QueueEntry& e) const
+    bool operator()(const QueueEntry<Ipv4Header>& e) const
+    {
+        return (e.GetExpireTime() < Seconds(0));
+    }
+
+    /**
+     * Check if the entry is expired
+     *
+     * \param e QueueEntry entry
+     * \return true if expired, false otherwise
+     */
+    bool operator()(const QueueEntry<Ipv6Header>& e) const
     {
         return (e.GetExpireTime() < Seconds(0));
     }
 };
 
+template <typename T>
 void
-RequestQueue::Purge()
+RequestQueue<T>::Purge()
 {
     IsExpired pred;
     for (auto i = m_queue.begin(); i != m_queue.end(); ++i)
@@ -147,12 +161,16 @@ RequestQueue::Purge()
     m_queue.erase(std::remove_if(m_queue.begin(), m_queue.end(), pred), m_queue.end());
 }
 
+template <typename T>
 void
-RequestQueue::Drop(QueueEntry en, std::string reason)
+RequestQueue<T>::Drop(QueueEntry<IpHeader> en, std::string reason)
 {
-    NS_LOG_LOGIC(reason << en.GetPacket()->GetUid() << " " << en.GetIpv4Header().GetDestination());
-    en.GetErrorCallback()(en.GetPacket(), en.GetIpv4Header(), Socket::ERROR_NOROUTETOHOST);
+    NS_LOG_LOGIC(reason << en.GetPacket()->GetUid() << " " << en.GetIpHeader().GetDestination());
+    en.GetErrorCallback()(en.GetPacket(), en.GetIpHeader(), Socket::ERROR_NOROUTETOHOST);
 }
+
+template class RequestQueue<Ipv4Address>;
+template class RequestQueue<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

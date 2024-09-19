@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,20 +15,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #ifndef AODVV2_ID_CACHE_H
 #define AODVV2_ID_CACHE_H
 
 #include "ns3/ipv4-address.h"
+#include "ns3/ipv6-address.h"
 #include "ns3/simulator.h"
 
 #include <vector>
@@ -38,11 +35,13 @@ namespace ns3
 namespace aodvv2
 {
 /**
- * \ingroup aodv
+ * \ingroup aodvv2
  *
  * \brief Unique packets identification cache used for simple duplicate detection.
  */
+template <typename T>
 class IdCache
+    : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
   public:
     /**
@@ -60,7 +59,7 @@ class IdCache
      * \param id the cache entry ID
      * \returns true if the pair exists
      */
-    bool IsDuplicate(Ipv4Address addr, uint32_t id);
+    bool IsDuplicate(T addr, uint32_t id);
     /// Remove all expired entries
     void Purge();
     /**
@@ -91,7 +90,7 @@ class IdCache
     struct UniqueId
     {
         /// ID is supposed to be unique in single address context (e.g. sender address)
-        Ipv4Address m_context;
+        T m_context;
         /// The id
         uint32_t m_id;
         /// When record will expire

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,19 +15,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Based on
- *      NS-2 AODV model developed by the CMU/MONARCH group and optimized and
- *      tuned by Samir Das and Mahesh Marina, University of Cincinnati;
+ *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- *      AODV-UU implementation by Erik Nordström of Uppsala University
- *      https://web.archive.org/web/20100527072022/http://core.it.uu.se/core/index.php/AODV-UU
- *
- * Authors: Elena Buchatskaia <borovkovaes@iitp.ru>
- *          Pavel Boyko <boyko@iitp.ru>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 #ifndef AODVV2_RQUEUE_H
 #define AODVV2_RQUEUE_H
 
 #include "ns3/ipv4-routing-protocol.h"
+#include "ns3/ipv6-routing-protocol.h"
 #include "ns3/simulator.h"
 
 #include <vector>
@@ -38,28 +35,37 @@ namespace aodvv2
 {
 
 /**
- * \ingroup aodv
- * \brief AODV Queue Entry
+ * \ingroup aodvv2
+ * \brief AODVv2 Queue Entry
  */
+template <typename T>
 class QueueEntry
+    : public std::enable_if_t<std::is_same_v<Ipv4Header, T> || std::is_same_v<Ipv6Header, T>, T>
 {
+    /// Alias for determining whether the parent is Ipv4Header or Ipv6Header
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Header, T>;
+
+    /// Alias for Ipv4 and Ipv6 classes
+    using IpRoutingProtocol =
+        typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
+
   public:
-    /// IPv4 routing unicast forward callback typedef
-    typedef Ipv4RoutingProtocol::UnicastForwardCallback UnicastForwardCallback;
-    /// IPv4 routing error callback typedef
-    typedef Ipv4RoutingProtocol::ErrorCallback ErrorCallback;
+    /// IP routing unicast forward callback typedef
+    typedef typename IpRoutingProtocol::UnicastForwardCallback UnicastForwardCallback;
+    /// IP routing error callback typedef
+    typedef typename IpRoutingProtocol::ErrorCallback ErrorCallback;
 
     /**
      * constructor
      *
      * \param pa the packet to add to the queue
-     * \param h the Ipv4Header
+     * \param h the IpHeader
      * \param ucb the UnicastForwardCallback function
      * \param ecb the ErrorCallback function
      * \param exp the expiration time
      */
     QueueEntry(Ptr<const Packet> pa = nullptr,
-               const Ipv4Header& h = Ipv4Header(),
+               const T& h = T(),
                UnicastForwardCallback ucb = UnicastForwardCallback(),
                ErrorCallback ecb = ErrorCallback(),
                Time exp = Simulator::Now())
@@ -139,19 +145,19 @@ class QueueEntry
     }
 
     /**
-     * Get IPv4 header
-     * \returns the IPv4 header
+     * Get IP header
+     * \returns the IP header
      */
-    Ipv4Header GetIpv4Header() const
+    T GetIpHeader() const
     {
         return m_header;
     }
 
     /**
-     * Set IPv4 header
-     * \param h the IPv4 header
+     * Set IP header
+     * \param h the IP header
      */
-    void SetIpv4Header(Ipv4Header h)
+    void SetIpHeader(T h)
     {
         m_header = h;
     }
@@ -178,7 +184,7 @@ class QueueEntry
     /// Data packet
     Ptr<const Packet> m_packet;
     /// IP header
-    Ipv4Header m_header;
+    T m_header;
     /// Unicast forward callback
     UnicastForwardCallback m_ucb;
     /// Error callback
@@ -188,13 +194,21 @@ class QueueEntry
 };
 
 /**
- * \ingroup aodv
- * \brief AODV route request queue
+ * \ingroup aodvv2
+ * \brief AODVv2 route request queue
  *
- * Since AODV is an on demand routing we queue requests while looking for route.
+ * Since AODVv2 is an on demand routing we queue requests while looking for route.
  */
+template <typename T>
 class RequestQueue
+    : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+
+    /// Alias for Ipv4 and Ipv6 classes
+    using IpHeader = typename std::conditional_t<IsIpv4, Ipv4Header, Ipv6Header>;
+
   public:
     /**
      * constructor
@@ -214,7 +228,7 @@ class RequestQueue
      * \param entry the queue entry
      * \returns true if the entry is queued
      */
-    bool Enqueue(QueueEntry& entry);
+    bool Enqueue(QueueEntry<IpHeader>& entry);
     /**
      * Return first found (the earliest) entry for given destination
      *
@@ -222,19 +236,19 @@ class RequestQueue
      * \param entry the queue entry
      * \returns true if the entry is dequeued
      */
-    bool Dequeue(Ipv4Address dst, QueueEntry& entry);
+    bool Dequeue(T dst, QueueEntry<IpHeader>& entry);
     /**
      * Remove all packets with destination IP address dst
      * \param dst the destination IP address
      */
-    void DropPacketWithDst(Ipv4Address dst);
+    void DropPacketWithDst(T dst);
     /**
      * Finds whether a packet with destination dst exists in the queue
      *
      * \param dst the destination IP address
      * \returns true if an entry with the IP address is found
      */
-    bool Find(Ipv4Address dst);
+    bool Find(T dst);
     /**
      * \returns the number of entries
      */
@@ -279,7 +293,7 @@ class RequestQueue
 
   private:
     /// The queue
-    std::vector<QueueEntry> m_queue;
+    std::vector<QueueEntry<IpHeader>> m_queue;
     /// Remove all expired entries
     void Purge();
     /**
@@ -287,7 +301,7 @@ class RequestQueue
      * \param en the queue entry to drop
      * \param reason the reason to drop the entry
      */
-    void Drop(QueueEntry en, std::string reason);
+    void Drop(QueueEntry<IpHeader> en, std::string reason);
     /// The maximum number of packets that we allow a routing protocol to buffer.
     uint32_t m_maxLen;
     /// The maximum period of time that a routing protocol is allowed to buffer a packet for,

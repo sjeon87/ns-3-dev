@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 IITP RAS
+ * Copyright (c) 2024 University of Florence
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,14 +14,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Pavel Boyko <boyko@iitp.ru>, written after OlsrHelper by Mathieu Lacage
- * <mathieu.lacage@sophia.inria.fr>
+ * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
 #ifndef AODVV2_HELPER_H
 #define AODVV2_HELPER_H
 
 #include "ns3/ipv4-routing-helper.h"
+#include "ns3/ipv6-routing-helper.h"
 #include "ns3/node-container.h"
 #include "ns3/node.h"
 #include "ns3/object-factory.h"
@@ -29,11 +30,24 @@
 namespace ns3
 {
 /**
- * \ingroup aodv
- * \brief Helper class that adds AODV routing to nodes.
+ * \ingroup aodvv2
+ * \brief Helper class that adds AODVv2 routing to nodes.
  */
-class Aodvv2Helper : public Ipv4RoutingHelper
+template <typename T>
+class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T> ||
+                                                 std::is_same_v<Ipv6RoutingHelper, T>,
+                                             T>
 {
+    /// Alias for determining whether the parent is Ipv4RoutingHelper or Ipv6RoutingHelper
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4RoutingHelper, T>;
+    /// Alias for Ipv4RoutingProtocol and Ipv6RoutingProtocol classes
+    using IpRoutingProtocol =
+        typename std::conditional_t<IsIpv4, Ipv4RoutingProtocol, Ipv6RoutingProtocol>;
+    /// Alias for Ipv4ListRouting and Ipv6ListRouting classes
+    using IpListRouting = typename std::conditional_t<IsIpv4, Ipv4ListRouting, Ipv6ListRouting>;
+    /// Alias for Ipv4 and Ipv6 classes
+    using Ip = typename std::conditional_t<IsIpv4, Ipv4, Ipv6>;
+
   public:
     Aodvv2Helper();
 
@@ -51,15 +65,13 @@ class Aodvv2Helper : public Ipv4RoutingHelper
      * \returns a newly-created routing protocol
      *
      * This method will be called by ns3::InternetStackHelper::Install
-     *
-     * \todo support installing AODV on the subset of all available IP interfaces
      */
-    Ptr<Ipv4RoutingProtocol> Create(Ptr<Node> node) const override;
+    Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
      * \param name the name of the attribute to set
      * \param value the value of the attribute to set.
      *
-     * This method controls the attributes of ns3::aodv::RoutingProtocol
+     * This method controls the attributes of ns3::aodvv2::Aodvv2RoutingProtocol
      */
     void Set(std::string name, const AttributeValue& value);
     /**
@@ -69,14 +81,14 @@ class Aodvv2Helper : public Ipv4RoutingHelper
      * should have previously been called by the user.
      *
      * \param stream first stream index to use
-     * \param c NodeContainer of the set of nodes for which AODV
+     * \param c NodeContainer of the set of nodes for which AODVv2
      *          should be modified to use a fixed stream
      * \return the number of stream indices assigned by this helper
      */
     int64_t AssignStreams(NodeContainer c, int64_t stream);
 
   private:
-    /** the factory to create AODV routing object */
+    /** the factory to create AODVv2 routing object */
     ObjectFactory m_agentFactory;
 };
 
