@@ -21,8 +21,8 @@
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
-#ifndef AODVV2NEIGHBOR_H
-#define AODVV2NEIGHBOR_H
+#ifndef AODVV2_NEIGHBOR_H
+#define AODVV2_NEIGHBOR_H
 
 #include "ns3/arp-cache.h"
 #include "ns3/callback.h"
@@ -189,4 +189,4 @@ class Neighbors
 } // namespace aodvv2
 } // namespace ns3
 
-#endif /* AODVV2NEIGHBOR_H */
+#endif /* AODVV2_NEIGHBOR_H */

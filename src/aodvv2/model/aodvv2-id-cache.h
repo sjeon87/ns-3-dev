@@ -69,7 +69,7 @@ class IdCache
      * \param origMetric the metric
      * \returns true if the pair exists
      */
-    bool IsDuplicate(T addr, uint32_t origMask, T targIp, uint32_t origMetric);
+    bool IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t origMetric);
     /// Remove all expired entries
     void Purge();
     /**

@@ -9,6 +9,7 @@ build_lib(
     model/aodvv2-routing-protocol.cc
     model/aodvv2-rqueue.cc
     model/aodvv2-rtable.cc
+    model/aodvv2-rerr-set.cc
   HEADER_FILES
     helper/aodvv2-helper.h
     model/aodvv2-dpd.h
@@ -18,6 +19,7 @@ build_lib(
     model/aodvv2-routing-protocol.h
     model/aodvv2-rqueue.h
     model/aodvv2-rtable.h
+    model/aodvv2-rerr-set.h
   LIBRARIES_TO_LINK ${libinternet}
   TEST_SOURCES
 )
