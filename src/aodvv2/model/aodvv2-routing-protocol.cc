@@ -575,7 +575,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                     if (m_routingTable.LookupValidRoute(origin, toOrigin))
                     {
                         UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
-                        m_nb.Update(toOrigin.GetNextHop(), m_activeRouteTimeout);
+                        m_nb.Update(toOrigin.GetNextHop(), iface, m_activeRouteTimeout);
                     }
                     if (!lcb.IsNull())
                     {
@@ -649,8 +649,8 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
             m_routingTable.LookupRoute(origin, toOrigin);
             UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
 
-            m_nb.Update(route->GetGateway(), m_activeRouteTimeout);
-            m_nb.Update(toOrigin.GetNextHop(), m_activeRouteTimeout);
+            m_nb.Update(route->GetGateway(), toDst.GetInterface(), m_activeRouteTimeout);
+            m_nb.Update(toOrigin.GetNextHop(), toDst.GetInterface(), m_activeRouteTimeout);
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
                 ucb(route, p, header);

@@ -74,7 +74,7 @@ Neighbors<T>::GetTimeout(T addr)
 
 template <typename T>
 void
-Neighbors<T>::Update(T addr, Time expire)
+Neighbors<T>::Update(T addr, IpInterfaceAddress iface, Time expire)
 {
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
@@ -86,9 +86,8 @@ Neighbors<T>::Update(T addr, Time expire)
     }
 
     NS_LOG_LOGIC("Open link to " << addr);
-    /* TODO me: input interface address
-    Neighbor neighbor(addr, LookupMacAddress(addr), expire + Simulator::Now());
-    m_nb.push_back(neighbor); */
+    Neighbor neighbor(addr, iface, expire + Simulator::Now());
+    m_nb.push_back(neighbor);
     Purge();
 }
 

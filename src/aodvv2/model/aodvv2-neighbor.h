@@ -120,9 +120,10 @@ class Neighbors
     /**
      * Update timeout for entry with address addr, if it exists, else add new entry
      * \param addr the IP address to check
+     * \param iface the interface address
      * \param timeout the timeout for the address
      */
-    void Update(T addr, Time timeout);
+    void Update(T addr, IpInterfaceAddress iface, Time timeout);
     /// Remove all expired entries
     void Purge();
     /// Schedule m_ntimer.
