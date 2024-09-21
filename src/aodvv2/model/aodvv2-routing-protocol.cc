@@ -1160,7 +1160,8 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
             m_ip->GetAddress(m_ip->GetInterfaceForAddress(iface.GetAddress()), 0).GetAddress());
         rreqHeader.SetRtrMask(32); // TODO me: update if needed
 
-        m_rreqIdCache.IsDuplicate(iface.GetAddress(), m_requestId);
+        // TODO me: update metric
+        m_rreqIdCache.IsDuplicate(iface.GetAddress(), 32, dst, 1);
 
         Ptr<Packet> packet = Create<Packet>();
 
@@ -1385,7 +1386,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         }
     }
 
-    uint32_t id = rreqHeader.GetSeqNo();
     IpAddress origin = rreqHeader.GetOrigIp();
 
     /*
@@ -1393,7 +1393,10 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
      * and RREQ ID. If such a RREQ has been received, the node silently discards the newly received
      * RREQ.
      */
-    if (m_rreqIdCache.IsDuplicate(origin, id))
+    if (m_rreqIdCache.IsDuplicate(origin,
+                                  rreqHeader.GetOrigMask(),
+                                  rreqHeader.GetTargIp(),
+                                  rreqHeader.GetTargPathMetric()))
     {
         NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
         return;

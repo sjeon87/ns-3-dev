@@ -24,6 +24,7 @@
 #ifndef AODVV2_ID_CACHE_H
 #define AODVV2_ID_CACHE_H
 
+#include "ns3/internet-module.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/ipv6-address.h"
 #include "ns3/simulator.h"
@@ -43,6 +44,12 @@ template <typename T>
 class IdCache
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
+    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
+    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
+    /// Alias for Ipv4InterfaceAddress and Ipv6InterfaceAddress classes
+    using IpInterfaceAddress =
+        typename std::conditional_t<IsIpv4, Ipv4InterfaceAddress, Ipv6InterfaceAddress>;
+
   public:
     /**
      * constructor
@@ -54,12 +61,15 @@ class IdCache
     }
 
     /**
-     * Check that entry (addr, id) exists in cache. Add entry, if it doesn't exist.
-     * \param addr the IP address
-     * \param id the cache entry ID
+     * Check that entry (origIp, origMask, targIp, origMetric) exists in cache.
+     * Add entry, if it doesn't exist.
+     * \param origIp the IP address
+     * \param origMask the mask
+     * \param targIp the target IP address
+     * \param origMetric the metric
      * \returns true if the pair exists
      */
-    bool IsDuplicate(T addr, uint32_t id);
+    bool IsDuplicate(T addr, uint32_t origMask, T targIp, uint32_t origMetric);
     /// Remove all expired entries
     void Purge();
     /**
@@ -89,12 +99,16 @@ class IdCache
     /// Unique packet ID
     struct UniqueId
     {
-        /// ID is supposed to be unique in single address context (e.g. sender address)
-        T m_context;
-        /// The id
-        uint32_t m_id;
+        /// Origin Prefix or Sender IP
+        T m_origIp;
+        /// Origin Prefix Length or Sender Mask
+        uint32_t m_origMask;
+        /// Target Prefix or Receiver IP
+        T m_targIp;
+        /// Origin Metric
+        uint32_t m_origMetric;
         /// When record will expire
-        Time m_expire;
+        Time m_removalTime;
     };
 
     /**
@@ -110,7 +124,7 @@ class IdCache
          */
         bool operator()(const UniqueId& u) const
         {
-            return (u.m_expire < Simulator::Now());
+            return (u.m_removalTime < Simulator::Now());
         }
     };
 

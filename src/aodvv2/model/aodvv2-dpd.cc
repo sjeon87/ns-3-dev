@@ -30,7 +30,9 @@ template <typename T>
 bool
 DuplicatePacketDetection<T>::IsDuplicate(Ptr<const Packet> p, const T& header)
 {
-    return m_idCache.IsDuplicate(header.GetSource(), p->GetUid());
+    // TODO me: update if needed the mask
+    // TODO me: update the metric
+    return m_idCache.IsDuplicate(header.GetSource(), 32, header.GetDestination(), 1);
 }
 
 template <typename T>

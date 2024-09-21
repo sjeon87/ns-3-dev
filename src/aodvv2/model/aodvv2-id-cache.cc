@@ -30,17 +30,18 @@ namespace aodvv2
 {
 template <typename T>
 bool
-IdCache<T>::IsDuplicate(T addr, uint32_t id)
+IdCache<T>::IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t origMetric)
 {
     Purge();
     for (auto i = m_idCache.begin(); i != m_idCache.end(); ++i)
     {
-        if (i->m_context == addr && i->m_id == id)
+        if (i->m_origIp == origIp && i->m_origMask == origMask && i->m_targIp == targIp &&
+            i->m_origMetric == origMetric)
         {
             return true;
         }
     }
-    UniqueId uniqueId = {addr, id, m_lifetime + Simulator::Now()};
+    UniqueId uniqueId = {origIp, origMask, targIp, origMetric, m_lifetime + Simulator::Now()};
     m_idCache.push_back(uniqueId);
     return false;
 }
