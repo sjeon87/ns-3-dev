@@ -26,6 +26,7 @@
 #include "aodvv2-dpd.h"
 #include "aodvv2-neighbor.h"
 #include "aodvv2-packet.h"
+#include "aodvv2-rerr-set.h"
 #include "aodvv2-rqueue.h"
 #include "aodvv2-rtable.h"
 
@@ -428,6 +429,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     DuplicatePacketDetection<IpHeader> m_dpd;
     /// Handle neighbors
     Neighbors<IpAddress> m_nb;
+    /// Handle rerrs
+    RerrSet<IpAddress> m_rerrSet;
     /// Number of RREQs used for RREQ rate control
     uint16_t m_rreqCount;
     /// Number of RERRs used for RERR rate control

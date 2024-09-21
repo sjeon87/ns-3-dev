@@ -166,6 +166,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rreqIdCache(m_pathDiscoveryTime),
       m_dpd(m_pathDiscoveryTime),
       m_nb(Seconds(1)),
+      m_rerrSet(),
       m_rreqCount(0),
       m_rerrCount(0),
       m_rreqRateLimitTimer(Timer::CANCEL_ON_DESTROY),
@@ -2060,6 +2061,17 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
         RoutingTableEntry<IpAddress> toPrecursor;
         if (m_routingTable.LookupValidRoute(precursors.front(), toPrecursor))
         {
+            if (m_rerrSet.HasRerr(toPrecursor.GetDestination(),
+                                  toPrecursor.GetInterface().GetAddress()))
+            {
+                return;
+            }
+            else
+            {
+                m_rerrSet.Add(toPrecursor.GetDestination(),
+                              toPrecursor.GetInterface().GetAddress(),
+                              m_rerrTimeout);
+            }
             Ptr<Socket> socket = FindSocketWithInterfaceAddress(toPrecursor.GetInterface());
             NS_ASSERT(socket);
             NS_LOG_LOGIC("one precursor => unicast RERR to "

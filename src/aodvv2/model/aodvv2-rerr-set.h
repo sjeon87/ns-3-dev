@@ -55,9 +55,8 @@ class RerrSet
   public:
     /**
      * constructor
-     * \param delay the delay time for purging the list of errors
      */
-    RerrSet(Time delay);
+    RerrSet();
 
     /// RerrSet description
     struct Rerr
@@ -92,14 +91,18 @@ class RerrSet
     Time GetTimeout(T addr);
     /**
      * Check that node with address addr is already in the list
-     * \param addr the IP address to check
+     * \param unreachableAddr the unreachable address
+     * \param pktSource the packet source address
      * \returns true if the node with IP address is in the list
      */
     bool HasRerr(T unreachableAddr, T pktSource);
-    /// Remove all expired entries
-    void Purge();
-    /// Schedule m_ntimer.
-    void ScheduleTimer();
+    /**
+     * Add new entry to the list
+     * \param unreachableAddr the unreachable address
+     * \param pktSource the packet source address
+     * \param timeout the timeout for the entry
+     */
+    void Add(T unreachableAddr, T pktSource, Time timeout);
 
     /// Remove all entries
     void Clear()
@@ -108,8 +111,6 @@ class RerrSet
     }
 
   private:
-    /// Timer for rerr's list. Schedule Purge().
-    Timer m_ntimer;
     /// vector of entries
     std::vector<Rerr> m_rerr;
 };
