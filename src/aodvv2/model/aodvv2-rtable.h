@@ -75,7 +75,6 @@ class RoutingTableEntry
      *
      * \param dev the device
      * \param dst the destination IP address
-     * \param vSeqNo verify sequence number flag
      * \param seqNo the sequence number
      * \param iface the interface
      * \param hops the number of hops
@@ -278,10 +277,10 @@ class RoutingTableEntry
     }
 
     /**
-     * Set the route flags
-     * \param flag the route flags
+     * Set the route state
+     * \param state the route state
      */
-    void SetFlag(RouteStates state)
+    void SetState(RouteStates state)
     {
         m_state = state;
     }
@@ -290,7 +289,7 @@ class RoutingTableEntry
      * Get the route flags
      * \returns the route flags
      */
-    RouteStates GetFlag() const
+    RouteStates GetState() const
     {
         return m_state;
     }

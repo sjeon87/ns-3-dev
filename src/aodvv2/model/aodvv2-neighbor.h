@@ -91,7 +91,7 @@ class Neighbors
          * \brief Neighbor structure constructor
          *
          * \param ip T entry
-         * \param mac Mac48Address entry
+         * \param interface IpInterfaceAddress entry
          * \param t Time timeout
          */
         Neighbor(T ip, IpInterfaceAddress interface, Time t)

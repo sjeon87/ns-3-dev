@@ -203,9 +203,12 @@ RoutingTableEntry<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* 
     switch (m_state)
     {
     // TODO me: understand how to stream the IDLE state
-    case ACTIVE:
-    case IDLE: {
+    case ACTIVE: {
         *os << "UP";
+        break;
+    }
+    case IDLE: {
+        *os << "IDLE";
         break;
     }
     case INVALID: {
@@ -269,8 +272,8 @@ RoutingTable<T>::LookupValidRoute(T id, RoutingTableEntry<T>& rt)
         return false;
     }
     NS_LOG_LOGIC("Route to " << id << " flag is "
-                             << ((rt.GetFlag() == ACTIVE) ? "valid" : "not valid"));
-    return (rt.GetFlag() == ACTIVE);
+                             << ((rt.GetState() == ACTIVE) ? "valid" : "not valid"));
+    return (rt.GetState() == ACTIVE);
 }
 
 template <typename T>
@@ -294,7 +297,7 @@ RoutingTable<T>::AddRoute(RoutingTableEntry<T>& rt)
 {
     NS_LOG_FUNCTION(this);
     Purge();
-    if (rt.GetFlag() != UNCONFIRMED)
+    if (rt.GetState() != UNCONFIRMED)
     {
         rt.SetRreqCnt(0);
     }
@@ -314,7 +317,7 @@ RoutingTable<T>::Update(RoutingTableEntry<T>& rt)
         return false;
     }
     i->second = rt;
-    if (i->second.GetFlag() != UNCONFIRMED)
+    if (i->second.GetState() != UNCONFIRMED)
     {
         NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " set RreqCnt to 0");
         i->second.SetRreqCnt(0);
@@ -333,7 +336,7 @@ RoutingTable<T>::SetEntryState(T id, RouteStates state)
         NS_LOG_LOGIC("Route set entry state to " << id << " fails; not found");
         return false;
     }
-    i->second.SetFlag(state);
+    i->second.SetState(state);
     i->second.SetRreqCnt(0);
     NS_LOG_LOGIC("Route set entry state to " << id << ": new state is " << state);
     return true;
@@ -366,7 +369,7 @@ RoutingTable<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachabl
     {
         for (auto j = unreachable.begin(); j != unreachable.end(); ++j)
         {
-            if ((i->first == j->first) && (i->second.GetFlag() == ACTIVE))
+            if ((i->first == j->first) && (i->second.GetState() == ACTIVE))
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -412,13 +415,13 @@ RoutingTable<T>::Purge()
     {
         if (i->second.GetLastUsed() < Seconds(0))
         {
-            if (i->second.GetFlag() == INVALID)
+            if (i->second.GetState() == INVALID)
             {
                 auto tmp = i;
                 ++i;
                 m_ipAddressEntry.erase(tmp);
             }
-            else if (i->second.GetFlag() == ACTIVE)
+            else if (i->second.GetState() == ACTIVE)
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -449,13 +452,13 @@ RoutingTable<T>::Purge(std::map<T, RoutingTableEntry<T>>& table) const
     {
         if (i->second.GetLastUsed() < Seconds(0))
         {
-            if (i->second.GetFlag() == INVALID)
+            if (i->second.GetState() == INVALID)
             {
                 auto tmp = i;
                 ++i;
                 table.erase(tmp);
             }
-            else if (i->second.GetFlag() == ACTIVE)
+            else if (i->second.GetState() == ACTIVE)
             {
                 NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
                 i->second.Invalidate(m_badLinkLifetime);
@@ -484,7 +487,7 @@ RoutingTable<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
         NS_LOG_LOGIC("Mark link unidirectional to  " << neighbor << " fails; not found");
         return false;
     }
-    i->second.SetFlag(INVALID);
+    i->second.SetState(INVALID);
     i->second.SetLastUsed(blacklistTimeout);
     i->second.SetRreqCnt(0);
     NS_LOG_LOGIC("Set link to " << neighbor << " to unidirectional");

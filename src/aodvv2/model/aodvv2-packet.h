@@ -124,6 +124,7 @@ class RreqHeader : public Header
      * \param targMask the target mask
      * \param seqNo the sequence number
      * \param hopCount the hop count
+     * \param maxHopCount the maximum hop count
      */
     RreqHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -472,6 +473,7 @@ class RrepHeader : public Header
      * \param targMask the target mask
      * \param seqNo the sequence number
      * \param hopCount the hop count
+     * \param maxHopCount the maximum hop count
      */
     RrepHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -701,7 +703,11 @@ class RrepAckHeader : public Header
     using PbbMessageIp = typename std::conditional_t<IsIpv4, PbbMessageIpv4, PbbMessageIpv6>;
 
   public:
-    /// constructor
+    /**
+     * constructor
+     *
+     * \param maxHopCount the maximum hop count
+     */
     RrepAckHeader(uint8_t maxHopCount = 20);
 
     /**
@@ -795,11 +801,16 @@ class RerrHeader : public Header
         typename std::conditional_t<IsIpv4, PbbAddressBlockIpv4, PbbAddressBlockIpv6>;
 
   public:
-    /// constructor
+    /**
+     * constructor
+     *
+     * \param maxHopCount the maximum hop count
+     */
     RerrHeader(uint8_t maxHopCount = 20);
     /**
      * constructor
      * \param tlvHeader the TLV header
+     * \param maxHopCount the maximum hop count
      */
     RerrHeader(PbbPacket tlvHeader, uint8_t maxHopCount = 20);
 
