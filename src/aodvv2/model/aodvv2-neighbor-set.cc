@@ -21,7 +21,7 @@
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
-#include "aodvv2-neighbor.h"
+#include "aodvv2-neighbor-set.h"
 
 #include "ns3/log.h"
 
@@ -30,21 +30,21 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("Aodvv2Neighbors");
+NS_LOG_COMPONENT_DEFINE("Aodvv2NeighborSet");
 
 namespace aodvv2
 {
 template <typename T>
-Neighbors<T>::Neighbors(Time delay)
+NeighborSet<T>::NeighborSet(Time delay)
     : m_ntimer(Timer::CANCEL_ON_DESTROY)
 {
     m_ntimer.SetDelay(delay);
-    m_ntimer.SetFunction(&Neighbors::Purge, this);
+    m_ntimer.SetFunction(&NeighborSet::Purge, this);
 }
 
 template <typename T>
 bool
-Neighbors<T>::IsNeighbor(T addr)
+NeighborSet<T>::IsNeighbor(T addr)
 {
     Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
@@ -59,7 +59,7 @@ Neighbors<T>::IsNeighbor(T addr)
 
 template <typename T>
 Time
-Neighbors<T>::GetTimeout(T addr)
+NeighborSet<T>::GetTimeout(T addr)
 {
     Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
@@ -74,7 +74,7 @@ Neighbors<T>::GetTimeout(T addr)
 
 template <typename T>
 void
-Neighbors<T>::Update(T addr, IpInterfaceAddress iface, Time expire)
+NeighborSet<T>::Update(T addr, IpInterfaceAddress iface, Time expire)
 {
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
@@ -99,10 +99,10 @@ struct CloseNeighbor
     /**
      * Check if the entry is expired
      *
-     * \param nb Neighbors::Neighbor entry
+     * \param nb NeighborSet::Neighbor entry
      * \return true if expired, false otherwise
      */
-    bool operator()(const Neighbors<Ipv4Address>::Neighbor& nb) const
+    bool operator()(const NeighborSet<Ipv4Address>::Neighbor& nb) const
     {
         return nb.m_timeout < Simulator::Now();
     }
@@ -110,10 +110,10 @@ struct CloseNeighbor
     /**
      * Check if the entry is expired
      *
-     * \param nb Neighbors::Neighbor entry
+     * \param nb NeighborSet::Neighbor entry
      * \return true if expired, false otherwise
      */
-    bool operator()(const Neighbors<Ipv6Address>::Neighbor& nb) const
+    bool operator()(const NeighborSet<Ipv6Address>::Neighbor& nb) const
     {
         return nb.m_timeout < Simulator::Now();
     }
@@ -121,7 +121,7 @@ struct CloseNeighbor
 
 template <typename T>
 void
-Neighbors<T>::Purge()
+NeighborSet<T>::Purge()
 {
     if (m_nb.empty())
     {
@@ -147,7 +147,7 @@ Neighbors<T>::Purge()
 
 template <typename T>
 void
-Neighbors<T>::ScheduleTimer()
+NeighborSet<T>::ScheduleTimer()
 {
     m_ntimer.Cancel();
     m_ntimer.Schedule();
@@ -155,20 +155,20 @@ Neighbors<T>::ScheduleTimer()
 
 template <typename T>
 void
-Neighbors<T>::AddArpCache(Ptr<ArpCache> a)
+NeighborSet<T>::AddArpCache(Ptr<ArpCache> a)
 {
     m_arp.push_back(a);
 }
 
 template <typename T>
 void
-Neighbors<T>::DelArpCache(Ptr<ArpCache> a)
+NeighborSet<T>::DelArpCache(Ptr<ArpCache> a)
 {
     m_arp.erase(std::remove(m_arp.begin(), m_arp.end(), a), m_arp.end());
 }
 
-template class Neighbors<Ipv4Address>;
-template class Neighbors<Ipv6Address>;
+template class NeighborSet<Ipv4Address>;
+template class NeighborSet<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

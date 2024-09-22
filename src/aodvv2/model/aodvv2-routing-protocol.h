@@ -24,7 +24,7 @@
 #define AODVV2_ROUTING_PROTOCOL_H
 
 #include "aodvv2-dpd.h"
-#include "aodvv2-neighbor.h"
+#include "aodvv2-neighbor-set.h"
 #include "aodvv2-packet.h"
 #include "aodvv2-rerr-set.h"
 #include "aodvv2-route-client-set.h"
@@ -429,7 +429,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Handle duplicated broadcast/multicast packets
     DuplicatePacketDetection<IpHeader> m_dpd;
     /// Handle neighbors
-    Neighbors<IpAddress> m_nb;
+    NeighborSet<IpAddress> m_nb;
     /// Handle route clients
     RouteClientSet<IpAddress> m_rcs;
     /// Handle rerrs

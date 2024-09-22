@@ -4,7 +4,7 @@ build_lib(
     helper/aodvv2-helper.cc
     model/aodvv2-dpd.cc
     model/aodvv2-id-cache.cc
-    model/aodvv2-neighbor.cc
+    model/aodvv2-neighbor-set.cc
     model/aodvv2-packet.cc
     model/aodvv2-routing-protocol.cc
     model/aodvv2-rqueue.cc
@@ -15,7 +15,7 @@ build_lib(
     helper/aodvv2-helper.h
     model/aodvv2-dpd.h
     model/aodvv2-id-cache.h
-    model/aodvv2-neighbor.h
+    model/aodvv2-neighbor-set.h
     model/aodvv2-packet.h
     model/aodvv2-routing-protocol.h
     model/aodvv2-rqueue.h

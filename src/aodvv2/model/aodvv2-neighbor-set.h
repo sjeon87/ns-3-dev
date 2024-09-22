@@ -55,7 +55,7 @@ class RoutingProtocol;
  * \brief maintain list of active neighbors
  */
 template <typename T>
-class Neighbors
+class NeighborSet
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
@@ -69,7 +69,7 @@ class Neighbors
      * constructor
      * \param delay the delay time for purging the list of neighbors
      */
-    Neighbors(Time delay);
+    NeighborSet(Time delay);
 
     /// Neighbor description
     struct Neighbor
