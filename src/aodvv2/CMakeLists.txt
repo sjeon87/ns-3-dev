@@ -8,7 +8,7 @@ build_lib(
     model/aodvv2-packet.cc
     model/aodvv2-routing-protocol.cc
     model/aodvv2-rqueue.cc
-    model/aodvv2-rtable.cc
+    model/aodvv2-local-route-set.cc
     model/aodvv2-rerr-set.cc
     model/aodvv2-route-client-set.cc
   HEADER_FILES
@@ -19,7 +19,7 @@ build_lib(
     model/aodvv2-packet.h
     model/aodvv2-routing-protocol.h
     model/aodvv2-rqueue.h
-    model/aodvv2-rtable.h
+    model/aodvv2-local-route-set.h
     model/aodvv2-rerr-set.h
     model/aodvv2-route-client-set.h
   LIBRARIES_TO_LINK ${libinternet}

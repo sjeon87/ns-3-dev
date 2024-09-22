@@ -24,12 +24,12 @@
 #define AODVV2_ROUTING_PROTOCOL_H
 
 #include "aodvv2-dpd.h"
+#include "aodvv2-local-route-set.h"
 #include "aodvv2-neighbor-set.h"
 #include "aodvv2-packet.h"
 #include "aodvv2-rerr-set.h"
 #include "aodvv2-route-client-set.h"
 #include "aodvv2-rqueue.h"
-#include "aodvv2-rtable.h"
 
 #include "ns3/ipv4-interface.h"
 #include "ns3/ipv4-l3-protocol.h"
@@ -416,7 +416,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     Ptr<NetDevice> m_lo;
 
     /// Routing table
-    RoutingTable<IpAddress> m_routingTable;
+    LocalRoute<IpAddress> m_routingTable;
     /// A "drop-front" queue used by the routing layer to buffer packets to which it does not have a
     /// route.
     RequestQueue<IpAddress> m_queue;
@@ -587,14 +587,14 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * \param hopCount hop count
      */
     void SendReply(const RreqHeader<IpAddress>& rreqHeader,
-                   const RoutingTableEntry<IpAddress>& toOrigin,
+                   const LocalRouteSet<IpAddress>& toOrigin,
                    uint8_t hopCount);
     /** Send RREP by intermediate node
      * \param toDst routing table entry to destination
      * \param toOrigin routing table entry to originator
      */
-    void SendReplyByIntermediateNode(RoutingTableEntry<IpAddress>& toDst,
-                                     RoutingTableEntry<IpAddress>& toOrigin);
+    void SendReplyByIntermediateNode(LocalRouteSet<IpAddress>& toDst,
+                                     LocalRouteSet<IpAddress>& toOrigin);
     /** Send RREP_ACK
      * \param neighbor neighbor address
      */

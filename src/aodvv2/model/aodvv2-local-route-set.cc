@@ -21,7 +21,7 @@
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
-#include "aodvv2-rtable.h"
+#include "aodvv2-local-route-set.h"
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -41,13 +41,13 @@ namespace aodvv2
  The Routing Table
  */
 template <typename T>
-RoutingTableEntry<T>::RoutingTableEntry(Ptr<NetDevice> dev,
-                                        T dst,
-                                        uint32_t seqNo,
-                                        IpInterfaceAddress iface,
-                                        uint16_t hops,
-                                        T nextHop,
-                                        Time lastUsed)
+LocalRouteSet<T>::LocalRouteSet(Ptr<NetDevice> dev,
+                                T dst,
+                                uint32_t seqNo,
+                                IpInterfaceAddress iface,
+                                uint16_t hops,
+                                T nextHop,
+                                Time lastUsed)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
       m_nextHopIface(iface),
@@ -65,13 +65,13 @@ RoutingTableEntry<T>::RoutingTableEntry(Ptr<NetDevice> dev,
 }
 
 template <typename T>
-RoutingTableEntry<T>::~RoutingTableEntry()
+LocalRouteSet<T>::~LocalRouteSet()
 {
 }
 
 template <typename T>
 bool
-RoutingTableEntry<T>::InsertPrecursor(T id)
+LocalRouteSet<T>::InsertPrecursor(T id)
 {
     NS_LOG_FUNCTION(this << id);
     if (!LookupPrecursor(id))
@@ -87,7 +87,7 @@ RoutingTableEntry<T>::InsertPrecursor(T id)
 
 template <typename T>
 bool
-RoutingTableEntry<T>::LookupPrecursor(T id)
+LocalRouteSet<T>::LookupPrecursor(T id)
 {
     NS_LOG_FUNCTION(this << id);
     for (auto i = m_precursorList.begin(); i != m_precursorList.end(); ++i)
@@ -104,7 +104,7 @@ RoutingTableEntry<T>::LookupPrecursor(T id)
 
 template <typename T>
 bool
-RoutingTableEntry<T>::DeletePrecursor(T id)
+LocalRouteSet<T>::DeletePrecursor(T id)
 {
     NS_LOG_FUNCTION(this << id);
     auto i = std::remove(m_precursorList.begin(), m_precursorList.end(), id);
@@ -123,7 +123,7 @@ RoutingTableEntry<T>::DeletePrecursor(T id)
 
 template <typename T>
 void
-RoutingTableEntry<T>::DeleteAllPrecursors()
+LocalRouteSet<T>::DeleteAllPrecursors()
 {
     NS_LOG_FUNCTION(this);
     m_precursorList.clear();
@@ -131,14 +131,14 @@ RoutingTableEntry<T>::DeleteAllPrecursors()
 
 template <typename T>
 bool
-RoutingTableEntry<T>::IsPrecursorListEmpty() const
+LocalRouteSet<T>::IsPrecursorListEmpty() const
 {
     return m_precursorList.empty();
 }
 
 template <typename T>
 void
-RoutingTableEntry<T>::GetPrecursors(std::vector<T>& prec) const
+LocalRouteSet<T>::GetPrecursors(std::vector<T>& prec) const
 {
     NS_LOG_FUNCTION(this);
     if (IsPrecursorListEmpty())
@@ -165,7 +165,7 @@ RoutingTableEntry<T>::GetPrecursors(std::vector<T>& prec) const
 
 template <typename T>
 void
-RoutingTableEntry<T>::Invalidate(Time badLinkLifetime)
+LocalRouteSet<T>::Invalidate(Time badLinkLifetime)
 {
     NS_LOG_FUNCTION(this << badLinkLifetime.As(Time::S));
     if (m_state == INVALID)
@@ -179,7 +179,7 @@ RoutingTableEntry<T>::Invalidate(Time badLinkLifetime)
 
 template <typename T>
 void
-RoutingTableEntry<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
     std::ostream* os = stream->GetStream();
     // Copy the current ostream state
@@ -227,21 +227,21 @@ RoutingTableEntry<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* 
     (*os).copyfmt(oldState);
 }
 
-template class RoutingTableEntry<Ipv4Address>;
-template class RoutingTableEntry<Ipv6Address>;
+template class LocalRouteSet<Ipv4Address>;
+template class LocalRouteSet<Ipv6Address>;
 
 /*
  The Routing Table
  */
 template <typename T>
-RoutingTable<T>::RoutingTable(Time t)
+LocalRoute<T>::LocalRoute(Time t)
     : m_badLinkLifetime(t)
 {
 }
 
 template <typename T>
 bool
-RoutingTable<T>::LookupRoute(T id, RoutingTableEntry<T>& rt)
+LocalRoute<T>::LookupRoute(T id, LocalRouteSet<T>& rt)
 {
     NS_LOG_FUNCTION(this << id);
     Purge();
@@ -263,7 +263,7 @@ RoutingTable<T>::LookupRoute(T id, RoutingTableEntry<T>& rt)
 
 template <typename T>
 bool
-RoutingTable<T>::LookupValidRoute(T id, RoutingTableEntry<T>& rt)
+LocalRoute<T>::LookupValidRoute(T id, LocalRouteSet<T>& rt)
 {
     NS_LOG_FUNCTION(this << id);
     if (!LookupRoute(id, rt))
@@ -278,7 +278,7 @@ RoutingTable<T>::LookupValidRoute(T id, RoutingTableEntry<T>& rt)
 
 template <typename T>
 bool
-RoutingTable<T>::DeleteRoute(T dst)
+LocalRoute<T>::DeleteRoute(T dst)
 {
     NS_LOG_FUNCTION(this << dst);
     Purge();
@@ -293,7 +293,7 @@ RoutingTable<T>::DeleteRoute(T dst)
 
 template <typename T>
 bool
-RoutingTable<T>::AddRoute(RoutingTableEntry<T>& rt)
+LocalRoute<T>::AddRoute(LocalRouteSet<T>& rt)
 {
     NS_LOG_FUNCTION(this);
     Purge();
@@ -307,7 +307,7 @@ RoutingTable<T>::AddRoute(RoutingTableEntry<T>& rt)
 
 template <typename T>
 bool
-RoutingTable<T>::Update(RoutingTableEntry<T>& rt)
+LocalRoute<T>::Update(LocalRouteSet<T>& rt)
 {
     NS_LOG_FUNCTION(this);
     auto i = m_ipAddressEntry.find(rt.GetDestination());
@@ -327,7 +327,7 @@ RoutingTable<T>::Update(RoutingTableEntry<T>& rt)
 
 template <typename T>
 bool
-RoutingTable<T>::SetEntryState(T id, RouteStates state)
+LocalRoute<T>::SetEntryState(T id, RouteStates state)
 {
     NS_LOG_FUNCTION(this);
     auto i = m_ipAddressEntry.find(id);
@@ -344,7 +344,7 @@ RoutingTable<T>::SetEntryState(T id, RouteStates state)
 
 template <typename T>
 void
-RoutingTable<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t>& unreachable)
+LocalRoute<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t>& unreachable)
 {
     NS_LOG_FUNCTION(this);
     Purge();
@@ -361,7 +361,7 @@ RoutingTable<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t
 
 template <typename T>
 void
-RoutingTable<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable)
+LocalRoute<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable)
 {
     NS_LOG_FUNCTION(this);
     Purge();
@@ -380,7 +380,7 @@ RoutingTable<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachabl
 
 template <typename T>
 void
-RoutingTable<T>::DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
+LocalRoute<T>::DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
 {
     NS_LOG_FUNCTION(this);
     if (m_ipAddressEntry.empty())
@@ -404,7 +404,7 @@ RoutingTable<T>::DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
 
 template <typename T>
 void
-RoutingTable<T>::Purge()
+LocalRoute<T>::Purge()
 {
     NS_LOG_FUNCTION(this);
     if (m_ipAddressEntry.empty())
@@ -441,7 +441,7 @@ RoutingTable<T>::Purge()
 
 template <typename T>
 void
-RoutingTable<T>::Purge(std::map<T, RoutingTableEntry<T>>& table) const
+LocalRoute<T>::Purge(std::map<T, LocalRouteSet<T>>& table) const
 {
     NS_LOG_FUNCTION(this);
     if (table.empty())
@@ -478,7 +478,7 @@ RoutingTable<T>::Purge(std::map<T, RoutingTableEntry<T>>& table) const
 
 template <typename T>
 bool
-RoutingTable<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
+LocalRoute<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
 {
     NS_LOG_FUNCTION(this << neighbor << blacklistTimeout.As(Time::S));
     auto i = m_ipAddressEntry.find(neighbor);
@@ -496,9 +496,9 @@ RoutingTable<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
 
 template <typename T>
 void
-RoutingTable<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
-    std::map<T, RoutingTableEntry<T>> table = m_ipAddressEntry;
+    std::map<T, LocalRouteSet<T>> table = m_ipAddressEntry;
     Purge(table);
     std::ostream* os = stream->GetStream();
     // Copy the current ostream state
@@ -520,8 +520,8 @@ RoutingTable<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Tim
     *stream->GetStream() << "\n";
 }
 
-template class RoutingTable<Ipv4Address>;
-template class RoutingTable<Ipv6Address>;
+template class LocalRoute<Ipv4Address>;
+template class LocalRoute<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

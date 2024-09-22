@@ -57,7 +57,7 @@ enum RouteStates
  * \brief Routing table entry
  */
 template <typename T>
-class RoutingTableEntry
+class LocalRouteSet
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
@@ -81,15 +81,15 @@ class RoutingTableEntry
      * \param nextHop the IP address of the next hop
      * \param lastUsed the lastUsed time of the entry
      */
-    RoutingTableEntry(Ptr<NetDevice> dev = nullptr,
-                      T dst = T(),
-                      uint32_t seqNo = 0,
-                      IpInterfaceAddress iface = IpInterfaceAddress(),
-                      uint16_t hops = 0,
-                      T nextHop = T(),
-                      Time lastUsed = Simulator::Now());
+    LocalRouteSet(Ptr<NetDevice> dev = nullptr,
+                  T dst = T(),
+                  uint32_t seqNo = 0,
+                  IpInterfaceAddress iface = IpInterfaceAddress(),
+                  uint16_t hops = 0,
+                  T nextHop = T(),
+                  Time lastUsed = Simulator::Now());
 
-    ~RoutingTableEntry();
+    ~LocalRouteSet();
 
     ///\name Precursors management
     //\{
@@ -380,7 +380,7 @@ class RoutingTableEntry
  * \brief The Routing table used by AODVv2 protocol
  */
 template <typename T>
-class RoutingTable
+class LocalRoute
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
@@ -395,7 +395,7 @@ class RoutingTable
      * constructor
      * \param t the routing table entry time
      */
-    RoutingTable(Time t);
+    LocalRoute(Time t);
 
     ///\name Handle time of invalid route
     //\{
@@ -425,7 +425,7 @@ class RoutingTable
      * \param r routing table entry
      * \return true in success
      */
-    bool AddRoute(RoutingTableEntry<T>& r);
+    bool AddRoute(LocalRouteSet<T>& r);
     /**
      * Delete routing table entry with destination address dst, if it exists.
      * \param dst destination address
@@ -438,20 +438,20 @@ class RoutingTable
      * \param rt entry with destination address dst, if exists
      * \return true on success
      */
-    bool LookupRoute(T dst, RoutingTableEntry<T>& rt);
+    bool LookupRoute(T dst, LocalRouteSet<T>& rt);
     /**
      * Lookup route in VALID state
      * \param dst destination address
      * \param rt entry with destination address dst, if exists
      * \return true on success
      */
-    bool LookupValidRoute(T dst, RoutingTableEntry<T>& rt);
+    bool LookupValidRoute(T dst, LocalRouteSet<T>& rt);
     /**
      * Update routing table
      * \param rt entry with destination address dst, if exists
      * \return true on success
      */
-    bool Update(RoutingTableEntry<T>& rt);
+    bool Update(LocalRouteSet<T>& rt);
     /**
      * Set routing table entry flags
      * \param dst destination address
@@ -505,14 +505,14 @@ class RoutingTable
 
   private:
     /// The routing table
-    std::map<T, RoutingTableEntry<T>> m_ipAddressEntry;
+    std::map<T, LocalRouteSet<T>> m_ipAddressEntry;
     /// Deletion time for invalid routes
     Time m_badLinkLifetime;
     /**
      * const version of Purge, for use by Print() method
      * \param table the routing table entry to purge
      */
-    void Purge(std::map<T, RoutingTableEntry<T>>& table) const;
+    void Purge(std::map<T, LocalRouteSet<T>>& table) const;
 };
 
 } // namespace aodvv2
