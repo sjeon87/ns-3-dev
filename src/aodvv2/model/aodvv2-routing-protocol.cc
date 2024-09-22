@@ -1397,7 +1397,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     if (m_rreqIdCache.IsDuplicate(origin,
                                   rreqHeader.GetOrigMask(),
                                   rreqHeader.GetTargIp(),
-                                  rreqHeader.GetTargPathMetric()))
+                                  rreqHeader.GetOrigPathMetric()))
     {
         NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
         return;

@@ -44,8 +44,11 @@ RreqHeader<T>::RreqHeader(T origIp,
                           uint8_t maxHopCount)
     : m_origIp(origIp),
       m_origMask(origMask),
+      m_origSeqNo(1),
+      m_origPathMetric(1),
       m_targIp(targIp),
       m_targMask(targMask),
+      m_targSeqNo(1),
       m_seqNo(seqNo),
       m_hopCount(hopCount),
       m_maxHopCount(maxHopCount)
@@ -126,7 +129,7 @@ RreqHeader<T>::CreateTlvHeader() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a1tlv3 = Create<PbbAddressTlv>();
     msg1a1tlv3->SetType(AODVV2_PATH_METRIC);
-    uint8_t msg1a1tlv3val[] = {1}; // TODO me: evaluate metric
+    uint8_t msg1a1tlv3val[] = {this->m_origPathMetric};
     msg1a1tlv3->SetValue(msg1a1tlv3val, sizeof(msg1a1tlv3val));
     msg1a1->TlvPushBack(msg1a1tlv3);
 
@@ -233,10 +236,6 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 if (hasSeqNum)
                 {
                     this->SetTargSeqNo(seqNum);
-                }
-                if (hasPathMetric)
-                {
-                    this->SetTargPathMetric(pathMetric);
                 }
                 break;
             }
@@ -399,7 +398,7 @@ RrepHeader<T>::CreateTlvHeader() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
     msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
-    uint8_t msg1a2tlv3val[] = {1}; // TODO me: evaluate metric
+    uint8_t msg1a2tlv3val[] = {this->m_targPathMetric};
     msg1a2tlv3->SetValue(msg1a2tlv3val, sizeof(msg1a2tlv3val));
     msg1a1->TlvPushBack(msg1a2tlv3);
 

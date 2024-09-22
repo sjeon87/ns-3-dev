@@ -325,24 +325,6 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the target path metric
-     * \param metric the target path metric
-     */
-    void SetTargPathMetric(uint8_t metric)
-    {
-        m_targPathMetric = metric;
-    }
-
-    /**
-     * \brief Get the target path metric
-     * \return the target path metric
-     */
-    uint8_t GetTargPathMetric() const
-    {
-        return m_targPathMetric;
-    }
-
-    /**
      * \brief Set the sequence number
      * \param seq the sequence number
      */
@@ -413,9 +395,9 @@ class RreqHeader : public Header
     T m_targIp;               ///< Target IP Address
     uint16_t m_targMask;      ///< Target Mask
     uint8_t m_targSeqNo;      ///< Target Sequence number
-    uint8_t m_targPathMetric; ///< Target Path Metric
-    uint8_t m_seqNo;          ///< Sequence number
-    uint8_t m_hopCount;       ///< Hop Count
+
+    uint8_t m_seqNo;    ///< Sequence number
+    uint8_t m_hopCount; ///< Hop Count
 
     uint8_t m_maxHopCount;              ///< Max Hop Count
     bool m_sendTargSeqNum;              ///< Send Target Sequence Number
