@@ -58,14 +58,14 @@ class RerrSet
      */
     RerrSet();
 
-    /// RerrSet description
+    /// Rerr description
     struct Rerr
     {
-        /// RerrSet timeout
+        /// Rerr Time timeout
         Time m_timeout;
-        /// RerrSet state
+        /// Rerr T unreachable address
         T m_unreachableAddr;
-        /// RerrSet T address
+        /// Rerr T packet source address
         T m_pktSource;
 
         /**
@@ -93,7 +93,7 @@ class RerrSet
      * Check that node with address addr is already in the list
      * \param unreachableAddr the unreachable address
      * \param pktSource the packet source address
-     * \returns true if the node with IP address is in the list
+     * \returns true if the node with inputs is in the list
      */
     bool HasRerr(T unreachableAddr, T pktSource);
     /**

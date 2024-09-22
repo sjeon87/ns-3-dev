@@ -76,15 +76,15 @@ class Neighbors
     {
         /// Neighbor T address
         T m_neighborAddress;
-        /// Neighbor state
+        /// Neighbor NeighborStates state
         NeighborStates m_state;
-        /// Neighbor timeout
+        /// Neighbor Time timeout
         Time m_timeout;
-        /// Neighbor interface
+        /// Neighbor IpInterfaceAddress interface
         IpInterfaceAddress m_interface;
-        /// Neighbor Ack Sequence Number
+        /// Neighbor uint32_t Ack Sequence Number
         uint32_t m_ackSeqNo;
-        /// Neighbor Heard RERR Sequence Number
+        /// Neighbor uint32_t Heard RERR Sequence Number
         uint32_t m_heardRERRSeqNo;
 
         /**

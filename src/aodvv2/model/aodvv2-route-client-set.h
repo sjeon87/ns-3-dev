@@ -55,14 +55,14 @@ class RouteClientSet
      */
     RouteClientSet();
 
-    /// RouteClientSet description
+    /// RouteClient description
     struct RouteClient
     {
-        /// T RouteClientSet ip address
+        /// RouteClient T ip address
         T m_ip;
-        /// uint16_t RouteClientSet mask
+        /// RouteClient uint16_t mask
         uint16_t m_mask;
-        /// uint16_t RouteClientSet cost
+        /// RouteClient uint16_t cost
         uint16_t m_cost;
 
         /**
@@ -87,7 +87,7 @@ class RouteClientSet
      */
     uint16_t GetCost(T addr);
     /**
-     * Check that node with address addr is already in the list
+     * Check that node with address ip is already in the list
      * \param ip the ip address
      * \returns true if the node with IP address is in the list
      */
