@@ -246,26 +246,32 @@ ChannelAccessManager::SetupPhyListener(Ptr<WifiPhy> phy)
 {
     NS_LOG_FUNCTION(this << phy);
 
-    if (auto phyListener = GetPhyListener(phy))
+    auto phyListener = GetPhyListener(phy);
+
+    if (phyListener)
     {
         // a PHY listener for the given PHY already exists, it must be inactive
         NS_ASSERT_MSG(!phyListener->IsActive(),
                       "There is already an active listener registered for given PHY");
         NS_ASSERT_MSG(!m_phy, "Cannot reactivate a listener if another PHY is active");
         phyListener->SetActive(true);
+        // if a PHY listener already exists, the PHY was disconnected and now reconnected to the
+        // channel access manager; unregister the listener and register again (below) to get
+        // updated CCA busy information
+        phy->UnregisterListener(phyListener);
     }
     else
     {
         phyListener = std::make_shared<PhyListener>(this);
         m_phyListeners.emplace(phy, phyListener);
-        phy->RegisterListener(phyListener);
     }
     if (m_phy)
     {
         DeactivatePhyListener(m_phy);
     }
     m_phy = phy; // this is the new active PHY
-    InitLastBusyStructs();
+    ResizeLastBusyStructs();
+    phy->RegisterListener(phyListener);
     if (phy->IsStateSwitching())
     {
         auto duration = phy->GetDelayUntilIdle();
@@ -356,43 +362,82 @@ ChannelAccessManager::Add(Ptr<Txop> txop)
 }
 
 void
-ChannelAccessManager::InitLastBusyStructs()
+ChannelAccessManager::ResizeLastBusyStructs()
 {
     NS_LOG_FUNCTION(this);
-    Time now = Simulator::Now();
-    m_lastBusyEnd.clear();
-    m_lastPer20MHzBusyEnd.clear();
-    m_lastIdle.clear();
-    m_lastBusyEnd[WIFI_CHANLIST_PRIMARY] = now;
-    m_lastIdle[WIFI_CHANLIST_PRIMARY] = {now, now};
+    const auto now = Simulator::Now();
+
+    m_lastBusyEnd.emplace(WIFI_CHANLIST_PRIMARY, now);
+    m_lastIdle.emplace(WIFI_CHANLIST_PRIMARY, Timespan{now, now});
+
+    const auto width = m_phy ? m_phy->GetChannelWidth() : 0;
+    std::size_t size =
+        (width > 20 && m_phy->GetStandard() >= WIFI_STANDARD_80211ax) ? width / 20 : 0;
+    m_lastPer20MHzBusyEnd.resize(size, now);
 
     if (!m_phy || !m_phy->GetOperatingChannel().IsOfdm())
     {
         return;
     }
 
-    const auto width = m_phy->GetChannelWidth();
-
     if (width >= 40)
     {
-        m_lastBusyEnd[WIFI_CHANLIST_SECONDARY] = now;
-        m_lastIdle[WIFI_CHANLIST_SECONDARY] = {now, now};
+        m_lastBusyEnd.emplace(WIFI_CHANLIST_SECONDARY, now);
+        m_lastIdle.emplace(WIFI_CHANLIST_SECONDARY, Timespan{now, now});
     }
+    else
+    {
+        m_lastBusyEnd.erase(WIFI_CHANLIST_SECONDARY);
+        m_lastIdle.erase(WIFI_CHANLIST_SECONDARY);
+    }
+
     if (width >= 80)
     {
-        m_lastBusyEnd[WIFI_CHANLIST_SECONDARY40] = now;
-        m_lastIdle[WIFI_CHANLIST_SECONDARY40] = {now, now};
+        m_lastBusyEnd.emplace(WIFI_CHANLIST_SECONDARY40, now);
+        m_lastIdle.emplace(WIFI_CHANLIST_SECONDARY40, Timespan{now, now});
     }
+    else
+    {
+        m_lastBusyEnd.erase(WIFI_CHANLIST_SECONDARY40);
+        m_lastIdle.erase(WIFI_CHANLIST_SECONDARY40);
+    }
+
     if (width >= 160)
     {
-        m_lastBusyEnd[WIFI_CHANLIST_SECONDARY80] = now;
-        m_lastIdle[WIFI_CHANLIST_SECONDARY80] = {now, now};
+        m_lastBusyEnd.emplace(WIFI_CHANLIST_SECONDARY80, now);
+        m_lastIdle.emplace(WIFI_CHANLIST_SECONDARY80, Timespan{now, now});
     }
-    // TODO Add conditions for new channel widths as they get supported
-
-    if (m_phy->GetStandard() >= WIFI_STANDARD_80211ax && width > 20)
+    else
     {
-        m_lastPer20MHzBusyEnd.assign(width / 20, now);
+        m_lastBusyEnd.erase(WIFI_CHANLIST_SECONDARY80);
+        m_lastIdle.erase(WIFI_CHANLIST_SECONDARY80);
+    }
+
+    // TODO Add conditions for new channel widths as they get supported
+}
+
+void
+ChannelAccessManager::InitLastBusyStructs()
+{
+    NS_LOG_FUNCTION(this);
+    Time now = Simulator::Now();
+
+    ResizeLastBusyStructs();
+
+    // reset all values
+    for (auto& [chType, time] : m_lastBusyEnd)
+    {
+        time = now;
+    }
+
+    for (auto& [chType, timeSpan] : m_lastIdle)
+    {
+        timeSpan = Timespan{now, now};
+    }
+
+    for (auto& time : m_lastPer20MHzBusyEnd)
+    {
+        time = now;
     }
 }
 
@@ -928,7 +973,6 @@ ChannelAccessManager::NotifySwitchingStartNow(PhyListener* phyListener, Time dur
 
     Time now = Simulator::Now();
     NS_ASSERT(m_lastTxEnd <= now);
-    NS_ASSERT(m_lastSwitchingEnd <= now);
 
     if (phyListener) // to make tests happy
     {
@@ -958,6 +1002,12 @@ ChannelAccessManager::NotifySwitchingStartNow(PhyListener* phyListener, Time dur
 
     ResetState();
 
+    // Cancel timeout
+    if (m_accessTimeout.IsPending())
+    {
+        m_accessTimeout.Cancel();
+    }
+
     // Reset backoffs
     for (const auto& txop : m_txops)
     {
@@ -985,12 +1035,6 @@ ChannelAccessManager::ResetState()
     m_lastCtsTimeoutEnd = std::min(m_lastCtsTimeoutEnd, now);
 
     InitLastBusyStructs();
-
-    // Cancel timeout
-    if (m_accessTimeout.IsPending())
-    {
-        m_accessTimeout.Cancel();
-    }
 }
 
 void

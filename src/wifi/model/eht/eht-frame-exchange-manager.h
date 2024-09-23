@@ -25,6 +25,47 @@ class MgtEmlOmn;
 
 /**
  * \ingroup wifi
+ * Reasons for an EMLSR client to drop an ICF
+ */
+enum class WifiIcfDrop : uint8_t
+{
+    USING_OTHER_LINK = 0,   // another EMLSR link is being used
+    NOT_ENOUGH_TIME_TX,     // not enough time for the main PHY to switch (because in TX state)
+    NOT_ENOUGH_TIME_RX,     // not enough time for the main PHY to switch (because in RX state)
+    NOT_ENOUGH_TIME_SWITCH, // not enough time for the main PHY to switch (already switching)
+    NOT_ENOUGH_TIME_SLEEP,  // not enough time for the main PHY to switch (because in SLEEP state)
+};
+
+/**
+ * \brief Stream insertion operator.
+ *
+ * \param os the stream
+ * \param reason the reason for dropping the ICF
+ * \returns a reference to the stream
+ */
+inline std::ostream&
+operator<<(std::ostream& os, WifiIcfDrop reason)
+{
+    switch (reason)
+    {
+    case WifiIcfDrop::USING_OTHER_LINK:
+        return (os << "USING_OTHER_LINK");
+    case WifiIcfDrop::NOT_ENOUGH_TIME_TX:
+        return (os << "NOT_ENOUGH_TIME_TX");
+    case WifiIcfDrop::NOT_ENOUGH_TIME_RX:
+        return (os << "NOT_ENOUGH_TIME_RX");
+    case WifiIcfDrop::NOT_ENOUGH_TIME_SWITCH:
+        return (os << "NOT_ENOUGH_TIME_SWITCH");
+    case WifiIcfDrop::NOT_ENOUGH_TIME_SLEEP:
+        return (os << "NOT_ENOUGH_TIME_SLEEP");
+    default:
+        NS_FATAL_ERROR("Unknown wifi ICF drop reason");
+        return (os << "UNKNOWN");
+    }
+}
+
+/**
+ * \ingroup wifi
  *
  * EhtFrameExchangeManager handles the frame exchange sequences
  * for EHT stations.
@@ -120,6 +161,9 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
      */
     EventId& GetOngoingTxopEndEvent();
 
+    /// ICF drop reason traced callback (WifiMac exposes this trace source)
+    TracedCallback<WifiIcfDrop, uint8_t> m_icfDropCallback;
+
   protected:
     void DoDispose() override;
     void RxStartIndication(WifiTxVector txVector, Time psduDuration) override;
@@ -145,6 +189,12 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
     void PsduRxError(Ptr<const WifiPsdu> psdu) override;
 
   private:
+    /**
+     * \return whether the received ICF must be dropped because we are unable to process it
+     *         (e.g., another EMLSR link is being used or there is no time for main PHY switch)
+     */
+    bool DropReceivedIcf();
+
     /**
      * Generate an in-device interference of the given power on the given link for the given
      * duration.

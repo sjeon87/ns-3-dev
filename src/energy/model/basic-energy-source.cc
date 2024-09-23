@@ -26,7 +26,8 @@ TypeId
 BasicEnergySource::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::BasicEnergySource")
+        TypeId("ns3::energy::BasicEnergySource")
+            .AddDeprecatedName("ns3::BasicEnergySource")
             .SetParent<EnergySource>()
             .SetGroupName("Energy")
             .AddConstructor<BasicEnergySource>()

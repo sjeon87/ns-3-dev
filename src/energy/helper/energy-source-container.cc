@@ -22,7 +22,8 @@ NS_OBJECT_ENSURE_REGISTERED(EnergySourceContainer);
 TypeId
 EnergySourceContainer::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::EnergySourceContainer")
+    static TypeId tid = TypeId("ns3::energy::EnergySourceContainer")
+                            .AddDeprecatedName("ns3::EnergySourceContainer")
                             .SetParent<Object>()
                             .SetGroupName("Energy")
                             .AddConstructor<EnergySourceContainer>();

@@ -22,7 +22,10 @@ NS_OBJECT_ENSURE_REGISTERED(EnergyHarvester);
 TypeId
 EnergyHarvester::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::EnergyHarvester").SetParent<Object>().SetGroupName("Energy");
+    static TypeId tid = TypeId("ns3::energy::EnergyHarvester")
+                            .AddDeprecatedName("ns3::EnergyHarvester")
+                            .SetParent<Object>()
+                            .SetGroupName("Energy");
     return tid;
 }
 

@@ -484,6 +484,11 @@ void
 WifiPhy::RegisterListener(const std::shared_ptr<WifiPhyListener>& listener)
 {
     m_state->RegisterListener(listener);
+    if (IsInitialized())
+    {
+        // provide CCA busy information upon registering a PHY listener
+        SwitchMaybeToCcaBusy(nullptr);
+    }
 }
 
 void
@@ -1188,7 +1193,6 @@ WifiPhy::GetDelayUntilChannelSwitch()
         return Seconds(0);
     }
 
-    NS_ASSERT(!IsStateSwitching());
     std::optional<Time> delay;
     switch (m_state->GetState())
     {
@@ -1204,6 +1208,9 @@ WifiPhy::GetDelayUntilChannelSwitch()
     case WifiPhyState::CCA_BUSY:
     case WifiPhyState::IDLE:
         Reset();
+        delay = Seconds(0);
+        break;
+    case WifiPhyState::SWITCHING:
         delay = Seconds(0);
         break;
     case WifiPhyState::SLEEP:

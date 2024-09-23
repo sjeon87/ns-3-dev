@@ -23,6 +23,7 @@
 #include <vector>
 
 class EmlsrUlTxopTest;
+class EmlsrCcaBusyTest;
 
 namespace ns3
 {
@@ -51,6 +52,7 @@ class ChannelAccessManager : public Object
 {
     /// Allow test cases to access private members
     friend class ::EmlsrUlTxopTest;
+    friend class ::EmlsrCcaBusyTest;
 
   public:
     ChannelAccessManager();
@@ -360,11 +362,17 @@ class ChannelAccessManager : public Object
     std::shared_ptr<PhyListener> GetPhyListener(Ptr<WifiPhy> phy) const;
 
     /**
-     * Initialize the structures holding busy end times per channel type (primary,
-     * secondary, etc.) and per 20 MHz channel.
+     * Initialize the structures holding busy end times per channel type (primary, secondary, etc.)
+     * and per 20 MHz channel. All values are set to the current time.
      */
     void InitLastBusyStructs();
 
+    /**
+     * Resize the structures holding busy end times per channel type (primary, secondary, etc.)
+     * and per 20 MHz channel. If a value (e.g., the busy end time for secondary40 channel) already
+     * exists, it is not changed; otherwise, it is set to the current time.
+     */
+    void ResizeLastBusyStructs();
     /**
      * Update backoff slots for all Txops.
      */
