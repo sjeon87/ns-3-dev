@@ -35,7 +35,8 @@ NS_LOG_COMPONENT_DEFINE("Aodvv2NeighborSet");
 namespace aodvv2
 {
 template <typename T>
-NeighborSet<T>::NeighborSet()
+NeighborSet<T>::NeighborSet(Time maxBlacklistTime)
+    : m_maxBlacklistTime(maxBlacklistTime)
 {
 }
 
@@ -68,6 +69,20 @@ NeighborSet<T>::GetTimeout(T addr)
 }
 
 template <typename T>
+NeighborStates
+NeighborSet<T>::GetState(T addr)
+{
+    for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
+    {
+        if (i->m_neighborAddress == addr)
+        {
+            return i->m_state;
+        }
+    }
+    return BLACKLISTED;
+}
+
+template <typename T>
 void
 NeighborSet<T>::UpdateTimeout(T addr, IpInterfaceAddress iface, Time expire)
 {
@@ -94,42 +109,21 @@ NeighborSet<T>::UpdateState(T addr, IpInterfaceAddress iface, NeighborStates sta
         if (i->m_neighborAddress == addr)
         {
             i->m_state = state;
-            if (state == CONFIRMED)
+            switch (state)
             {
+            case HEARD:
+                break;
+            case CONFIRMED:
                 i->m_timeout = Simulator::Now() + Time(99999);
+                break;
+            case BLACKLISTED:
+                i->m_timeout = Simulator::Now() + m_maxBlacklistTime;
+                break;
             }
             return;
         }
     }
 }
-
-/**
- * \brief CloseNeighbor structure
- */
-struct CloseNeighbor
-{
-    /**
-     * Check if the entry is expired
-     *
-     * \param nb NeighborSet::Neighbor entry
-     * \return true if expired, false otherwise
-     */
-    bool operator()(const NeighborSet<Ipv4Address>::Neighbor& nb) const
-    {
-        return nb.m_timeout < Simulator::Now();
-    }
-
-    /**
-     * Check if the entry is expired
-     *
-     * \param nb NeighborSet::Neighbor entry
-     * \return true if expired, false otherwise
-     */
-    bool operator()(const NeighborSet<Ipv6Address>::Neighbor& nb) const
-    {
-        return nb.m_timeout < Simulator::Now();
-    }
-};
 
 template class NeighborSet<Ipv4Address>;
 template class NeighborSet<Ipv6Address>;

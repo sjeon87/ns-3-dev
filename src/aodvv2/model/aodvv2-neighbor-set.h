@@ -67,7 +67,7 @@ class NeighborSet
     /**
      * constructor
      */
-    NeighborSet();
+    NeighborSet(Time maxBlacklistTime);
 
     /// Neighbor description
     struct Neighbor
@@ -110,6 +110,12 @@ class NeighborSet
      */
     Time GetTimeout(T addr);
     /**
+     * Return state for neighbor node with address addr.
+     * \param addr the IP address of the neighbor node
+     * \returns the state for the neighbor node
+     */
+    NeighborStates GetState(T addr);
+    /**
      * Check that node with address addr is neighbor
      * \param addr the IP address to check
      * \returns true if the node with IP address is a neighbor
@@ -139,6 +145,8 @@ class NeighborSet
   private:
     /// vector of entries
     std::vector<Neighbor> m_nb;
+    /// max blacklist time
+    Time m_maxBlacklistTime;
 };
 
 } // namespace aodvv2

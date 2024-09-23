@@ -166,7 +166,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_seqNo(0),
       m_rreqIdCache(m_pathDiscoveryTime),
       m_dpd(m_pathDiscoveryTime),
-      m_nb(),
+      m_nb(m_maxBlacklistTime),
       m_rerrSet(),
       m_rreqCount(0),
       m_rerrCount(0),
@@ -1682,11 +1682,20 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*nextHop=*/sender,
         /*lastUsed=*/m_netTraversalTime,
         /*state=*/ACTIVE);
-    if (m_nb.GetTimeout(dst) == Simulator::Now() - m_rreqWaitTime)
+    if (m_nb.GetState(dst) == HEARD)
     {
-        m_nb.UpdateState(dst,
-                         m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                         CONFIRMED);
+        if (m_nb.GetTimeout(dst) == Simulator::Now() - m_rreqWaitTime)
+        {
+            m_nb.UpdateState(dst,
+                             m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                             CONFIRMED);
+        }
+        else
+        {
+            m_nb.UpdateState(dst,
+                             m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                             BLACKLISTED);
+        }
     }
     LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
@@ -1781,9 +1790,16 @@ Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader)
         rt.SetState(ACTIVE);
         m_routingTable.Update(rt);
 
-        if (m_nb.GetTimeout(neighbor) > Simulator::Now())
+        if (m_nb.GetState(neighbor) == HEARD)
         {
-            m_nb.UpdateState(neighbor, rt.GetInterface(), CONFIRMED);
+            if (m_nb.GetTimeout(neighbor) > Simulator::Now())
+            {
+                m_nb.UpdateState(neighbor, rt.GetInterface(), CONFIRMED);
+            }
+            else
+            {
+                m_nb.UpdateState(neighbor, rt.GetInterface(), BLACKLISTED);
+            }
         }
     }
 }
