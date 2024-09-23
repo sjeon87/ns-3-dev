@@ -47,6 +47,8 @@ enum NeighborStates
     CONFIRMED = 2,   //!< link is valid and bidirectional
 };
 
+const Time INFINITY_TIME = Seconds(99999);
+
 class RoutingProtocol;
 
 /**
@@ -92,10 +94,10 @@ class NeighborSet
          * \param interface IpInterfaceAddress entry
          * \param t Time timeout
          */
-        Neighbor(T ip, IpInterfaceAddress interface, Time t)
+        Neighbor(T ip, IpInterfaceAddress interface)
             : m_neighborAddress(ip),
               m_state(HEARD),
-              m_timeout(t),
+              m_timeout(Simulator::Now() + INFINITY_TIME),
               m_interface(interface),
               m_ackSeqNo(rand() % 1000),
               m_heardRERRSeqNo(0)
@@ -125,16 +127,15 @@ class NeighborSet
      * Update timeout for entry with address addr, if it exists, else add new entry
      * \param addr the IP address to check
      * \param iface the interface address
-     * \param timeout the timeout for the address
      */
-    void UpdateTimeout(T addr, IpInterfaceAddress iface, Time timeout);
+    void AddNeighbor(T addr, IpInterfaceAddress iface);
     /**
      * Update state for entry
      * \param addr the IP address to check
      * \param iface the interface address
-     * \param state the state for the address
+     * \param timeout the timeout for the address
      */
-    void UpdateState(T addr, IpInterfaceAddress iface, NeighborStates state);
+    void UpdateState(T addr, IpInterfaceAddress iface, Time timeout);
 
     /// Remove all entries
     void Clear()

@@ -84,40 +84,51 @@ NeighborSet<T>::GetState(T addr)
 
 template <typename T>
 void
-NeighborSet<T>::UpdateTimeout(T addr, IpInterfaceAddress iface, Time expire)
+NeighborSet<T>::AddNeighbor(T addr, IpInterfaceAddress iface)
 {
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
         if (i->m_neighborAddress == addr)
         {
-            i->m_timeout = std::max(expire + Simulator::Now(), i->m_timeout);
             return;
         }
     }
 
     NS_LOG_LOGIC("Open link to " << addr);
-    Neighbor neighbor(addr, iface, expire + Simulator::Now());
+    Neighbor neighbor(addr, iface);
     m_nb.push_back(neighbor);
 }
 
 template <typename T>
 void
-NeighborSet<T>::UpdateState(T addr, IpInterfaceAddress iface, NeighborStates state)
+NeighborSet<T>::UpdateState(T addr, IpInterfaceAddress iface, Time timeout)
 {
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
         if (i->m_neighborAddress == addr)
         {
-            i->m_state = state;
-            switch (state)
+            switch (i->m_state)
             {
-            case HEARD:
-                break;
             case CONFIRMED:
-                i->m_timeout = Simulator::Now() + Time(99999);
+                break;
+            case HEARD:
+                if (Simulator::Now() < i->m_timeout + timeout)
+                {
+                    i->m_state = CONFIRMED;
+                    i->m_timeout = Simulator::Now() + INFINITY_TIME;
+                }
+                else
+                {
+                    i->m_state = BLACKLISTED;
+                    i->m_timeout = Simulator::Now() + m_maxBlacklistTime;
+                }
                 break;
             case BLACKLISTED:
-                i->m_timeout = Simulator::Now() + m_maxBlacklistTime;
+                if (Simulator::Now() > i->m_timeout)
+                {
+                    i->m_state = HEARD;
+                    i->m_timeout = Simulator::Now() + INFINITY_TIME;
+                }
                 break;
             }
             return;

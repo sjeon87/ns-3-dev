@@ -575,7 +575,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                     if (m_routingTable.LookupValidRoute(origin, toOrigin))
                     {
                         UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
-                        m_nb.UpdateTimeout(toOrigin.GetNextHop(), iface, m_activeRouteTimeout);
+                        m_nb.AddNeighbor(toOrigin.GetNextHop(), iface);
                     }
                     if (!lcb.IsNull())
                     {
@@ -649,8 +649,8 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
             m_routingTable.LookupRoute(origin, toOrigin);
             UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
 
-            m_nb.UpdateTimeout(route->GetGateway(), toDst.GetInterface(), m_activeRouteTimeout);
-            m_nb.UpdateTimeout(toOrigin.GetNextHop(), toDst.GetInterface(), m_activeRouteTimeout);
+            m_nb.AddNeighbor(route->GetGateway(), toDst.GetInterface());
+            m_nb.AddNeighbor(toOrigin.GetNextHop(), toDst.GetInterface());
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
                 ucb(route, p, header);
@@ -1112,7 +1112,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         rt.SetState(UNCONFIRMED);
         rt.SetLastUsed(m_pathDiscoveryTime);
         m_routingTable.Update(rt);
-        m_nb.UpdateTimeout(dst, rt.GetInterface(), m_rrepAckSentTimeout);
+        m_nb.AddNeighbor(dst, rt.GetInterface());
     }
     else
     {
@@ -1130,7 +1130,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         }
         newEntry.SetState(UNCONFIRMED);
         m_routingTable.AddRoute(newEntry);
-        m_nb.UpdateTimeout(dst, newEntry.GetInterface(), m_rrepAckSentTimeout);
+        m_nb.AddNeighbor(dst, newEntry.GetInterface());
     }
 
     m_seqNo++;
@@ -1441,7 +1441,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         toOrigin.SetLastUsed(std::max(Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
                                       toOrigin.GetLastUsed()));
         m_routingTable.Update(toOrigin);
-        // m_nb.UpdateTimeout (src, Time (AllowedHelloLoss * HelloInterval));
     }
 
     LocalRoute<IpAddress> toNeighbor;
@@ -1469,7 +1468,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         toNeighbor.SetNextHop(src);
         m_routingTable.Update(toNeighbor);
     }
-    // m_nb.UpdateTimeout(src, Time(m_allowedHelloLoss * m_helloInterval));
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
                           << static_cast<uint32_t>(rreqHeader.GetHopCount()) << " SeqNo "
@@ -1635,9 +1633,7 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     packet->AddHeader(h);
     LocalRoute<IpAddress> toNeighbor;
     m_routingTable.LookupRoute(neighbor, toNeighbor);
-    m_nb.UpdateTimeout(toNeighbor.GetDestination(),
-                       toNeighbor.GetInterface(),
-                       m_rrepAckSentTimeout);
+    m_nb.AddNeighbor(toNeighbor.GetDestination(), toNeighbor.GetInterface());
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toNeighbor.GetInterface());
     NS_ASSERT(socket);
     socket->SendTo(packet, 0, InetVxSocketAddress(neighbor, AODVV2_PORT));
@@ -1682,21 +1678,18 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*nextHop=*/sender,
         /*lastUsed=*/m_netTraversalTime,
         /*state=*/ACTIVE);
-    if (m_nb.GetState(dst) == HEARD)
+
+    m_nb.UpdateState(dst,
+                     m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                     m_rreqWaitTime);
+
+    std::cout << m_nb.GetState(dst) << std::endl;
+
+    if (m_nb.GetState(dst) == BLACKLISTED) // drop
     {
-        if (m_nb.GetTimeout(dst) == Simulator::Now() - m_rreqWaitTime)
-        {
-            m_nb.UpdateState(dst,
-                             m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                             CONFIRMED);
-        }
-        else
-        {
-            m_nb.UpdateState(dst,
-                             m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                             BLACKLISTED);
-        }
+        return;
     }
+
     LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
     {
@@ -1790,17 +1783,7 @@ Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader)
         rt.SetState(ACTIVE);
         m_routingTable.Update(rt);
 
-        if (m_nb.GetState(neighbor) == HEARD)
-        {
-            if (m_nb.GetTimeout(neighbor) > Simulator::Now())
-            {
-                m_nb.UpdateState(neighbor, rt.GetInterface(), CONFIRMED);
-            }
-            else
-            {
-                m_nb.UpdateState(neighbor, rt.GetInterface(), BLACKLISTED);
-            }
-        }
+        m_nb.UpdateState(neighbor, rt.GetInterface(), Simulator::Now());
     }
 }
 
