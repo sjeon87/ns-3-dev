@@ -24,7 +24,6 @@
 #ifndef AODVV2_NEIGHBOR_H
 #define AODVV2_NEIGHBOR_H
 
-#include "ns3/arp-cache.h"
 #include "ns3/callback.h"
 #include "ns3/internet-module.h"
 #include "ns3/simulator.h"
@@ -67,9 +66,8 @@ class NeighborSet
   public:
     /**
      * constructor
-     * \param delay the delay time for purging the list of neighbors
      */
-    NeighborSet(Time delay);
+    NeighborSet();
 
     /// Neighbor description
     struct Neighbor
@@ -123,11 +121,14 @@ class NeighborSet
      * \param iface the interface address
      * \param timeout the timeout for the address
      */
-    void Update(T addr, IpInterfaceAddress iface, Time timeout);
-    /// Remove all expired entries
-    void Purge();
-    /// Schedule m_ntimer.
-    void ScheduleTimer();
+    void UpdateTimeout(T addr, IpInterfaceAddress iface, Time timeout);
+    /**
+     * Update state for entry
+     * \param addr the IP address to check
+     * \param iface the interface address
+     * \param state the state for the address
+     */
+    void UpdateState(T addr, IpInterfaceAddress iface, NeighborStates state);
 
     /// Remove all entries
     void Clear()
@@ -135,55 +136,9 @@ class NeighborSet
         m_nb.clear();
     }
 
-    /**
-     * Add ARP cache to be used to allow layer 2 notifications processing
-     * \param a pointer to the ARP cache to add
-     */
-    void AddArpCache(Ptr<ArpCache> a);
-    /**
-     * Don't use given ARP cache any more (interface is down)
-     * \param a pointer to the ARP cache to delete
-     */
-    void DelArpCache(Ptr<ArpCache> a);
-
-    /**
-     * Get callback to ProcessTxError
-     * \returns the callback function
-     */
-    Callback<void, const Header&> GetTxErrorCallback() const
-    {
-        return m_txErrorCallback;
-    }
-
-    /**
-     * Set link failure callback
-     * \param cb the callback function
-     */
-    void SetCallback(Callback<void, T> cb)
-    {
-        m_handleLinkFailure = cb;
-    }
-
-    /**
-     * Get link failure callback
-     * \returns the link failure callback
-     */
-    Callback<void, T> GetCallback() const
-    {
-        return m_handleLinkFailure;
-    }
-
   private:
-    /// link failure callback
-    Callback<void, T> m_handleLinkFailure;
-    /// TX error callback
-    Callback<void, const Header&> m_txErrorCallback;
-    /// Timer for neighbor's list. Schedule Purge().
-    Timer m_ntimer;
     /// vector of entries
     std::vector<Neighbor> m_nb;
-    /// list of ARP cached to be used for layer 2 notifications processing
-    std::vector<Ptr<ArpCache>> m_arp;
 };
 
 } // namespace aodvv2

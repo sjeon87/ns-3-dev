@@ -41,18 +41,19 @@ namespace aodvv2
  The Local Route Set
  */
 template <typename T>
-LocalRouteSet<T>::LocalRouteSet(Ptr<NetDevice> dev,
-                                T dst,
-                                uint32_t seqNo,
-                                IpInterfaceAddress iface,
-                                uint32_t hops,
-                                T nextHop,
-                                Time lastUsed)
+LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
+                          T dst,
+                          uint32_t seqNo,
+                          IpInterfaceAddress iface,
+                          uint32_t hops,
+                          T nextHop,
+                          Time lastUsed,
+                          RouteStates state)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
       m_nextHopIface(iface),
       m_lastUsed(lastUsed + Simulator::Now()),
-      m_state(ACTIVE),
+      m_state(state),
       m_hops(hops),
       m_reqCount(0)
 {
@@ -65,13 +66,13 @@ LocalRouteSet<T>::LocalRouteSet(Ptr<NetDevice> dev,
 }
 
 template <typename T>
-LocalRouteSet<T>::~LocalRouteSet()
+LocalRoute<T>::~LocalRoute()
 {
 }
 
 template <typename T>
 bool
-LocalRouteSet<T>::InsertPrecursor(T id)
+LocalRoute<T>::InsertPrecursor(T id)
 {
     NS_LOG_FUNCTION(this << id);
     if (!LookupPrecursor(id))
@@ -87,7 +88,7 @@ LocalRouteSet<T>::InsertPrecursor(T id)
 
 template <typename T>
 bool
-LocalRouteSet<T>::LookupPrecursor(T id)
+LocalRoute<T>::LookupPrecursor(T id)
 {
     NS_LOG_FUNCTION(this << id);
     for (auto i = m_precursorList.begin(); i != m_precursorList.end(); ++i)
@@ -104,7 +105,7 @@ LocalRouteSet<T>::LookupPrecursor(T id)
 
 template <typename T>
 bool
-LocalRouteSet<T>::DeletePrecursor(T id)
+LocalRoute<T>::DeletePrecursor(T id)
 {
     NS_LOG_FUNCTION(this << id);
     auto i = std::remove(m_precursorList.begin(), m_precursorList.end(), id);
@@ -123,7 +124,7 @@ LocalRouteSet<T>::DeletePrecursor(T id)
 
 template <typename T>
 void
-LocalRouteSet<T>::DeleteAllPrecursors()
+LocalRoute<T>::DeleteAllPrecursors()
 {
     NS_LOG_FUNCTION(this);
     m_precursorList.clear();
@@ -131,14 +132,14 @@ LocalRouteSet<T>::DeleteAllPrecursors()
 
 template <typename T>
 bool
-LocalRouteSet<T>::IsPrecursorListEmpty() const
+LocalRoute<T>::IsPrecursorListEmpty() const
 {
     return m_precursorList.empty();
 }
 
 template <typename T>
 void
-LocalRouteSet<T>::GetPrecursors(std::vector<T>& prec) const
+LocalRoute<T>::GetPrecursors(std::vector<T>& prec) const
 {
     NS_LOG_FUNCTION(this);
     if (IsPrecursorListEmpty())
@@ -165,7 +166,7 @@ LocalRouteSet<T>::GetPrecursors(std::vector<T>& prec) const
 
 template <typename T>
 void
-LocalRouteSet<T>::Invalidate(Time badLinkLifetime)
+LocalRoute<T>::Invalidate(Time badLinkLifetime)
 {
     NS_LOG_FUNCTION(this << badLinkLifetime.As(Time::S));
     if (m_state == INVALID)
@@ -179,7 +180,7 @@ LocalRouteSet<T>::Invalidate(Time badLinkLifetime)
 
 template <typename T>
 void
-LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
     std::ostream* os = stream->GetStream();
     // Copy the current ostream state
@@ -227,21 +228,21 @@ LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Ti
     (*os).copyfmt(oldState);
 }
 
-template class LocalRouteSet<Ipv4Address>;
-template class LocalRouteSet<Ipv6Address>;
+template class LocalRoute<Ipv4Address>;
+template class LocalRoute<Ipv6Address>;
 
 /*
  The Local Route
  */
 template <typename T>
-LocalRoute<T>::LocalRoute(Time t)
+LocalRouteSet<T>::LocalRouteSet(Time t)
     : m_badLinkLifetime(t)
 {
 }
 
 template <typename T>
 bool
-LocalRoute<T>::LookupRoute(T id, LocalRouteSet<T>& rt)
+LocalRouteSet<T>::LookupRoute(T id, LocalRoute<T>& rt)
 {
     NS_LOG_FUNCTION(this << id);
     Purge();
@@ -263,7 +264,7 @@ LocalRoute<T>::LookupRoute(T id, LocalRouteSet<T>& rt)
 
 template <typename T>
 bool
-LocalRoute<T>::LookupValidRoute(T id, LocalRouteSet<T>& rt)
+LocalRouteSet<T>::LookupValidRoute(T id, LocalRoute<T>& rt)
 {
     NS_LOG_FUNCTION(this << id);
     if (!LookupRoute(id, rt))
@@ -278,7 +279,7 @@ LocalRoute<T>::LookupValidRoute(T id, LocalRouteSet<T>& rt)
 
 template <typename T>
 bool
-LocalRoute<T>::DeleteRoute(T dst)
+LocalRouteSet<T>::DeleteRoute(T dst)
 {
     NS_LOG_FUNCTION(this << dst);
     Purge();
@@ -293,7 +294,7 @@ LocalRoute<T>::DeleteRoute(T dst)
 
 template <typename T>
 bool
-LocalRoute<T>::AddRoute(LocalRouteSet<T>& rt)
+LocalRouteSet<T>::AddRoute(LocalRoute<T>& rt)
 {
     NS_LOG_FUNCTION(this);
     Purge();
@@ -307,7 +308,7 @@ LocalRoute<T>::AddRoute(LocalRouteSet<T>& rt)
 
 template <typename T>
 bool
-LocalRoute<T>::Update(LocalRouteSet<T>& rt)
+LocalRouteSet<T>::Update(LocalRoute<T>& rt)
 {
     NS_LOG_FUNCTION(this);
     auto i = m_ipAddressEntry.find(rt.GetDestination());
@@ -327,7 +328,7 @@ LocalRoute<T>::Update(LocalRouteSet<T>& rt)
 
 template <typename T>
 bool
-LocalRoute<T>::SetEntryState(T id, RouteStates state)
+LocalRouteSet<T>::SetEntryState(T id, RouteStates state)
 {
     NS_LOG_FUNCTION(this);
     auto i = m_ipAddressEntry.find(id);
@@ -344,7 +345,7 @@ LocalRoute<T>::SetEntryState(T id, RouteStates state)
 
 template <typename T>
 void
-LocalRoute<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t>& unreachable)
+LocalRouteSet<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t>& unreachable)
 {
     NS_LOG_FUNCTION(this);
     Purge();
@@ -361,7 +362,7 @@ LocalRoute<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t>&
 
 template <typename T>
 void
-LocalRoute<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable)
+LocalRouteSet<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable)
 {
     NS_LOG_FUNCTION(this);
     Purge();
@@ -380,7 +381,7 @@ LocalRoute<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable)
 
 template <typename T>
 void
-LocalRoute<T>::DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
+LocalRouteSet<T>::DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
 {
     NS_LOG_FUNCTION(this);
     if (m_ipAddressEntry.empty())
@@ -404,7 +405,7 @@ LocalRoute<T>::DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
 
 template <typename T>
 void
-LocalRoute<T>::Purge()
+LocalRouteSet<T>::Purge()
 {
     NS_LOG_FUNCTION(this);
     if (m_ipAddressEntry.empty())
@@ -441,7 +442,7 @@ LocalRoute<T>::Purge()
 
 template <typename T>
 void
-LocalRoute<T>::Purge(std::map<T, LocalRouteSet<T>>& table) const
+LocalRouteSet<T>::Purge(std::map<T, LocalRoute<T>>& table) const
 {
     NS_LOG_FUNCTION(this);
     if (table.empty())
@@ -478,7 +479,7 @@ LocalRoute<T>::Purge(std::map<T, LocalRouteSet<T>>& table) const
 
 template <typename T>
 bool
-LocalRoute<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
+LocalRouteSet<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
 {
     NS_LOG_FUNCTION(this << neighbor << blacklistTimeout.As(Time::S));
     auto i = m_ipAddressEntry.find(neighbor);
@@ -496,9 +497,9 @@ LocalRoute<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
 
 template <typename T>
 void
-LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
-    std::map<T, LocalRouteSet<T>> table = m_ipAddressEntry;
+    std::map<T, LocalRoute<T>> table = m_ipAddressEntry;
     Purge(table);
     std::ostream* os = stream->GetStream();
     // Copy the current ostream state
@@ -520,8 +521,8 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     *stream->GetStream() << "\n";
 }
 
-template class LocalRoute<Ipv4Address>;
-template class LocalRoute<Ipv6Address>;
+template class LocalRouteSet<Ipv4Address>;
+template class LocalRouteSet<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

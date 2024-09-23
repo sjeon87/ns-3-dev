@@ -149,6 +149,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_pathDiscoveryTime(Time(m_discoveryAttemptsMax * m_netTraversalTime)),
       m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeRouteTimeout))),
       m_nextHopWait(m_nodeTraversalTime + MilliSeconds(10)),
+      m_rreqWaitTime(Seconds(2)),
       m_rreqHolddownTime(Seconds(10)),
       m_rrepAckSentTimeout(Seconds(1)),
       m_rerrTimeout(Seconds(3)),
@@ -165,7 +166,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_seqNo(0),
       m_rreqIdCache(m_pathDiscoveryTime),
       m_dpd(m_pathDiscoveryTime),
-      m_nb(Seconds(1)),
+      m_nb(),
       m_rerrSet(),
       m_rreqCount(0),
       m_rerrCount(0),
@@ -173,8 +174,6 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0))
 {
-    m_nb.SetCallback(
-        MakeCallback(&Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop, this));
 }
 
 template <typename T>
@@ -398,7 +397,7 @@ Aodvv2RoutingProtocol<T>::RouteOutput(Ptr<Packet> p,
     sockerr = Socket::ERROR_NOTERROR;
     Ptr<IpRoute> route;
     IpAddress dst = header.GetDestination();
-    LocalRouteSet<IpAddress> rt;
+    LocalRoute<IpAddress> rt;
     if (m_routingTable.LookupValidRoute(dst, rt))
     {
         route = rt.GetRoute();
@@ -444,7 +443,7 @@ Aodvv2RoutingProtocol<T>::DeferredRouteOutput(Ptr<const Packet> p,
     if (result)
     {
         NS_LOG_LOGIC("Add packet " << p->GetUid() << " to queue.");
-        LocalRouteSet<IpAddress> rt;
+        LocalRoute<IpAddress> rt;
         bool result = m_routingTable.LookupRoute(header.GetDestination(), rt);
         if (!result || ((rt.GetState() != UNCONFIRMED) && result))
         {
@@ -549,7 +548,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                     if (header.GetTtl() > 1)
                     {
                         NS_LOG_LOGIC("Forward broadcast. TTL " << (uint16_t)header.GetTtl());
-                        LocalRouteSet<IpAddress> toBroadcast;
+                        LocalRoute<IpAddress> toBroadcast;
                         if (m_routingTable.LookupRoute(dst, toBroadcast))
                         {
                             Ptr<IpRoute> route = toBroadcast.GetRoute();
@@ -572,11 +571,11 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                 if (m_ip->IsDestinationAddress(dst, iif))
                 {
                     UpdateRouteLifeTime(origin, m_activeRouteTimeout);
-                    LocalRouteSet<IpAddress> toOrigin;
+                    LocalRoute<IpAddress> toOrigin;
                     if (m_routingTable.LookupValidRoute(origin, toOrigin))
                     {
                         UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
-                        m_nb.Update(toOrigin.GetNextHop(), iface, m_activeRouteTimeout);
+                        m_nb.UpdateTimeout(toOrigin.GetNextHop(), iface, m_activeRouteTimeout);
                     }
                     if (!lcb.IsNull())
                     {
@@ -622,7 +621,7 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
     IpAddress dst = header.GetDestination();
     IpAddress origin = header.GetSource();
     m_routingTable.Purge();
-    LocalRouteSet<IpAddress> toDst;
+    LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
     {
         if (toDst.GetState() == ACTIVE)
@@ -646,12 +645,12 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
              * back to the IP source, is also updated to be no less than the current time plus
              * ActiveRouteTimeout
              */
-            LocalRouteSet<IpAddress> toOrigin;
+            LocalRoute<IpAddress> toOrigin;
             m_routingTable.LookupRoute(origin, toOrigin);
             UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
 
-            m_nb.Update(route->GetGateway(), toDst.GetInterface(), m_activeRouteTimeout);
-            m_nb.Update(toOrigin.GetNextHop(), toDst.GetInterface(), m_activeRouteTimeout);
+            m_nb.UpdateTimeout(route->GetGateway(), toDst.GetInterface(), m_activeRouteTimeout);
+            m_nb.UpdateTimeout(toOrigin.GetNextHop(), toDst.GetInterface(), m_activeRouteTimeout);
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
                 ucb(route, p, header);
@@ -695,7 +694,7 @@ Aodvv2RoutingProtocol<T>::SetIpv4(Ptr<Ipv4> ipv4)
         m_lo = m_ip->GetNetDevice(0);
         NS_ASSERT(m_lo);
         // Remember lo route
-        LocalRouteSet<Ipv4Address> rt(
+        LocalRoute<Ipv4Address> rt(
             /*dev=*/m_lo,
             /*dst=*/Ipv4Address::GetLoopback(),
             /*seqNo=*/0,
@@ -772,19 +771,14 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
     if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
-        LocalRouteSet<IpAddress> rt(/*dev=*/dev,
-                                    /*dst=*/iface.GetBroadcast(),
-                                    /*seqNo=*/0,
-                                    /*iface=*/iface,
-                                    /*hops=*/1,
-                                    /*nextHop=*/iface.GetBroadcast(),
-                                    /*lastUsed=*/Simulator::GetMaximumSimulationTime());
+        LocalRoute<IpAddress> rt(/*dev=*/dev,
+                                 /*dst=*/iface.GetBroadcast(),
+                                 /*seqNo=*/0,
+                                 /*iface=*/iface,
+                                 /*hops=*/1,
+                                 /*nextHop=*/iface.GetBroadcast(),
+                                 /*lastUsed=*/Simulator::GetMaximumSimulationTime());
         m_routingTable.AddRoute(rt);
-
-        if (l3->GetInterface(i)->GetArpCache())
-        {
-            m_nb.AddArpCache(l3->GetInterface(i)->GetArpCache());
-        }
     }
     else
     {
@@ -801,14 +795,6 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceDown(uint32_t i)
     // Disable layer 2 link state monitoring (if possible)
     Ptr<IpL3Protocol> l3 = m_ip->template GetObject<IpL3Protocol>();
     Ptr<NetDevice> dev = l3->GetNetDevice(i);
-    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-    {
-        m_nb.DelArpCache(l3->GetInterface(i)->GetArpCache());
-    }
-    else
-    {
-        // TODO Ipv6
-    }
 
     // Close socket
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(m_ip->GetAddress(i, 0));
@@ -884,13 +870,13 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
                 // Add local broadcast record to the routing table
                 Ptr<NetDevice> dev =
                     m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
-                LocalRouteSet<IpAddress> rt(/*dev=*/dev,
-                                            /*dst=*/iface.GetBroadcast(),
-                                            /*seqNo=*/0,
-                                            /*iface=*/iface,
-                                            /*hops=*/1,
-                                            /*nextHop=*/iface.GetBroadcast(),
-                                            /*lastUsed=*/Simulator::GetMaximumSimulationTime());
+                LocalRoute<IpAddress> rt(/*dev=*/dev,
+                                         /*dst=*/iface.GetBroadcast(),
+                                         /*seqNo=*/0,
+                                         /*iface=*/iface,
+                                         /*hops=*/1,
+                                         /*nextHop=*/iface.GetBroadcast(),
+                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime());
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -963,13 +949,13 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
                 m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
             if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
             {
-                LocalRouteSet<IpAddress> rt(/*dev=*/dev,
-                                            /*dst=*/iface.GetBroadcast(),
-                                            /*seqNo=*/0,
-                                            /*iface=*/iface,
-                                            /*hops=*/1,
-                                            /*nextHop=*/iface.GetBroadcast(),
-                                            /*lastUsed=*/Simulator::GetMaximumSimulationTime());
+                LocalRoute<IpAddress> rt(/*dev=*/dev,
+                                         /*dst=*/iface.GetBroadcast(),
+                                         /*seqNo=*/0,
+                                         /*iface=*/iface,
+                                         /*hops=*/1,
+                                         /*nextHop=*/iface.GetBroadcast(),
+                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime());
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -1101,7 +1087,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     rreqHeader.SetTargIp(dst);
     rreqHeader.SetTargMask(32); // TODO me: update if needed
 
-    LocalRouteSet<IpAddress> rt;
+    LocalRoute<IpAddress> rt;
     // Using the Hop field in Routing Table to manage the expanding ring search
     uint16_t hops = 1;
     if (m_routingTable.LookupRoute(dst, rt))
@@ -1126,23 +1112,25 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         rt.SetState(UNCONFIRMED);
         rt.SetLastUsed(m_pathDiscoveryTime);
         m_routingTable.Update(rt);
+        m_nb.UpdateTimeout(dst, rt.GetInterface(), m_rrepAckSentTimeout);
     }
     else
     {
         Ptr<NetDevice> dev = nullptr;
-        LocalRouteSet<IpAddress> newEntry(/*dev=*/dev,
-                                          /*dst=*/dst,
-                                          /*seqNo=*/0,
-                                          /*iface=*/IpInterfaceAddress(),
-                                          /*hops=*/hops,
-                                          /*nextHop=*/IpAddress(),
-                                          /*lastUsed=*/m_pathDiscoveryTime);
+        LocalRoute<IpAddress> newEntry(/*dev=*/dev,
+                                       /*dst=*/dst,
+                                       /*seqNo=*/0,
+                                       /*iface=*/IpInterfaceAddress(),
+                                       /*hops=*/hops,
+                                       /*nextHop=*/IpAddress(),
+                                       /*lastUsed=*/m_pathDiscoveryTime);
         if (hops == m_netDiameter)
         {
             newEntry.IncrementRreqCnt();
         }
         newEntry.SetState(UNCONFIRMED);
         m_routingTable.AddRoute(newEntry);
+        m_nb.UpdateTimeout(dst, newEntry.GetInterface(), m_rrepAckSentTimeout);
     }
 
     m_seqNo++;
@@ -1217,7 +1205,7 @@ Aodvv2RoutingProtocol<T>::ScheduleRreqRetry(IpAddress dst)
     m_addressReqTimer[dst].SetFunction(&Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire, this);
     m_addressReqTimer[dst].Cancel();
     m_addressReqTimer[dst].SetArguments(dst);
-    LocalRouteSet<IpAddress> rt;
+    LocalRoute<IpAddress> rt;
     m_routingTable.LookupRoute(dst, rt);
     Time retry;
     if (rt.GetHop() < m_netDiameter)
@@ -1309,7 +1297,7 @@ bool
 Aodvv2RoutingProtocol<T>::UpdateRouteLifeTime(IpAddress addr, Time lifetime)
 {
     NS_LOG_FUNCTION(this << addr << lifetime);
-    LocalRouteSet<IpAddress> rt;
+    LocalRoute<IpAddress> rt;
     if (m_routingTable.LookupRoute(addr, rt))
     {
         if (rt.GetState() == ACTIVE)
@@ -1329,11 +1317,11 @@ void
 Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress receiver)
 {
     NS_LOG_FUNCTION(this << "sender " << sender << " receiver " << receiver);
-    LocalRouteSet<IpAddress> toNeighbor;
+    LocalRoute<IpAddress> toNeighbor;
     if (!m_routingTable.LookupRoute(sender, toNeighbor))
     {
         Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        LocalRouteSet<IpAddress> newEntry(
+        LocalRoute<IpAddress> newEntry(
             /*dev=*/dev,
             /*dst=*/sender,
             /*seqNo=*/0,
@@ -1353,7 +1341,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
         }
         else
         {
-            LocalRouteSet<IpAddress> newEntry(
+            LocalRoute<IpAddress> newEntry(
                 /*dev=*/dev,
                 /*dst=*/sender,
                 /*seqNo=*/0,
@@ -1377,7 +1365,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     RreqHeader<IpAddress> rreqHeader(tlvHeader);
 
     // A node ignores all RREQs received from any node in its blacklist
-    LocalRouteSet<IpAddress> toPrev;
+    LocalRoute<IpAddress> toPrev;
     if (m_routingTable.LookupRoute(src, toPrev))
     {
         if (toPrev.GetState() == INVALID)
@@ -1418,11 +1406,11 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
      *  5. the Lifetime is set to be the maximum of (ExistingLifetime, MinimalLifetime), where
      *     MinimalLifetime = current time + 2*NetTraversalTime - 2*HopCount*NodeTraversalTime
      */
-    LocalRouteSet<IpAddress> toOrigin;
+    LocalRoute<IpAddress> toOrigin;
     if (!m_routingTable.LookupRoute(origin, toOrigin))
     {
         Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        LocalRouteSet<IpAddress> newEntry(
+        LocalRoute<IpAddress> newEntry(
             /*dev=*/dev,
             /*dst=*/origin,
             /*seqNo=*/rreqHeader.GetSeqNo(),
@@ -1453,22 +1441,21 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         toOrigin.SetLastUsed(std::max(Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
                                       toOrigin.GetLastUsed()));
         m_routingTable.Update(toOrigin);
-        // m_nb.Update (src, Time (AllowedHelloLoss * HelloInterval));
+        // m_nb.UpdateTimeout (src, Time (AllowedHelloLoss * HelloInterval));
     }
 
-    LocalRouteSet<IpAddress> toNeighbor;
+    LocalRoute<IpAddress> toNeighbor;
     if (!m_routingTable.LookupRoute(src, toNeighbor))
     {
         NS_LOG_DEBUG("Neighbor:" << src << " not found in routing table. Creating an entry");
         Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        LocalRouteSet<IpAddress> newEntry(
-            dev,
-            src,
-            rreqHeader.GetOrigSeqNo(),
-            m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-            1,
-            src,
-            m_activeRouteTimeout);
+        LocalRoute<IpAddress> newEntry(dev,
+                                       src,
+                                       rreqHeader.GetOrigSeqNo(),
+                                       m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                                       1,
+                                       src,
+                                       m_activeRouteTimeout);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1482,7 +1469,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         toNeighbor.SetNextHop(src);
         m_routingTable.Update(toNeighbor);
     }
-    // m_nb.Update(src, Time(m_allowedHelloLoss * m_helloInterval));
+    // m_nb.UpdateTimeout(src, Time(m_allowedHelloLoss * m_helloInterval));
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
                           << static_cast<uint32_t>(rreqHeader.GetHopCount()) << " SeqNo "
@@ -1502,7 +1489,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
      * node's existing route table entry for the destination is valid and greater than or equal to
      * the Destination Sequence Number of the RREQ, and the "destination only" flag is NOT set.
      */
-    LocalRouteSet<IpAddress> toDst;
+    LocalRoute<IpAddress> toDst;
     IpAddress dst = rreqHeader.GetTargIp();
     if (m_routingTable.LookupRoute(dst, toDst))
     {
@@ -1571,7 +1558,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
 template <typename T>
 void
 Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
-                                    const LocalRouteSet<IpAddress>& toOrigin,
+                                    const LocalRoute<IpAddress>& toOrigin,
                                     uint8_t hopCount)
 {
     NS_LOG_FUNCTION(this << toOrigin.GetDestination());
@@ -1599,8 +1586,8 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
 
 template <typename T>
 void
-Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRouteSet<IpAddress>& toDst,
-                                                      LocalRouteSet<IpAddress>& toOrigin)
+Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRoute<IpAddress>& toDst,
+                                                      LocalRoute<IpAddress>& toOrigin)
 {
     NS_LOG_FUNCTION(this);
     RrepHeader rrepHeader(
@@ -1629,9 +1616,9 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRouteSet<IpAddress>& 
 
 template <typename T>
 void
-Aodvv2RoutingProtocol<T>::ScheduleRrepAckCheck(LocalRouteSet<IpAddress> toOrigin)
+Aodvv2RoutingProtocol<T>::ScheduleRrepAckCheck(LocalRoute<IpAddress> toOrigin)
 {
-    LocalRouteSet<IpAddress> toNextHop;
+    LocalRoute<IpAddress> toNextHop;
     m_routingTable.LookupRoute(toOrigin.GetNextHop(), toNextHop);
     toNextHop.m_ackTimer.SetFunction(&Aodvv2RoutingProtocol<T>::AckTimerExpire, this);
     toNextHop.m_ackTimer.SetArguments(toNextHop.GetDestination(), m_maxIdleTime);
@@ -1646,8 +1633,11 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     RrepAckHeader<IpAddress> h;
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(h);
-    LocalRouteSet<IpAddress> toNeighbor;
+    LocalRoute<IpAddress> toNeighbor;
     m_routingTable.LookupRoute(neighbor, toNeighbor);
+    m_nb.UpdateTimeout(toNeighbor.GetDestination(),
+                       toNeighbor.GetInterface(),
+                       m_rrepAckSentTimeout);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toNeighbor.GetInterface());
     NS_ASSERT(socket);
     socket->SendTo(packet, 0, InetVxSocketAddress(neighbor, AODVV2_PORT));
@@ -1683,15 +1673,22 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
      * message.
      */
     Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-    LocalRouteSet<IpAddress> newEntry(
+    LocalRoute<IpAddress> newEntry(
         /*dev=*/dev,
         /*dst=*/dst,
         /*seqNo=*/rrepHeader.GetSeqNo(),
         /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
         /*hops=*/hop,
         /*nextHop=*/sender,
-        /*lastUsed=*/m_netTraversalTime);
-    LocalRouteSet<IpAddress> toDst;
+        /*lastUsed=*/m_netTraversalTime,
+        /*state=*/ACTIVE);
+    if (m_nb.GetTimeout(dst) == Simulator::Now() - m_rreqWaitTime)
+    {
+        m_nb.UpdateState(dst,
+                         m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                         CONFIRMED);
+    }
+    LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
     {
         // The existing entry is updated only in the following circumstances:
@@ -1736,7 +1733,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         return;
     }
 
-    LocalRouteSet<IpAddress> toOrigin;
+    LocalRoute<IpAddress> toOrigin;
     if (!m_routingTable.LookupRoute(rrepHeader.GetOrigIp(), toOrigin) ||
         toOrigin.GetState() == UNCONFIRMED)
     {
@@ -1751,7 +1748,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         toDst.InsertPrecursor(toOrigin.GetNextHop());
         m_routingTable.Update(toDst);
 
-        LocalRouteSet<IpAddress> toNextHopToDst;
+        LocalRoute<IpAddress> toNextHopToDst;
         m_routingTable.LookupRoute(toDst.GetNextHop(), toNextHopToDst);
         toNextHopToDst.InsertPrecursor(toOrigin.GetNextHop());
         m_routingTable.Update(toNextHopToDst);
@@ -1759,7 +1756,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         toOrigin.InsertPrecursor(toDst.GetNextHop());
         m_routingTable.Update(toOrigin);
 
-        LocalRouteSet<IpAddress> toNextHopToOrigin;
+        LocalRoute<IpAddress> toNextHopToOrigin;
         m_routingTable.LookupRoute(toOrigin.GetNextHop(), toNextHopToOrigin);
         toNextHopToOrigin.InsertPrecursor(toDst.GetNextHop());
         m_routingTable.Update(toNextHopToOrigin);
@@ -1777,12 +1774,17 @@ void
 Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this);
-    LocalRouteSet<IpAddress> rt;
+    LocalRoute<IpAddress> rt;
     if (m_routingTable.LookupRoute(neighbor, rt))
     {
         rt.m_ackTimer.Cancel();
         rt.SetState(ACTIVE);
         m_routingTable.Update(rt);
+
+        if (m_nb.GetTimeout(neighbor) > Simulator::Now())
+        {
+            m_nb.UpdateState(neighbor, rt.GetInterface(), CONFIRMED);
+        }
     }
 }
 
@@ -1820,7 +1822,7 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
         }
         else
         {
-            LocalRouteSet<IpAddress> toDst;
+            LocalRoute<IpAddress> toDst;
             m_routingTable.LookupRoute(i->first, toDst);
             toDst.GetPrecursors(precursors);
             ++i;
@@ -1840,7 +1842,7 @@ void
 Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
 {
     NS_LOG_LOGIC(this);
-    LocalRouteSet<IpAddress> toDst;
+    LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupValidRoute(dst, toDst))
     {
         SendPacketFromQueue(dst, toDst.GetRoute());
@@ -1944,7 +1946,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
     std::vector<IpAddress> precursors;
     std::map<IpAddress, uint32_t> unreachable;
 
-    LocalRouteSet<IpAddress> toNextHop;
+    LocalRoute<IpAddress> toNextHop;
     if (!m_routingTable.LookupRoute(nextHop, toNextHop))
     {
         return;
@@ -1964,7 +1966,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         }
         else
         {
-            LocalRouteSet<IpAddress> toDst;
+            LocalRoute<IpAddress> toDst;
             m_routingTable.LookupRoute(i->first, toDst);
             toDst.GetPrecursors(precursors);
             ++i;
@@ -2000,7 +2002,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
     }
     RerrHeader<IpAddress> rerrHeader;
     rerrHeader.AddUnDestination(dst, dstSeqNo);
-    LocalRouteSet<IpAddress> toOrigin;
+    LocalRoute<IpAddress> toOrigin;
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rerrHeader);
     if (m_routingTable.LookupValidRoute(origin, toOrigin))
@@ -2065,7 +2067,7 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
     // If there is only one precursor, RERR SHOULD be unicast toward that precursor
     if (precursors.size() == 1)
     {
-        LocalRouteSet<IpAddress> toPrecursor;
+        LocalRoute<IpAddress> toPrecursor;
         if (m_routingTable.LookupValidRoute(precursors.front(), toPrecursor))
         {
             if (m_rerrSet.HasRerr(toPrecursor.GetDestination(),
@@ -2098,7 +2100,7 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
     //  Should only transmit RERR on those interfaces which have precursor nodes for the broken
     //  route
     std::vector<IpInterfaceAddress> ifaces;
-    LocalRouteSet<IpAddress> toPrecursor;
+    LocalRoute<IpAddress> toPrecursor;
     for (auto i = precursors.begin(); i != precursors.end(); ++i)
     {
         if (m_routingTable.LookupValidRoute(*i, toPrecursor) &&

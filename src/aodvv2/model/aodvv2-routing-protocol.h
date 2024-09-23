@@ -388,7 +388,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * route to D.
      */
     Time m_nextHopWait;        ///< Period of our waiting for the neighbour's RREP_ACK
-    Time m_rreqHolddownTime;   ///< Period of time to consider an RREQ expired
+    Time m_rreqWaitTime;       ///< Period of time to wait for a RREQ reply
+    Time m_rreqHolddownTime;   ///< Period of time to wait before another route discovery
     Time m_rrepAckSentTimeout; ///< Period of time to consider an RREP_ACK expired
     Time m_rerrTimeout;        ///< Period of time to consider an RERR expired
     Time m_maxIdleTime;        ///< Time for which the node is put into the blacklist
@@ -416,7 +417,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     Ptr<NetDevice> m_lo;
 
     /// Routing table
-    LocalRoute<IpAddress> m_routingTable;
+    LocalRouteSet<IpAddress> m_routingTable;
     /// A "drop-front" queue used by the routing layer to buffer packets to which it does not have a
     /// route.
     RequestQueue<IpAddress> m_queue;
@@ -483,7 +484,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      */
     bool UpdateRouteLifeTime(IpAddress addr, Time lt);
     /**
-     * Update neighbor record.
+     * UpdateTimeout neighbor record.
      * \param receiver is supposed to be my interface
      * \param sender is supposed to be IP address of my neighbor.
      */
@@ -587,18 +588,17 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * \param hopCount hop count
      */
     void SendReply(const RreqHeader<IpAddress>& rreqHeader,
-                   const LocalRouteSet<IpAddress>& toOrigin,
+                   const LocalRoute<IpAddress>& toOrigin,
                    uint8_t hopCount);
     /** Send RREP by intermediate node
      * \param toDst routing table entry to destination
      * \param toOrigin routing table entry to originator
      */
-    void SendReplyByIntermediateNode(LocalRouteSet<IpAddress>& toDst,
-                                     LocalRouteSet<IpAddress>& toOrigin);
+    void SendReplyByIntermediateNode(LocalRoute<IpAddress>& toDst, LocalRoute<IpAddress>& toOrigin);
     /** Schedule RREP_ACK check
      * \param toOrigin routing table entry to originator
      */
-    void ScheduleRrepAckCheck(LocalRouteSet<IpAddress> toOrigin);
+    void ScheduleRrepAckCheck(LocalRoute<IpAddress> toOrigin);
     /** Send RREP_ACK
      * \param neighbor neighbor address
      */

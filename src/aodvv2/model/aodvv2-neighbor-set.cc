@@ -35,18 +35,14 @@ NS_LOG_COMPONENT_DEFINE("Aodvv2NeighborSet");
 namespace aodvv2
 {
 template <typename T>
-NeighborSet<T>::NeighborSet(Time delay)
-    : m_ntimer(Timer::CANCEL_ON_DESTROY)
+NeighborSet<T>::NeighborSet()
 {
-    m_ntimer.SetDelay(delay);
-    m_ntimer.SetFunction(&NeighborSet::Purge, this);
 }
 
 template <typename T>
 bool
 NeighborSet<T>::IsNeighbor(T addr)
 {
-    Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
         if (i->m_neighborAddress == addr)
@@ -61,7 +57,6 @@ template <typename T>
 Time
 NeighborSet<T>::GetTimeout(T addr)
 {
-    Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
         if (i->m_neighborAddress == addr)
@@ -74,7 +69,7 @@ NeighborSet<T>::GetTimeout(T addr)
 
 template <typename T>
 void
-NeighborSet<T>::Update(T addr, IpInterfaceAddress iface, Time expire)
+NeighborSet<T>::UpdateTimeout(T addr, IpInterfaceAddress iface, Time expire)
 {
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
@@ -88,7 +83,24 @@ NeighborSet<T>::Update(T addr, IpInterfaceAddress iface, Time expire)
     NS_LOG_LOGIC("Open link to " << addr);
     Neighbor neighbor(addr, iface, expire + Simulator::Now());
     m_nb.push_back(neighbor);
-    Purge();
+}
+
+template <typename T>
+void
+NeighborSet<T>::UpdateState(T addr, IpInterfaceAddress iface, NeighborStates state)
+{
+    for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
+    {
+        if (i->m_neighborAddress == addr)
+        {
+            i->m_state = state;
+            if (state == CONFIRMED)
+            {
+                i->m_timeout = Simulator::Now() + Time(99999);
+            }
+            return;
+        }
+    }
 }
 
 /**
@@ -118,54 +130,6 @@ struct CloseNeighbor
         return nb.m_timeout < Simulator::Now();
     }
 };
-
-template <typename T>
-void
-NeighborSet<T>::Purge()
-{
-    if (m_nb.empty())
-    {
-        return;
-    }
-
-    CloseNeighbor pred;
-    if (!m_handleLinkFailure.IsNull())
-    {
-        for (auto j = m_nb.begin(); j != m_nb.end(); ++j)
-        {
-            if (pred(*j))
-            {
-                NS_LOG_LOGIC("Close link to " << j->m_neighborAddress);
-                m_handleLinkFailure(j->m_neighborAddress);
-            }
-        }
-    }
-    m_nb.erase(std::remove_if(m_nb.begin(), m_nb.end(), pred), m_nb.end());
-    m_ntimer.Cancel();
-    m_ntimer.Schedule();
-}
-
-template <typename T>
-void
-NeighborSet<T>::ScheduleTimer()
-{
-    m_ntimer.Cancel();
-    m_ntimer.Schedule();
-}
-
-template <typename T>
-void
-NeighborSet<T>::AddArpCache(Ptr<ArpCache> a)
-{
-    m_arp.push_back(a);
-}
-
-template <typename T>
-void
-NeighborSet<T>::DelArpCache(Ptr<ArpCache> a)
-{
-    m_arp.erase(std::remove(m_arp.begin(), m_arp.end(), a), m_arp.end());
-}
 
 template class NeighborSet<Ipv4Address>;
 template class NeighborSet<Ipv6Address>;

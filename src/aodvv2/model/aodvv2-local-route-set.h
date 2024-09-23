@@ -54,10 +54,10 @@ enum RouteStates
 
 /**
  * \ingroup aodvv2
- * \brief Local Route Set entry
+ * \brief Local Route entry
  */
 template <typename T>
-class LocalRouteSet
+class LocalRoute
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
@@ -80,16 +80,18 @@ class LocalRouteSet
      * \param hops the number of hops
      * \param nextHop the IP address of the next hop
      * \param lastUsed the lastUsed time of the entry
+     * \param state the route state
      */
-    LocalRouteSet(Ptr<NetDevice> dev = nullptr,
-                  T dst = T(),
-                  uint32_t seqNo = 0,
-                  IpInterfaceAddress iface = IpInterfaceAddress(),
-                  uint32_t hops = 0,
-                  T nextHop = T(),
-                  Time lastUsed = Simulator::Now());
+    LocalRoute(Ptr<NetDevice> dev = nullptr,
+               T dst = T(),
+               uint32_t seqNo = 0,
+               IpInterfaceAddress iface = IpInterfaceAddress(),
+               uint32_t hops = 0,
+               T nextHop = T(),
+               Time lastUsed = Simulator::Now(),
+               RouteStates state = UNCONFIRMED);
 
-    ~LocalRouteSet();
+    ~LocalRoute();
 
     ///\name Precursors management
     //\{
@@ -377,10 +379,10 @@ class LocalRouteSet
 
 /**
  * \ingroup aodvv2
- * \brief The Local Route used by AODVv2 protocol
+ * \brief The Local Route Set used by AODVv2 protocol
  */
 template <typename T>
-class LocalRoute
+class LocalRouteSet
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
@@ -393,9 +395,9 @@ class LocalRoute
   public:
     /**
      * constructor
-     * \param t the local route entry time
+     * \param t the local route entry badlink time
      */
-    LocalRoute(Time t);
+    LocalRouteSet(Time t);
 
     ///\name Handle time of invalid route
     //\{
@@ -425,7 +427,7 @@ class LocalRoute
      * \param r local route entry
      * \return true in success
      */
-    bool AddRoute(LocalRouteSet<T>& r);
+    bool AddRoute(LocalRoute<T>& r);
     /**
      * Delete local route entry with destination address dst, if it exists.
      * \param dst destination address
@@ -438,20 +440,20 @@ class LocalRoute
      * \param rt entry with destination address dst, if exists
      * \return true on success
      */
-    bool LookupRoute(T dst, LocalRouteSet<T>& rt);
+    bool LookupRoute(T dst, LocalRoute<T>& rt);
     /**
      * Lookup route in VALID state
      * \param dst destination address
      * \param rt entry with destination address dst, if exists
      * \return true on success
      */
-    bool LookupValidRoute(T dst, LocalRouteSet<T>& rt);
+    bool LookupValidRoute(T dst, LocalRoute<T>& rt);
     /**
      * Update local route
      * \param rt entry with destination address dst, if exists
      * \return true on success
      */
-    bool Update(LocalRouteSet<T>& rt);
+    bool Update(LocalRoute<T>& rt);
     /**
      * Set local route entry flags
      * \param dst destination address
@@ -505,14 +507,14 @@ class LocalRoute
 
   private:
     /// The local route set
-    std::map<T, LocalRouteSet<T>> m_ipAddressEntry;
+    std::map<T, LocalRoute<T>> m_ipAddressEntry;
     /// Deletion time for invalid routes
     Time m_badLinkLifetime;
     /**
      * const version of Purge, for use by Print() method
      * \param table the local route set to purge
      */
-    void Purge(std::map<T, LocalRouteSet<T>>& table) const;
+    void Purge(std::map<T, LocalRoute<T>>& table) const;
 };
 
 } // namespace aodvv2
