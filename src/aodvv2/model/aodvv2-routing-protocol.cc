@@ -1687,8 +1687,6 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
                      m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                      m_rreqWaitTime);
 
-    std::cout << m_nb.GetState(dst) << std::endl;
-
     if (m_nb.GetState(dst) == BLACKLISTED) // drop
     {
         return;
