@@ -1443,6 +1443,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         m_routingTable.Update(toOrigin);
     }
 
+    m_nb.AddNeighbor(origin, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
+
     LocalRoute<IpAddress> toNeighbor;
     if (!m_routingTable.LookupRoute(src, toNeighbor))
     {
@@ -1468,6 +1470,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         toNeighbor.SetNextHop(src);
         m_routingTable.Update(toNeighbor);
     }
+
+    m_nb.AddNeighbor(src, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
                           << static_cast<uint32_t>(rreqHeader.GetHopCount()) << " SeqNo "

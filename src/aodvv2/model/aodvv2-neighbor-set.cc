@@ -134,6 +134,7 @@ NeighborSet<T>::UpdateState(T addr, IpInterfaceAddress iface, Time timeout)
             return;
         }
     }
+    AddNeighbor(addr, iface);
 }
 
 template class NeighborSet<Ipv4Address>;
