@@ -595,6 +595,10 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      */
     void SendReplyByIntermediateNode(LocalRouteSet<IpAddress>& toDst,
                                      LocalRouteSet<IpAddress>& toOrigin);
+    /** Schedule RREP_ACK check
+     * \param toOrigin routing table entry to originator
+     */
+    void ScheduleRrepAckCheck(LocalRouteSet<IpAddress> toOrigin);
     /** Send RREP_ACK
      * \param neighbor neighbor address
      */

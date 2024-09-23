@@ -1613,11 +1613,7 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRouteSet<IpAddress>& 
      */
     if (toDst.GetHop() == 1)
     {
-        LocalRouteSet<IpAddress> toNextHop;
-        m_routingTable.LookupRoute(toOrigin.GetNextHop(), toNextHop);
-        toNextHop.m_ackTimer.SetFunction(&Aodvv2RoutingProtocol<T>::AckTimerExpire, this);
-        toNextHop.m_ackTimer.SetArguments(toNextHop.GetDestination(), m_maxIdleTime);
-        toNextHop.m_ackTimer.SetDelay(m_nextHopWait);
+        ScheduleRrepAckCheck(toOrigin);
     }
     toDst.InsertPrecursor(toOrigin.GetNextHop());
     toOrigin.InsertPrecursor(toDst.GetNextHop());
@@ -1629,6 +1625,17 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRouteSet<IpAddress>& 
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
     socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
+}
+
+template <typename T>
+void
+Aodvv2RoutingProtocol<T>::ScheduleRrepAckCheck(LocalRouteSet<IpAddress> toOrigin)
+{
+    LocalRouteSet<IpAddress> toNextHop;
+    m_routingTable.LookupRoute(toOrigin.GetNextHop(), toNextHop);
+    toNextHop.m_ackTimer.SetFunction(&Aodvv2RoutingProtocol<T>::AckTimerExpire, this);
+    toNextHop.m_ackTimer.SetArguments(toNextHop.GetDestination(), m_maxIdleTime);
+    toNextHop.m_ackTimer.SetDelay(m_rrepAckSentTimeout);
 }
 
 template <typename T>
