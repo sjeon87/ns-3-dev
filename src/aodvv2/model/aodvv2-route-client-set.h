@@ -60,19 +60,19 @@ class RouteClientSet
     {
         /// RouteClient T ip address
         T m_ip;
-        /// RouteClient uint16_t mask
-        uint16_t m_mask;
-        /// RouteClient uint16_t cost
-        uint16_t m_cost;
+        /// RouteClient uint32_t mask
+        uint32_t m_mask;
+        /// RouteClient uint32_t cost
+        uint32_t m_cost;
 
         /**
          * \brief RouteClient structure constructor
          *
          * \param ip T ip address
-         * \param mask uint16_t mask
-         * \param cost uint16_t cost
+         * \param mask uint32_t mask
+         * \param cost uint32_t cost
          */
-        RouteClient(T ip, uint16_t mask, uint16_t cost)
+        RouteClient(T ip, uint32_t mask, uint32_t cost)
             : m_ip(ip),
               m_mask(mask),
               m_cost(cost)
@@ -85,7 +85,7 @@ class RouteClientSet
      * \param addr the IP address of the client
      * \returns the cost for the address
      */
-    uint16_t GetCost(T addr);
+    uint32_t GetCost(T addr);
     /**
      * Check that node with address ip is already in the list
      * \param ip the ip address
@@ -98,7 +98,7 @@ class RouteClientSet
      * \param mask the mask of the address
      * \param cost the cost of the address
      */
-    void Add(T ip, uint16_t mask, uint16_t cost);
+    void Add(T ip, uint32_t mask, uint32_t cost);
 
     /// Remove all entries
     void Clear()

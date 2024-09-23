@@ -20,8 +20,8 @@
  * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
-#ifndef AODVV2_RTABLE_H
-#define AODVV2_RTABLE_H
+#ifndef AODVV2_LOCAL_ROUTE_SET_H
+#define AODVV2_LOCAL_ROUTE_SET_H
 
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-route.h"
@@ -54,7 +54,7 @@ enum RouteStates
 
 /**
  * \ingroup aodvv2
- * \brief Routing table entry
+ * \brief Local Route Set entry
  */
 template <typename T>
 class LocalRouteSet
@@ -85,7 +85,7 @@ class LocalRouteSet
                   T dst = T(),
                   uint32_t seqNo = 0,
                   IpInterfaceAddress iface = IpInterfaceAddress(),
-                  uint16_t hops = 0,
+                  uint32_t hops = 0,
                   T nextHop = T(),
                   Time lastUsed = Simulator::Now());
 
@@ -244,7 +244,7 @@ class LocalRouteSet
      * Set the number of hops
      * \param hop the number of hops
      */
-    void SetHop(uint16_t hop)
+    void SetHop(uint32_t hop)
     {
         m_hops = hop;
     }
@@ -253,7 +253,7 @@ class LocalRouteSet
      * Get the number of hops
      * \returns the number of hops
      */
-    uint16_t GetHop() const
+    uint32_t GetHop() const
     {
         return m_hops;
     }
@@ -366,18 +366,18 @@ class LocalRouteSet
     std::vector<T> m_precursorList;
     /// ip address of the originator router
     T m_seqNoRtr;
-    /// Routing state: unconfirmed, idle, active, invalid
+    /// Route state: unconfirmed, idle, active, invalid
     RouteStates m_state;
 
     /// Hop Count (number of hops needed to reach destination)
-    uint16_t m_hops;
+    uint32_t m_hops;
     /// Number of route requests
     uint8_t m_reqCount;
 };
 
 /**
  * \ingroup aodvv2
- * \brief The Routing table used by AODVv2 protocol
+ * \brief The Local Route used by AODVv2 protocol
  */
 template <typename T>
 class LocalRoute
@@ -393,7 +393,7 @@ class LocalRoute
   public:
     /**
      * constructor
-     * \param t the routing table entry time
+     * \param t the local route entry time
      */
     LocalRoute(Time t);
 
@@ -421,19 +421,19 @@ class LocalRoute
 
     //\}
     /**
-     * Add routing table entry if it doesn't yet exist in routing table
-     * \param r routing table entry
+     * Add local route entry if it doesn't yet exist in the set
+     * \param r local route entry
      * \return true in success
      */
     bool AddRoute(LocalRouteSet<T>& r);
     /**
-     * Delete routing table entry with destination address dst, if it exists.
+     * Delete local route entry with destination address dst, if it exists.
      * \param dst destination address
      * \return true on success
      */
     bool DeleteRoute(T dst);
     /**
-     * Lookup routing table entry with destination address dst
+     * Lookup local route entry with destination address dst
      * \param dst destination address
      * \param rt entry with destination address dst, if exists
      * \return true on success
@@ -447,13 +447,13 @@ class LocalRoute
      */
     bool LookupValidRoute(T dst, LocalRouteSet<T>& rt);
     /**
-     * Update routing table
+     * Update local route
      * \param rt entry with destination address dst, if exists
      * \return true on success
      */
     bool Update(LocalRouteSet<T>& rt);
     /**
-     * Set routing table entry flags
+     * Set local route entry flags
      * \param dst destination address
      * \param state the routing flags
      * \return true on success
@@ -481,7 +481,7 @@ class LocalRoute
      */
     void DeleteAllRoutesFromInterface(IpInterfaceAddress iface);
 
-    /// Delete all entries from routing table
+    /// Delete all entries from local route set
     void Clear()
     {
         m_ipAddressEntry.clear();
@@ -497,20 +497,20 @@ class LocalRoute
      */
     bool MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout);
     /**
-     * Print routing table
+     * Print local route
      * \param stream the output stream
      * \param unit The time unit to use (default Time::S)
      */
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 
   private:
-    /// The routing table
+    /// The local route set
     std::map<T, LocalRouteSet<T>> m_ipAddressEntry;
     /// Deletion time for invalid routes
     Time m_badLinkLifetime;
     /**
      * const version of Purge, for use by Print() method
-     * \param table the routing table entry to purge
+     * \param table the local route set to purge
      */
     void Purge(std::map<T, LocalRouteSet<T>>& table) const;
 };
@@ -518,4 +518,4 @@ class LocalRoute
 } // namespace aodvv2
 } // namespace ns3
 
-#endif /* AODVV2_RTABLE_H */
+#endif /* AODVV2_LOCAL_ROUTE_SET_H */

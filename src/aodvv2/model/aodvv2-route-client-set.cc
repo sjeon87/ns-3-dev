@@ -55,13 +55,13 @@ RouteClientSet<T>::HasClient(T ip)
 
 template <typename T>
 void
-RouteClientSet<T>::Add(T ip, uint16_t mask, uint16_t cost)
+RouteClientSet<T>::Add(T ip, uint32_t mask, uint32_t cost)
 {
     m_rc.push_back(RouteClient(ip, mask, cost));
 }
 
 template <typename T>
-uint16_t
+uint32_t
 RouteClientSet<T>::GetCost(T addr)
 {
     for (auto i = m_rc.begin(); i != m_rc.end(); ++i)

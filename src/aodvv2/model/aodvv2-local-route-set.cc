@@ -32,20 +32,20 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingTable");
+NS_LOG_COMPONENT_DEFINE("Aodvv2LocalRouteSet");
 
 namespace aodvv2
 {
 
 /*
- The Routing Table
+ The Local Route Set
  */
 template <typename T>
 LocalRouteSet<T>::LocalRouteSet(Ptr<NetDevice> dev,
                                 T dst,
                                 uint32_t seqNo,
                                 IpInterfaceAddress iface,
-                                uint16_t hops,
+                                uint32_t hops,
                                 T nextHop,
                                 Time lastUsed)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
@@ -231,7 +231,7 @@ template class LocalRouteSet<Ipv4Address>;
 template class LocalRouteSet<Ipv6Address>;
 
 /*
- The Routing Table
+ The Local Route
  */
 template <typename T>
 LocalRoute<T>::LocalRoute(Time t)
@@ -506,7 +506,7 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     oldState.copyfmt(*os);
 
     *os << std::resetiosflags(std::ios::adjustfield) << std::setiosflags(std::ios::left);
-    *os << "\nAODVv2 Routing table\n";
+    *os << "\nAODVv2 Local Route\n";
     *os << std::setw(16) << "Destination";
     *os << std::setw(16) << "Gateway";
     *os << std::setw(16) << "Interface";
