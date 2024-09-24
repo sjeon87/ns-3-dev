@@ -371,7 +371,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     double_t m_controlTrafficLimit;  ///< Maximum number of control packets that can be sent
     uint16_t m_rreqRateLimit;        ///< Maximum number of RREQ per second.
     uint16_t m_rerrRateLimit;        ///< Maximum number of REER per second.
-    Time m_activeRouteTimeout; ///< Period of time during which the route is considered to be valid.
+    Time m_activeInterval;  ///< Period of time during which the route is considered to be valid.
     uint32_t m_netDiameter; ///< Net diameter measures the maximum possible number of hops between
                             ///< two nodes in the network
     /**
@@ -426,7 +426,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Request sequence number
     uint32_t m_seqNo;
     /// Handle duplicated RREQ
-    IdCache<IpAddress> m_rreqIdCache;
+    IdCache<IpAddress> m_mms;
     /// Handle duplicated broadcast/multicast packets
     DuplicatePacketDetection<IpHeader> m_dpd;
     /// Handle neighbors

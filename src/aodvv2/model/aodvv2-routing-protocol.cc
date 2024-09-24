@@ -142,12 +142,12 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_controlTrafficLimit(0.1),
       m_rreqRateLimit(1 / m_controlTrafficLimit),
       m_rerrRateLimit(1 / m_controlTrafficLimit),
-      m_activeRouteTimeout(Seconds(5)),
+      m_activeInterval(Seconds(5)),
       m_netDiameter(m_maxHopCount),
       m_nodeTraversalTime(MilliSeconds(40)),
       m_netTraversalTime(Seconds(2)),
       m_pathDiscoveryTime(Time(m_discoveryAttemptsMax * m_netTraversalTime)),
-      m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeRouteTimeout))),
+      m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeInterval))),
       m_nextHopWait(m_nodeTraversalTime + MilliSeconds(10)),
       m_rreqWaitTime(Seconds(2)),
       m_rreqHolddownTime(Seconds(10)),
@@ -164,7 +164,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_queue(m_maxQueueLen, m_maxQueueTime),
       m_requestId(0),
       m_seqNo(0),
-      m_rreqIdCache(m_pathDiscoveryTime),
+      m_mms(m_maxSeqnumLifetime),
       m_dpd(m_pathDiscoveryTime),
       m_nb(m_maxBlacklistTime),
       m_rerrSet(),
@@ -231,7 +231,7 @@ Aodvv2RoutingProtocol<T>::GetTypeId()
             .AddAttribute("ActiveRouteTimeout",
                           "Period of time during which the route is considered to be valid",
                           TimeValue(Seconds(3)),
-                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_activeRouteTimeout),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_activeInterval),
                           MakeTimeChecker())
             .AddAttribute("MyRouteTimeout",
                           "Value of lifetime field in RREP generating by this node = 2 * "
@@ -410,8 +410,8 @@ Aodvv2RoutingProtocol<T>::RouteOutput(Ptr<Packet> p,
             sockerr = Socket::ERROR_NOROUTETOHOST;
             return Ptr<IpRoute>();
         }
-        UpdateRouteLifeTime(dst, m_activeRouteTimeout);
-        UpdateRouteLifeTime(route->GetGateway(), m_activeRouteTimeout);
+        UpdateRouteLifeTime(dst, m_activeInterval);
+        UpdateRouteLifeTime(route->GetGateway(), m_activeInterval);
         return route;
     }
 
@@ -517,7 +517,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                                                           << ". Drop.");
                         return true;
                     }
-                    UpdateRouteLifeTime(origin, m_activeRouteTimeout);
+                    UpdateRouteLifeTime(origin, m_activeInterval);
                     Ptr<Packet> packet = p->Copy();
                     if (!lcb.IsNull())
                     {
@@ -570,11 +570,11 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                 // Unicast local delivery
                 if (m_ip->IsDestinationAddress(dst, iif))
                 {
-                    UpdateRouteLifeTime(origin, m_activeRouteTimeout);
+                    UpdateRouteLifeTime(origin, m_activeInterval);
                     LocalRoute<IpAddress> toOrigin;
                     if (m_routingTable.LookupValidRoute(origin, toOrigin))
                     {
-                        UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
+                        UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeInterval);
                         m_nb.AddNeighbor(toOrigin.GetNextHop(), iface);
                     }
                     if (!lcb.IsNull())
@@ -636,9 +636,9 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
              *  path to the destination is updated to be no less than the current
              *  time plus ActiveRouteTimeout.
              */
-            UpdateRouteLifeTime(origin, m_activeRouteTimeout);
-            UpdateRouteLifeTime(dst, m_activeRouteTimeout);
-            UpdateRouteLifeTime(route->GetGateway(), m_activeRouteTimeout);
+            UpdateRouteLifeTime(origin, m_activeInterval);
+            UpdateRouteLifeTime(dst, m_activeInterval);
+            UpdateRouteLifeTime(route->GetGateway(), m_activeInterval);
             /*
              *  Since the route between each originator and destination pair is expected to be
              * symmetric, the Active Route Lifetime for the previous hop, along the reverse path
@@ -647,7 +647,7 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
              */
             LocalRoute<IpAddress> toOrigin;
             m_routingTable.LookupRoute(origin, toOrigin);
-            UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeRouteTimeout);
+            UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeInterval);
 
             m_nb.AddNeighbor(route->GetGateway(), toDst.GetInterface());
             m_nb.AddNeighbor(toOrigin.GetNextHop(), toDst.GetInterface());
@@ -1150,7 +1150,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         rreqHeader.SetRtrMask(32); // TODO me: update if needed
 
         // TODO me: update metric
-        m_rreqIdCache.IsDuplicate(iface.GetAddress(), 32, dst, 1);
+        m_mms.IsDuplicate(iface.GetAddress(), 32, dst, 1);
 
         Ptr<Packet> packet = Create<Packet>();
 
@@ -1328,7 +1328,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
             /*hops=*/1,
             /*nextHop=*/sender,
-            /*lastUsed=*/m_activeRouteTimeout);
+            /*lastUsed=*/m_activeInterval);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1337,7 +1337,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
         if (toNeighbor.GetValidSeqNo() && (toNeighbor.GetHop() == 1) &&
             (toNeighbor.GetOutputDevice() == dev))
         {
-            toNeighbor.SetLastUsed(std::max(m_activeRouteTimeout, toNeighbor.GetLastUsed()));
+            toNeighbor.SetLastUsed(std::max(m_activeInterval, toNeighbor.GetLastUsed()));
         }
         else
         {
@@ -1348,7 +1348,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                 /*hops=*/1,
                 /*nextHop=*/sender,
-                /*lastUsed=*/std::max(m_activeRouteTimeout, toNeighbor.GetLastUsed()));
+                /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()));
             m_routingTable.Update(newEntry);
         }
     }
@@ -1382,10 +1382,10 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
      * and RREQ ID. If such a RREQ has been received, the node silently discards the newly received
      * RREQ.
      */
-    if (m_rreqIdCache.IsDuplicate(origin,
-                                  rreqHeader.GetOrigMask(),
-                                  rreqHeader.GetTargIp(),
-                                  rreqHeader.GetOrigPathMetric()))
+    if (m_mms.IsDuplicate(origin,
+                          rreqHeader.GetOrigMask(),
+                          rreqHeader.GetTargIp(),
+                          rreqHeader.GetOrigPathMetric()))
     {
         NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
         return;
@@ -1456,12 +1456,12 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                        m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                                        1,
                                        src,
-                                       m_activeRouteTimeout);
+                                       m_activeInterval);
         m_routingTable.AddRoute(newEntry);
     }
     else
     {
-        toNeighbor.SetLastUsed(m_activeRouteTimeout);
+        toNeighbor.SetLastUsed(m_activeInterval);
         toNeighbor.SetSeqNo(rreqHeader.GetOrigSeqNo());
         toNeighbor.SetState(ACTIVE);
         toNeighbor.SetOutputDevice(m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
@@ -1743,7 +1743,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     {
         return; // Impossible! drop.
     }
-    toOrigin.SetLastUsed(std::max(m_activeRouteTimeout, toOrigin.GetLastUsed()));
+    toOrigin.SetLastUsed(std::max(m_activeInterval, toOrigin.GetLastUsed()));
     m_routingTable.Update(toOrigin);
 
     // Update information about precursors

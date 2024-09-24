@@ -317,6 +317,7 @@ LocalRouteSet<T>::Update(LocalRoute<T>& rt)
         NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " fails; not found");
         return false;
     }
+    rt.SetSeqNo(std::max(rt.GetSeqNo(), i->second.GetSeqNo()));
     i->second = rt;
     if (i->second.GetState() != UNCONFIRMED)
     {

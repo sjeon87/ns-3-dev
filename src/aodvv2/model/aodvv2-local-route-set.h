@@ -266,7 +266,7 @@ class LocalRoute
      */
     void SetLastUsed(Time lu)
     {
-        m_lastUsed = lu;
+        m_lastUsed = lu + Simulator::Now();
     }
 
     /**
