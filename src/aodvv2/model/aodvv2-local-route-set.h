@@ -89,6 +89,7 @@ class LocalRoute
                uint32_t hops = 0,
                T nextHop = T(),
                Time lastUsed = Simulator::Now(),
+               Time maxIdleTime = Seconds(200),
                RouteStates state = UNCONFIRMED);
 
     ~LocalRoute();
@@ -127,6 +128,10 @@ class LocalRoute
     void GetPrecursors(std::vector<T>& prec) const;
     //\}
 
+    /**
+     * Check if entry is valid
+     */
+    bool IsValid();
     /**
      * Mark entry as "down" (i.e. disable it)
      * \param badLinkLifetime duration to keep entry marked as invalid
@@ -231,6 +236,7 @@ class LocalRoute
     void SetSeqNo(uint32_t sn)
     {
         m_seqNo = sn;
+        m_lastSeqNumUpdate = Simulator::Now();
     }
 
     /**
@@ -375,6 +381,8 @@ class LocalRoute
     uint32_t m_hops;
     /// Number of route requests
     uint8_t m_reqCount;
+    /// Maximum idle time
+    Time m_maxIdleTime;
 };
 
 /**
@@ -395,9 +403,9 @@ class LocalRouteSet
   public:
     /**
      * constructor
-     * \param t the local route entry badlink time
+     * \param badlinkTime the local route entry badlink time
      */
-    LocalRouteSet(Time t);
+    LocalRouteSet(Time badlinkTime);
 
     ///\name Handle time of invalid route
     //\{

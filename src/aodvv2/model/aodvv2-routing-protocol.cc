@@ -624,8 +624,9 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
     LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
     {
-        if (toDst.GetState() == ACTIVE)
+        if (toDst.IsValid())
         {
+            toDst.SetState(ACTIVE);
             Ptr<IpRoute> route = toDst.GetRoute();
             NS_LOG_LOGIC(route->GetSource() << " forwarding to " << dst << " from " << origin
                                             << " packet " << p->GetUid());
@@ -777,7 +778,8 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
                                  /*iface=*/iface,
                                  /*hops=*/1,
                                  /*nextHop=*/iface.GetBroadcast(),
-                                 /*lastUsed=*/Simulator::GetMaximumSimulationTime());
+                                 /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
+                                 /*maxIdleTime=*/m_maxIdleTime);
         m_routingTable.AddRoute(rt);
     }
     else
@@ -876,7 +878,8 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
                                          /*iface=*/iface,
                                          /*hops=*/1,
                                          /*nextHop=*/iface.GetBroadcast(),
-                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime());
+                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
+                                         /*maxIdleTime=*/m_maxIdleTime);
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -955,7 +958,8 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
                                          /*iface=*/iface,
                                          /*hops=*/1,
                                          /*nextHop=*/iface.GetBroadcast(),
-                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime());
+                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
+                                         /*maxIdleTime=*/m_maxIdleTime);
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -1123,7 +1127,8 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                                        /*iface=*/IpInterfaceAddress(),
                                        /*hops=*/hops,
                                        /*nextHop=*/IpAddress(),
-                                       /*lastUsed=*/m_pathDiscoveryTime);
+                                       /*lastUsed=*/m_pathDiscoveryTime,
+                                       /*maxIdleTime=*/m_maxIdleTime);
         if (hops == m_netDiameter)
         {
             newEntry.IncrementRreqCnt();
@@ -1328,7 +1333,8 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
             /*hops=*/1,
             /*nextHop=*/sender,
-            /*lastUsed=*/m_activeInterval);
+            /*lastUsed=*/m_activeInterval,
+            /*maxIdleTime=*/m_maxIdleTime);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1348,7 +1354,8 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                 /*hops=*/1,
                 /*nextHop=*/sender,
-                /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()));
+                /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()),
+                /*maxIdleTime=*/m_maxIdleTime);
             m_routingTable.Update(newEntry);
         }
     }
@@ -1417,7 +1424,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
             /*hops=*/hop,
             /*nextHop=*/src,
-            /*lastUsed=*/Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime));
+            /*lastUsed=*/Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
+            /*maxIdleTime=*/m_maxIdleTime);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1456,7 +1464,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                        m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                                        1,
                                        src,
-                                       m_activeInterval);
+                                       m_activeInterval,
+                                       m_maxIdleTime);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1681,14 +1690,20 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*hops=*/hop,
         /*nextHop=*/sender,
         /*lastUsed=*/m_netTraversalTime,
+        /*maxIdleTime=*/m_maxIdleTime,
         /*state=*/ACTIVE);
 
     m_nb.UpdateState(dst,
                      m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                      m_rreqWaitTime);
 
+    if (m_nb.GetState(dst) == HEARD)
+    {
+        newEntry.SetState(UNCONFIRMED);
+    }
     if (m_nb.GetState(dst) == BLACKLISTED) // drop
     {
+        newEntry.SetState(INVALID);
         return;
     }
 
@@ -1825,6 +1840,7 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
         {
             LocalRoute<IpAddress> toDst;
             m_routingTable.LookupRoute(i->first, toDst);
+            toDst.SetState(INVALID);
             toDst.GetPrecursors(precursors);
             ++i;
         }
@@ -1952,6 +1968,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
     {
         return;
     }
+    toNextHop.SetState(INVALID);
     toNextHop.GetPrecursors(precursors);
     rerrHeader.AddUnDestination(nextHop, toNextHop.GetSeqNo());
     m_routingTable.GetListOfDestinationWithNextHop(nextHop, unreachable);
@@ -1969,6 +1986,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         {
             LocalRoute<IpAddress> toDst;
             m_routingTable.LookupRoute(i->first, toDst);
+            toDst.SetState(INVALID);
             toDst.GetPrecursors(precursors);
             ++i;
         }

@@ -48,6 +48,7 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
                           uint32_t hops,
                           T nextHop,
                           Time lastUsed,
+                          Time maxIdleTime,
                           RouteStates state)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
@@ -55,7 +56,8 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
       m_lastUsed(lastUsed + Simulator::Now()),
       m_state(state),
       m_hops(hops),
-      m_reqCount(0)
+      m_reqCount(0),
+      m_maxIdleTime(maxIdleTime)
 {
     m_ipRoute = Create<IpRoute>();
     m_ipRoute->SetDestination(dst);
@@ -165,6 +167,23 @@ LocalRoute<T>::GetPrecursors(std::vector<T>& prec) const
 }
 
 template <typename T>
+bool
+LocalRoute<T>::IsValid()
+{
+    NS_LOG_FUNCTION(this);
+    if (m_state == IDLE)
+    {
+        if (m_lastUsed + m_maxIdleTime < Simulator::Now())
+        {
+            m_state = INVALID;
+            return false;
+        }
+        return true;
+    }
+    return m_state == ACTIVE;
+}
+
+template <typename T>
 void
 LocalRoute<T>::Invalidate(Time badLinkLifetime)
 {
@@ -235,8 +254,8 @@ template class LocalRoute<Ipv6Address>;
  The Local Route
  */
 template <typename T>
-LocalRouteSet<T>::LocalRouteSet(Time t)
-    : m_badLinkLifetime(t)
+LocalRouteSet<T>::LocalRouteSet(Time badlinkTime)
+    : m_badLinkLifetime(badlinkTime)
 {
 }
 
