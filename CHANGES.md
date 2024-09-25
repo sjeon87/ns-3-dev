@@ -41,6 +41,8 @@ Changes from ns-3.42 to ns-3-dev
 * (lr-wpan) Documentation was extended and reformatted.
 * (core) Add `AddDeprecatedName` to TypeId. This allows for TypeIds to transition to name TypeIds that use namespaces while still supporting the old name.
 * (energy) Energy module TypeId now uses the name that includes the namespace `ns3::energy`, the old name is now deprecated.
+* (energy) Documentation was extended and reformatted.
+* (lr-wpan) Lr-wpan module TypeId now uses the name that includes the namespace `ns3::lrwpan`, the old name is now deprecated.
 
 ### Changes to build system
 
