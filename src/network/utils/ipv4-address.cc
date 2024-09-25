@@ -281,6 +281,13 @@ Ipv4Address::IsLocalMulticast() const
     return (m_address & 0xffffff00) == 0xe0000000;
 }
 
+bool
+Ipv4Address::IsRoutable() const
+{
+    NS_LOG_FUNCTION(this);
+    return !IsMulticast() && !IsAny() && !IsBroadcast();
+}
+
 void
 Ipv4Address::Serialize(uint8_t buf[4]) const
 {

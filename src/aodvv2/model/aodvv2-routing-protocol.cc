@@ -1665,6 +1665,11 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     IpAddress dst = rrepHeader.GetTargIp();
     NS_LOG_LOGIC("RREP destination " << dst << " RREP origin " << rrepHeader.GetOrigIp());
 
+    if (m_newDiscoveryTimer.find(dst) != m_newDiscoveryTimer.end())
+    {
+        m_newDiscoveryTimer[dst].Cancel();
+    }
+
     uint8_t hop = rrepHeader.GetHopCount() + 1;
     rrepHeader.SetHopCount(hop);
 
@@ -1794,7 +1799,7 @@ Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader)
 {
     NS_LOG_FUNCTION(this);
     LocalRoute<IpAddress> rt;
-    if (m_routingTable.LookupRoute(neighbor, rt))
+    if (m_routingTable.LookupRoute(neighbor, rt) && rt.IsValid())
     {
         rt.m_ackTimer.Cancel();
         rt.SetState(ACTIVE);
@@ -1819,7 +1824,7 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
     {
         for (auto i = dstWithNextHopSrc.begin(); i != dstWithNextHopSrc.end(); ++i)
         {
-            if (i->first == un.first)
+            if (i->first == un.first && un.first.IsRoutable())
             {
                 unreachable.insert(un);
             }
@@ -1874,13 +1879,10 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
      */
     if (toDst.GetRreqCnt() == m_discoveryAttemptsMax)
     {
-        NS_LOG_LOGIC("route discovery to " << dst << " has been attempted RreqRetries ("
-                                           << m_discoveryAttemptsMax << ") times with diameter "
-                                           << m_netDiameter);
-        m_addressReqTimer.erase(dst);
-        m_routingTable.DeleteRoute(dst);
-        NS_LOG_DEBUG("Route not found. Drop all packets with dst " << dst);
-        m_queue.DropPacketWithDst(dst);
+        Timer timer(Timer::CANCEL_ON_DESTROY);
+        m_newDiscoveryTimer[dst] = timer;
+        m_newDiscoveryTimer[dst].SetFunction(&Aodvv2RoutingProtocol<T>::SendRequest, this);
+        m_newDiscoveryTimer[dst].Schedule(m_rreqHolddownTime);
         return;
     }
 

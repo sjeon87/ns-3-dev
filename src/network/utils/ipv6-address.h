@@ -294,6 +294,11 @@ class Ipv6Address
     bool IsDocumentation() const;
 
     /**
+     * \return true if address is routable
+     */
+    bool IsRoutable() const;
+
+    /**
      * \brief Compares an address and a prefix.
      * \param prefix the prefix to compare with
      * \return true if the address has the given prefix

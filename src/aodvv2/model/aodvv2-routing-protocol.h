@@ -639,6 +639,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     void RerrRateLimitTimerExpire();
     /// Map IP address + RREQ timer.
     std::map<IpAddress, Timer> m_addressReqTimer;
+    /// Map IP address + New discovery timer after x attempts
+    std::map<IpAddress, Timer> m_newDiscoveryTimer;
     /**
      * Handle route discovery process
      * \param dst the destination IP address

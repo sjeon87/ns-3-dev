@@ -113,6 +113,10 @@ class Ipv4Address
      */
     bool IsLocalMulticast() const;
     /**
+     * \return true if address is routable
+     */
+    bool IsRoutable() const;
+    /**
      * \brief Combine this address with a network mask
      *
      * This method returns an IPv4 address that is this address combined

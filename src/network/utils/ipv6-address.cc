@@ -635,6 +635,13 @@ Ipv6Address::IsDocumentation() const
 }
 
 bool
+Ipv6Address::IsRoutable() const
+{
+    NS_LOG_FUNCTION(this);
+    return !IsMulticast() && !IsDocumentation() && !IsAny();
+}
+
+bool
 Ipv6Address::HasPrefix(const Ipv6Prefix& prefix) const
 {
     NS_LOG_FUNCTION(this << prefix);
