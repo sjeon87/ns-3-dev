@@ -140,6 +140,15 @@ class LocalRoute
 
     // Fields
     /**
+     * Get the max idle time
+     * \returns the max idle time
+     */
+    Time GetMaxIdleTime() const
+    {
+        return m_maxIdleTime;
+    }
+
+    /**
      * Get destination address function
      * \returns the IP destination address
      */
@@ -285,6 +294,24 @@ class LocalRoute
     }
 
     /**
+     * Set the lastSeqNumUpdate
+     * \param lu The lastSeqNumUpdate
+     */
+    void SetLastSeqNumUpdate(Time lu)
+    {
+        m_lastSeqNumUpdate = lu + Simulator::Now();
+    }
+
+    /**
+     * Get the lastSeqNumUpdate
+     * \returns the lastSeqNumUpdate
+     */
+    Time GetLastSeqNumUpdate() const
+    {
+        return m_lastSeqNumUpdate;
+    }
+
+    /**
      * Set the route state
      * \param state the route state
      */
@@ -404,30 +431,9 @@ class LocalRouteSet
     /**
      * constructor
      * \param badlinkTime the local route entry badlink time
+     * \param unconfirmedTime the local route entry unconfirmed time
      */
-    LocalRouteSet(Time badlinkTime);
-
-    ///\name Handle time of invalid route
-    //\{
-    /**
-     * Get the lastUsed time of a bad link
-     *
-     * \return the lastUsed time of a bad link
-     */
-    Time GetBadLinkLifetime() const
-    {
-        return m_badLinkLifetime;
-    }
-
-    /**
-     * Set the lastUsed time of a bad link
-     *
-     * \param t the lastUsed time of a bad link
-     */
-    void SetBadLinkLifetime(Time t)
-    {
-        m_badLinkLifetime = t;
-    }
+    LocalRouteSet(Time badlinkTime, Time unconfirmedTime);
 
     //\}
     /**
@@ -518,6 +524,8 @@ class LocalRouteSet
     std::map<T, LocalRoute<T>> m_ipAddressEntry;
     /// Deletion time for invalid routes
     Time m_badLinkLifetime;
+    /// Invalidation time for unconfirmed routes
+    Time m_unconfirmedTime;
     /**
      * const version of Purge, for use by Print() method
      * \param table the local route set to purge

@@ -160,7 +160,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_maxQueueTime(Seconds(30)),
       m_rtemsgEntryTime(Seconds(12)),
       m_destinationOnly(false),
-      m_routingTable(m_maxBlacklistTime),
+      m_routingTable(m_maxBlacklistTime, m_maxSeqnumLifetime),
       m_queue(m_maxQueueLen, m_maxQueueTime),
       m_requestId(0),
       m_seqNo(0),

@@ -254,8 +254,9 @@ template class LocalRoute<Ipv6Address>;
  The Local Route
  */
 template <typename T>
-LocalRouteSet<T>::LocalRouteSet(Time badlinkTime)
-    : m_badLinkLifetime(badlinkTime)
+LocalRouteSet<T>::LocalRouteSet(Time badlinkTime, Time unconfirmedTime)
+    : m_badLinkLifetime(badlinkTime),
+      m_unconfirmedTime(unconfirmedTime)
 {
 }
 
@@ -434,9 +435,9 @@ LocalRouteSet<T>::Purge()
     }
     for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end();)
     {
-        if (i->second.GetLastUsed() < Seconds(0))
+        if (i->second.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
         {
-            if (i->second.GetState() == INVALID)
+            if (i->second.GetState() == UNCONFIRMED)
             {
                 auto tmp = i;
                 ++i;
@@ -455,6 +456,11 @@ LocalRouteSet<T>::Purge()
         }
         else
         {
+            if (i->second.GetState() == IDLE &&
+                i->second.GetLastSeqNumUpdate() < Simulator::Now() + i->second.GetMaxIdleTime())
+            {
+                i->second.SetState(INVALID);
+            }
             ++i;
         }
     }
@@ -471,9 +477,9 @@ LocalRouteSet<T>::Purge(std::map<T, LocalRoute<T>>& table) const
     }
     for (auto i = table.begin(); i != table.end();)
     {
-        if (i->second.GetLastUsed() < Seconds(0))
+        if (i->second.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
         {
-            if (i->second.GetState() == INVALID)
+            if (i->second.GetState() == UNCONFIRMED)
             {
                 auto tmp = i;
                 ++i;
@@ -492,6 +498,11 @@ LocalRouteSet<T>::Purge(std::map<T, LocalRoute<T>>& table) const
         }
         else
         {
+            if (i->second.GetState() == IDLE &&
+                i->second.GetLastSeqNumUpdate() < Simulator::Now() + i->second.GetMaxIdleTime())
+            {
+                i->second.SetState(INVALID);
+            }
             ++i;
         }
     }
