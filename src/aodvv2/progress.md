@@ -54,24 +54,58 @@ AODVv2 has not been designed to be interoperable with AODV. However, it would be
 
 - Management of external packets (ch. 9)
 
-- Testing:
+### Tests:
 
-  - We need to implement tests for the protocol to ensure that it works as expected. This includes testing the protocol in various scenarios, such as:
+> Note: SimpleNetDevice / SimpleChannel is either a "P2P" or a "CSMA", depending on how you configure it. You can block the communications between two nodes using SimpleChannel::BlackList. Hence, it's possible to make a network of that looks like an ad-hoc network.
 
-    - Sending packets in a working network
+--- 2 nodes (A, B), connected through a SimpleNetDevice / SimpleChannel.
 
-    - Sending packets in the previous network with some broken link
+(1a). Sends an UDP packet to B.
 
-    - Managing packets from an external network (without AODVv2)
+- RREQ sent
+- RREP sent
+- Routing table filled
+- Packet received.
 
-    - more...
+(1b). Like 1. but you loose the RREQ
 
-  - And in all scenarios, verifying:
+- RREQ is sent again
 
-    - The state update of a route (by events or by timeouts)
+(1c). Like 1. but you loose a RREP
 
-    - The packets queue management
+- Dunno what should happen, but it happens.
 
-    - The route selection (by metrics)
+(2). A sends two UDP packets to B, 2nd packet sent before receiving a RREP
 
-    - more...
+- RREQ sent
+- RREP sent
+- Routing table filled
+- Both packets received.
+
+(3). Like 2, but send enough packets to fill the sending queue in AODVv2
+
+- RREQ sent
+- RREP sent
+- Routing table filled
+- Some packets received (the number must be predictable).
+
+(4). Like 2, but 2nd packet is sent _after_ receiving the RREP
+
+- RREQ sent (just one)
+- RREP sent (just one)
+- Routing table filled
+- Both packets received.
+
+(5-6). Like 4, but 2nd packet is sent at a time useful to hit the routing table timeouts.
+
+- same checks as above, modified according to the timeouts.
+
+--- 3 nodes (A, B, C), connected through a SimpleNetDevice / SimpleChannel.
+
+(7). Just like 1.
+
+- Check that the middle node caches the route
+
+(8). Like 7, but node B send a packet to C, and after the route is cached, A sends a packet to C
+
+- Check that B replies with the cached route
