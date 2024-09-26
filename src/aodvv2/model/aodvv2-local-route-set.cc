@@ -437,6 +437,8 @@ LocalRouteSet<T>::Purge()
     {
         if (i->second.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
         {
+            i->second.SetSeqNo(0);
+
             if (i->second.GetState() == UNCONFIRMED)
             {
                 auto tmp = i;
