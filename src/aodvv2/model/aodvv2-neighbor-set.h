@@ -82,10 +82,10 @@ class NeighborSet
         Time m_timeout;
         /// Neighbor IpInterfaceAddress interface
         IpInterfaceAddress m_interface;
-        /// Neighbor uint32_t Ack Sequence Number
-        uint32_t m_ackSeqNo;
-        /// Neighbor uint32_t Heard RERR Sequence Number
-        uint32_t m_heardRERRSeqNo;
+        /// Neighbor uint16_t Ack Sequence Number
+        uint16_t m_ackSeqNo;
+        /// Neighbor uint16_t Heard RERR Sequence Number
+        uint16_t m_heardRERRSeqNo;
 
         /**
          * \brief Neighbor structure constructor

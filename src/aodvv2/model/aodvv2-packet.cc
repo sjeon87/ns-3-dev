@@ -39,7 +39,7 @@ RreqHeader<T>::RreqHeader(T origIp,
                           uint16_t origMask,
                           T targIp,
                           uint16_t targMask,
-                          uint32_t seqNo,
+                          uint16_t seqNo,
                           uint8_t hopCount,
                           uint8_t maxHopCount)
     : m_origIp(origIp),
@@ -122,7 +122,8 @@ RreqHeader<T>::CreateTlvHeader() const
     // Add SEQ_NUM TLV
     Ptr<PbbAddressTlv> msg1a1tlv2 = Create<PbbAddressTlv>();
     msg1a1tlv2->SetType(AODVV2_SEQ_NUM);
-    uint8_t msg1a1tlv2val[] = {this->m_seqNo};
+    // TODO me: understand if the packetbb lib has to be updated to uint16_t
+    uint8_t msg1a1tlv2val[] = {(uint8_t)this->m_seqNo};
     msg1a1tlv2->SetValue(msg1a1tlv2val, sizeof(msg1a1tlv2val));
     msg1a1->TlvPushBack(msg1a1tlv2);
 
@@ -153,7 +154,8 @@ RreqHeader<T>::CreateTlvHeader() const
     {
         Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
         msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-        uint8_t msg1a2tlv2val[] = {this->m_origSeqNo};
+        // TODO me: understand if the packetbb lib has to be updated to uint16_t
+        uint8_t msg1a2tlv2val[] = {(uint8_t)this->m_origSeqNo};
         msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
         msg1a2->TlvPushBack(msg1a2tlv2);
     }
@@ -296,7 +298,7 @@ RrepHeader<T>::RrepHeader(T origIp,
                           uint16_t origMask,
                           T targIp,
                           uint16_t targMask,
-                          uint32_t seqNo,
+                          uint16_t seqNo,
                           uint8_t hopCount,
                           uint8_t maxHopCount)
     : m_origIp(origIp),
@@ -391,7 +393,8 @@ RrepHeader<T>::CreateTlvHeader() const
     // Add SEQ_NUM TLV
     Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
     msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-    uint8_t msg1a2tlv2val[] = {this->m_seqNo};
+    // TODO me: understand if the packetbb lib has to be updated to uint16_t
+    uint8_t msg1a2tlv2val[] = {(uint8_t)this->m_seqNo};
     msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
     msg1a1->TlvPushBack(msg1a2tlv2);
 
@@ -818,7 +821,7 @@ RerrHeader<T>::Print(std::ostream& os) const
 
 template <typename T>
 bool
-RerrHeader<T>::AddUnDestination(T dst, uint32_t seqNo)
+RerrHeader<T>::AddUnDestination(T dst, uint16_t seqNo)
 {
     if (m_unreachableDstSeqNo.find(dst) != m_unreachableDstSeqNo.end())
     {

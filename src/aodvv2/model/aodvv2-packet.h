@@ -130,7 +130,7 @@ class RreqHeader : public Header
                uint16_t origMask = 0,
                T targIp = T(),
                uint16_t targMask = 0,
-               uint32_t seqNo = 1,
+               uint16_t seqNo = 1,
                uint8_t hopCount = 0,
                uint8_t maxHopCount = 20);
 
@@ -238,7 +238,7 @@ class RreqHeader : public Header
      * \brief Set the origin sequence number
      * \param seq the origin sequence number
      */
-    void SetOrigSeqNo(uint8_t seq)
+    void SetOrigSeqNo(uint16_t seq)
     {
         m_origSeqNo = seq;
     }
@@ -247,7 +247,7 @@ class RreqHeader : public Header
      * \brief Set the origin sequence number
      * \return the origin sequence number
      */
-    uint8_t GetOrigSeqNo() const
+    uint16_t GetOrigSeqNo() const
     {
         return m_origSeqNo;
     }
@@ -310,7 +310,7 @@ class RreqHeader : public Header
      * \brief Set the target sequence number
      * \param seq the target sequence number
      */
-    void SetTargSeqNo(uint8_t seq)
+    void SetTargSeqNo(uint16_t seq)
     {
         m_targSeqNo = seq;
     }
@@ -319,7 +319,7 @@ class RreqHeader : public Header
      * \brief Get the target sequence number
      * \return the target sequence number
      */
-    uint8_t GetTargSeqNo() const
+    uint16_t GetTargSeqNo() const
     {
         return m_targSeqNo;
     }
@@ -328,7 +328,7 @@ class RreqHeader : public Header
      * \brief Set the sequence number
      * \param seq the sequence number
      */
-    void SetSeqNo(uint32_t seq)
+    void SetSeqNo(uint16_t seq)
     {
         m_seqNo = seq;
     }
@@ -337,7 +337,7 @@ class RreqHeader : public Header
      * \brief Get the sequence number
      * \return the sequence number
      */
-    uint32_t GetSeqNo() const
+    uint16_t GetSeqNo() const
     {
         return m_seqNo;
     }
@@ -390,13 +390,13 @@ class RreqHeader : public Header
     uint16_t m_rtrMask;       ///< Router Mask
     T m_origIp;               ///< Origin IP Address
     uint16_t m_origMask;      ///< Origin Mask
-    uint8_t m_origSeqNo;      ///< Origin Sequence number
+    uint16_t m_origSeqNo;     ///< Origin Sequence number
     uint8_t m_origPathMetric; ///< Origin Path Metric
     T m_targIp;               ///< Target IP Address
     uint16_t m_targMask;      ///< Target Mask
-    uint8_t m_targSeqNo;      ///< Target Sequence number
+    uint16_t m_targSeqNo;     ///< Target Sequence number
 
-    uint8_t m_seqNo;    ///< Sequence number
+    uint16_t m_seqNo;   ///< Sequence number
     uint8_t m_hopCount; ///< Hop Count
 
     uint8_t m_maxHopCount;              ///< Max Hop Count
@@ -461,7 +461,7 @@ class RrepHeader : public Header
                uint16_t origMask = 0,
                T targIp = T(),
                uint16_t targMask = 0,
-               uint32_t seqNo = 1,
+               uint16_t seqNo = 1,
                uint8_t hopCount = 0,
                uint8_t maxHopCount = 20);
     /**
@@ -567,7 +567,7 @@ class RrepHeader : public Header
      * \brief Set the target sequence number
      * \param seq the target sequence number
      */
-    void SetTargSeqNo(uint8_t seq)
+    void SetTargSeqNo(uint16_t seq)
     {
         m_targSeqNo = seq;
     }
@@ -576,7 +576,7 @@ class RrepHeader : public Header
      * \brief Get the target sequence number
      * \return the target sequence number
      */
-    uint8_t GetTargSeqNo() const
+    uint16_t GetTargSeqNo() const
     {
         return m_targSeqNo;
     }
@@ -603,7 +603,7 @@ class RrepHeader : public Header
      * \brief Set the sequence number
      * \param seq the sequence number
      */
-    void SetSeqNo(uint32_t seq)
+    void SetSeqNo(uint16_t seq)
     {
         m_seqNo = seq;
     }
@@ -612,7 +612,7 @@ class RrepHeader : public Header
      * \brief Get the sequence number
      * \return the sequence number
      */
-    uint32_t GetSeqNo() const
+    uint16_t GetSeqNo() const
     {
         return m_seqNo;
     }
@@ -647,9 +647,9 @@ class RrepHeader : public Header
     uint16_t m_origMask;      ///< Origin Mask
     T m_targIp;               ///< Target IP Address
     uint16_t m_targMask;      ///< Target Mask
-    uint8_t m_targSeqNo;      ///< Target Sequence number
+    uint16_t m_targSeqNo;     ///< Target Sequence number
     uint8_t m_targPathMetric; ///< Target Path Metric
-    uint8_t m_seqNo;          ///< Sequence number
+    uint16_t m_seqNo;         ///< Sequence number
     uint8_t m_hopCount;       ///< Hop Count
 
     uint8_t m_maxHopCount;              ///< Max Hop Count
@@ -716,7 +716,7 @@ class RrepAckHeader : public Header
      * \brief Set the sequence number
      * \param seq the sequence number
      */
-    void SetSeqNo(uint32_t seq)
+    void SetSeqNo(uint16_t seq)
     {
         m_seqNo = seq;
     }
@@ -725,7 +725,7 @@ class RrepAckHeader : public Header
      * \brief Get the sequence number
      * \return the sequence number
      */
-    uint32_t GetSeqNo() const
+    uint16_t GetSeqNo() const
     {
         return m_seqNo;
     }
@@ -738,7 +738,7 @@ class RrepAckHeader : public Header
     bool operator==(const RrepAckHeader& o) const;
 
   private:
-    uint8_t m_seqNo; ///< Sequence number
+    uint16_t m_seqNo; ///< Sequence number
 
     uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
@@ -859,7 +859,7 @@ class RerrHeader : public Header
      * \param seqNo unreachable sequence number
      * \return false if we already added maximum possible number of unreachable destinations
      */
-    bool AddUnDestination(T dst, uint32_t seqNo);
+    bool AddUnDestination(T dst, uint16_t seqNo);
     /**
      * \brief Delete pair (address + sequence number) from REER header, if the number of unreachable
      * destinations > 0
@@ -887,7 +887,7 @@ class RerrHeader : public Header
 
   private:
     /// List of Unreachable destination: IP addresses and sequence numbers
-    std::map<T, uint32_t> m_unreachableDstSeqNo;
+    std::map<T, uint16_t> m_unreachableDstSeqNo;
 
     T m_origIp;          ///< Origin IP Address
     uint16_t m_origMask; ///< Origin Mask

@@ -424,7 +424,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Broadcast ID
     uint32_t m_requestId;
     /// Request sequence number
-    uint32_t m_seqNo;
+    uint16_t m_seqNo;
     /// Handle duplicated RREQ
     IdCache<IpAddress> m_mms;
     /// Handle duplicated broadcast/multicast packets
@@ -618,7 +618,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * \param dstSeqNo destination node sequence number
      * \param origin originating node IP address
      */
-    void SendRerrWhenNoRouteToForward(IpAddress dst, uint32_t dstSeqNo, IpAddress origin);
+    void SendRerrWhenNoRouteToForward(IpAddress dst, uint16_t dstSeqNo, IpAddress origin);
     /** @} */
 
     /**

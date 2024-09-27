@@ -84,7 +84,7 @@ class LocalRoute
      */
     LocalRoute(Ptr<NetDevice> dev = nullptr,
                T dst = T(),
-               uint32_t seqNo = 0,
+               uint16_t seqNo = 0,
                IpInterfaceAddress iface = IpInterfaceAddress(),
                uint32_t hops = 0,
                T nextHop = T(),
@@ -242,7 +242,7 @@ class LocalRoute
      * Set the sequence number
      * \param sn the sequence number
      */
-    void SetSeqNo(uint32_t sn)
+    void SetSeqNo(uint16_t sn)
     {
         m_seqNo = sn;
         m_lastSeqNumUpdate = Simulator::Now();
@@ -252,7 +252,7 @@ class LocalRoute
      * Get the sequence number
      * \returns the sequence number
      */
-    uint32_t GetSeqNo() const
+    uint16_t GetSeqNo() const
     {
         return m_seqNo;
     }
@@ -386,7 +386,7 @@ class LocalRoute
     /// Destination address prefix length
     uint32_t m_prefixLength;
     /// Destination Sequence Number
-    uint32_t m_seqNo;
+    uint16_t m_seqNo;
     /// Output interface address
     IpInterfaceAddress m_nextHopIface;
     /// Time it was last used to forward a packet

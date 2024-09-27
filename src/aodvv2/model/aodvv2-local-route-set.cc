@@ -43,7 +43,7 @@ namespace aodvv2
 template <typename T>
 LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
                           T dst,
-                          uint32_t seqNo,
+                          uint16_t seqNo,
                           IpInterfaceAddress iface,
                           uint32_t hops,
                           T nextHop,

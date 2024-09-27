@@ -1432,7 +1432,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     {
         if (toOrigin.GetValidSeqNo())
         {
-            if (int32_t(rreqHeader.GetOrigSeqNo()) - int32_t(toOrigin.GetSeqNo()) > 0)
+            if (uint16_t(rreqHeader.GetOrigSeqNo()) - uint16_t(toOrigin.GetSeqNo()) > 0)
             {
                 toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
             }
@@ -1520,7 +1520,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
          * the value received in the incoming RREQ is larger than the value currently maintained by
          * the forwarding node.
          */
-        if (((int32_t(toDst.GetSeqNo()) - int32_t(rreqHeader.GetSeqNo()) >= 0)) &&
+        if (((uint16_t(toDst.GetSeqNo()) - uint16_t(rreqHeader.GetSeqNo()) >= 0)) &&
             toDst.GetValidSeqNo())
         {
             if (toDst.GetState() == ACTIVE)
@@ -1723,7 +1723,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
 
             // (ii) the Destination Sequence Number in the RREP is greater than the node's copy
             // of the destination sequence number and the known value is valid,
-            ((int32_t(rrepHeader.GetSeqNo()) - int32_t(toDst.GetSeqNo())) > 0) ||
+            ((uint16_t(rrepHeader.GetSeqNo()) - uint16_t(toDst.GetSeqNo())) > 0) ||
 
             // (iii) the sequence numbers are the same, but the route is marked as inactive.
             (rrepHeader.GetSeqNo() == toDst.GetSeqNo() && toDst.GetState() != ACTIVE) ||
@@ -2006,7 +2006,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
 template <typename T>
 void
 Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
-                                                       uint32_t dstSeqNo,
+                                                       uint16_t dstSeqNo,
                                                        IpAddress origin)
 {
     NS_LOG_FUNCTION(this);
