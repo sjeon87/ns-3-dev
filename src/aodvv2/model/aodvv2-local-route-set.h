@@ -23,6 +23,8 @@
 #ifndef AODVV2_LOCAL_ROUTE_SET_H
 #define AODVV2_LOCAL_ROUTE_SET_H
 
+#include "aodvv2-packet.h"
+
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/ipv4.h"
@@ -80,6 +82,8 @@ class LocalRoute
      * \param hops the number of hops
      * \param nextHop the IP address of the next hop
      * \param lastUsed the lastUsed time of the entry
+     * \param metricType the metric type
+     * \param metric the metric value
      * \param state the route state
      */
     LocalRoute(Ptr<NetDevice> dev = nullptr,
@@ -90,6 +94,8 @@ class LocalRoute
                T nextHop = T(),
                Time lastUsed = Simulator::Now(),
                Time maxIdleTime = Seconds(200),
+               uint8_t metricType = 0,
+               uint32_t metric = 1,
                RouteStates state = UNCONFIRMED);
 
     ~LocalRoute();
@@ -312,6 +318,24 @@ class LocalRoute
     }
 
     /**
+     * Set the metric type
+     * \param type the metric type
+     */
+    void SetMetricType(uint8_t type)
+    {
+        m_metricType = type;
+    }
+
+    /**
+     * Get the metric type
+     * \returns the metric type
+     */
+    uint8_t GetMetricType() const
+    {
+        return m_metricType;
+    }
+
+    /**
      * Set the route state
      * \param state the route state
      */
@@ -481,7 +505,7 @@ class LocalRouteSet
      * \param nextHop the next hop IP address
      * \param unreachable
      */
-    void GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t>& unreachable);
+    void GetListOfDestinationWithNextHop(T nextHop, std::map<T, UnreachableDst>& unreachable);
     /**
      * Update routing entries with this destination as follows:
      * 1. The destination sequence number of this routing entry, if it
@@ -490,7 +514,7 @@ class LocalRouteSet
      * 3. The lastUsed time field is updated to current time plus DELETE_PERIOD.
      * \param unreachable routes to invalidate
      */
-    void InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable);
+    void InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unreachable);
     /**
      * Delete all route from interface with address iface
      * \param iface the interface IP address

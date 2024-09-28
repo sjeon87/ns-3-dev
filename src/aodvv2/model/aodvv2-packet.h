@@ -81,6 +81,13 @@ enum AddressTlvValue
     AODVV2_PKTSOURCE = 3,
 };
 
+/// Unreachable destination structure
+struct UnreachableDst
+{
+    uint16_t m_seqNo;
+    uint8_t m_metricType;
+};
+
 /**
 * \ingroup aodvv2
 * \brief   Route Request (RREQ) Message Format
@@ -125,6 +132,8 @@ class RreqHeader : public Header
      * \param seqNo the sequence number
      * \param hopCount the hop count
      * \param maxHopCount the maximum hop count
+     * \param metricType the metric type
+     * \param origMetric the origin metric
      */
     RreqHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -132,7 +141,9 @@ class RreqHeader : public Header
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
                uint8_t hopCount = 0,
-               uint8_t maxHopCount = 20);
+               uint8_t maxHopCount = 20,
+               uint8_t metricType = 0,
+               uint8_t origMetric = 1);
 
     /**
      * constructor
@@ -253,24 +264,6 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the origin path metric
-     * \param metric the origin path metric
-     */
-    void SetOrigPathMetric(uint8_t metric)
-    {
-        m_origPathMetric = metric;
-    }
-
-    /**
-     * \brief Get the origin path metric
-     * \return the origin path metric
-     */
-    uint8_t GetOrigPathMetric() const
-    {
-        return m_origPathMetric;
-    }
-
-    /**
      * \brief Set the target IP address
      * \param ip the target IP address
      */
@@ -304,6 +297,42 @@ class RreqHeader : public Header
     uint16_t GetTargMask() const
     {
         return m_targMask;
+    }
+
+    /**
+     * \brief Set the metric type
+     * \param type the metric type
+     */
+    void SetMetricType(uint8_t type)
+    {
+        m_metricType = type;
+    }
+
+    /**
+     * \brief Get the metric type
+     * \return the metric type
+     */
+    uint8_t GetMetricType() const
+    {
+        return m_metricType;
+    }
+
+    /**
+     * \brief Set the origin metric
+     * \param metric the origin metric
+     */
+    void SetOrigMetric(uint8_t metric)
+    {
+        m_origMetric = metric;
+    }
+
+    /**
+     * \brief Get the origin metric
+     * \return the origin metric
+     */
+    uint8_t GetOrigMetric() const
+    {
+        return m_origMetric;
     }
 
     /**
@@ -386,18 +415,19 @@ class RreqHeader : public Header
     bool operator==(const RreqHeader& o) const;
 
   private:
-    T m_rtrIp;                ///< Router IP Address
-    uint16_t m_rtrMask;       ///< Router Mask
-    T m_origIp;               ///< Origin IP Address
-    uint16_t m_origMask;      ///< Origin Mask
-    uint16_t m_origSeqNo;     ///< Origin Sequence number
-    uint8_t m_origPathMetric; ///< Origin Path Metric
-    T m_targIp;               ///< Target IP Address
-    uint16_t m_targMask;      ///< Target Mask
-    uint16_t m_targSeqNo;     ///< Target Sequence number
+    T m_rtrIp;            ///< Router IP Address
+    uint16_t m_rtrMask;   ///< Router Mask
+    T m_origIp;           ///< Origin IP Address
+    uint16_t m_origMask;  ///< Origin Mask
+    uint16_t m_origSeqNo; ///< Origin Sequence number
+    T m_targIp;           ///< Target IP Address
+    uint16_t m_targMask;  ///< Target Mask
+    uint16_t m_targSeqNo; ///< Target Sequence number
 
-    uint16_t m_seqNo;   ///< Sequence number
-    uint8_t m_hopCount; ///< Hop Count
+    uint8_t m_metricType; ///< Metric Type
+    uint8_t m_origMetric; ///< Origin Path Metric
+    uint16_t m_seqNo;     ///< Sequence number
+    uint8_t m_hopCount;   ///< Hop Count
 
     uint8_t m_maxHopCount;              ///< Max Hop Count
     bool m_sendTargSeqNum;              ///< Send Target Sequence Number
@@ -456,6 +486,8 @@ class RrepHeader : public Header
      * \param seqNo the sequence number
      * \param hopCount the hop count
      * \param maxHopCount the maximum hop count
+     * \param metricType the metric type
+     * \param targMetric the target metric
      */
     RrepHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -463,7 +495,9 @@ class RrepHeader : public Header
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
                uint8_t hopCount = 0,
-               uint8_t maxHopCount = 20);
+               uint8_t maxHopCount = 20,
+               uint8_t metricType = 0,
+               uint8_t targMetric = 1);
     /**
      * constructor
      * \param tlvHeader the TLV header
@@ -582,21 +616,39 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the target path metric
-     * \param metric the target path metric
+     * \brief Set the metric type
+     * \param type the metric type
      */
-    void SetTargPathMetric(uint8_t metric)
+    void SetMetricType(uint8_t type)
     {
-        m_targPathMetric = metric;
+        m_metricType = type;
     }
 
     /**
-     * \brief Get the target path metric
-     * \return the target path metric
+     * \brief Get the metric type
+     * \return the metric type
      */
-    uint8_t GetTargPathMetric() const
+    uint8_t GetMetricType() const
     {
-        return m_targPathMetric;
+        return m_metricType;
+    }
+
+    /**
+     * \brief Set the target metric
+     * \param metric the target metric
+     */
+    void SetTargMetric(uint8_t metric)
+    {
+        m_targMetric = metric;
+    }
+
+    /**
+     * \brief Get the target metric
+     * \return the target metric
+     */
+    uint8_t GetTargMetric() const
+    {
+        return m_targMetric;
     }
 
     /**
@@ -643,14 +695,15 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    T m_origIp;               ///< Origin IP Address
-    uint16_t m_origMask;      ///< Origin Mask
-    T m_targIp;               ///< Target IP Address
-    uint16_t m_targMask;      ///< Target Mask
-    uint16_t m_targSeqNo;     ///< Target Sequence number
-    uint8_t m_targPathMetric; ///< Target Path Metric
-    uint16_t m_seqNo;         ///< Sequence number
-    uint8_t m_hopCount;       ///< Hop Count
+    T m_origIp;           ///< Origin IP Address
+    uint16_t m_origMask;  ///< Origin Mask
+    T m_targIp;           ///< Target IP Address
+    uint16_t m_targMask;  ///< Target Mask
+    uint16_t m_targSeqNo; ///< Target Sequence number
+    uint8_t m_metricType; ///< Metric Type
+    uint8_t m_targMetric; ///< Target Path Metric
+    uint16_t m_seqNo;     ///< Sequence number
+    uint8_t m_hopCount;   ///< Hop Count
 
     uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
@@ -857,16 +910,17 @@ class RerrHeader : public Header
      * \brief Add unreachable node address and its sequence number in RERR header
      * \param dst unreachable IP address
      * \param seqNo unreachable sequence number
+     * \param metricType metric type
      * \return false if we already added maximum possible number of unreachable destinations
      */
-    bool AddUnDestination(T dst, uint16_t seqNo);
+    bool AddUnDestination(T dst, uint16_t seqNo, uint8_t metricType = 0);
     /**
      * \brief Delete pair (address + sequence number) from REER header, if the number of unreachable
      * destinations > 0
      * \param un unreachable pair (address + sequence number)
      * \return true on success
      */
-    bool RemoveUnDestination(std::pair<T, uint32_t>& un);
+    bool RemoveUnDestination(std::pair<T, UnreachableDst>& un);
     /// Clear header
     void Clear();
 
@@ -875,7 +929,7 @@ class RerrHeader : public Header
      */
     uint8_t GetDestCount() const
     {
-        return (uint8_t)m_unreachableDstSeqNo.size();
+        return (uint8_t)m_unreachableDst.size();
     }
 
     /**
@@ -886,8 +940,8 @@ class RerrHeader : public Header
     bool operator==(const RerrHeader& o) const;
 
   private:
-    /// List of Unreachable destination: IP addresses and sequence numbers
-    std::map<T, uint16_t> m_unreachableDstSeqNo;
+    /// List of Unreachable destination: IP addresses, sequence numbers and metric type
+    std::map<T, UnreachableDst> m_unreachableDst;
 
     T m_origIp;          ///< Origin IP Address
     uint16_t m_origMask; ///< Origin Mask

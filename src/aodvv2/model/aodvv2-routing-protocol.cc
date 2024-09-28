@@ -779,7 +779,9 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
                                  /*hops=*/1,
                                  /*nextHop=*/iface.GetBroadcast(),
                                  /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
-                                 /*maxIdleTime=*/m_maxIdleTime);
+                                 /*maxIdleTime=*/m_maxIdleTime,
+                                 /*metricType=*/0,
+                                 /*metric=*/1);
         m_routingTable.AddRoute(rt);
     }
     else
@@ -879,7 +881,9 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
                                          /*hops=*/1,
                                          /*nextHop=*/iface.GetBroadcast(),
                                          /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
-                                         /*maxIdleTime=*/m_maxIdleTime);
+                                         /*maxIdleTime=*/m_maxIdleTime,
+                                         /*metricType=*/0,
+                                         /*metric=*/1);
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -959,7 +963,9 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
                                          /*hops=*/1,
                                          /*nextHop=*/iface.GetBroadcast(),
                                          /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
-                                         /*maxIdleTime=*/m_maxIdleTime);
+                                         /*maxIdleTime=*/m_maxIdleTime,
+                                         /*metricType=*/0,
+                                         /*metric=*/1);
                 m_routingTable.AddRoute(rt);
             }
             else
@@ -1128,7 +1134,9 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                                        /*hops=*/hops,
                                        /*nextHop=*/IpAddress(),
                                        /*lastUsed=*/m_pathDiscoveryTime,
-                                       /*maxIdleTime=*/m_maxIdleTime);
+                                       /*maxIdleTime=*/m_maxIdleTime,
+                                       /*metricType=*/0,
+                                       /*metric=*/1);
         if (hops == m_netDiameter)
         {
             newEntry.IncrementRreqCnt();
@@ -1334,7 +1342,9 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
             /*hops=*/1,
             /*nextHop=*/sender,
             /*lastUsed=*/m_activeInterval,
-            /*maxIdleTime=*/m_maxIdleTime);
+            /*maxIdleTime=*/m_maxIdleTime,
+            /*metricType=*/0,
+            /*metric=*/1);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1355,7 +1365,9 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*hops=*/1,
                 /*nextHop=*/sender,
                 /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()),
-                /*maxIdleTime=*/m_maxIdleTime);
+                /*maxIdleTime=*/m_maxIdleTime,
+                /*metricType=*/0,
+                /*metric=*/1);
             m_routingTable.Update(newEntry);
         }
     }
@@ -1392,7 +1404,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     if (m_mms.IsDuplicate(origin,
                           rreqHeader.GetOrigMask(),
                           rreqHeader.GetTargIp(),
-                          rreqHeader.GetOrigPathMetric()))
+                          rreqHeader.GetOrigMetric()))
     {
         NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
         return;
@@ -1425,7 +1437,9 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             /*hops=*/hop,
             /*nextHop=*/src,
             /*lastUsed=*/Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
-            /*maxIdleTime=*/m_maxIdleTime);
+            /*maxIdleTime=*/m_maxIdleTime,
+            /*metricType=*/0,
+            /*metric=*/1);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1465,7 +1479,9 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                        1,
                                        src,
                                        m_activeInterval,
-                                       m_maxIdleTime);
+                                       m_maxIdleTime,
+                                       /*metricType=*/0,
+                                       /*metric=*/1);
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1696,6 +1712,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*nextHop=*/sender,
         /*lastUsed=*/m_netTraversalTime,
         /*maxIdleTime=*/m_maxIdleTime,
+        /*metricType=*/0,
+        /*metric=*/1,
         /*state=*/ACTIVE);
 
     m_nb.UpdateState(dst,
@@ -1816,10 +1834,10 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
     NS_LOG_FUNCTION(this << " from " << src);
     RerrHeader<IpAddress> rerrHeader(tlvHeader);
 
-    std::map<IpAddress, uint32_t> dstWithNextHopSrc;
-    std::map<IpAddress, uint32_t> unreachable;
+    std::map<IpAddress, UnreachableDst> dstWithNextHopSrc;
+    std::map<IpAddress, UnreachableDst> unreachable;
     m_routingTable.GetListOfDestinationWithNextHop(src, dstWithNextHopSrc);
-    std::pair<IpAddress, uint32_t> un;
+    std::pair<IpAddress, UnreachableDst> un;
     while (rerrHeader.RemoveUnDestination(un))
     {
         for (auto i = dstWithNextHopSrc.begin(); i != dstWithNextHopSrc.end(); ++i)
@@ -1834,7 +1852,7 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
     std::vector<IpAddress> precursors;
     for (auto i = unreachable.begin(); i != unreachable.end();)
     {
-        if (!rerrHeader.AddUnDestination(i->first, i->second))
+        if (!rerrHeader.AddUnDestination(i->first, i->second.m_seqNo, i->second.m_metricType))
         {
             Ptr<Packet> packet = Create<Packet>();
             packet->AddHeader(rerrHeader);

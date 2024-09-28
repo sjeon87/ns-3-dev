@@ -23,6 +23,8 @@
 
 #include "aodvv2-local-route-set.h"
 
+#include "aodvv2-packet.h"
+
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
@@ -49,11 +51,15 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
                           T nextHop,
                           Time lastUsed,
                           Time maxIdleTime,
+                          uint8_t metricType,
+                          uint32_t metric,
                           RouteStates state)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
       m_nextHopIface(iface),
       m_lastUsed(lastUsed + Simulator::Now()),
+      m_metricType(metricType),
+      m_metric(metric),
       m_state(state),
       m_hops(hops),
       m_reqCount(0),
@@ -222,7 +228,6 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     *os << std::setw(16);
     switch (m_state)
     {
-    // TODO me: understand how to stream the IDLE state
     case ACTIVE: {
         *os << "UP";
         break;
@@ -366,7 +371,8 @@ LocalRouteSet<T>::SetEntryState(T id, RouteStates state)
 
 template <typename T>
 void
-LocalRouteSet<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_t>& unreachable)
+LocalRouteSet<T>::GetListOfDestinationWithNextHop(T nextHop,
+                                                  std::map<T, UnreachableDst>& unreachable)
 {
     NS_LOG_FUNCTION(this);
     Purge();
@@ -375,15 +381,18 @@ LocalRouteSet<T>::GetListOfDestinationWithNextHop(T nextHop, std::map<T, uint32_
     {
         if (i->second.GetNextHop() == nextHop)
         {
-            NS_LOG_LOGIC("Unreachable insert " << i->first << " " << i->second.GetSeqNo());
-            unreachable.insert(std::make_pair(i->first, i->second.GetSeqNo()));
+            NS_LOG_LOGIC("Unreachable insert " << i->first << " " << i->second.GetSeqNo() << " "
+                                               << i->second.GetMetricType());
+            unreachable.insert(
+                std::make_pair(i->first,
+                               UnreachableDst{i->second.GetSeqNo(), i->second.GetMetricType()}));
         }
     }
 }
 
 template <typename T>
 void
-LocalRouteSet<T>::InvalidateRoutesWithDst(const std::map<T, uint32_t>& unreachable)
+LocalRouteSet<T>::InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unreachable)
 {
     NS_LOG_FUNCTION(this);
     Purge();

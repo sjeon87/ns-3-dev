@@ -41,14 +41,17 @@ RreqHeader<T>::RreqHeader(T origIp,
                           uint16_t targMask,
                           uint16_t seqNo,
                           uint8_t hopCount,
-                          uint8_t maxHopCount)
+                          uint8_t maxHopCount,
+                          uint8_t metricType,
+                          uint8_t origMetric)
     : m_origIp(origIp),
       m_origMask(origMask),
       m_origSeqNo(1),
-      m_origPathMetric(1),
       m_targIp(targIp),
       m_targMask(targMask),
       m_targSeqNo(1),
+      m_metricType(metricType),
+      m_origMetric(origMetric),
       m_seqNo(seqNo),
       m_hopCount(hopCount),
       m_maxHopCount(maxHopCount)
@@ -130,7 +133,8 @@ RreqHeader<T>::CreateTlvHeader() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a1tlv3 = Create<PbbAddressTlv>();
     msg1a1tlv3->SetType(AODVV2_PATH_METRIC);
-    uint8_t msg1a1tlv3val[] = {this->m_origPathMetric};
+    msg1a1tlv3->SetTypeExt(this->m_metricType);
+    uint8_t msg1a1tlv3val[] = {this->m_origMetric};
     msg1a1tlv3->SetValue(msg1a1tlv3val, sizeof(msg1a1tlv3val));
     msg1a1->TlvPushBack(msg1a1tlv3);
 
@@ -229,7 +233,7 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 }
                 if (hasPathMetric)
                 {
-                    this->SetOrigPathMetric(pathMetric);
+                    this->SetOrigMetric(pathMetric);
                 }
                 break;
             case AODVV2_TARGPREFIX:
@@ -300,11 +304,15 @@ RrepHeader<T>::RrepHeader(T origIp,
                           uint16_t targMask,
                           uint16_t seqNo,
                           uint8_t hopCount,
-                          uint8_t maxHopCount)
+                          uint8_t maxHopCount,
+                          uint8_t metricType,
+                          uint8_t targMetric)
     : m_origIp(origIp),
       m_origMask(origMask),
       m_targIp(targIp),
       m_targMask(targMask),
+      m_metricType(metricType),
+      m_targMetric(targMetric),
       m_seqNo(seqNo),
       m_hopCount(hopCount),
       m_maxHopCount(maxHopCount)
@@ -401,7 +409,8 @@ RrepHeader<T>::CreateTlvHeader() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
     msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
-    uint8_t msg1a2tlv3val[] = {this->m_targPathMetric};
+    msg1a2tlv3->SetTypeExt(this->m_metricType);
+    uint8_t msg1a2tlv3val[] = {this->m_targMetric};
     msg1a2tlv3->SetValue(msg1a2tlv3val, sizeof(msg1a2tlv3val));
     msg1a1->TlvPushBack(msg1a2tlv3);
 
@@ -467,7 +476,7 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 }
                 if (hasPathMetric)
                 {
-                    this->SetTargPathMetric(pathMetric);
+                    this->SetTargMetric(pathMetric);
                 }
                 break;
             }
@@ -702,7 +711,7 @@ RerrHeader<T>::CreateTlvHeader() const
 
     // ****************************** AddressList Address Block ******************************
     // for each unreachable destination
-    for (auto j = m_unreachableDstSeqNo.begin(); j != m_unreachableDstSeqNo.end(); ++j)
+    for (auto j = m_unreachableDst.begin(); j != m_unreachableDst.end(); ++j)
     {
         Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
         msg1a2->AddressPushBack((*j).first);
@@ -718,13 +727,14 @@ RerrHeader<T>::CreateTlvHeader() const
         // Add SEQ_NUM TLV
         Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
         msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-        uint8_t msg1a2tlv2val[] = {(uint8_t)(*j).second};
+        uint8_t msg1a2tlv2val[] = {(uint8_t)(*j).second.m_seqNo};
         msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
         msg1a1->TlvPushBack(msg1a2tlv2);
 
         // Add PATH_METRIC TLV
         Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
         msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
+        msg1a2tlv3->SetTypeExt((*j).second.m_metricType);
         msg1a1->TlvPushBack(msg1a2tlv3);
 
         msg1->AddressBlockPushBack(msg1a2);
@@ -813,37 +823,37 @@ void
 RerrHeader<T>::Print(std::ostream& os) const
 {
     os << "Unreachable destination (ip address, seq. number):";
-    for (auto j = m_unreachableDstSeqNo.begin(); j != m_unreachableDstSeqNo.end(); ++j)
+    for (auto j = m_unreachableDst.begin(); j != m_unreachableDst.end(); ++j)
     {
-        os << (*j).first << ", " << (*j).second;
+        os << (*j).first << ", " << (*j).second.m_seqNo << ", " << (*j).second.m_metricType;
     }
 }
 
 template <typename T>
 bool
-RerrHeader<T>::AddUnDestination(T dst, uint16_t seqNo)
+RerrHeader<T>::AddUnDestination(T dst, uint16_t seqNo, uint8_t metricType)
 {
-    if (m_unreachableDstSeqNo.find(dst) != m_unreachableDstSeqNo.end())
+    if (m_unreachableDst.find(dst) != m_unreachableDst.end())
     {
         return true;
     }
 
     NS_ASSERT(GetDestCount() < 255); // can't support more than 255 destinations in single RERR
-    m_unreachableDstSeqNo.insert(std::make_pair(dst, seqNo));
+    m_unreachableDst.insert(std::make_pair(dst, UnreachableDst{seqNo, metricType}));
     return true;
 }
 
 template <typename T>
 bool
-RerrHeader<T>::RemoveUnDestination(std::pair<T, uint32_t>& un)
+RerrHeader<T>::RemoveUnDestination(std::pair<T, UnreachableDst>& un)
 {
-    if (m_unreachableDstSeqNo.empty())
+    if (m_unreachableDst.empty())
     {
         return false;
     }
-    auto i = m_unreachableDstSeqNo.begin();
+    auto i = m_unreachableDst.begin();
     un = *i;
-    m_unreachableDstSeqNo.erase(i);
+    m_unreachableDst.erase(i);
     return true;
 }
 
@@ -851,7 +861,7 @@ template <typename T>
 void
 RerrHeader<T>::Clear()
 {
-    m_unreachableDstSeqNo.clear();
+    m_unreachableDst.clear();
 }
 
 template <typename T>
@@ -863,11 +873,12 @@ RerrHeader<T>::operator==(const RerrHeader& o) const
         return false;
     }
 
-    auto j = m_unreachableDstSeqNo.begin();
-    auto k = o.m_unreachableDstSeqNo.begin();
+    auto j = m_unreachableDst.begin();
+    auto k = o.m_unreachableDst.begin();
     for (uint8_t i = 0; i < GetDestCount(); ++i)
     {
-        if ((j->first != k->first) || (j->second != k->second))
+        if ((j->first != k->first) || (j->second.m_seqNo != k->second.m_seqNo &&
+                                       j->second.m_metricType != k->second.m_metricType))
         {
             return false;
         }
