@@ -1994,7 +1994,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
     m_routingTable.GetListOfDestinationWithNextHop(nextHop, unreachable);
     for (auto i = unreachable.begin(); i != unreachable.end();)
     {
-        if (!rerrHeader.AddUnDestination(i->first, i->second))
+        if (!rerrHeader.AddUnDestination(i->first, i->second.m_seqNo, i->second.m_metricType))
         {
             NS_LOG_LOGIC("Send RERR message with maximum size.");
             Ptr<Packet> packet = Create<Packet>();
