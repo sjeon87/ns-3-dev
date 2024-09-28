@@ -193,10 +193,11 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
     {
         bool hasAddrType = false;
         bool hasSeqNum = false;
-        bool hasPathMetric = false;
+        bool hasMetric = false;
         uint8_t addrType = 0;
         uint8_t seqNum = 0;
-        uint8_t pathMetric = 0;
+        uint8_t metric = 0;
+        uint8_t metricType = 0;
 
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
@@ -215,8 +216,9 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             }
             else if (tlv->GetType() == AODVV2_PATH_METRIC)
             {
-                pathMetric = tlv->GetValue().Begin().ReadU8();
-                hasPathMetric = true;
+                metric = tlv->GetValue().Begin().ReadU8();
+                metricType = tlv->GetTypeExt();
+                hasMetric = true;
             }
         }
 
@@ -231,9 +233,10 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 {
                     this->SetOrigSeqNo(seqNum);
                 }
-                if (hasPathMetric)
+                if (hasMetric)
                 {
-                    this->SetOrigMetric(pathMetric);
+                    this->SetOrigMetric(metric);
+                    this->SetMetricType(metricType);
                 }
                 break;
             case AODVV2_TARGPREFIX:
@@ -432,10 +435,11 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
     {
         bool hasAddrType = false;
         bool hasSeqNum = false;
-        bool hasPathMetric = false;
+        bool hasMetric = false;
         uint8_t addrType = 0;
         uint8_t seqNum = 0;
-        uint8_t pathMetric = 0;
+        uint8_t metric = 0;
+        uint8_t metricType = 0;
 
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
@@ -454,8 +458,9 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             }
             else if (tlv->GetType() == AODVV2_PATH_METRIC)
             {
-                pathMetric = tlv->GetValue().Begin().ReadU8();
-                hasPathMetric = true;
+                metric = tlv->GetValue().Begin().ReadU8();
+                metricType = tlv->GetTypeExt();
+                hasMetric = true;
             }
         }
 
@@ -474,9 +479,10 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 {
                     this->SetTargSeqNo(seqNum);
                 }
-                if (hasPathMetric)
+                if (hasMetric)
                 {
-                    this->SetTargMetric(pathMetric);
+                    this->SetTargMetric(metric);
+                    this->SetMetricType(metricType);
                 }
                 break;
             }
@@ -754,10 +760,10 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
         bool hasAddrType = false;
-        bool hasPathMetric = false;
+        bool hasMetric = false;
         uint8_t addrType = 0;
         uint8_t seqNum = 0;
-        uint8_t pathMetric = 0;
+        uint8_t metricType = 0;
 
         Ptr<PbbAddressBlock> addressBlock = *i;
         for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
@@ -775,8 +781,8 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
             }
             else if (tlv->GetType() == AODVV2_PATH_METRIC)
             {
-                pathMetric = tlv->GetValue().Begin().ReadU8();
-                hasPathMetric = true;
+                metricType = tlv->GetTypeExt();
+                hasMetric = true;
             }
         }
 
@@ -789,11 +795,15 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 this->SetOrigMask(addressBlock->PrefixFront());
                 break;
             case AODVV2_TARGPREFIX:
-                this->AddUnDestination(T::ConvertFrom(addressBlock->AddressFront()), seqNum);
-                if (hasPathMetric)
+                if (hasMetric)
                 {
-                    std::cout << pathMetric << std::endl;
-                    // TODO me: if needed save pathMetric for each address
+                    this->AddUnDestination(T::ConvertFrom(addressBlock->AddressFront()),
+                                           seqNum,
+                                           metricType);
+                }
+                else
+                {
+                    this->AddUnDestination(T::ConvertFrom(addressBlock->AddressFront()), seqNum);
                 }
 
                 break;
