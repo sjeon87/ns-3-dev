@@ -1981,7 +1981,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
     NS_LOG_FUNCTION(this << nextHop);
     RerrHeader<IpAddress> rerrHeader;
     std::vector<IpAddress> precursors;
-    std::map<IpAddress, uint32_t> unreachable;
+    std::map<IpAddress, UnreachableDst> unreachable;
 
     LocalRoute<IpAddress> toNextHop;
     if (!m_routingTable.LookupRoute(nextHop, toNextHop))
