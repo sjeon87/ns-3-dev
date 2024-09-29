@@ -187,6 +187,7 @@ void
 RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     Ptr<PbbMessage> msg1 = tlvHeader.MessageFront();
+    this->SetSeqNo(tlvHeader.GetSequenceNumber());
     this->SetHopCount(msg1->GetHopLimit());
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
@@ -429,6 +430,7 @@ void
 RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     Ptr<PbbMessage> msg1 = tlvHeader.MessageFront();
+    this->SetSeqNo(tlvHeader.GetSequenceNumber());
     this->SetHopCount(msg1->GetHopLimit());
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
