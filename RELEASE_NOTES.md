@@ -41,6 +41,8 @@ been tested on Linux. As of this release, the latest known version to work with 
 - (core) !2018 - `AddDeprecatedName` is now supported in TypeId.
 - (energy) !2018 - Energy module now uses the `ns3::energy` namespace in its TypeId.
 - (lr-wpan) !2163 - Lr-wpan module now uses the `ns3::lrwpan` namespace in its TypeId.
+- (internet) !2027 - TcpSocketBase: Added TCP retransmission trace
+- (applications) !2027 - BulkSendApplication: Added TCP retransmission trace consuming TcpSocketBase's TCP retransmission trace
 
 ### Bugs fixed
 

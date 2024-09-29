@@ -266,6 +266,10 @@ TcpSocketBase::GetTypeId()
                             "Send tcp packet to IP protocol",
                             MakeTraceSourceAccessor(&TcpSocketBase::m_txTrace),
                             "ns3::TcpSocketBase::TcpTxRxTracedCallback")
+            .AddTraceSource("Retransmission",
+                            "Notification of a TCP retransmission",
+                            MakeTraceSourceAccessor(&TcpSocketBase::m_retransmissionTrace),
+                            "ns3::TcpSocketBase::RetransmissionCallback")
             .AddTraceSource("Rx",
                             "Receive tcp packet from IP protocol",
                             MakeTraceSourceAccessor(&TcpSocketBase::m_rxTrace),
@@ -1964,7 +1968,7 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
                           uint32_t currentDelivered,
                           const SequenceNumber32& oldHeadSequence)
 {
-    NS_LOG_FUNCTION(this << ackNumber << scoreboardUpdated);
+    NS_LOG_FUNCTION(this << ackNumber << scoreboardUpdated << currentDelivered << oldHeadSequence);
     // RFC 6675, Section 5, 2nd paragraph:
     // If the incoming ACK is a cumulative acknowledgment, the TCP MUST
     // reset DupAcks to zero.
@@ -2030,7 +2034,7 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
     {
         // Please remember that, with SACK, we can enter here even if we
         // received a dupack.
-        bytesAcked = ackNumber - oldHeadSequence;
+        bytesAcked = currentDelivered;
         uint32_t segsAcked = bytesAcked / m_tcb->m_segmentSize;
         m_bytesAckedNotProcessed += bytesAcked % m_tcb->m_segmentSize;
         bytesAcked -= bytesAcked % m_tcb->m_segmentSize;
@@ -2041,6 +2045,8 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
             bytesAcked += m_tcb->m_segmentSize;
             m_bytesAckedNotProcessed -= m_tcb->m_segmentSize;
         }
+        NS_LOG_DEBUG("Set segsAcked: " << segsAcked
+                                       << " based on currentDelivered: " << currentDelivered);
 
         // Dupack count is reset to eventually fast-retransmit after 3 dupacks.
         // Any SACK-ed segment will be cleaned up by DiscardUpTo.
@@ -3273,6 +3279,25 @@ TcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withA
     }
 
     m_txTrace(p, header, this);
+    if (isRetransmission)
+    {
+        if (m_endPoint)
+        {
+            m_retransmissionTrace(p,
+                                  header,
+                                  m_endPoint->GetLocalAddress(),
+                                  m_endPoint->GetPeerAddress(),
+                                  this);
+        }
+        else
+        {
+            m_retransmissionTrace(p,
+                                  header,
+                                  m_endPoint6->GetLocalAddress(),
+                                  m_endPoint6->GetPeerAddress(),
+                                  this);
+        }
+    }
 
     if (m_endPoint)
     {
