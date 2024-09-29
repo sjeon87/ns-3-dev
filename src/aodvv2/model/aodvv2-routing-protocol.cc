@@ -1438,8 +1438,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             /*nextHop=*/src,
             /*lastUsed=*/Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
             /*maxIdleTime=*/m_maxIdleTime,
-            /*metricType=*/0,
-            /*metric=*/1);
+            /*metricType=*/rreqHeader.GetMetricType(),
+            /*metric=*/rreqHeader.GetOrigMetric());
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1480,8 +1480,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                        src,
                                        m_activeInterval,
                                        m_maxIdleTime,
-                                       /*metricType=*/0,
-                                       /*metric=*/1);
+                                       rreqHeader.GetMetricType(),
+                                       rreqHeader.GetOrigMetric());
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1712,8 +1712,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*nextHop=*/sender,
         /*lastUsed=*/m_netTraversalTime,
         /*maxIdleTime=*/m_maxIdleTime,
-        /*metricType=*/0,
-        /*metric=*/1,
+        /*metricType=*/rrepHeader.GetMetricType(),
+        /*metric=*/rrepHeader.GetTargMetric(),
         /*state=*/ACTIVE);
 
     m_nb.UpdateState(dst,
