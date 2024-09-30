@@ -323,11 +323,11 @@ RrepHeader<T>::RrepHeader(T origIp,
       m_origMask(origMask),
       m_targIp(targIp),
       m_targMask(targMask),
-      m_metricType(metricType),
-      m_targMetric(targMetric),
       m_seqNo(seqNo),
       m_hopCount(hopCount),
-      m_maxHopCount(maxHopCount)
+      m_maxHopCount(maxHopCount),
+      m_metricType(metricType),
+      m_targMetric(targMetric)
 {
 }
 

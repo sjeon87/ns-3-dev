@@ -1602,8 +1602,11 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*origIp=*/toOrigin.GetDestination(),
         /*origMask=*/32,
         /*targIp=*/rreqHeader.GetTargIp(),
-        /*targMask=*/32);
-    rrepHeader.SetHopCount(hopCount);
+        /*targMask=*/32,
+        /*seqNo=*/m_seqNo,
+        /*hopCount=*/hopCount,
+        /*maxHopCount=*/m_maxHopCount);
+
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
@@ -1621,7 +1624,11 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRoute<IpAddress>& toD
         /*origIp=*/toOrigin.GetDestination(),
         /*origMask=*/32,
         /*targIp=*/toDst.GetDestination(),
-        /*targMask=*/32);
+        /*targMask=*/32,
+        /*seqNo=*/toDst.GetSeqNo(),
+        /*hopCount=*/toDst.GetHop(),
+        /*maxHopCount=*/m_maxHopCount);
+
     /* If the node we received a RREQ for is a neighbor we are
      * probably facing a unidirectional link... Better request a RREP-ack
      */

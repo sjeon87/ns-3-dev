@@ -706,6 +706,24 @@ class RrepHeader : public Header
     }
 
     /**
+     * \brief Set the maximum hop count
+     * \param count the maximum hop count
+     */
+    void SetMaxHopCount(uint8_t count)
+    {
+        m_maxHopCount = count;
+    }
+
+    /**
+     * \brief Get the maximum hop count
+     * \return the maximum hop count
+     */
+    uint8_t GetMaxHopCount() const
+    {
+        return m_maxHopCount;
+    }
+
+    /**
      * \brief Comparison operator
      * \param o RREP header to compare
      * \return true if the RREP headers are equal
@@ -713,17 +731,17 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    T m_origIp;           ///< Origin IP Address
-    uint16_t m_origMask;  ///< Origin Mask
-    T m_targIp;           ///< Target IP Address
-    uint16_t m_targMask;  ///< Target Mask
-    uint16_t m_targSeqNo; ///< Target Sequence number
-    uint8_t m_metricType; ///< Metric Type
-    uint8_t m_targMetric; ///< Target Path Metric
-    uint16_t m_seqNo;     ///< Sequence number
-    uint8_t m_hopCount;   ///< Hop Count
+    T m_origIp;            ///< Origin IP Address
+    uint16_t m_origMask;   ///< Origin Mask
+    T m_targIp;            ///< Target IP Address
+    uint16_t m_targMask;   ///< Target Mask
+    uint16_t m_targSeqNo;  ///< Target Sequence number
+    uint16_t m_seqNo;      ///< Sequence number
+    uint8_t m_hopCount;    ///< Hop Count
+    uint8_t m_maxHopCount; ///< Max Hop Count
+    uint8_t m_metricType;  ///< Metric Type
+    uint8_t m_targMetric;  ///< Target Path Metric
 
-    uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
