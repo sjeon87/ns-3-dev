@@ -109,7 +109,7 @@ RreqHeader<T>::CreateTlvHeader() const
     Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREQ);
     msg1->SetHopLimit(this->m_maxHopCount);
-    msg1->SetHopCount(this->m_maxHopCount);
+    msg1->SetHopCount(this->m_hopCount);
 
     // ****************************** OrigPrefix Address Block ******************************
     Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();

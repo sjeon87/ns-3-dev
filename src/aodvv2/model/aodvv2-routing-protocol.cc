@@ -1148,6 +1148,8 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
     m_seqNo++;
     rreqHeader.SetSeqNo(m_seqNo);
+    rreqHeader.SetHopCount(m_maxHopCount);
+    rreqHeader.SetMaxHopCount(m_maxHopCount);
     m_requestId++;
 
     // Send RREQ as subnet directed broadcast from each interface used by aodvv2
@@ -1434,9 +1436,10 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             /*dst=*/origin,
             /*seqNo=*/rreqHeader.GetSeqNo(),
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-            /*hops=*/hop,
+            /*hops=*/m_maxHopCount - hop,
             /*nextHop=*/src,
-            /*lastUsed=*/Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
+            /*lastUsed=*/
+            Time(2 * m_netTraversalTime - 2 * (m_maxHopCount - hop) * m_nodeTraversalTime),
             /*maxIdleTime=*/m_maxIdleTime,
             /*metricType=*/rreqHeader.GetMetricType(),
             /*metric=*/rreqHeader.GetOrigMetric());
