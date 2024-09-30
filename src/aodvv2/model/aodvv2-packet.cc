@@ -109,6 +109,7 @@ RreqHeader<T>::CreateTlvHeader() const
     Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREQ);
     msg1->SetHopLimit(this->m_maxHopCount);
+    msg1->SetHopCount(this->m_maxHopCount);
 
     // ****************************** OrigPrefix Address Block ******************************
     Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
@@ -188,7 +189,14 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     Ptr<PbbMessage> msg1 = tlvHeader.MessageFront();
     this->SetSeqNo(tlvHeader.GetSequenceNumber());
-    this->SetHopCount(msg1->GetHopLimit());
+    if (msg1->HasHopCount())
+    {
+        this->SetHopCount(msg1->GetHopCount());
+    }
+    if (msg1->HasHopLimit())
+    {
+        this->SetMaxHopCount(msg1->GetHopLimit());
+    }
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {

@@ -390,6 +390,24 @@ class RreqHeader : public Header
     }
 
     /**
+     * \brief Set the maximum hop count
+     * \param count the maximum hop count
+     */
+    void SetMaxHopCount(uint8_t count)
+    {
+        m_maxHopCount = count;
+    }
+
+    /**
+     * \brief Get the maximum hop count
+     * \return the maximum hop count
+     */
+    uint8_t GetMaxHopCount() const
+    {
+        return m_maxHopCount;
+    }
+
+    /**
      * \brief Set the send target sequence number flag
      * \param send the send target sequence number flag
      */
