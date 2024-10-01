@@ -627,6 +627,7 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
         if (toDst.IsValid())
         {
             toDst.SetState(ACTIVE);
+            m_routingTable.Update(toDst);
             Ptr<IpRoute> route = toDst.GetRoute();
             NS_LOG_LOGIC(route->GetSource() << " forwarding to " << dst << " from " << origin
                                             << " packet " << p->GetUid());
@@ -1669,6 +1670,8 @@ Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
     packet->AddHeader(h);
     LocalRoute<IpAddress> toNeighbor;
     m_routingTable.LookupRoute(neighbor, toNeighbor);
+    toNeighbor.SetState(ACTIVE);
+    m_routingTable.Update(toNeighbor);
     m_nb.AddNeighbor(toNeighbor.GetDestination(), toNeighbor.GetInterface());
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toNeighbor.GetInterface());
     NS_ASSERT(socket);
@@ -1767,7 +1770,10 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         m_routingTable.AddRoute(newEntry);
     }
     // Acknowledge receipt of the RREP by sending a RREP-ACK message back
-    SendReplyAck(sender);
+    if (receiver == rrepHeader.GetOrigIp())
+    {
+        SendReplyAck(sender);
+    }
     NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigIp());
     if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
     {
@@ -1871,6 +1877,7 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
             LocalRoute<IpAddress> toDst;
             m_routingTable.LookupRoute(i->first, toDst);
             toDst.SetState(INVALID);
+            m_routingTable.Update(toDst);
             toDst.GetPrecursors(precursors);
             ++i;
         }
@@ -1996,6 +2003,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         return;
     }
     toNextHop.SetState(INVALID);
+    m_routingTable.Update(toNextHop);
     toNextHop.GetPrecursors(precursors);
     rerrHeader.AddUnDestination(nextHop, toNextHop.GetSeqNo());
     m_routingTable.GetListOfDestinationWithNextHop(nextHop, unreachable);
@@ -2014,6 +2022,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
             LocalRoute<IpAddress> toDst;
             m_routingTable.LookupRoute(i->first, toDst);
             toDst.SetState(INVALID);
+            m_routingTable.Update(toDst);
             toDst.GetPrecursors(precursors);
             ++i;
         }
