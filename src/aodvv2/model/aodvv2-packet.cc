@@ -40,8 +40,7 @@ RreqHeader<T>::RreqHeader(T origIp,
                           T targIp,
                           uint16_t targMask,
                           uint16_t seqNo,
-                          uint8_t hopCount,
-                          uint8_t maxHopCount,
+                          uint8_t hopLimit,
                           uint8_t metricType,
                           uint8_t origMetric)
     : m_origIp(origIp),
@@ -53,8 +52,7 @@ RreqHeader<T>::RreqHeader(T origIp,
       m_metricType(metricType),
       m_origMetric(origMetric),
       m_seqNo(seqNo),
-      m_hopCount(hopCount),
-      m_maxHopCount(maxHopCount)
+      m_hopLimit(hopLimit)
 {
 }
 
@@ -108,8 +106,7 @@ RreqHeader<T>::CreateTlvHeader() const
 
     Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREQ);
-    msg1->SetHopLimit(this->m_maxHopCount);
-    msg1->SetHopCount(this->m_hopCount);
+    msg1->SetHopLimit(this->m_hopLimit);
 
     // ****************************** OrigPrefix Address Block ******************************
     Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
@@ -189,13 +186,9 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     Ptr<PbbMessage> msg1 = tlvHeader.MessageFront();
     this->SetSeqNo(tlvHeader.GetSequenceNumber());
-    if (msg1->HasHopCount())
-    {
-        this->SetHopCount(msg1->GetHopCount());
-    }
     if (msg1->HasHopLimit())
     {
-        this->SetMaxHopCount(msg1->GetHopLimit());
+        this->SetHopLimit(msg1->GetHopLimit());
     }
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
@@ -281,7 +274,7 @@ template <typename T>
 void
 RreqHeader<T>::Print(std::ostream& os) const
 {
-    os << "sequence number " << m_seqNo << " hop count " << m_hopCount << " originator ip "
+    os << "sequence number " << m_seqNo << " hop limit " << m_hopLimit << " originator ip "
        << m_origIp << " originator mask " << m_origMask << " target ip " << m_targIp
        << " target mask " << m_targMask;
 }
@@ -298,7 +291,7 @@ template <typename T>
 bool
 RreqHeader<T>::operator==(const RreqHeader<T>& o) const
 {
-    return (m_seqNo == o.m_seqNo && m_hopCount == o.m_hopCount && m_origIp == o.m_origIp &&
+    return (m_seqNo == o.m_seqNo && m_hopLimit == o.m_hopLimit && m_origIp == o.m_origIp &&
             m_origMask == o.m_origMask && m_targIp == o.m_targIp && m_targMask == o.m_targMask);
 }
 
@@ -315,8 +308,7 @@ RrepHeader<T>::RrepHeader(T origIp,
                           T targIp,
                           uint16_t targMask,
                           uint16_t seqNo,
-                          uint8_t hopCount,
-                          uint8_t maxHopCount,
+                          uint8_t hopLimit,
                           uint8_t metricType,
                           uint8_t targMetric)
     : m_origIp(origIp),
@@ -324,8 +316,7 @@ RrepHeader<T>::RrepHeader(T origIp,
       m_targIp(targIp),
       m_targMask(targMask),
       m_seqNo(seqNo),
-      m_hopCount(hopCount),
-      m_maxHopCount(maxHopCount),
+      m_hopLimit(hopLimit),
       m_metricType(metricType),
       m_targMetric(targMetric)
 {
@@ -381,7 +372,7 @@ RrepHeader<T>::CreateTlvHeader() const
 
     Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREP);
-    msg1->SetHopLimit(this->m_maxHopCount - this->m_hopCount);
+    msg1->SetHopLimit(this->m_hopLimit);
 
     // ****************************** OrigPrefix Address Block ******************************
     Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
@@ -439,7 +430,7 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     Ptr<PbbMessage> msg1 = tlvHeader.MessageFront();
     this->SetSeqNo(tlvHeader.GetSequenceNumber());
-    this->SetHopCount(msg1->GetHopLimit());
+    this->SetHopLimit(msg1->GetHopLimit());
 
     for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
     {
@@ -548,8 +539,7 @@ template class RrepHeader<Ipv6Address>;
 //-----------------------------------------------------------------------------
 
 template <typename T>
-RrepAckHeader<T>::RrepAckHeader(uint8_t maxHopCount)
-    : m_maxHopCount(maxHopCount)
+RrepAckHeader<T>::RrepAckHeader()
 {
 }
 
@@ -653,14 +643,12 @@ template class RrepAckHeader<Ipv6Address>;
 // RERR
 //-----------------------------------------------------------------------------
 template <typename T>
-RerrHeader<T>::RerrHeader(uint8_t maxHopCount)
-    : m_maxHopCount(maxHopCount)
+RerrHeader<T>::RerrHeader()
 {
 }
 
 template <typename T>
-RerrHeader<T>::RerrHeader(PbbPacket tlvHeader, uint8_t maxHopCount)
-    : m_maxHopCount(maxHopCount)
+RerrHeader<T>::RerrHeader(PbbPacket tlvHeader)
 {
     SetTlvHeader(tlvHeader);
 }

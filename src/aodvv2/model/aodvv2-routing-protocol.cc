@@ -1148,8 +1148,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
     m_seqNo++;
     rreqHeader.SetSeqNo(m_seqNo);
-    rreqHeader.SetHopCount(m_maxHopCount);
-    rreqHeader.SetMaxHopCount(m_maxHopCount);
+    rreqHeader.SetHopLimit(m_maxHopCount);
     m_requestId++;
 
     // Send RREQ as subnet directed broadcast from each interface used by aodvv2
@@ -1413,8 +1412,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     }
 
     // Decrement RREQ hop count
-    uint8_t hop = rreqHeader.GetHopCount() - 1;
-    rreqHeader.SetHopCount(hop);
+    uint8_t hop = rreqHeader.GetHopLimit() - 1;
+    rreqHeader.SetHopLimit(hop);
 
     /*
      *  When the reverse route is created or updated, the following actions on the route are also
@@ -1502,7 +1501,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     m_nb.AddNeighbor(src, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
-                          << static_cast<uint32_t>(rreqHeader.GetHopCount()) << " SeqNo "
+                          << static_cast<uint32_t>(rreqHeader.GetHopLimit()) << " SeqNo "
                           << rreqHeader.GetSeqNo() << " to destination " << rreqHeader.GetTargIp());
 
     //  A node generates a RREP if either:
@@ -1511,7 +1510,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     {
         m_routingTable.LookupRoute(origin, toOrigin);
         NS_LOG_DEBUG("Send reply since I am the destination");
-        SendReply(rreqHeader, toOrigin, rreqHeader.GetHopCount());
+        SendReply(rreqHeader, toOrigin, rreqHeader.GetHopLimit() - 1);
         return;
     }
     /*
@@ -1602,13 +1601,12 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         m_seqNo++;
     }
     RrepHeader rrepHeader(
-        /*origIp=*/toOrigin.GetDestination(),
+        /*targIp=*/toOrigin.GetDestination(),
         /*origMask=*/32,
-        /*targIp=*/rreqHeader.GetTargIp(),
+        /*origIp=*/rreqHeader.GetTargIp(),
         /*targMask=*/32,
         /*seqNo=*/m_seqNo,
-        /*hopCount=*/hopCount,
-        /*maxHopCount=*/m_maxHopCount);
+        /*hopCount=*/m_maxHopCount - hopCount);
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);
@@ -1629,8 +1627,7 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRoute<IpAddress>& toD
         /*targIp=*/toDst.GetDestination(),
         /*targMask=*/32,
         /*seqNo=*/toDst.GetSeqNo(),
-        /*hopCount=*/toDst.GetHop(),
-        /*maxHopCount=*/m_maxHopCount);
+        /*hopCount=*/toDst.GetHop());
 
     /* If the node we received a RREQ for is a neighbor we are
      * probably facing a unidirectional link... Better request a RREP-ack
@@ -1696,8 +1693,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         m_newDiscoveryTimer[dst].Cancel();
     }
 
-    uint8_t hop = rrepHeader.GetHopCount() + 1;
-    rrepHeader.SetHopCount(hop);
+    uint8_t hop = rrepHeader.GetHopLimit() + 1;
+    rrepHeader.SetHopLimit(hop);
 
     /*
      * If the route table entry to the destination is created or updated, then the following

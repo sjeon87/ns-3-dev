@@ -130,8 +130,7 @@ class RreqHeader : public Header
      * \param targIp the target IP address
      * \param targMask the target mask
      * \param seqNo the sequence number
-     * \param hopCount the hop count
-     * \param maxHopCount the maximum hop count
+     * \param hopLimit the hop limit
      * \param metricType the metric type
      * \param origMetric the origin metric
      */
@@ -140,8 +139,7 @@ class RreqHeader : public Header
                T targIp = T(),
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
-               uint8_t hopCount = 0,
-               uint8_t maxHopCount = 20,
+               uint8_t hopLimit = 0,
                uint8_t metricType = 0,
                uint8_t origMetric = 1);
 
@@ -372,39 +370,21 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the hop count
-     * \param count the hop count
+     * \brief Set the hop limit
+     * \param count the hop limit
      */
-    void SetHopCount(uint8_t count)
+    void SetHopLimit(uint8_t count)
     {
-        m_hopCount = count;
+        m_hopLimit = count;
     }
 
     /**
-     * \brief Get the hop count
-     * \return the hop count
+     * \brief Get the hop limit
+     * \return the hop limit
      */
-    uint8_t GetHopCount() const
+    uint8_t GetHopLimit() const
     {
-        return m_hopCount;
-    }
-
-    /**
-     * \brief Set the maximum hop count
-     * \param count the maximum hop count
-     */
-    void SetMaxHopCount(uint8_t count)
-    {
-        m_maxHopCount = count;
-    }
-
-    /**
-     * \brief Get the maximum hop count
-     * \return the maximum hop count
-     */
-    uint8_t GetMaxHopCount() const
-    {
-        return m_maxHopCount;
+        return m_hopLimit;
     }
 
     /**
@@ -445,9 +425,8 @@ class RreqHeader : public Header
     uint8_t m_metricType; ///< Metric Type
     uint8_t m_origMetric; ///< Origin Path Metric
     uint16_t m_seqNo;     ///< Sequence number
-    uint8_t m_hopCount;   ///< Hop Count
+    uint8_t m_hopLimit;   ///< Hop Limit
 
-    uint8_t m_maxHopCount;              ///< Max Hop Count
     bool m_sendTargSeqNum;              ///< Send Target Sequence Number
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
@@ -502,8 +481,7 @@ class RrepHeader : public Header
      * \param targIp the target IP address
      * \param targMask the target mask
      * \param seqNo the sequence number
-     * \param hopCount the hop count
-     * \param maxHopCount the maximum hop count
+     * \param hopLimit the hop limit
      * \param metricType the metric type
      * \param targMetric the target metric
      */
@@ -512,8 +490,7 @@ class RrepHeader : public Header
                T targIp = T(),
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
-               uint8_t hopCount = 0,
-               uint8_t maxHopCount = 20,
+               uint8_t hopLimit = 0,
                uint8_t metricType = 0,
                uint8_t targMetric = 1);
     /**
@@ -688,39 +665,21 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the hop count
-     * \param count the hop count
+     * \brief Set the hop limit
+     * \param count the hop limit
      */
-    void SetHopCount(uint8_t count)
+    void SetHopLimit(uint8_t count)
     {
-        m_hopCount = count;
+        m_hopLimit = count;
     }
 
     /**
-     * \brief Get the hop count
-     * \return the hop count
+     * \brief Get the hop limit
+     * \return the hop limit
      */
-    uint8_t GetHopCount() const
+    uint8_t GetHopLimit() const
     {
-        return m_hopCount;
-    }
-
-    /**
-     * \brief Set the maximum hop count
-     * \param count the maximum hop count
-     */
-    void SetMaxHopCount(uint8_t count)
-    {
-        m_maxHopCount = count;
-    }
-
-    /**
-     * \brief Get the maximum hop count
-     * \return the maximum hop count
-     */
-    uint8_t GetMaxHopCount() const
-    {
-        return m_maxHopCount;
+        return m_hopLimit;
     }
 
     /**
@@ -731,16 +690,15 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    T m_origIp;            ///< Origin IP Address
-    uint16_t m_origMask;   ///< Origin Mask
-    T m_targIp;            ///< Target IP Address
-    uint16_t m_targMask;   ///< Target Mask
-    uint16_t m_targSeqNo;  ///< Target Sequence number
-    uint16_t m_seqNo;      ///< Sequence number
-    uint8_t m_hopCount;    ///< Hop Count
-    uint8_t m_maxHopCount; ///< Max Hop Count
-    uint8_t m_metricType;  ///< Metric Type
-    uint8_t m_targMetric;  ///< Target Path Metric
+    T m_origIp;           ///< Origin IP Address
+    uint16_t m_origMask;  ///< Origin Mask
+    T m_targIp;           ///< Target IP Address
+    uint16_t m_targMask;  ///< Target Mask
+    uint16_t m_targSeqNo; ///< Target Sequence number
+    uint16_t m_seqNo;     ///< Sequence number
+    uint8_t m_hopLimit;   ///< Hop Limit
+    uint8_t m_metricType; ///< Metric Type
+    uint8_t m_targMetric; ///< Target Path Metric
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
@@ -776,10 +734,8 @@ class RrepAckHeader : public Header
   public:
     /**
      * constructor
-     *
-     * \param maxHopCount the maximum hop count
      */
-    RrepAckHeader(uint8_t maxHopCount = 20);
+    RrepAckHeader();
 
     /**
      * \brief Get the type ID.
@@ -829,7 +785,6 @@ class RrepAckHeader : public Header
   private:
     uint16_t m_seqNo; ///< Sequence number
 
-    uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
@@ -874,16 +829,13 @@ class RerrHeader : public Header
   public:
     /**
      * constructor
-     *
-     * \param maxHopCount the maximum hop count
      */
-    RerrHeader(uint8_t maxHopCount = 20);
+    RerrHeader();
     /**
      * constructor
      * \param tlvHeader the TLV header
-     * \param maxHopCount the maximum hop count
      */
-    RerrHeader(PbbPacket tlvHeader, uint8_t maxHopCount = 20);
+    RerrHeader(PbbPacket tlvHeader);
 
     /**
      * \brief Get the type ID.
@@ -982,7 +934,6 @@ class RerrHeader : public Header
     T m_origIp;          ///< Origin IP Address
     uint16_t m_origMask; ///< Origin Mask
 
-    uint8_t m_maxHopCount;              ///< Max Hop Count
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
 
