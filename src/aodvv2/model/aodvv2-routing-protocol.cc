@@ -1601,9 +1601,9 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         m_seqNo++;
     }
     RrepHeader rrepHeader(
-        /*targIp=*/toOrigin.GetDestination(),
+        /*origIp=*/toOrigin.GetDestination(),
         /*origMask=*/32,
-        /*origIp=*/rreqHeader.GetTargIp(),
+        /*targIp=*/rreqHeader.GetTargIp(),
         /*targMask=*/32,
         /*seqNo=*/m_seqNo,
         /*hopCount=*/m_maxHopCount - hopCount);
