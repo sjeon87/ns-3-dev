@@ -1693,7 +1693,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         m_newDiscoveryTimer[dst].Cancel();
     }
 
-    uint8_t hop = rrepHeader.GetHopLimit() + 1;
+    uint8_t hop = rrepHeader.GetHopLimit() - 1;
     rrepHeader.SetHopLimit(hop);
 
     /*
