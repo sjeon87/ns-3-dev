@@ -1787,7 +1787,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
 
     LocalRoute<IpAddress> toOrigin;
     if (!m_routingTable.LookupRoute(rrepHeader.GetOrigIp(), toOrigin) ||
-        toOrigin.GetState() == UNCONFIRMED)
+        toOrigin.GetState() == IDLE)
     {
         return; // Impossible! drop.
     }
