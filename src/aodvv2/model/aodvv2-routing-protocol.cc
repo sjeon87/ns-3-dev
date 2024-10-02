@@ -1770,10 +1770,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         m_routingTable.AddRoute(newEntry);
     }
     // Acknowledge receipt of the RREP by sending a RREP-ACK message back
-    if (receiver == rrepHeader.GetOrigIp())
-    {
-        SendReplyAck(sender);
-    }
+    SendReplyAck(sender);
     NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigIp());
     if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
     {
