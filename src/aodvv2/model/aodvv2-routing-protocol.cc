@@ -1551,6 +1551,21 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             rreqHeader.SetSeqNo(toDst.GetSeqNo());
         }
     }
+    else
+    {
+        Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
+        LocalRoute<IpAddress> newEntry(dev,
+                                       dst,
+                                       rreqHeader.GetOrigSeqNo(),
+                                       m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                                       m_maxHopCount - rreqHeader.GetHopLimit(),
+                                       dst,
+                                       m_activeInterval,
+                                       m_maxIdleTime,
+                                       rreqHeader.GetMetricType(),
+                                       rreqHeader.GetOrigMetric());
+        m_routingTable.AddRoute(newEntry);
+    }
 
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
@@ -1730,6 +1745,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
                      m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                      m_rreqWaitTime);
 
+    /* TOD me: activate once updated m_nb correctly
     if (m_nb.GetState(dst) == HEARD)
     {
         newEntry.SetState(UNCONFIRMED);
@@ -1738,7 +1754,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     {
         newEntry.SetState(INVALID);
         return;
-    }
+    } */
 
     LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
@@ -1769,8 +1785,6 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         NS_LOG_LOGIC("add new route");
         m_routingTable.AddRoute(newEntry);
     }
-    // Acknowledge receipt of the RREP by sending a RREP-ACK message back
-    SendReplyAck(sender);
     NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigIp());
     if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
     {
@@ -1781,6 +1795,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
             m_addressReqTimer.erase(dst);
         }
         m_routingTable.LookupRoute(dst, toDst);
+        SendReplyAck(sender);
         SendPacketFromQueue(dst, toDst.GetRoute());
         return;
     }
@@ -1792,6 +1807,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         return; // Impossible! drop.
     }
     toOrigin.SetLastUsed(std::max(m_activeInterval, toOrigin.GetLastUsed()));
+    toOrigin.SetState(ACTIVE);
     m_routingTable.Update(toOrigin);
 
     // Update information about precursors
@@ -1813,6 +1829,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         toNextHopToOrigin.InsertPrecursor(toDst.GetNextHop());
         m_routingTable.Update(toNextHopToOrigin);
     }
+
+    SendReplyAck(sender);
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);

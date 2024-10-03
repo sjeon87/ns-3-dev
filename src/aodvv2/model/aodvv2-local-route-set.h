@@ -155,6 +155,15 @@ class LocalRoute
     }
 
     /**
+     * Get source address function
+     * \returns the IP source address
+     */
+    T GetSource() const
+    {
+        return m_ipRoute->GetSource();
+    }
+
+    /**
      * Get destination address function
      * \returns the IP destination address
      */
