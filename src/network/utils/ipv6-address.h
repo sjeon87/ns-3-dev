@@ -297,6 +297,10 @@ class Ipv6Address
      * \return true if address is routable
      */
     bool IsRoutable() const;
+    /**
+     * \return true if address is unicast routable
+     */
+    bool IsUnicastRoutable() const;
 
     /**
      * \brief Compares an address and a prefix.

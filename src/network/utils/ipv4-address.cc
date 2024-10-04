@@ -285,7 +285,14 @@ bool
 Ipv4Address::IsRoutable() const
 {
     NS_LOG_FUNCTION(this);
-    return !IsMulticast() && !IsAny() && !IsBroadcast();
+    return !IsAny() && !IsBroadcast();
+}
+
+bool
+Ipv4Address::IsUnicastRoutable() const
+{
+    NS_LOG_FUNCTION(this);
+    return IsRoutable() && !IsMulticast();
 }
 
 void

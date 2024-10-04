@@ -117,6 +117,10 @@ class Ipv4Address
      */
     bool IsRoutable() const;
     /**
+     * \return true if address is unicast routable
+     */
+    bool IsUnicastRoutable() const;
+    /**
      * \brief Combine this address with a network mask
      *
      * This method returns an IPv4 address that is this address combined

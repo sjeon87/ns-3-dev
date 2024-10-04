@@ -638,7 +638,14 @@ bool
 Ipv6Address::IsRoutable() const
 {
     NS_LOG_FUNCTION(this);
-    return !IsMulticast() && !IsDocumentation() && !IsAny();
+    return !IsDocumentation() && !IsAny() && !IsLinkLocal();
+}
+
+bool
+Ipv6Address::IsUnicastRoutable() const
+{
+    NS_LOG_FUNCTION(this);
+    return IsRoutable() && !IsMulticast();
 }
 
 bool
