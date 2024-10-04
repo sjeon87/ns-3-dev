@@ -1853,6 +1853,7 @@ Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader)
 
         m_nb.UpdateState(neighbor, rt.GetInterface(), Simulator::Now());
     }
+    m_routingTable.ActivateRouteWithNextHop(neighbor);
 }
 
 template <typename T>

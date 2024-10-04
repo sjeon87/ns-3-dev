@@ -392,6 +392,22 @@ LocalRouteSet<T>::GetListOfDestinationWithNextHop(T nextHop,
 
 template <typename T>
 void
+LocalRouteSet<T>::ActivateRouteWithNextHop(T nextHop)
+{
+    NS_LOG_FUNCTION(this);
+    Purge();
+    for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end(); ++i)
+    {
+        if (i->second.GetNextHop() == nextHop)
+        {
+            NS_LOG_LOGIC("Activate route with destination address " << i->first);
+            i->second.SetState(ACTIVE);
+        }
+    }
+}
+
+template <typename T>
+void
 LocalRouteSet<T>::InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unreachable)
 {
     NS_LOG_FUNCTION(this);

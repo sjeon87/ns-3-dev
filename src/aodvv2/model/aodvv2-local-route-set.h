@@ -516,6 +516,12 @@ class LocalRouteSet
      */
     void GetListOfDestinationWithNextHop(T nextHop, std::map<T, UnreachableDst>& unreachable);
     /**
+     * Activate route with next hop
+     *
+     * \param nextHop the next hop IP address
+     */
+    void ActivateRouteWithNextHop(T nextHop);
+    /**
      * Update routing entries with this destination as follows:
      * 1. The destination sequence number of this routing entry, if it
      *    exists and is valid, is incremented.
