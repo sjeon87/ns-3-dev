@@ -1779,7 +1779,7 @@ TcpSocketBase::DupAck(uint32_t currentDelivered)
         }
         if (!m_congestionControl->HasCongControl())
         {
-            m_recoveryOps->DoRecovery(m_tcb, currentDelivered);
+            m_recoveryOps->DoRecovery(m_tcb, currentDelivered, true);
             NS_LOG_INFO(m_dupAckCount << " Dupack received in fast recovery mode."
                                          "Increase cwnd to "
                                       << m_tcb->m_cWnd);
@@ -1932,9 +1932,11 @@ TcpSocketBase::ReceivedAck(Ptr<Packet> packet, const TcpHeader& tcpHeader)
     NS_LOG_INFO("Update bytes in flight before processing the ACK.");
     BytesInFlight();
 
+    bool receivedData = packet->GetSize() > 0;
+
     // RFC 6675 Section 5: 2nd, 3rd paragraph and point (A), (B) implementation
     // are inside the function ProcessAck
-    ProcessAck(ackNumber, (bytesSacked > 0), currentDelivered, oldHeadSequence);
+    ProcessAck(ackNumber, (bytesSacked > 0), currentDelivered, oldHeadSequence, receivedData);
     m_tcb->m_isRetransDataAcked = false;
 
     if (m_congestionControl->HasCongControl())
@@ -1952,7 +1954,7 @@ TcpSocketBase::ReceivedAck(Ptr<Packet> packet, const TcpHeader& tcpHeader)
     }
 
     // If there is any data piggybacked, store it into m_rxBuffer
-    if (packet->GetSize() > 0)
+    if (receivedData)
     {
         ReceivedData(packet, tcpHeader);
     }
@@ -1966,7 +1968,8 @@ void
 TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
                           bool scoreboardUpdated,
                           uint32_t currentDelivered,
-                          const SequenceNumber32& oldHeadSequence)
+                          const SequenceNumber32& oldHeadSequence,
+                          bool receivedData)
 {
     NS_LOG_FUNCTION(this << ackNumber << scoreboardUpdated << currentDelivered << oldHeadSequence);
     // RFC 6675, Section 5, 2nd paragraph:
@@ -1992,10 +1995,14 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
      * (a) the ACK is carrying a SACK block that identifies previously
      *     unacknowledged and un-SACKed octets between HighACK (TCP.UNA) and
      *     HighData (m_highTxMark)
+     *
+     * The check below implements conditions a), b), and d), and c) is prevented by virtue of not
+     * reaching this code if SYN or FIN is set, and e) is not supported.
      */
 
     bool isDupack = m_sackEnabled ? scoreboardUpdated
-                                  : ackNumber == oldHeadSequence && ackNumber < m_tcb->m_highTxMark;
+                                  : (ackNumber == oldHeadSequence &&
+                                     ackNumber < m_tcb->m_highTxMark && !receivedData);
 
     NS_LOG_DEBUG("ACK of " << ackNumber << " SND.UNA=" << oldHeadSequence
                            << " SND.NXT=" << m_tcb->m_nextTxSequence
@@ -2085,7 +2092,7 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
             // there is available window
             if (!m_congestionControl->HasCongControl() && segsAcked >= 1)
             {
-                m_recoveryOps->DoRecovery(m_tcb, currentDelivered);
+                m_recoveryOps->DoRecovery(m_tcb, currentDelivered, false);
             }
 
             // If the packet is already retransmitted do not retransmit it
@@ -2146,7 +2153,7 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
             // and/or packet reordering
             if (!m_congestionControl->HasCongControl() && segsAcked >= 1)
             {
-                m_recoveryOps->DoRecovery(m_tcb, currentDelivered);
+                m_recoveryOps->DoRecovery(m_tcb, currentDelivered, false);
             }
             NewAck(ackNumber, true);
         }
@@ -2782,7 +2789,7 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
     Ptr<Packet> p = Create<Packet>();
     TcpHeader header;
     SequenceNumber32 s = m_tcb->m_nextTxSequence;
-    TcpPacketType_t packetType;
+    TcpPacketType_t packetType = INVALID;
 
     if (flags & TcpHeader::FIN)
     {
@@ -2794,26 +2801,25 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
         ++s;
     }
 
-    if (flags == TcpHeader::ACK)
+    if (flags & TcpHeader::SYN)
     {
-        packetType = TcpPacketType_t::PURE_ACK;
-    }
-    else if (flags == TcpHeader::RST)
-    {
-        packetType = TcpPacketType_t::RST;
-    }
-    else if (flags & TcpHeader::SYN)
-    {
+        packetType = TcpPacketType_t::SYN;
         if (flags & TcpHeader::ACK)
         {
             packetType = TcpPacketType_t::SYN_ACK;
         }
-        else
-        {
-            packetType = TcpPacketType_t::SYN;
-        }
+    }
+    else if (flags & TcpHeader::ACK)
+    {
+        packetType = TcpPacketType_t::PURE_ACK;
     }
 
+    if (flags & TcpHeader::RST)
+    {
+        packetType = TcpPacketType_t::RST;
+    }
+
+    NS_ASSERT_MSG(packetType != TcpPacketType_t::INVALID, "Invalid TCP packet type");
     AddSocketTags(p, IsEct(packetType));
 
     header.SetFlags(flags);
@@ -4784,7 +4790,7 @@ bool
 TcpSocketBase::IsEct(TcpPacketType_t packetType) const
 {
     NS_LOG_FUNCTION(this << packetType);
-
+    NS_ASSERT_MSG(packetType != TcpPacketType_t::INVALID, "Invalid TCP packet type");
     if (m_tcb->m_ecnState == TcpSocketState::ECN_DISABLED)
     {
         return false;

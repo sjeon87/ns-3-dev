@@ -43,6 +43,9 @@ been tested on Linux. As of this release, the latest known version to work with 
 - (lr-wpan) !2163 - Lr-wpan module now uses the `ns3::lrwpan` namespace in its TypeId.
 - (internet) !2027 - TcpSocketBase: Added TCP retransmission trace
 - (applications) !2027 - BulkSendApplication: Added TCP retransmission trace consuming TcpSocketBase's TCP retransmission trace
+- (tcp) !2059 - Aligns PRR implementation with RFC 6937 bis-08. Added a new param `isDupAck` to `DoRecovery` method, removed `ReductionBound` attribute from `TcpPrrRecovery`.
+- (wifi) It is now possible to control how PCAPs are generated for MLD: either a single PCAP
+per device, or a PCAP file per PHY, or a PCAP file per link. By default, a single PCAP is generated per PHY for MLD. The configuration of this parameter has no impact for SLD.
 
 ### Bugs fixed
 

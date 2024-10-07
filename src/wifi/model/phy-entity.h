@@ -5,8 +5,8 @@
  *
  * Authors: Rediet <getachew.redieteab@orange.com>
  *          Sébastien Deronne <sebastien.deronne@gmail.com> (for logic ported from wifi-phy and
- * spectrum-wifi-phy) Mathieu Lacage <mathieu.lacage@sophia.inria.fr> (for logic ported from
- * wifi-phy)
+ *                                                           spectrum-wifi-phy)
+ *          Mathieu Lacage <mathieu.lacage@sophia.inria.fr> (for logic ported from wifi-phy)
  */
 
 #ifndef PHY_ENTITY_H
@@ -773,7 +773,7 @@ class PhyEntity : public SimpleRefCount<PhyEntity>
      * \param event the event holding incoming PPDU's information
      * \return the received power for the event over a given band
      */
-    Watt_u GetRxPowerWForPpdu(Ptr<Event> event) const;
+    Watt_u GetRxPowerForPpdu(Ptr<Event> event) const;
     /**
      * Get the pointer to the current event (stored in WifiPhy).
      * Wrapper used by child classes.
@@ -804,7 +804,8 @@ class PhyEntity : public SimpleRefCount<PhyEntity>
      * \param duration the PPDU duration
      * \param rxPower received power per band (W)
      * \param isStartHePortionRxing flag whether the event corresponds to the start of the OFDMA
-     * payload reception (only used for UL-OFDMA) \return the created event
+     * payload reception (only used for UL-OFDMA)
+     * \return the created event
      */
     Ptr<Event> CreateInterferenceEvent(Ptr<const WifiPpdu> ppdu,
                                        Time duration,
