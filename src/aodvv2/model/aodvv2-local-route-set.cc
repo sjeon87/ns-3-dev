@@ -218,7 +218,7 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     switch (m_state)
     {
     case ACTIVE: {
-        *os << "UP";
+        *os << "ACTIVE";
         break;
     }
     case IDLE: {
@@ -226,7 +226,7 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
         break;
     }
     case INVALID: {
-        *os << "DOWN";
+        *os << "INVALID";
         break;
     }
     case UNCONFIRMED: {
@@ -558,7 +558,7 @@ LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Ti
     *os << std::setw(16) << "Destination";
     *os << std::setw(16) << "Gateway";
     *os << std::setw(16) << "Interface";
-    *os << std::setw(16) << "Flag";
+    *os << std::setw(16) << "State";
     *os << std::setw(16) << "Expire";
     *os << "Hops" << std::endl;
     for (auto i = table.begin(); i != table.end(); ++i)
