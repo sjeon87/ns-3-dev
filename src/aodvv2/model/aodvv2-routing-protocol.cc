@@ -334,6 +334,7 @@ void
 Aodvv2RoutingProtocol<T>::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 {
     *stream->GetStream() << "Node: " << m_ip->template GetObject<Node>()->GetId()
+                         << "; IP: " << m_ip->GetAddress(1, 0).GetAddress()
                          << "; Time: " << Now().As(unit) << ", Local time: "
                          << m_ip->template GetObject<Node>()->GetLocalTime().As(unit)
                          << ", AODVv2 Routing table" << std::endl;

@@ -138,7 +138,7 @@ NeighborSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time
 
     *os << std::resetiosflags(std::ios::adjustfield) << std::setiosflags(std::ios::left);
 
-    *os << "\nAODVv2 Neighbors\n";
+    *os << "AODVv2 Neighbors\n";
     *os << std::setw(16) << "Address";
     *os << std::setw(16) << "State";
     *os << std::setw(16) << "Timeout" << std::endl;
