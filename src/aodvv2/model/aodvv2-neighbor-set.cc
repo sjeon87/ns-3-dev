@@ -15,6 +15,7 @@
 #include "ns3/log.h"
 
 #include <algorithm>
+#include <iomanip>
 
 namespace ns3
 {
