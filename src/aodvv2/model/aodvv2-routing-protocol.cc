@@ -339,6 +339,7 @@ Aodvv2RoutingProtocol<T>::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Tim
                          << ", AODVv2 Routing table" << std::endl;
 
     m_routingTable.Print(stream, unit);
+    m_nb.Print(stream, unit);
     *stream->GetStream() << std::endl;
 }
 

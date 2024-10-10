@@ -132,6 +132,13 @@ class NeighborSet
         m_nb.clear();
     }
 
+    /**
+     * Print neighbors
+     * \param stream the output stream
+     * \param unit The time unit to use (default Time::S)
+     */
+    void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
+
   private:
     /// vector of entries
     std::vector<Neighbor> m_nb;

@@ -126,6 +126,51 @@ NeighborSet<T>::UpdateState(T addr, IpInterfaceAddress iface, Time timeout)
     AddNeighbor(addr, iface);
 }
 
+template <typename T>
+void
+NeighborSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+{
+    std::vector<Neighbor> table = m_nb;
+    std::ostream* os = stream->GetStream();
+    // Copy the current ostream state
+    std::ios oldState(nullptr);
+    oldState.copyfmt(*os);
+
+    *os << std::resetiosflags(std::ios::adjustfield) << std::setiosflags(std::ios::left);
+
+    *os << "\nAODVv2 Neighbors\n";
+    *os << std::setw(16) << "Address";
+    *os << std::setw(16) << "State";
+    *os << std::setw(16) << "Timeout" << std::endl;
+    for (auto i = table.begin(); i != table.end(); ++i)
+    {
+        std::ostringstream dest;
+        std::ostringstream timeout;
+        dest << i->m_neighborAddress;
+        timeout << std::setprecision(2) << (i->m_timeout - Simulator::Now()).As(unit);
+
+        *os << std::setw(16) << dest.str();
+        *os << std::setw(16);
+        switch (i->m_state)
+        {
+        case BLACKLISTED: {
+            *os << "BLACKLISTED";
+            break;
+        }
+        case HEARD: {
+            *os << "HEARD";
+            break;
+        }
+        case CONFIRMED: {
+            *os << "CONFIRMED";
+            break;
+        }
+        }
+        *os << std::setw(16) << timeout.str() << std::endl;
+    }
+    *stream->GetStream() << "\n";
+}
+
 template class NeighborSet<Ipv4Address>;
 template class NeighborSet<Ipv6Address>;
 
