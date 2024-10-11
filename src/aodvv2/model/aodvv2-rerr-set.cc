@@ -63,6 +63,38 @@ RerrSet<T>::GetTimeout(T addr)
     return Seconds(0);
 }
 
+template <typename T>
+void
+RerrSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+{
+    std::vector<Rerr> table = m_rerr;
+    std::ostream* os = stream->GetStream();
+    // Copy the current ostream state
+    std::ios oldState(nullptr);
+    oldState.copyfmt(*os);
+
+    *os << std::resetiosflags(std::ios::adjustfield) << std::setiosflags(std::ios::left);
+
+    *os << "AODVv2 RERRs\n";
+    *os << std::setw(16) << "Unreach Addr";
+    *os << std::setw(16) << "PktSrc Addr";
+    *os << std::setw(16) << "Timeout" << std::endl;
+    for (auto i = table.begin(); i != table.end(); ++i)
+    {
+        std::ostringstream unreach;
+        std::ostringstream pktSource;
+        std::ostringstream timeout;
+        unreach << i->m_unreachableAddr;
+        pktSource << i->m_pktSource;
+        timeout << std::setprecision(2) << (i->m_timeout - Simulator::Now()).As(unit);
+
+        *os << std::setw(16) << unreach.str();
+        *os << std::setw(16) << pktSource.str();
+        *os << std::setw(16) << timeout.str() << std::endl;
+    }
+    *stream->GetStream() << "\n";
+}
+
 template class RerrSet<Ipv4Address>;
 template class RerrSet<Ipv6Address>;
 

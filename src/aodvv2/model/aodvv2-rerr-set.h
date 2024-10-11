@@ -99,6 +99,13 @@ class RerrSet
         m_rerr.clear();
     }
 
+    /**
+     * Print rerrs
+     * \param stream the output stream
+     * \param unit The time unit to use (default Time::S)
+     */
+    void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
+
   private:
     /// vector of entries
     std::vector<Rerr> m_rerr;

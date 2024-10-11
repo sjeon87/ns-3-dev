@@ -84,6 +84,13 @@ class IdCache
         return m_lifetime;
     }
 
+    /**
+     * Print multicast msg
+     * \param stream the output stream
+     * \param unit The time unit to use (default Time::S)
+     */
+    void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
+
   private:
     /// Unique packet ID
     struct UniqueId
