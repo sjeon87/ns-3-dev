@@ -2728,6 +2728,15 @@ PbbTlv::SetValue(const uint8_t* buffer, uint32_t size)
     m_value.Begin().Write(buffer, size);
 }
 
+void
+PbbTlv::SetValue(const uint16_t data)
+{
+    NS_LOG_FUNCTION(this << data);
+    m_hasValue = true;
+    m_value.AddAtStart(2);
+    m_value.Begin().WriteU16(data);
+}
+
 Buffer
 PbbTlv::GetValue() const
 {

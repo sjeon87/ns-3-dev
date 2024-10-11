@@ -112,9 +112,7 @@ RreqHeader<T>::CreateTlvHeader() const
     // Add SEQ_NUM TLV
     Ptr<PbbAddressTlv> msg1a1tlv2 = Create<PbbAddressTlv>();
     msg1a1tlv2->SetType(AODVV2_SEQ_NUM);
-    // TODO me: understand if the packetbb lib has to be updated to uint16_t
-    uint8_t msg1a1tlv2val[] = {(uint8_t)this->m_seqNo};
-    msg1a1tlv2->SetValue(msg1a1tlv2val, sizeof(msg1a1tlv2val));
+    msg1a1tlv2->SetValue(this->m_seqNo);
     msg1a1->TlvPushBack(msg1a1tlv2);
 
     // Add PATH_METRIC TLV
@@ -145,9 +143,7 @@ RreqHeader<T>::CreateTlvHeader() const
     {
         Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
         msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-        // TODO me: understand if the packetbb lib has to be updated to uint16_t
-        uint8_t msg1a2tlv2val[] = {(uint8_t)this->m_origSeqNo};
-        msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
+        msg1a2tlv2->SetValue(this->m_origSeqNo);
         msg1a2->TlvPushBack(msg1a2tlv2);
     }
 
@@ -393,9 +389,7 @@ RrepHeader<T>::CreateTlvHeader() const
     // Add SEQ_NUM TLV
     Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
     msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-    // TODO me: understand if the packetbb lib has to be updated to uint16_t
-    uint8_t msg1a2tlv2val[] = {(uint8_t)this->m_seqNo};
-    msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
+    msg1a2tlv2->SetValue(this->m_seqNo);
     msg1a1->TlvPushBack(msg1a2tlv2);
 
     // Add PATH_METRIC TLV

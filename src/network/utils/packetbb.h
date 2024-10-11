@@ -1717,6 +1717,12 @@ class PbbTlv : public SimpleRefCount<PbbTlv>
     void SetValue(const uint8_t* buffer, uint32_t size);
 
     /**
+     * \brief Sets the value of this message to a specified data.
+     * \param data data to put in the TLVs buffer.
+     */
+    void SetValue(const uint16_t buffer);
+
+    /**
      * \return a Buffer pointing to the value of this TLV.
      *
      * Calling this while HasValue is False is undefined.  Make sure you check it
