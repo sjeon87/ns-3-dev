@@ -12,6 +12,7 @@
 #include "aodvv2-id-cache.h"
 
 #include <algorithm>
+#include <iomanip>
 
 namespace ns3
 {
