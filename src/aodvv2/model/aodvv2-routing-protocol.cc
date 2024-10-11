@@ -1153,8 +1153,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
             m_ip->GetAddress(m_ip->GetInterfaceForAddress(iface.GetAddress()), 0).GetAddress());
         rreqHeader.SetRtrMask(32); // TODO me: update if needed
 
-        // TODO me: update metric
-        m_mms.IsDuplicate(iface.GetAddress(), 32, dst, 1);
+        m_mms.IsDuplicate(iface.GetAddress(), 32, dst, rreqHeader.GetOrigMetric());
 
         Ptr<Packet> packet = Create<Packet>();
 
