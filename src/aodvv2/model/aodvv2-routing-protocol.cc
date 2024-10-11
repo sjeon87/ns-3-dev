@@ -1114,7 +1114,6 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         rt.SetState(UNCONFIRMED);
         rt.SetLastUsed(m_pathDiscoveryTime);
         m_routingTable.Update(rt);
-        m_nb.AddNeighbor(dst, rt.GetInterface());
     }
     else
     {
@@ -1135,7 +1134,6 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         }
         newEntry.SetState(UNCONFIRMED);
         m_routingTable.AddRoute(newEntry);
-        m_nb.AddNeighbor(dst, newEntry.GetInterface());
     }
 
     m_seqNo++;
@@ -1459,8 +1457,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         m_routingTable.Update(toOrigin);
     }
 
-    m_nb.AddNeighbor(origin, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
-
     LocalRoute<IpAddress> toNeighbor;
     if (!m_routingTable.LookupRoute(src, toNeighbor))
     {
@@ -1489,8 +1485,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         toNeighbor.SetNextHop(src);
         m_routingTable.Update(toNeighbor);
     }
-
-    m_nb.AddNeighbor(src, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
                           << static_cast<uint32_t>(rreqHeader.GetHopLimit()) << " SeqNo "
@@ -1732,20 +1726,20 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*metric=*/rrepHeader.GetTargMetric(),
         /*state=*/ACTIVE);
 
-    m_nb.UpdateState(dst,
+    m_nb.AddNeighbor(sender, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
+    m_nb.UpdateState(sender,
                      m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                      m_rreqWaitTime);
 
-    /* TOD me: activate once updated m_nb correctly
-    if (m_nb.GetState(dst) == HEARD)
+    if (m_nb.GetState(sender) == HEARD)
     {
         newEntry.SetState(UNCONFIRMED);
     }
-    if (m_nb.GetState(dst) == BLACKLISTED) // drop
+    if (m_nb.GetState(sender) == BLACKLISTED) // drop
     {
         newEntry.SetState(INVALID);
         return;
-    } */
+    }
 
     LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
