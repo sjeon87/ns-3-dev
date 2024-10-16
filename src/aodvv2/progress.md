@@ -54,6 +54,8 @@ AODVv2 has not been designed to be interoperable with AODV. However, it would be
 
 > Note: SimpleNetDevice / SimpleChannel is either a "P2P" or a "CSMA", depending on how you configure it. You can block the communications between two nodes using SimpleChannel::BlackList. Hence, it's possible to make a network of that looks like an ad-hoc network.
 
+(0). Verify that serialization and deserialization of the packets works as expected.
+
 --- 2 nodes (A, B), connected through a SimpleNetDevice / SimpleChannel.
 
 (1a). Sends an UDP packet to B.
