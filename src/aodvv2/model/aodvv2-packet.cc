@@ -248,9 +248,8 @@ RreqHeader<T>::Deserialize(Buffer::Iterator start)
     Buffer::Iterator i = start;
 
     m_tlvHeader = Create<PbbPacket>();
-    m_tlvHeader->Deserialize(i);
+    uint32_t dist = m_tlvHeader->Deserialize(i);
 
-    uint32_t dist = i.GetDistanceFrom(start);
     NS_ASSERT(dist == GetSerializedSize());
     return dist;
 }
@@ -483,9 +482,8 @@ RrepHeader<T>::Deserialize(Buffer::Iterator start)
     Buffer::Iterator i = start;
 
     m_tlvHeader = Create<PbbPacket>();
-    m_tlvHeader->Deserialize(i);
+    uint32_t dist = m_tlvHeader->Deserialize(i);
 
-    uint32_t dist = i.GetDistanceFrom(start);
     NS_ASSERT(dist == GetSerializedSize());
     return dist;
 }
@@ -591,9 +589,8 @@ RrepAckHeader<T>::Deserialize(Buffer::Iterator start)
     Buffer::Iterator i = start;
 
     m_tlvHeader = Create<PbbPacket>();
-    m_tlvHeader->Deserialize(i);
+    uint32_t dist = m_tlvHeader->Deserialize(i);
 
-    uint32_t dist = i.GetDistanceFrom(start);
     NS_ASSERT(dist == GetSerializedSize());
     return dist;
 }
@@ -802,9 +799,8 @@ RerrHeader<T>::Deserialize(Buffer::Iterator start)
     Buffer::Iterator i = start;
 
     m_tlvHeader = Create<PbbPacket>();
-    m_tlvHeader->Deserialize(i);
+    uint32_t dist = m_tlvHeader->Deserialize(i);
 
-    uint32_t dist = i.GetDistanceFrom(start);
     NS_ASSERT(dist == GetSerializedSize());
     return dist;
 }
