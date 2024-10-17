@@ -389,7 +389,7 @@ RrepHeader<T>::CreateTlvHeader() const
     Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
     msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
     msg1a2tlv2->SetValue(this->m_seqNo);
-    msg1a1->TlvPushBack(msg1a2tlv2);
+    msg1a2->TlvPushBack(msg1a2tlv2);
 
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
@@ -397,7 +397,7 @@ RrepHeader<T>::CreateTlvHeader() const
     msg1a2tlv3->SetTypeExt(this->m_metricType);
     uint8_t msg1a2tlv3val[] = {this->m_targMetric};
     msg1a2tlv3->SetValue(msg1a2tlv3val, sizeof(msg1a2tlv3val));
-    msg1a1->TlvPushBack(msg1a2tlv3);
+    msg1a2->TlvPushBack(msg1a2tlv3);
 
     msg1->AddressBlockPushBack(msg1a2);
     // **************************************************************************************
@@ -713,13 +713,13 @@ RerrHeader<T>::CreateTlvHeader() const
         msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
         uint8_t msg1a2tlv2val[] = {(uint8_t)(*j).second.m_seqNo};
         msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
-        msg1a1->TlvPushBack(msg1a2tlv2);
+        msg1a2->TlvPushBack(msg1a2tlv2);
 
         // Add PATH_METRIC TLV
         Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
         msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
         msg1a2tlv3->SetTypeExt((*j).second.m_metricType);
-        msg1a1->TlvPushBack(msg1a2tlv3);
+        msg1a2->TlvPushBack(msg1a2tlv3);
 
         msg1->AddressBlockPushBack(msg1a2);
     }
