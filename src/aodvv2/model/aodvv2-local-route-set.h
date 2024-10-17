@@ -334,6 +334,24 @@ class LocalRoute
     }
 
     /**
+     * Set the metric
+     * \param metric the metric
+     */
+    void SetMetric(uint32_t metric)
+    {
+        m_metric = metric;
+    }
+
+    /**
+     * Get the metric
+     * \returns the metric
+     */
+    uint32_t GetMetric() const
+    {
+        return m_metric;
+    }
+
+    /**
      * Set the route state
      * \param state the route state
      */

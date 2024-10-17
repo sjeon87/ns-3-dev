@@ -70,6 +70,16 @@ enum AddressTlvValue
     AODVV2_PKTSOURCE = 3,
 };
 
+/**
+ * \ingroup aodvv2
+ * \brief Address Block TLV Metric Type
+ */
+enum AddressTlvMetricType
+{
+    AODVV2_METRIC_UNASSIGNED = 0,
+    AODVV2_METRIC_HOP = 1,
+};
+
 /// Unreachable destination structure
 struct UnreachableDst
 {
@@ -129,7 +139,7 @@ class RreqHeader : public Header
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
                uint8_t hopLimit = 0,
-               uint8_t metricType = 0,
+               uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
                uint8_t origMetric = 1);
 
     /**
@@ -480,7 +490,7 @@ class RrepHeader : public Header
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
                uint8_t hopLimit = 0,
-               uint8_t metricType = 0,
+               uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
                uint8_t targMetric = 1);
     /**
      * constructor
@@ -890,7 +900,7 @@ class RerrHeader : public Header
      * \param metricType metric type
      * \return false if we already added maximum possible number of unreachable destinations
      */
-    bool AddUnDestination(T dst, uint16_t seqNo, uint8_t metricType = 0);
+    bool AddUnDestination(T dst, uint16_t seqNo, uint8_t metricType = AODVV2_METRIC_UNASSIGNED);
     /**
      * \brief Delete pair (address + sequence number) from REER header, if the number of unreachable
      * destinations > 0

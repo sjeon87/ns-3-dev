@@ -772,7 +772,7 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
                                  /*nextHop=*/iface.GetBroadcast(),
                                  /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
                                  /*maxIdleTime=*/m_maxIdleTime,
-                                 /*metricType=*/0,
+                                 /*metricType=*/AODVV2_METRIC_HOP,
                                  /*metric=*/1);
         m_routingTable.AddRoute(rt);
     }
@@ -874,7 +874,7 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
                                          /*nextHop=*/iface.GetBroadcast(),
                                          /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
                                          /*maxIdleTime=*/m_maxIdleTime,
-                                         /*metricType=*/0,
+                                         /*metricType=*/AODVV2_METRIC_HOP,
                                          /*metric=*/1);
                 m_routingTable.AddRoute(rt);
             }
@@ -956,7 +956,7 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
                                          /*nextHop=*/iface.GetBroadcast(),
                                          /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
                                          /*maxIdleTime=*/m_maxIdleTime,
-                                         /*metricType=*/0,
+                                         /*metricType=*/AODVV2_METRIC_HOP,
                                          /*metric=*/1);
                 m_routingTable.AddRoute(rt);
             }
@@ -1113,6 +1113,8 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         rt.SetHop(hops);
         rt.SetState(UNCONFIRMED);
         rt.SetLastUsed(m_pathDiscoveryTime);
+        rreqHeader.SetMetricType(rt.GetMetricType());
+        rreqHeader.SetOrigMetric(rt.GetMetric());
         m_routingTable.Update(rt);
     }
     else
@@ -1126,13 +1128,15 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                                        /*nextHop=*/IpAddress(),
                                        /*lastUsed=*/m_pathDiscoveryTime,
                                        /*maxIdleTime=*/m_maxIdleTime,
-                                       /*metricType=*/0,
+                                       /*metricType=*/AODVV2_METRIC_HOP,
                                        /*metric=*/1);
         if (hops == m_netDiameter)
         {
             newEntry.IncrementRreqCnt();
         }
         newEntry.SetState(UNCONFIRMED);
+        rreqHeader.SetMetricType(newEntry.GetMetricType());
+        rreqHeader.SetOrigMetric(newEntry.GetMetric());
         m_routingTable.AddRoute(newEntry);
     }
 
@@ -1333,7 +1337,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
             /*nextHop=*/sender,
             /*lastUsed=*/m_activeInterval,
             /*maxIdleTime=*/m_maxIdleTime,
-            /*metricType=*/0,
+            /*metricType=*/AODVV2_METRIC_HOP,
             /*metric=*/1);
         m_routingTable.AddRoute(newEntry);
     }
@@ -1356,7 +1360,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*nextHop=*/sender,
                 /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()),
                 /*maxIdleTime=*/m_maxIdleTime,
-                /*metricType=*/0,
+                /*metricType=*/AODVV2_METRIC_HOP,
                 /*metric=*/1);
             m_routingTable.Update(newEntry);
         }
