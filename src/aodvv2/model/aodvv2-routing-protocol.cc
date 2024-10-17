@@ -126,13 +126,13 @@ template <typename T>
 Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
     : m_discoveryAttemptsMax(3),
       m_rrepRetries(2),
-      m_maxHopCount(20),
+      m_maxHopLimit(20),
       m_timeoutBuffer(2),
       m_controlTrafficLimit(0.1),
       m_rreqRateLimit(1 / m_controlTrafficLimit),
       m_rerrRateLimit(1 / m_controlTrafficLimit),
       m_activeInterval(Seconds(5)),
-      m_netDiameter(m_maxHopCount),
+      m_netDiameter(m_maxHopLimit),
       m_nodeTraversalTime(MilliSeconds(40)),
       m_netTraversalTime(Seconds(2)),
       m_pathDiscoveryTime(Time(m_discoveryAttemptsMax * m_netTraversalTime)),
@@ -1101,7 +1101,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         else
         {
             hops = rt.GetHop() + 2;
-            if (hops > m_maxHopCount)
+            if (hops > m_maxHopLimit)
             {
                 hops = m_netDiameter;
             }
@@ -1138,7 +1138,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
     m_seqNo++;
     rreqHeader.SetSeqNo(m_seqNo);
-    rreqHeader.SetHopLimit(m_maxHopCount);
+    rreqHeader.SetHopLimit(m_maxHopLimit);
     m_requestId++;
 
     // Send RREQ as subnet directed broadcast from each interface used by aodvv2
@@ -1424,10 +1424,10 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             /*dst=*/origin,
             /*seqNo=*/rreqHeader.GetSeqNo(),
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-            /*hops=*/m_maxHopCount - hop,
+            /*hops=*/m_maxHopLimit - hop,
             /*nextHop=*/src,
             /*lastUsed=*/
-            Time(2 * m_netTraversalTime - 2 * (m_maxHopCount - hop) * m_nodeTraversalTime),
+            Time(2 * m_netTraversalTime - 2 * (m_maxHopLimit - hop) * m_nodeTraversalTime),
             /*maxIdleTime=*/m_maxIdleTime,
             /*metricType=*/rreqHeader.GetMetricType(),
             /*metric=*/rreqHeader.GetOrigMetric());
@@ -1542,7 +1542,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                        dst,
                                        rreqHeader.GetOrigSeqNo(),
                                        m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                                       m_maxHopCount - rreqHeader.GetHopLimit(),
+                                       m_maxHopLimit - rreqHeader.GetHopLimit(),
                                        dst,
                                        m_activeInterval,
                                        m_maxIdleTime,
@@ -1606,7 +1606,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*targIp=*/rreqHeader.GetTargIp(),
         /*targMask=*/32,
         /*seqNo=*/m_seqNo,
-        /*hopLimit=*/m_maxHopCount - hopCount);
+        /*hopLimit=*/m_maxHopLimit - hopCount);
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);
@@ -1627,7 +1627,7 @@ Aodvv2RoutingProtocol<T>::SendReplyByIntermediateNode(LocalRoute<IpAddress>& toD
         /*targIp=*/toDst.GetDestination(),
         /*targMask=*/32,
         /*seqNo=*/toDst.GetSeqNo(),
-        /*hopCount=*/toDst.GetHop());
+        /*hopLimit=*/toDst.GetHop());
 
     /* If the node we received a RREQ for is a neighbor we are
      * probably facing a unidirectional link... Better request a RREP-ack

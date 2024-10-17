@@ -355,7 +355,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     // Protocol parameters.
     uint32_t m_discoveryAttemptsMax; ///< Maximum number of retransmissions of RREQ
     uint32_t m_rrepRetries;          ///< Maximum number of retransmissions of RREP
-    uint32_t m_maxHopCount;          ///< Maximum number of hops allowed for a route
+    uint32_t m_maxHopLimit;          ///< Maximum number of hops allowed for a route
     uint16_t m_timeoutBuffer;        ///< Provide a buffer for the timeout.
     double_t m_controlTrafficLimit;  ///< Maximum number of control packets that can be sent
     uint16_t m_rreqRateLimit;        ///< Maximum number of RREQ per second.
