@@ -101,8 +101,8 @@ class IdCache
         uint32_t m_origMask;
         /// Target Prefix or Receiver IP
         T m_targIp;
-        /// Origin Metric
-        uint32_t m_origMetric;
+        /// Origin Metric Type
+        uint32_t m_metricType;
         /// When record will expire
         Time m_removalTime;
     };

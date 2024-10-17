@@ -20,18 +20,18 @@ namespace aodvv2
 {
 template <typename T>
 bool
-IdCache<T>::IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t origMetric)
+IdCache<T>::IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t metricType)
 {
     Purge();
     for (auto i = m_idCache.begin(); i != m_idCache.end(); ++i)
     {
         if (i->m_origIp == origIp && i->m_origMask == origMask && i->m_targIp == targIp &&
-            i->m_origMetric == origMetric)
+            i->m_metricType == metricType)
         {
             return true;
         }
     }
-    UniqueId uniqueId = {origIp, origMask, targIp, origMetric, m_lifetime + Simulator::Now()};
+    UniqueId uniqueId = {origIp, origMask, targIp, metricType, m_lifetime + Simulator::Now()};
     m_idCache.push_back(uniqueId);
     return false;
 }
@@ -76,7 +76,7 @@ IdCache<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S 
 
         *os << std::setw(16) << orig.str();
         *os << std::setw(16) << targ.str();
-        *os << std::setw(16) << i->m_origMetric << std::endl;
+        *os << std::setw(16) << i->m_metricType << std::endl;
     }
     *stream->GetStream() << "\n";
 }
