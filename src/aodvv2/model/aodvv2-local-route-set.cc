@@ -207,10 +207,12 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     std::ostringstream gw;
     std::ostringstream iface;
     std::ostringstream expire;
+    std::ostringstream metric;
     dest << m_ipRoute->GetDestination();
     gw << m_ipRoute->GetGateway();
     iface << m_nextHopIface.GetAddress();
     expire << std::setprecision(2) << (m_lastUsed - Simulator::Now()).As(unit);
+    metric << static_cast<uint16_t>(m_metricType) << ": " << m_metric;
     *os << std::setw(16) << dest.str();
     *os << std::setw(16) << gw.str();
     *os << std::setw(16) << iface.str();
@@ -236,6 +238,7 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     }
 
     *os << std::setw(16) << expire.str();
+    *os << std::setw(16) << metric.str();
     *os << m_hops << std::endl;
     // Restore the previous ostream state
     (*os).copyfmt(oldState);
@@ -560,6 +563,7 @@ LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Ti
     *os << std::setw(16) << "Interface";
     *os << std::setw(16) << "State";
     *os << std::setw(16) << "Expire";
+    *os << std::setw(16) << "Metric";
     *os << "Hops" << std::endl;
     for (auto i = table.begin(); i != table.end(); ++i)
     {

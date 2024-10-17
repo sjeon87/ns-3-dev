@@ -1606,7 +1606,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*targIp=*/rreqHeader.GetTargIp(),
         /*targMask=*/32,
         /*seqNo=*/m_seqNo,
-        /*hopCount=*/m_maxHopCount - hopCount);
+        /*hopLimit=*/m_maxHopCount - hopCount);
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);
