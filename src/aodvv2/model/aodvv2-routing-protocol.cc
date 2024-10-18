@@ -1555,6 +1555,11 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         m_routingTable.AddRoute(newEntry);
     }
 
+    if (rreqHeader.GetMetricType() == AODVV2_METRIC_HOP)
+    {
+        rreqHeader.SetOrigMetric(rreqHeader.GetOrigMetric() + 1);
+    }
+
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
         Ptr<Socket> socket = j->first;
@@ -1610,7 +1615,9 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*targIp=*/rreqHeader.GetTargIp(),
         /*targMask=*/32,
         /*seqNo=*/m_seqNo,
-        /*hopLimit=*/m_maxHopLimit - hopCount);
+        /*hopLimit=*/m_maxHopLimit - hopCount,
+        /*metricType=*/rreqHeader.GetMetricType(),
+        /*metric=*/1);
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);
@@ -1742,6 +1749,12 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     {
         newEntry.SetState(INVALID);
         return;
+    }
+
+    if (rrepHeader.GetMetricType() == AODVV2_METRIC_HOP)
+    {
+        newEntry.SetHop(rrepHeader.GetTargMetric());
+        rrepHeader.SetTargMetric(rrepHeader.GetTargMetric() + 1);
     }
 
     LocalRoute<IpAddress> toDst;
