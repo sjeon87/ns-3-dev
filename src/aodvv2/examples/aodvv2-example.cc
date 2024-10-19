@@ -5,7 +5,7 @@
  *
  * This is an example script for AODVv2 manet routing protocol.
  *
- * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ * Authors: Francesco Todino <todinofrancesco97@gmail.com>
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
@@ -112,9 +112,9 @@ main(int argc, char** argv)
 
 //-----------------------------------------------------------------------------
 Aodvv2Example::Aodvv2Example()
-    : size(10),
+    : size(4),
       step(50),
-      totalTime(100),
+      totalTime(10),
       pcap(true),
       printRoutes(true)
 {

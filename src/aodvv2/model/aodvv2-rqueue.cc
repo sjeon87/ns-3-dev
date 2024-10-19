@@ -6,7 +6,7 @@
  * Based on
  *      NS-3 AODV model developed by Elena Buchatskaya and Pavel Boyko of IITP RAS
  *
- * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ * Authors: Francesco Todino <todinofrancesco97@gmail.com>
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 #include "aodvv2-rqueue.h"

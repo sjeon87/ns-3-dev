@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- * Authors: Francesco Todino <francesco.todino@edu.unifi.it>
+ * Authors: Francesco Todino <todinofrancesco97@gmail.com>
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 #include "aodvv2-helper.h"
