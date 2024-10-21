@@ -132,7 +132,6 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rreqRateLimit(1 / m_controlTrafficLimit),
       m_rerrRateLimit(1 / m_controlTrafficLimit),
       m_activeInterval(Seconds(5)),
-      m_netDiameter(m_maxHopLimit),
       m_nodeTraversalTime(MilliSeconds(40)),
       m_netTraversalTime(Seconds(2)),
       m_pathDiscoveryTime(Time(m_discoveryAttemptsMax * m_netTraversalTime)),
@@ -145,7 +144,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_maxIdleTime(Seconds(200)),
       m_maxBlacklistTime(Seconds(200)),
       m_maxSeqnumLifetime(Seconds(300)),
-      m_maxQueueLen(2),
+      m_maxQueueLen(64),
       m_maxQueueTime(Seconds(30)),
       m_rtemsgEntryTime(Seconds(12)),
       m_destinationOnly(false),
@@ -238,18 +237,12 @@ Aodvv2RoutingProtocol<T>::GetTypeId()
                           TimeValue(Seconds(15)),
                           MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_maxBlacklistTime),
                           MakeTimeChecker())
-            .AddAttribute("NetDiameter",
-                          "Net diameter measures the maximum possible number of hops between two "
-                          "nodes in the network",
-                          UintegerValue(35),
-                          MakeUintegerAccessor(&Aodvv2RoutingProtocol<T>::m_netDiameter),
-                          MakeUintegerChecker<uint32_t>())
-            .AddAttribute(
-                "NetTraversalTime",
-                "Estimate of the average net traversal time = 2 * NodeTraversalTime * NetDiameter",
-                TimeValue(Seconds(2.8)),
-                MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_netTraversalTime),
-                MakeTimeChecker())
+            .AddAttribute("NetTraversalTime",
+                          "Estimate of the average net traversal time = 2 * NodeTraversalTime * "
+                          "m_maxHopLimit",
+                          TimeValue(Seconds(2.8)),
+                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_netTraversalTime),
+                          MakeTimeChecker())
             .AddAttribute(
                 "PathDiscoveryTime",
                 "Estimate of maximum time needed to find route in network = 2 * NetTraversalTime",
@@ -1096,17 +1089,17 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     {
         if (rt.GetState() != UNCONFIRMED)
         {
-            hops = std::min<uint16_t>(rt.GetHop() + 2, m_netDiameter);
+            hops = std::min<uint16_t>(rt.GetHop() + 2, m_maxHopLimit);
         }
         else
         {
             hops = rt.GetHop() + 2;
             if (hops > m_maxHopLimit)
             {
-                hops = m_netDiameter;
+                hops = m_maxHopLimit;
             }
         }
-        if (hops == m_netDiameter)
+        if (hops == m_maxHopLimit)
         {
             rt.IncrementRreqCnt();
         }
@@ -1130,7 +1123,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                                        /*maxIdleTime=*/m_maxIdleTime,
                                        /*metricType=*/AODVV2_METRIC_HOP,
                                        /*metric=*/1);
-        if (hops == m_netDiameter)
+        if (hops == m_maxHopLimit)
         {
             newEntry.IncrementRreqCnt();
         }
@@ -1215,7 +1208,7 @@ Aodvv2RoutingProtocol<T>::ScheduleRreqRetry(IpAddress dst)
     LocalRoute<IpAddress> rt;
     m_routingTable.LookupRoute(dst, rt);
     Time retry;
-    if (rt.GetHop() < m_netDiameter)
+    if (rt.GetHop() < m_maxHopLimit)
     {
         retry = 2 * m_nodeTraversalTime * (rt.GetHop() + m_timeoutBuffer);
     }

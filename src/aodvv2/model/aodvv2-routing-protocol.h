@@ -360,9 +360,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     double_t m_controlTrafficLimit;  ///< Maximum number of control packets that can be sent
     uint16_t m_rreqRateLimit;        ///< Maximum number of RREQ per second.
     uint16_t m_rerrRateLimit;        ///< Maximum number of REER per second.
-    Time m_activeInterval;  ///< Period of time during which the route is considered to be valid.
-    uint32_t m_netDiameter; ///< Net diameter measures the maximum possible number of hops between
-                            ///< two nodes in the network
+    Time m_activeInterval; ///< Period of time during which the route is considered to be valid.
     /**
      * NodeTraversalTime is a conservative estimate of the average one hop traversal time for
      * packets and should include queuing delays, interrupt processing times and transfer times.
