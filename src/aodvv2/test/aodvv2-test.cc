@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Universita' di Firenze
+ * Copyright (c) 2024 University of Florence
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
