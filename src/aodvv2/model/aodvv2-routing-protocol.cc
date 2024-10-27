@@ -1095,10 +1095,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                 hops = m_maxHopLimit;
             }
         }
-        if (hops == m_maxHopLimit)
-        {
-            rt.IncrementRreqCnt();
-        }
+        rt.IncrementRreqCnt();
         rt.SetHop(hops);
         rt.SetState(UNCONFIRMED);
         rt.SetLastUsed(m_pathDiscoveryTime);
@@ -1119,10 +1116,6 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                                        /*maxIdleTime=*/m_maxIdleTime,
                                        /*metricType=*/AODVV2_METRIC_HOP,
                                        /*metric=*/1);
-        if (hops == m_maxHopLimit)
-        {
-            newEntry.IncrementRreqCnt();
-        }
         newEntry.SetState(UNCONFIRMED);
         rreqHeader.SetMetricType(newEntry.GetMetricType());
         rreqHeader.SetOrigMetric(newEntry.GetMetric());
