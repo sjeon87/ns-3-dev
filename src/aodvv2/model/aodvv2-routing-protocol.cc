@@ -37,10 +37,6 @@ NS_LOG_COMPONENT_DEFINE("Aodvv2RoutingProtocol");
 NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv4RoutingProtocol);
 NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv6RoutingProtocol);
 
-/// UDP Port for AODVv2 control traffic
-template <typename T>
-const uint32_t Aodvv2RoutingProtocol<T>::AODVV2_PORT = 269;
-
 /**
  * \ingroup aodvv2
  * \brief Tag used by AODVv2 implementation

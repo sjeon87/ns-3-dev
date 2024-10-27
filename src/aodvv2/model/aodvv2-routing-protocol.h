@@ -44,6 +44,10 @@ namespace aodvv2
  *
  * \brief AODVv2 routing protocol
  */
+
+/// UDP Port for AODVv2 control traffic
+static const uint32_t AODVV2_PORT = 269;
+
 template <typename T>
 class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4RoutingProtocol, T> ||
                                                           std::is_same_v<Ipv6RoutingProtocol, T>,
@@ -116,7 +120,6 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * \return the object TypeId
      */
     static TypeId GetTypeId();
-    static const uint32_t AODVV2_PORT;
 
     /// constructor
     Aodvv2RoutingProtocol();
