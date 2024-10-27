@@ -50,7 +50,7 @@ AODVv2 has not been designed to be interoperable with AODV. However, it would be
 
 - Management of external packets (ch. 9)
 
-### Tests:
+### Tests
 
 > Note: SimpleNetDevice / SimpleChannel is either a "P2P" or a "CSMA", depending on how you configure it. You can block the communications between two nodes using SimpleChannel::BlackList. Hence, it's possible to make a network of that looks like an ad-hoc network.
 
