@@ -35,10 +35,19 @@ NS_OBJECT_ENSURE_REGISTERED(FrameExchangeManager);
 TypeId
 FrameExchangeManager::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::FrameExchangeManager")
-                            .SetParent<Object>()
-                            .AddConstructor<FrameExchangeManager>()
-                            .SetGroupName("Wifi");
+    static TypeId tid =
+        TypeId("ns3::FrameExchangeManager")
+            .SetParent<Object>()
+            .AddConstructor<FrameExchangeManager>()
+            .SetGroupName("Wifi")
+            .AddAttribute("ProtectedIfResponded",
+                          "Whether a station is assumed to be protected if replied to a frame "
+                          "requiring acknowledgment. If a station is protected, subsequent "
+                          "transmissions to the same station in the same TXOP are not "
+                          "preceded by protection mechanisms.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&FrameExchangeManager::m_protectedIfResponded),
+                          MakeBooleanChecker());
     return tid;
 }
 
@@ -548,6 +557,12 @@ FrameExchangeManager::SendMpdu()
 
     // transmit the MPDU
     ForwardMpduDown(m_mpdu, m_txParams.m_txVector);
+
+    if (m_txTimer.IsRunning())
+    {
+        NS_ASSERT(m_sentFrameTo.empty());
+        m_sentFrameTo = {m_mpdu->GetHeader().GetAddr1()};
+    }
 }
 
 void
@@ -924,6 +939,7 @@ void
 FrameExchangeManager::TransmissionSucceeded()
 {
     NS_LOG_FUNCTION(this);
+    m_sentFrameTo.clear();
 
     // Upon a transmission success, a non-QoS station transmits the next fragment,
     // if any, or releases the channel, otherwise
@@ -948,6 +964,7 @@ void
 FrameExchangeManager::TransmissionFailed()
 {
     NS_LOG_FUNCTION(this);
+    m_sentFrameTo.clear();
     // A non-QoS station always releases the channel upon a transmission failure
     NotifyChannelReleased(m_dcf);
     m_dcf = nullptr;
@@ -1235,13 +1252,13 @@ FrameExchangeManager::UpdateNav(Ptr<const WifiPsdu> psdu, const WifiTxVector& tx
 
     if (psdu->GetAddr1() == m_self)
     {
-        // When the received frame’s RA is equal to the STA’s own MAC address, the STA
+        // When the received frame's RA is equal to the STA's own MAC address, the STA
         // shall not update its NAV (IEEE 802.11-2016, sec. 10.3.2.4)
         return;
     }
 
     // For all other received frames the STA shall update its NAV when the received
-    // Duration is greater than the STA’s current NAV value (IEEE 802.11-2016 sec. 10.3.2.4)
+    // Duration is greater than the STA's current NAV value (IEEE 802.11-2016 sec. 10.3.2.4)
     Time navEnd = Simulator::Now() + duration;
     if (navEnd > m_navEnd)
     {
@@ -1412,6 +1429,7 @@ FrameExchangeManager::ReceivedNormalAck(Ptr<WifiMpdu> mpdu,
 {
     Mac48Address sender = mpdu->GetHeader().GetAddr1();
     NS_LOG_DEBUG("Received ACK from=" << sender);
+    m_txTimer.GotResponseFrom(sender);
 
     NotifyReceivedNormalAck(mpdu);
 

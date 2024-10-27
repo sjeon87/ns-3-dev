@@ -756,6 +756,12 @@ HtFrameExchangeManager::TransmissionSucceeded()
 
         // TXOP limit is null, hence the txopDuration parameter is unused
         Simulator::Schedule(m_phy->GetSifs(), fp, this, m_edca, Seconds(0));
+
+        if (m_protectedIfResponded)
+        {
+            m_protectedStas.merge(m_sentFrameTo);
+        }
+        m_sentFrameTo.clear();
     }
     else
     {
@@ -1049,6 +1055,12 @@ HtFrameExchangeManager::SendPsdu()
     else
     {
         ForwardMpduDown(*m_psdu->begin(), m_txParams.m_txVector);
+    }
+
+    if (m_txTimer.IsRunning())
+    {
+        NS_ASSERT(m_sentFrameTo.empty());
+        m_sentFrameTo = {m_psdu->GetAddr1()};
     }
 
     if (m_txParams.m_acknowledgment->method == WifiAcknowledgment::NONE)
@@ -1553,6 +1565,7 @@ HtFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
         {
             Mac48Address sender = hdr.GetAddr2();
             NS_LOG_DEBUG("Received BlockAck from=" << sender);
+            m_txTimer.GotResponseFrom(sender);
 
             SnrTag tag;
             mpdu->GetPacket()->PeekPacketTag(tag);

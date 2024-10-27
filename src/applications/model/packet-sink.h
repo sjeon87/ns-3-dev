@@ -10,9 +10,8 @@
 #define PACKET_SINK_H
 
 #include "seq-ts-size-header.h"
+#include "sink-application.h"
 
-#include "ns3/address.h"
-#include "ns3/application.h"
 #include "ns3/event-id.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
@@ -24,7 +23,6 @@
 namespace ns3
 {
 
-class Address;
 class Socket;
 class Packet;
 
@@ -60,7 +58,7 @@ class Packet;
  * enabled, it prints out the size of packets and their address.
  * A tracing source to Receive() is also available.
  */
-class PacketSink : public Application
+class PacketSink : public SinkApplication
 {
   public:
     /**
@@ -68,8 +66,8 @@ class PacketSink : public Application
      * \return the object TypeId
      */
     static TypeId GetTypeId();
-    PacketSink();
 
+    PacketSink();
     ~PacketSink() override;
 
     /**
@@ -176,17 +174,17 @@ class PacketSink : public Application
 
     std::unordered_map<Address, Ptr<Packet>, AddressHash> m_buffer; //!< Buffer for received packets
 
+    Ptr<Socket> m_socket;  //!< Socket
+    Ptr<Socket> m_socket6; //!< IPv6 Socket (used if only port is specified)
+
     // In the case of TCP, each socket accept returns a new socket, so the
     // listening socket is stored separately from the accepted sockets
-    Ptr<Socket> m_socket;                //!< Listening socket
     std::list<Ptr<Socket>> m_socketList; //!< the accepted sockets
 
-    Address m_local;      //!< Local address to bind to (address and port)
-    uint16_t m_localPort; //!< Local port to bind to
-    uint64_t m_totalRx;   //!< Total bytes received
-    TypeId m_tid;         //!< Protocol TypeId
+    uint64_t m_totalRx; //!< Total bytes received
+    TypeId m_tid;       //!< Protocol TypeId
 
-    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the export of SeqTsSize header
+    bool m_enableSeqTsSizeHeader; //!< Enable or disable the export of SeqTsSize header
 
     /// Traced Callback: received packets, source address.
     TracedCallback<Ptr<const Packet>, const Address&> m_rxTrace;

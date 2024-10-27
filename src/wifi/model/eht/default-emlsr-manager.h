@@ -39,6 +39,7 @@ class DefaultEmlsrManager : public EmlsrManager
     std::pair<bool, Time> DoGetDelayUntilAccessRequest(uint8_t linkId) override;
     void SwitchMainPhyIfTxopGainedByAuxPhy(uint8_t linkId, AcIndex aci) override;
     std::pair<bool, Time> GetDelayUnlessMainPhyTakesOverUlTxop(uint8_t linkId) override;
+    void NotifyEmlsrModeChanged() override;
 
     /**
      * This function is intended to be called when an aux PHY is about to transmit an RTS on
@@ -51,18 +52,19 @@ class DefaultEmlsrManager : public EmlsrManager
 
     /**
      * This method can only be called when aux PHYs do not switch link. Switch the main PHY back
-     * to the primary link and reconnect the aux PHY that was operating on the link left by the
+     * to the preferred link and reconnect the aux PHY that was operating on the link left by the
      * main PHY.
      *
      * \param linkId the ID of the link that the main PHY is leaving
      */
-    void SwitchMainPhyBackToPrimaryLink(uint8_t linkId);
+    void SwitchMainPhyBackToPreferredLink(uint8_t linkId);
 
     /// Store information about a main PHY switch.
     struct MainPhySwitchInfo
     {
         Time end;     //!< end of channel switching
         uint8_t from; //!< ID of the link which the main PHY is/has been leaving
+        uint8_t to;   //!< ID of the link which the main PHY is moving to
     };
 
     bool m_switchAuxPhy;  /**< whether Aux PHY should switch channel to operate on the link on which
@@ -78,7 +80,6 @@ class DefaultEmlsrManager : public EmlsrManager
 
   private:
     void DoNotifyMgtFrameReceived(Ptr<const WifiMpdu> mpdu, uint8_t linkId) override;
-    void NotifyEmlsrModeChanged() override;
     void NotifyMainPhySwitch(std::optional<uint8_t> currLinkId,
                              uint8_t nextLinkId,
                              Time duration) override;

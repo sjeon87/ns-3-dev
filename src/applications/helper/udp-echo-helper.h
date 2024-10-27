@@ -31,6 +31,14 @@ class UdpEchoServerHelper : public ApplicationHelper
      * \param port The port the server will wait on for incoming packets
      */
     UdpEchoServerHelper(uint16_t port);
+
+    /**
+     * Create UdpEchoServerHelper which will make life easier for people trying
+     * to set up simulations with echos.
+     *
+     * \param address The address the server will bind to
+     */
+    UdpEchoServerHelper(const Address& address);
 };
 
 /**
@@ -49,6 +57,7 @@ class UdpEchoClientHelper : public ApplicationHelper
      * \param port The port number of the remote udp echo server
      */
     UdpEchoClientHelper(const Address& ip, uint16_t port);
+
     /**
      * Create UdpEchoClientHelper which will make life easier for people trying
      * to set up simulations with echos. Use this variant with addresses that do

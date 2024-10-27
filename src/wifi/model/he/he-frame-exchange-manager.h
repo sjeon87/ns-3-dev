@@ -129,6 +129,14 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
      */
     bool UlMuCsMediumIdle(const CtrlTriggerHeader& trigger) const;
 
+    /**
+     * Get the (link) address of the non-AP stations solicited by the given Trigger Frame.
+     *
+     * \param trigger the given Trigger Frame
+     * \return the (link) address of the non-AP stations solicited by the given Trigger Frame
+     */
+    std::set<Mac48Address> GetTfRecipients(const CtrlTriggerHeader& trigger) const;
+
   protected:
     void DoDispose() override;
     void Reset() override;
@@ -179,13 +187,6 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
                                     const WifiTxVector& muRtsTxVector,
                                     Time txDuration,
                                     Time response) const;
-
-    /**
-     * Record the stations being solicited by an MU-RTS TF.
-     *
-     * \param txParams the TX parameters for the data frame protected by the MU-RTS TF.
-     */
-    void RecordSentMuRtsTo(const WifiTxParameters& txParams);
 
     /**
      * Send an MU-RTS to begin an MU-RTS/CTS frame exchange protecting an MU PPDU.
@@ -278,6 +279,17 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
     virtual void TbPpduTimeout(WifiPsduMap* psduMap, std::size_t nSolicitedStations);
 
     /**
+     * Take the necessary actions after that some TB PPDUs are missing in
+     * response to Trigger Frame. This method must not be called if all the
+     * expected TB PPDUs were received.
+     *
+     * \param psduMap a pointer to PSDU map transmitted in a DL MU PPDU
+     * \param nSolicitedStations the number of stations solicited to send a TB PPDU
+     * \param updateFailedCw whether to update CW in case the transmission failed
+     */
+    void DoTbPpduTimeout(WifiPsduMap* psduMap, std::size_t nSolicitedStations, bool updateFailedCw);
+
+    /**
      * Take the necessary actions after that a Block Ack is missing after a
      * TB PPDU solicited through a Trigger Frame.
      *
@@ -339,7 +351,16 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
      * \param trigger the Basic or BSRP Trigger Frame content
      * \param hdr the MAC header of the Basic or BSRP Trigger Frame
      */
-    void SendQosNullFramesInTbPpdu(const CtrlTriggerHeader& trigger, const WifiMacHeader& hdr);
+    virtual void SendQosNullFramesInTbPpdu(const CtrlTriggerHeader& trigger,
+                                           const WifiMacHeader& hdr);
+
+    /**
+     * Perform the actions required when receiving QoS Null frame(s) from the given sender after
+     * a BSRP Trigger Frame.
+     *
+     * \param sender the MAC address of the given sender
+     */
+    virtual void ReceivedQosNullAfterBsrpTf(Mac48Address sender);
 
     Ptr<ApWifiMac> m_apMac;          //!< MAC pointer (null if not an AP)
     Ptr<StaWifiMac> m_staMac;        //!< MAC pointer (null if not a STA)
@@ -381,6 +402,8 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
     EventId m_multiStaBaEvent;             //!< Sending a Multi-STA BlockAck event
     MuSnrTag m_muSnrTag;                   //!< Tag to attach to Multi-STA BlockAck frames
     bool m_triggerFrameInAmpdu;            //!< True if the received A-MPDU contains an MU-BAR
+    bool m_continueTxopAfterBsrpTf; //!< whether to continue a TXOP a SIFS after the reception of
+                                    //!< responses to a BSRP TF when TXOP limit is zero
 };
 
 } // namespace ns3

@@ -10,10 +10,10 @@
 #ifndef THREE_GPP_HTTP_SERVER_H
 #define THREE_GPP_HTTP_SERVER_H
 
+#include "sink-application.h"
 #include "three-gpp-http-header.h"
 
 #include <ns3/address.h>
-#include <ns3/application.h>
 #include <ns3/event-id.h>
 #include <ns3/nstime.h>
 #include <ns3/ptr.h>
@@ -21,6 +21,7 @@
 #include <ns3/traced-callback.h>
 
 #include <map>
+#include <optional>
 #include <ostream>
 
 namespace ns3
@@ -54,9 +55,11 @@ class ThreeGppHttpServerTxBuffer;
  * The application accepts connection request from clients. Every connection is
  * kept open until the client disconnects.
  */
-class ThreeGppHttpServer : public Application
+class ThreeGppHttpServer : public SinkApplication
 {
   public:
+    static constexpr uint16_t HTTP_DEFAULT_PORT{80}; //!< default HTTP port
+
     /**
      * Creates a new instance of HTTP server application.
      *
@@ -142,6 +145,8 @@ class ThreeGppHttpServer : public Application
   private:
     void StartApplication() override;
     void StopApplication() override;
+    void SetLocal(const Address& addr) override;
+    void SetPort(uint32_t port) override;
 
     // SOCKET CALLBACK METHODS
 
@@ -255,10 +260,11 @@ class ThreeGppHttpServer : public Application
 
     /// The `Variables` attribute.
     Ptr<ThreeGppHttpVariables> m_httpVariables;
-    /// The `LocalAddress` attribute.
-    Address m_localAddress;
     /// The `LocalPort` attribute.
-    uint16_t m_localPort;
+    /// Note: this is a trick needed because we have 2 ports attributes, Port and LocalPort, where
+    /// the latter is deprecated and hence this will actually go away once we can remove deprecated
+    /// attributes and code.
+    std::optional<uint16_t> m_optPort;
     /// The `Tos` attribute.
     uint8_t m_tos;
     /// The `Mtu` attribute.
@@ -276,6 +282,8 @@ class ThreeGppHttpServer : public Application
     TracedCallback<Ptr<const Packet>> m_txTrace;
     /// The `Rx` trace source.
     TracedCallback<Ptr<const Packet>, const Address&> m_rxTrace;
+    /// The `Rx` trace source with the local address.
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&> m_rxTraceWithAddresses;
     /// The `RxDelay` trace source.
     TracedCallback<const Time&, const Address&> m_rxDelayTrace;
     /// The `StateTransition` trace source.

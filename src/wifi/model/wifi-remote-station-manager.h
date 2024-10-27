@@ -57,7 +57,10 @@ struct RxSignalInfo;
  */
 struct WifiRemoteStation
 {
-    virtual ~WifiRemoteStation(){};
+    virtual ~WifiRemoteStation()
+    {
+    }
+
     WifiRemoteStationState* m_state; //!< Remote station state
     std::pair<dBm_u, Time>
         m_rssiAndUpdateTimePair; //!< RSSI of the most recent packet received from
@@ -963,7 +966,7 @@ class WifiRemoteStationManager : public Object
      *
      * Should be invoked whenever a packet is successfully received.
      */
-    void ReportRxOk(Mac48Address address, RxSignalInfo rxSignalInfo, WifiTxVector txVector);
+    void ReportRxOk(Mac48Address address, RxSignalInfo rxSignalInfo, const WifiTxVector& txVector);
 
     /**
      * \param header MAC header of the data frame to send

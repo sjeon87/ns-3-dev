@@ -94,7 +94,8 @@ UdpClientServerTestCase::DoRun()
     uint32_t MaxPacketSize = 1024;
     Time interPacketInterval = Seconds(1.);
     uint32_t maxPacketCount = 10;
-    UdpClientHelper clientHelper(i.GetAddress(1), port);
+    // This voluntarily invokes the c'tor not doing conversion
+    UdpClientHelper clientHelper(InetSocketAddress(i.GetAddress(1), port));
     clientHelper.SetAttribute("MaxPackets", UintegerValue(maxPacketCount));
     clientHelper.SetAttribute("Interval", TimeValue(interPacketInterval));
     clientHelper.SetAttribute("PacketSize", UintegerValue(MaxPacketSize));
@@ -161,13 +162,13 @@ UdpTraceClientServerTestCase::DoRun()
     Ipv4InterfaceContainer i = ipv4.Assign(d);
 
     uint16_t port = 4000;
-    UdpServerHelper serverHelper(port);
+    UdpServerHelper serverHelper(InetSocketAddress(Ipv4Address::GetAny(), port));
     auto serverApp = serverHelper.Install(n.Get(1));
     serverApp.Start(Seconds(1.0));
     serverApp.Stop(Seconds(10.0));
 
     uint32_t MaxPacketSize = 1400 - 28; // ip/udp header
-    UdpTraceClientHelper clientHelper(i.GetAddress(1), port);
+    UdpTraceClientHelper clientHelper(InetSocketAddress(i.GetAddress(1), port));
     clientHelper.SetAttribute("MaxPacketSize", UintegerValue(MaxPacketSize));
     auto clientApp = clientHelper.Install(n.Get(0));
     clientApp.Start(Seconds(2.0));
@@ -309,11 +310,11 @@ UdpEchoClientSetFillTestCase::DoRun()
     Ipv4InterfaceContainer interfaces = ipv4.Assign(d);
 
     uint16_t port = 5000;
-    UdpEchoServerHelper echoServer(port);
+    UdpEchoServerHelper echoServer(InetSocketAddress(Ipv4Address::GetAny(), port));
     ApplicationContainer serverApps = echoServer.Install(nodes.Get(1));
     serverApps.Start(Seconds(1.0));
     serverApps.Stop(Seconds(10.0));
-    UdpEchoClientHelper echoClient(interfaces.GetAddress(1), port);
+    UdpEchoClientHelper echoClient(InetSocketAddress(interfaces.GetAddress(1), port));
     echoClient.SetAttribute("MaxPackets", UintegerValue(1));
     echoClient.SetAttribute("Interval", TimeValue(Seconds(1.0)));
     echoClient.SetAttribute("PacketSize", UintegerValue(1024));

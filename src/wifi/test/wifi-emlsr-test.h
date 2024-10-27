@@ -511,11 +511,11 @@ class EmlsrDlTxopTest : public EmlsrOperationsTestBase
  *   link, stays in sleep mode until the TXOP ends and is resumed from sleep mode right after the
  *   end of the DL/UL TXOP.
  * - When an aux PHY that is not TX capable gains a TXOP, it checks whether the main PHY can switch
- *   to the non-primary link a start an UL TXOP. If the main PHY is switching, the aux PHY waits
+ *   to the auxiliary link a start an UL TXOP. If the main PHY is switching, the aux PHY waits
  *   until the channel switch is completed and checks again; if the remaining backoff time on the
- *   primary link is greater than the channel switch delay, the main PHY is requested to switch to
- *   the non-primary link of the aux PHY. When the channel switch is completed, if the medium is
- *   idle on the non-primary link and the backoff is zero, the main PHY starts an UL TXOP after a
+ *   preferred link is greater than the channel switch delay, the main PHY is requested to switch to
+ *   the auxiliary link of the aux PHY. When the channel switch is completed, if the medium is
+ *   idle on the auxiliary link and the backoff is zero, the main PHY starts an UL TXOP after a
  *   PIFS period; otherwise, the main PHY starts an UL TXOP when the backoff timer counts down to
  *   zero. The QoS data frame sent by the main PHY is not protected by RTS and the bandwidth it
  *   occupies is not affected by possible limitations on the aux PHY TX bandwidth capabilities.
@@ -543,6 +543,8 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
                                         //!< but it does not transmit any frame, the second value
                                         //!< controls whether CCA info from aux PHY is used when
                                         //!< aux PHY is not TX capable
+        uint8_t nSlotsLeftAlert;        //!< value to set the ChannelAccessManager NSlotsLeft
+                                        //!< attribute to
     };
 
     /**
@@ -659,8 +661,62 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
                                           //!< transmit any frame
     bool m_useAuxPhyCca;                  //!< whether CCA info from aux PHY is used when
                                           //!< aux PHY is not TX capable
+    uint8_t m_nSlotsLeftAlert;            //!< value for ChannelAccessManager NSlotsLeft attribute
     std::optional<bool> m_corruptCts;     //!< whether the transmitted CTS must be corrupted
     Time m_5thQosFrameTxTime;             //!< start transmission time of the 5th QoS data frame
+};
+
+/**
+ * \ingroup wifi-test
+ * \ingroup tests
+ *
+ * \brief Check UL OFDMA operations with EMLSR clients.
+ *
+ * This test considers an AP MLD and an EMLSR client and a non-AP MLD that setup three links with
+ * the AP MLD. Once block ack agreements (for TID 0) are established for the UL direction, the
+ * AP MLD starts requesting channel access (on all the links) through the Multi-User scheduler.
+ * Given that links are idle, AP MLD accesses the channel on all the links and concurrently sends
+ * Trigger Frames. When the transmission of the first Trigger Frame is over, a client application
+ * on the EMLSR client generates two packets addressed to the AP MLD.
+ *
+ * It is checked that:
+ * - when sending BSRP TF is disabled, the first Trigger Frame sent is an MU-RTS; otherwise, it is
+ *   a BSRP Trigger Frame. In both cases, such Trigger Frame acts as an ICF for the EMLSR client
+ * - the other Trigger Frames sent concurrently with the ICF only solicit the non-EMLSR client
+ *   (AP MLD has blocked transmissions to the EMLSR client upon preparing the first Trigger Frame)
+ * - the buffer status reported in QoS Null frames is as expected
+ * - the EMLSR client sends a QoS Data frame in a TB PPDU
+ */
+class EmlsrUlOfdmaTest : public EmlsrOperationsTestBase
+{
+  public:
+    /**
+     * Constructor
+     *
+     * \param enableBsrp whether MU scheduler sends BSRP TFs
+     */
+    EmlsrUlOfdmaTest(bool enableBsrp);
+
+  protected:
+    void DoSetup() override;
+    void DoRun() override;
+    void Transmit(Ptr<WifiMac> mac,
+                  uint8_t phyId,
+                  WifiConstPsduMap psduMap,
+                  WifiTxVector txVector,
+                  double txPowerW) override;
+
+    /**
+     * Check that the simulation produced the expected results.
+     */
+    void CheckResults();
+
+  private:
+    void StartTraffic() override;
+
+    bool m_enableBsrp;        //!< whether MU scheduler sends BSRP TFs
+    std::size_t m_txPsdusPos; //!< position in the vector of TX PSDUs of the first ICF
+    Time m_startAccessReq;    //!< start time of the first AP MLD access request via MU scheduler
 };
 
 /**

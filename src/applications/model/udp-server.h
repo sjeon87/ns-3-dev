@@ -12,9 +12,8 @@
 #define UDP_SERVER_H
 
 #include "packet-loss-counter.h"
+#include "sink-application.h"
 
-#include "ns3/address.h"
-#include "ns3/application.h"
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
 #include "ns3/traced-callback.h"
@@ -35,16 +34,20 @@ namespace ns3
  * stamp in their payloads. The application uses the sequence number
  * to determine if a packet is lost, and the time stamp to compute the delay.
  */
-class UdpServer : public Application
+class UdpServer : public SinkApplication
 {
   public:
+    static constexpr uint16_t DEFAULT_PORT{100}; //!< default port
+
     /**
      * \brief Get the type ID.
      * \return the object TypeId
      */
     static TypeId GetTypeId();
+
     UdpServer();
     ~UdpServer() override;
+
     /**
      * \brief Returns the number of lost packets
      * \return the number of lost packets
@@ -84,10 +87,8 @@ class UdpServer : public Application
      */
     void HandleRead(Ptr<Socket> socket);
 
-    uint16_t m_port;                 //!< Port on which we listen for incoming packets.
-    uint8_t m_tos;                   //!< The packets Type of Service
-    Ptr<Socket> m_socket;            //!< IPv4 Socket
-    Ptr<Socket> m_socket6;           //!< IPv6 Socket
+    Ptr<Socket> m_socket;            //!< Socket
+    Ptr<Socket> m_socket6;           //!< IPv6 Socket (used if only port is specified)
     uint64_t m_received;             //!< Number of received packets
     PacketLossCounter m_lossCounter; //!< Lost packet counter
 

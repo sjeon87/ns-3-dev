@@ -153,13 +153,22 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
      * \param address the link MAC address of the given EMLSR client
      * \param delay the given delay
      */
-    void EmlsrSwitchToListening(const Mac48Address& address, const Time& delay);
+    void EmlsrSwitchToListening(Mac48Address address, const Time& delay);
 
     /**
      * \return a reference to the event indicating the possible end of the current TXOP (of
      *         which this device is not the holder)
      */
     EventId& GetOngoingTxopEndEvent();
+
+    /**
+     * Set the padding and the TXVECTOR of the given Trigger Frame, in case it is an Initial
+     * Control Frame for some EMLSR client(s).
+     *
+     * \param trigger the given Trigger Frame
+     * \param txVector the TXVECTOR used to transmit the Trigger Frame
+     */
+    void SetIcfPaddingAndTxVector(CtrlTriggerHeader& trigger, WifiTxVector& txVector) const;
 
     /// ICF drop reason traced callback (WifiMac exposes this trace source)
     TracedCallback<WifiIcfDrop, uint8_t> m_icfDropCallback;
@@ -169,7 +178,6 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
     void RxStartIndication(WifiTxVector txVector, Time psduDuration) override;
     void ForwardPsduDown(Ptr<const WifiPsdu> psdu, WifiTxVector& txVector) override;
     void ForwardPsduMapDown(WifiConstPsduMap psduMap, WifiTxVector& txVector) override;
-    void SendMuRts(const WifiTxParameters& txParams) override;
     void CtsAfterMuRtsTimeout(Ptr<WifiMpdu> muRts, const WifiTxVector& txVector) override;
     void SendCtsAfterMuRts(const WifiMacHeader& muRtsHdr,
                            const CtrlTriggerHeader& trigger,
@@ -183,10 +191,43 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
                      RxSignalInfo rxSignalInfo,
                      const WifiTxVector& txVector,
                      bool inAmpdu) override;
+    void EndReceiveAmpdu(Ptr<const WifiPsdu> psdu,
+                         const RxSignalInfo& rxSignalInfo,
+                         const WifiTxVector& txVector,
+                         const std::vector<bool>& perMpduStatus) override;
     void NavResetTimeout() override;
     void IntraBssNavResetTimeout() override;
     void SendCtsAfterRts(const WifiMacHeader& rtsHdr, WifiMode rtsTxMode, double rtsSnr) override;
     void PsduRxError(Ptr<const WifiPsdu> psdu) override;
+    void ReceivedQosNullAfterBsrpTf(Mac48Address sender) override;
+    void SendQosNullFramesInTbPpdu(const CtrlTriggerHeader& trigger,
+                                   const WifiMacHeader& hdr) override;
+    void TbPpduTimeout(WifiPsduMap* psduMap, std::size_t nSolicitedStations) override;
+    void BlockAcksInTbPpduTimeout(WifiPsduMap* psduMap, std::size_t nSolicitedStations) override;
+
+    /**
+     * \return whether this is an EMLSR client that cannot respond to an ICF received a SIFS before
+     */
+    bool EmlsrClientCannotRespondToIcf() const;
+
+    /**
+     * Check whether all the stations that did not respond (to a certain frame) are EMLSR clients
+     * trying to start an UL TXOP on another link.
+     *
+     * \param staMissedResponseFrom stations that did not respond
+     * \return whether all the stations that did not respond are EMLSR clients trying to start an
+     *         UL TXOP on another link
+     */
+    bool IsCrossLinkCollision(const std::set<Mac48Address>& staMissedResponseFrom);
+
+    /**
+     * Unblock transmissions on all the links of the given EMLSR client, provided that the latter
+     * is not involved in any DL or UL TXOP on another link.
+     *
+     * \param address the link MAC address of the given EMLSR client
+     * \return whether transmissions could be unblocked
+     */
+    bool UnblockEmlsrLinksIfAllowed(Mac48Address address);
 
   private:
     /**
@@ -194,6 +235,15 @@ class EhtFrameExchangeManager : public HeFrameExchangeManager
      *         (e.g., another EMLSR link is being used or there is no time for main PHY switch)
      */
     bool DropReceivedIcf();
+
+    /**
+     * For each EMLSR client in the given set of clients that did not respond to a frame requesting
+     * a response from multiple clients, have the client switch to listening or simply unblock
+     * links depending on whether the EMLSR client was protected or not.
+     *
+     * \param clients the given set of clients
+     */
+    void SwitchToListeningOrUnblockLinks(const std::set<Mac48Address>& clients);
 
     /**
      * Generate an in-device interference of the given power on the given link for the given

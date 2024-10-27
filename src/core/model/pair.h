@@ -63,7 +63,9 @@ class PairValue : public AttributeValue
     typedef typename std::pair<first_type, second_type> result_type;
 
     PairValue()
-        : m_value(std::make_pair(Create<A>(), Create<B>())){};
+        : m_value(std::make_pair(Create<A>(), Create<B>()))
+    {
+    }
 
     /**
      * Construct this PairValue from a std::pair
@@ -73,7 +75,7 @@ class PairValue : public AttributeValue
     PairValue(const result_type& value)
     {
         Set(value);
-    }; // "import" constructor
+    } // "import" constructor
 
     // Inherited
     Ptr<AttributeValue> Copy() const override;
