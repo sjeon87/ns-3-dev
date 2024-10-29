@@ -186,10 +186,10 @@ Aodvv2MultiExample::CreateNodes()
     mobility.SetPositionAllocator(
         "ns3::RandomRectanglePositionAllocator",
         "X",
-        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(step * (size / 2)) +
+        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(step * (size / 3)) +
                     "]"),
         "Y",
-        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(step * (size / 2)) +
+        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(step * (size / 3)) +
                     "]"));
 
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
@@ -265,30 +265,28 @@ Aodvv2MultiExample::InstallApplications()
 void
 Aodvv2MultiExample::PrintNodes()
 {
-    for (uint32_t i = 0; i < size; ++i)
-    {
-        Ptr<MobilityModel> mobility = nodes.Get(i)->GetObject<MobilityModel>();
-        std::cout << "Node " << i << " at " << mobility->GetPosition() << std::endl;
-    }
+    std::cout << "\n\n";
+    std::vector<std::vector<int>> adjacencyMatrix(size, std::vector<int>(size, 0));
 
-    std::cout << "\nNodes neighbors:\n";
-
-    // print node list of neighbors
+    // std::cout << "\nNodes neighbors:\n";
     for (uint32_t i = 0; i < size; ++i)
     {
         Ptr<Node> node = nodes.Get(i);
         Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
         Ipv4InterfaceAddress addr = ipv4->GetAddress(1, 0);
         Ipv4Address ip = addr.GetLocal();
-        std::cout << "Node " << i << " IP " << ip << " neighbors: ";
+        Ptr<MobilityModel> nodeMobility = nodes.Get(i)->GetObject<MobilityModel>();
+
+        std::cout << "Node " << i << " IP " << ip << " at " << nodeMobility->GetPosition()
+                  << " neighbors: ";
 
         for (uint32_t j = 0; j < size; ++j)
         {
             if (i == j)
             {
+                adjacencyMatrix[i][j] = 1;
                 continue;
             }
-            Ptr<MobilityModel> nodeMobility = nodes.Get(i)->GetObject<MobilityModel>();
             Ptr<MobilityModel> neighborMobility = nodes.Get(j)->GetObject<MobilityModel>();
 
             double distance = std::sqrt(
@@ -298,9 +296,20 @@ Aodvv2MultiExample::PrintNodes()
             if (distance < step)
             {
                 std::cout << j << " ";
+                adjacencyMatrix[i][j] = 1;
             }
         }
-
         std::cout << std::endl;
     }
+
+    std::cout << "\nAdjacency Matrix:\n";
+    for (uint32_t i = 0; i < size; ++i)
+    {
+        for (uint32_t j = 0; j < size; ++j)
+        {
+            std::cout << adjacencyMatrix[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "\n\n";
 }
