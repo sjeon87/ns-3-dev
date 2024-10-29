@@ -1249,7 +1249,6 @@ Aodvv2RoutingProtocol<T>::ScheduleRrepRetry(const RreqHeader<IpAddress>& rreqHea
         retry = m_netTraversalTime * (1 << backoffFactor);
     }
     m_addressRepTimer[dst].Schedule(retry);
-    std::cout << "Scheduled RREP retry in " << retry.As(Time::S) << std::endl;
     NS_LOG_LOGIC("Scheduled RREP retry in " << retry.As(Time::S));
 }
 
@@ -1334,6 +1333,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteLifeTime(IpAddress addr, Time lifetime)
         {
             NS_LOG_DEBUG("Updating ACTIVE route");
             rt.SetRreqCnt(0);
+            rt.SetRrepCnt(0);
             rt.SetLastUsed(std::max(lifetime, rt.GetLastUsed()));
             m_routingTable.Update(rt);
             return true;
@@ -1670,8 +1670,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
     socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
-    // TODO me: fix this
-    // ScheduleRrepRetry(rreqHeader, toOrigin, hopCount);
+    ScheduleRrepRetry(rreqHeader, toOrigin, hopCount);
 }
 
 template <typename T>
@@ -1899,6 +1898,8 @@ Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader)
         rt.m_ackTimer.Cancel();
         rt.SetState(ACTIVE);
         m_routingTable.Update(rt);
+        m_addressRepTimer[rt.GetDestination()].Cancel();
+        m_addressRepTimer.erase(rt.GetDestination());
 
         m_nb.UpdateState(neighbor, rt.GetInterface(), Simulator::Now());
     }
@@ -2028,7 +2029,7 @@ Aodvv2RoutingProtocol<T>::RouteReplyTimerExpire(const RreqHeader<IpAddress>& rre
         NS_LOG_LOGIC("Resend RREP to " << dst << " previous diameter " << toDst.GetHop());
         SendReply(rreqHeader, toOrigin, hopCount);
     }
-    else
+    if (toDst.GetState() == INVALID)
     {
         NS_LOG_DEBUG("Route down. Stop search. Drop packet with destination " << dst);
         m_addressRepTimer.erase(dst);
