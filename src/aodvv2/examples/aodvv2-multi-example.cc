@@ -79,6 +79,8 @@ class Aodvv2MultiExample
     bool pcap;
     /// Print routes if true
     bool printRoutes;
+    /// Type of network topology
+    std::string topologyType;
 
     // network
     /// nodes used in the example
@@ -121,7 +123,8 @@ Aodvv2MultiExample::Aodvv2MultiExample()
       step(50),
       totalTime(10),
       pcap(true),
-      printRoutes(true)
+      printRoutes(true),
+      topologyType("random")
 {
 }
 
@@ -139,6 +142,7 @@ Aodvv2MultiExample::Configure(int argc, char** argv)
     cmd.AddValue("size", "Number of nodes.", size);
     cmd.AddValue("time", "Simulation time, s.", totalTime);
     cmd.AddValue("step", "Grid step, m", step);
+    cmd.AddValue("topologyType", "Type of network topology (random, grid)", topologyType);
 
     cmd.Parse(argc, argv);
     return true;
@@ -171,8 +175,8 @@ Aodvv2MultiExample::Report(std::ostream&)
 void
 Aodvv2MultiExample::CreateNodes()
 {
-    std::cout << "Creating " << (unsigned)size << " nodes with random positions " << step
-              << " m apart.\n";
+    std::cout << "Creating " << (unsigned)size << " nodes with topology type: " << topologyType
+              << " and step " << step << " m apart.\n";
     nodes.Create(size);
     // Name nodes
     for (uint32_t i = 0; i < size; ++i)
@@ -181,16 +185,27 @@ Aodvv2MultiExample::CreateNodes()
         os << "node-" << i;
         Names::Add(os.str(), nodes.Get(i));
     }
-    // Create random positions
+
+    // Create positions based on topology
     MobilityHelper mobility;
     Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
     double dimension = (step * 1.5) * std::sqrt(size / 2);
-    mobility.SetPositionAllocator(
-        "ns3::RandomRectanglePositionAllocator",
-        "X",
-        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(dimension) + "]"),
-        "Y",
-        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(dimension) + "]"));
+
+    if (topologyType == "random")
+    {
+        mobility.SetPositionAllocator(
+            "ns3::RandomRectanglePositionAllocator",
+            "X",
+            StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(dimension) +
+                        "]"),
+            "Y",
+            StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(dimension) +
+                        "]"));
+    }
+    else
+    {
+        NS_FATAL_ERROR("Unknown topology type: " << topologyType);
+    }
 
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
     mobility.Install(nodes);
