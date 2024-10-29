@@ -183,14 +183,13 @@ Aodvv2MultiExample::CreateNodes()
     // Create random positions
     MobilityHelper mobility;
     Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
+    double dimension = step * std::sqrt(size / 2);
     mobility.SetPositionAllocator(
         "ns3::RandomRectanglePositionAllocator",
         "X",
-        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(step * (size / 3)) +
-                    "]"),
+        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(dimension) + "]"),
         "Y",
-        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(step * (size / 3)) +
-                    "]"));
+        StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(dimension) + "]"));
 
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
     mobility.Install(nodes);
