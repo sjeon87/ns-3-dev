@@ -19,6 +19,7 @@
 #include "ns3/yans-wifi-helper.h"
 
 #include <cmath>
+#include <ctime>
 #include <iostream>
 
 using namespace ns3;
@@ -130,7 +131,7 @@ Aodvv2MultiExample::Configure(int argc, char** argv)
     // Enable AODVv2 logs by default. Comment this if too noisy
     // LogComponentEnable("Aodvv2RoutingProtocol", LOG_LEVEL_ALL);
 
-    SeedManager::SetSeed(12345);
+    RngSeedManager::SetSeed(time(NULL));
     CommandLine cmd(__FILE__);
 
     cmd.AddValue("pcap", "Write PCAP traces.", pcap);
