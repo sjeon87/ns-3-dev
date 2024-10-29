@@ -270,4 +270,37 @@ Aodvv2MultiExample::PrintNodes()
         Ptr<MobilityModel> mobility = nodes.Get(i)->GetObject<MobilityModel>();
         std::cout << "Node " << i << " at " << mobility->GetPosition() << std::endl;
     }
+
+    std::cout << "\nNodes neighbors:\n";
+
+    // print node list of neighbors
+    for (uint32_t i = 0; i < size; ++i)
+    {
+        Ptr<Node> node = nodes.Get(i);
+        Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
+        Ipv4InterfaceAddress addr = ipv4->GetAddress(1, 0);
+        Ipv4Address ip = addr.GetLocal();
+        std::cout << "Node " << i << " IP " << ip << " neighbors: ";
+
+        for (uint32_t j = 0; j < size; ++j)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+            Ptr<MobilityModel> nodeMobility = nodes.Get(i)->GetObject<MobilityModel>();
+            Ptr<MobilityModel> neighborMobility = nodes.Get(j)->GetObject<MobilityModel>();
+
+            double distance = std::sqrt(
+                std::pow(nodeMobility->GetPosition().x - neighborMobility->GetPosition().x, 2) +
+                std::pow(nodeMobility->GetPosition().y - neighborMobility->GetPosition().y, 2));
+
+            if (distance < step)
+            {
+                std::cout << j << " ";
+            }
+        }
+
+        std::cout << std::endl;
+    }
 }
