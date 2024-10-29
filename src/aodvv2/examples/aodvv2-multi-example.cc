@@ -183,7 +183,7 @@ Aodvv2MultiExample::CreateNodes()
     // Create random positions
     MobilityHelper mobility;
     Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
-    double dimension = step * std::sqrt(size / 2);
+    double dimension = (step * 1.5) * std::sqrt(size / 2);
     mobility.SetPositionAllocator(
         "ns3::RandomRectanglePositionAllocator",
         "X",
@@ -240,6 +240,7 @@ Aodvv2MultiExample::InstallInternetStack()
 void
 Aodvv2MultiExample::InstallApplications()
 {
+    std::cout << "\n";
     Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
 
     for (uint32_t i = 0; i < size / 2; ++i)
@@ -251,6 +252,8 @@ Aodvv2MultiExample::InstallApplications()
         {
             dstNodeIndex = rand->GetInteger(0, size - 1);
         }
+
+        std::cout << "Node " << srcNodeIndex << " pinging " << dstNodeIndex << std::endl;
 
         PingHelper ping(interfaces.GetAddress(dstNodeIndex));
         ping.SetAttribute("VerboseMode", EnumValue(Ping::VerboseMode::VERBOSE));
