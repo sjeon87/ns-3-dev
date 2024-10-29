@@ -362,6 +362,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     uint16_t m_timeoutBuffer;        ///< Provide a buffer for the timeout.
     double_t m_controlTrafficLimit;  ///< Maximum number of control packets that can be sent
     uint16_t m_rreqRateLimit;        ///< Maximum number of RREQ per second.
+    uint16_t m_rrepRateLimit;        ///< Maximum number of RREP per second.
     uint16_t m_rerrRateLimit;        ///< Maximum number of REER per second.
     Time m_activeInterval; ///< Period of time during which the route is considered to be valid.
     /**
@@ -427,6 +428,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     RerrSet<IpAddress> m_rerrSet;
     /// Number of RREQs used for RREQ rate control
     uint16_t m_rreqCount;
+    /// Number of RREPs used for RREP rate control
+    uint16_t m_rrepCount;
     /// Number of RERRs used for RERR rate control
     uint16_t m_rerrCount;
 
@@ -460,10 +463,18 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                     ErrorCallback ecb);
     /**
      * Repeated attempts by a source node at route discovery for a single destination
-     * use the expanding ring search technique.
      * \param dst the destination IP address
      */
     void ScheduleRreqRetry(IpAddress dst);
+    /**
+     * Repeated attempts by a destination node at route discovery for a single source
+     * \param rreqHeader route request header
+     * \param toOrigin routing table entry to originator
+     * \param hopCount hop count
+     */
+    void ScheduleRrepRetry(const RreqHeader<IpAddress>& rreqHeader,
+                           const LocalRoute<IpAddress>& toOrigin,
+                           uint8_t hopCount);
     /**
      * Set lifetime field in routing table entry to the maximum of existing lifetime and lt, if the
      * entry exists
@@ -623,12 +634,18 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     Timer m_rreqRateLimitTimer;
     /// Reset RREQ count and schedule RREQ rate limit timer with delay 1 sec.
     void RreqRateLimitTimerExpire();
+    /// RREP rate limit timer
+    Timer m_rrepRateLimitTimer;
+    /// Reset RREP count and schedule RREP rate limit timer with delay 1 sec.
+    void RrepRateLimitTimerExpire();
     /// RERR rate limit timer
     Timer m_rerrRateLimitTimer;
     /// Reset RERR count and schedule RERR rate limit timer with delay 1 sec.
     void RerrRateLimitTimerExpire();
     /// Map IP address + RREQ timer.
     std::map<IpAddress, Timer> m_addressReqTimer;
+    /// Map IP address + RREP timer.
+    std::map<IpAddress, Timer> m_addressRepTimer;
     /// Map IP address + New discovery timer after x attempts
     std::map<IpAddress, Timer> m_newDiscoveryTimer;
     /**
@@ -636,6 +653,15 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * \param dst the destination IP address
      */
     void RouteRequestTimerExpire(IpAddress dst);
+    /**
+     * Handle route discovery process
+     * \param rreqHeader route request header
+     * \param toOrigin routing table entry to originator
+     * \param hopCount hop count
+     */
+    void RouteReplyTimerExpire(const RreqHeader<IpAddress>& rreqHeader,
+                               const LocalRoute<IpAddress>& toOrigin,
+                               uint8_t hopCount);
     /**
      * Mark link to neighbor node as unidirectional for blacklistTimeout
      *

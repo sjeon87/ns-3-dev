@@ -126,6 +126,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_timeoutBuffer(2),
       m_controlTrafficLimit(0.1),
       m_rreqRateLimit(1 / m_controlTrafficLimit),
+      m_rrepRateLimit(1 / m_controlTrafficLimit),
       m_rerrRateLimit(1 / m_controlTrafficLimit),
       m_activeInterval(Seconds(5)),
       m_nodeTraversalTime(MilliSeconds(40)),
@@ -153,8 +154,10 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_nb(m_maxBlacklistTime),
       m_rerrSet(),
       m_rreqCount(0),
+      m_rrepCount(0),
       m_rerrCount(0),
       m_rreqRateLimitTimer(Timer::CANCEL_ON_DESTROY),
+      m_rrepRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0))
 {
@@ -349,6 +352,9 @@ Aodvv2RoutingProtocol<T>::Start()
     NS_LOG_FUNCTION(this);
     m_rreqRateLimitTimer.SetFunction(&Aodvv2RoutingProtocol<T>::RreqRateLimitTimerExpire, this);
     m_rreqRateLimitTimer.Schedule(Seconds(1));
+
+    m_rrepRateLimitTimer.SetFunction(&Aodvv2RoutingProtocol<T>::RrepRateLimitTimerExpire, this);
+    m_rrepRateLimitTimer.Schedule(Seconds(1));
 
     m_rerrRateLimitTimer.SetFunction(&Aodvv2RoutingProtocol<T>::RerrRateLimitTimerExpire, this);
     m_rerrRateLimitTimer.Schedule(Seconds(1));
@@ -1079,7 +1085,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     rreqHeader.SetTargMask(32); // TODO me: update if needed
 
     LocalRoute<IpAddress> rt;
-    // Using the Hop field in Routing Table to manage the expanding ring search
+    // Using the Hop field in Routing Table to store the number of hops to the destination
     uint16_t hops = 1;
     if (m_routingTable.LookupRoute(dst, rt))
     {
@@ -1210,6 +1216,41 @@ Aodvv2RoutingProtocol<T>::ScheduleRreqRetry(IpAddress dst)
     }
     m_addressReqTimer[dst].Schedule(retry);
     NS_LOG_LOGIC("Scheduled RREQ retry in " << retry.As(Time::S));
+}
+
+template <typename T>
+void
+Aodvv2RoutingProtocol<T>::ScheduleRrepRetry(const RreqHeader<IpAddress>& rreqHeader,
+                                            const LocalRoute<IpAddress>& toOrigin,
+                                            uint8_t hopCount)
+{
+    IpAddress dst = rreqHeader.GetOrigIp();
+    NS_LOG_FUNCTION(this << dst);
+    if (m_addressRepTimer.find(dst) == m_addressRepTimer.end())
+    {
+        Timer timer(Timer::CANCEL_ON_DESTROY);
+        m_addressRepTimer[dst] = timer;
+    }
+    m_addressRepTimer[dst].SetFunction(&Aodvv2RoutingProtocol<T>::RouteReplyTimerExpire, this);
+    m_addressRepTimer[dst].Cancel();
+    m_addressRepTimer[dst].SetArguments(rreqHeader, toOrigin, hopCount);
+    LocalRoute<IpAddress> rt;
+    m_routingTable.LookupRoute(dst, rt);
+    Time retry;
+    if (rt.GetHop() < m_maxHopLimit)
+    {
+        retry = m_rrepAckSentTimeout + 2 * m_nodeTraversalTime * (rt.GetHop() + m_timeoutBuffer);
+    }
+    else
+    {
+        NS_ABORT_MSG_UNLESS(rt.GetRrepCnt() > 0, "Unexpected value for GetRrepCount ()");
+        uint16_t backoffFactor = rt.GetRrepCnt() - 1;
+        NS_LOG_LOGIC("Applying binary exponential backoff factor " << backoffFactor);
+        retry = m_netTraversalTime * (1 << backoffFactor);
+    }
+    m_addressRepTimer[dst].Schedule(retry);
+    std::cout << "Scheduled RREP retry in " << retry.As(Time::S) << std::endl;
+    NS_LOG_LOGIC("Scheduled RREP retry in " << retry.As(Time::S));
 }
 
 template <typename T>
@@ -1582,6 +1623,22 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
                                     uint8_t hopCount)
 {
     NS_LOG_FUNCTION(this << toOrigin.GetDestination());
+    // A node SHOULD NOT originate more than RREP_RATELIMIT RREP messages per second.
+    if (m_rrepCount == m_rrepRateLimit)
+    {
+        Simulator::Schedule(m_rrepRateLimitTimer.GetDelayLeft() + MicroSeconds(100),
+                            &Aodvv2RoutingProtocol<T>::SendReply,
+                            this,
+                            rreqHeader,
+                            toOrigin,
+                            hopCount);
+        return;
+    }
+    else
+    {
+        m_rrepCount++;
+    }
+
     /*
      * Destination node MUST increment its own sequence number by one if the sequence number in
      * the RREQ packet is equal to that incremented value. Otherwise, the destination does not
@@ -1591,6 +1648,13 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     {
         m_seqNo++;
     }
+
+    LocalRoute<IpAddress> rt;
+    if (m_routingTable.LookupRoute(rreqHeader.GetTargIp(), rt))
+    {
+        rt.IncrementRrepCnt();
+    }
+
     RrepHeader rrepHeader(
         /*origIp=*/toOrigin.GetDestination(),
         /*origMask=*/32,
@@ -1606,6 +1670,8 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
     socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
+    // TODO me: fix this
+    // ScheduleRrepRetry(rreqHeader, toOrigin, hopCount);
 }
 
 template <typename T>
@@ -1903,10 +1969,9 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
         return;
     }
     /*
-     *  If a route discovery has been attempted RreqRetries times at the maximum diameter without
-     *  receiving any RREP, all data packets destined for the corresponding destination SHOULD
-     * be dropped from the buffer and a Destination Unreachable message SHOULD be delivered to
-     * the application.
+     *  If a route discovery has been attempted RreqRetries times without receiving any RREP, all
+     * data packets destined for the corresponding destination SHOULD be dropped from the buffer and
+     * a Destination Unreachable message SHOULD be delivered to the application.
      */
     if (toDst.GetRreqCnt() == m_discoveryAttemptsMax)
     {
@@ -1933,11 +1998,61 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
 
 template <typename T>
 void
+Aodvv2RoutingProtocol<T>::RouteReplyTimerExpire(const RreqHeader<IpAddress>& rreqHeader,
+                                                const LocalRoute<IpAddress>& toOrigin,
+                                                uint8_t hopCount)
+{
+    NS_LOG_LOGIC(this);
+    IpAddress dst = rreqHeader.GetOrigIp();
+    LocalRoute<IpAddress> toDst;
+    if (m_routingTable.LookupValidRoute(dst, toDst))
+    {
+        if (toDst.GetState() == UNCONFIRMED)
+        {
+            NS_LOG_LOGIC("Resend RREP to " << dst << " previous diameter " << toDst.GetHop());
+            SendReply(rreqHeader, toOrigin, hopCount);
+            return;
+        }
+    }
+    /*
+     *  If a route discovery has been attempted RrepRetries times without receiving any RREP Ack,
+     * all data packets destined for the corresponding destination SHOULD be dropped from the buffer
+     */
+    if (toDst.GetRrepCnt() == m_rrepRetries)
+    {
+        return;
+    }
+
+    if (toDst.GetState() == UNCONFIRMED)
+    {
+        NS_LOG_LOGIC("Resend RREP to " << dst << " previous diameter " << toDst.GetHop());
+        SendReply(rreqHeader, toOrigin, hopCount);
+    }
+    else
+    {
+        NS_LOG_DEBUG("Route down. Stop search. Drop packet with destination " << dst);
+        m_addressRepTimer.erase(dst);
+        m_routingTable.DeleteRoute(dst);
+        m_queue.DropPacketWithDst(dst);
+    }
+}
+
+template <typename T>
+void
 Aodvv2RoutingProtocol<T>::RreqRateLimitTimerExpire()
 {
     NS_LOG_FUNCTION(this);
     m_rreqCount = 0;
     m_rreqRateLimitTimer.Schedule(Seconds(1));
+}
+
+template <typename T>
+void
+Aodvv2RoutingProtocol<T>::RrepRateLimitTimerExpire()
+{
+    NS_LOG_FUNCTION(this);
+    m_rrepCount = 0;
+    m_rrepRateLimitTimer.Schedule(Seconds(1));
 }
 
 template <typename T>

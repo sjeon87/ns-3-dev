@@ -388,11 +388,37 @@ class LocalRoute
     }
 
     /**
+     * Set the RREP count
+     * \param n the RREP count
+     */
+    void SetRrepCnt(uint8_t n)
+    {
+        m_repCount = n;
+    }
+
+    /**
+     * Get the RREP count
+     * \returns the RREP count
+     */
+    uint8_t GetRrepCnt() const
+    {
+        return m_repCount;
+    }
+
+    /**
      * Increment the RREQ count
      */
     void IncrementRreqCnt()
     {
         m_reqCount++;
+    }
+
+    /**
+     * Increment the RREP count
+     */
+    void IncrementRrepCnt()
+    {
+        m_repCount++;
     }
 
     /// RREP_ACK timer
@@ -448,6 +474,8 @@ class LocalRoute
     uint32_t m_hops;
     /// Number of route requests
     uint8_t m_reqCount;
+    /// Number of route replies
+    uint8_t m_repCount;
     /// Maximum idle time
     Time m_maxIdleTime;
 };
