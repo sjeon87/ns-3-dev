@@ -151,6 +151,12 @@ Aodvv2MultiExample::Configure(int argc, char** argv)
 void
 Aodvv2MultiExample::Run()
 {
+    if (topologyType == "custom")
+    {
+        size = 5;
+        step = 5;
+    }
+
     //  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", UintegerValue (1)); //
     //  enable rts cts all the time.
     CreateNodes();
@@ -190,7 +196,19 @@ Aodvv2MultiExample::CreateNodes()
     MobilityHelper mobility;
     double dimension = (step * 1.5) * std::sqrt(size / 2);
 
-    if (topologyType == "random")
+    if (topologyType == "custom")
+    {
+        Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
+
+        positionAlloc->Add(Vector(0.0, 0.0, 0.0));
+        positionAlloc->Add(Vector(0, step / 2, 0.0));
+        positionAlloc->Add(Vector(step / 2, 0, 0.0));
+        positionAlloc->Add(Vector(step - 1, step - 1, 0.0));
+        positionAlloc->Add(Vector(step, step, 0.0));
+
+        mobility.SetPositionAllocator(positionAlloc);
+    }
+    else if (topologyType == "random")
     {
         mobility.SetPositionAllocator(
             "ns3::RandomRectanglePositionAllocator",
@@ -216,7 +234,6 @@ Aodvv2MultiExample::CreateNodes()
 
         mobility.SetPositionAllocator(positionAlloc);
     }
-
     else
     {
         NS_FATAL_ERROR("Unknown topology type: " << topologyType);
@@ -244,7 +261,7 @@ Aodvv2MultiExample::CreateDevices()
 
     if (pcap)
     {
-        wifiPhy.EnablePcapAll(std::string("aodvv2"));
+        wifiPhy.EnablePcapAll(std::string("aodvv2-multi"));
     }
 }
 
@@ -263,7 +280,7 @@ Aodvv2MultiExample::InstallInternetStack()
     if (printRoutes)
     {
         Ptr<OutputStreamWrapper> routingStream =
-            Create<OutputStreamWrapper>("aodvv2.routes", std::ios::out);
+            Create<OutputStreamWrapper>("aodvv2-multi.routes", std::ios::out);
         Ipv4RoutingHelper::PrintRoutingTableAllAt(Seconds(8), routingStream);
     }
 }
@@ -272,17 +289,10 @@ void
 Aodvv2MultiExample::InstallApplications()
 {
     std::cout << "\n";
-    Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
-
-    for (uint32_t i = 0; i < size / 2; ++i)
+    if (topologyType == "custom")
     {
-        uint32_t srcNodeIndex = rand->GetInteger(0, size - 1);
-        uint32_t dstNodeIndex = rand->GetInteger(0, size - 1);
-
-        while (dstNodeIndex == srcNodeIndex)
-        {
-            dstNodeIndex = rand->GetInteger(0, size - 1);
-        }
+        uint32_t srcNodeIndex = 0;
+        uint32_t dstNodeIndex = size - 1;
 
         std::cout << "Node " << srcNodeIndex << " pinging " << dstNodeIndex << std::endl;
 
@@ -292,6 +302,30 @@ Aodvv2MultiExample::InstallApplications()
         ApplicationContainer p = ping.Install(nodes.Get(srcNodeIndex));
         p.Start(Seconds(0));
         p.Stop(Seconds(totalTime) - Seconds(0.001));
+    }
+    else
+    {
+        Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
+
+        for (uint32_t i = 0; i < size / 2; ++i)
+        {
+            uint32_t srcNodeIndex = rand->GetInteger(0, size - 1);
+            uint32_t dstNodeIndex = rand->GetInteger(0, size - 1);
+
+            while (dstNodeIndex == srcNodeIndex)
+            {
+                dstNodeIndex = rand->GetInteger(0, size - 1);
+            }
+
+            std::cout << "Node " << srcNodeIndex << " pinging " << dstNodeIndex << std::endl;
+
+            PingHelper ping(interfaces.GetAddress(dstNodeIndex));
+            ping.SetAttribute("VerboseMode", EnumValue(Ping::VerboseMode::VERBOSE));
+
+            ApplicationContainer p = ping.Install(nodes.Get(srcNodeIndex));
+            p.Start(Seconds(0));
+            p.Stop(Seconds(totalTime) - Seconds(0.001));
+        }
     }
 }
 
