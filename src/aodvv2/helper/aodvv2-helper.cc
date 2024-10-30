@@ -106,21 +106,17 @@ Aodvv2Helper<T>::AssignStreams(NodeContainer c, int64_t stream)
 
 template <typename T>
 void
-Aodvv2Helper<T>::PrintRoutingPathAt(Time printTime,
-                                    Ptr<Node> source,
-                                    IpAddress dest,
-                                    Ptr<OutputStreamWrapper> stream,
-                                    Time::Unit unit)
+Aodvv2Helper<T>::PrintRoutingTable(Time printTime,
+                                   Ptr<Node> source,
+                                   Ptr<OutputStreamWrapper> stream,
+                                   Time::Unit unit)
 {
-    Simulator::Schedule(printTime, &Aodvv2Helper<T>::PrintRoute, source, dest, stream, unit);
+    Simulator::Schedule(printTime, &Aodvv2Helper<T>::PrintRoute, source, stream, unit);
 }
 
 template <typename T>
 void
-Aodvv2Helper<T>::PrintRoute(Ptr<Node> source,
-                            IpAddress dest,
-                            Ptr<OutputStreamWrapper> stream,
-                            Time::Unit unit)
+Aodvv2Helper<T>::PrintRoute(Ptr<Node> source, Ptr<OutputStreamWrapper> stream, Time::Unit unit)
 {
     Ptr<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>> rp =
         T::template GetRouting<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>>(

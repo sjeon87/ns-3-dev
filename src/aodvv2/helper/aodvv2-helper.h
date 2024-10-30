@@ -79,43 +79,28 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
     int64_t AssignStreams(NodeContainer c, int64_t stream);
 
     /**
-     * \brief prints the routing path for a source and destination at a particular time.
-     * If the routing path does not exist, it prints that the path does not exist between
-     * the nodes in the ostream.
+     * \brief prints the routing table using PrintRoute.
      * \param printTime the time at which the routing path is supposed to be printed.
      * \param source the source node pointer to start traversing
-     * \param dest the IP destination address
      * \param stream the output stream object to use
      * \param unit the time unit to be used in the report
-     *
-     * This method calls the PrintRoutingPath() method of the
-     * Aodvv2RoutingProtocol for the source and destination to provide
-     * the routing path at the specified time.
      */
-    void PrintRoutingPathAt(Time printTime,
-                            Ptr<Node> source,
-                            IpAddress dest,
-                            Ptr<OutputStreamWrapper> stream,
-                            Time::Unit unit = Time::S);
+    void PrintRoutingTable(Time printTime,
+                           Ptr<Node> source,
+                           Ptr<OutputStreamWrapper> stream,
+                           Time::Unit unit = Time::S);
 
   private:
     /** the factory to create AODVv2 routing object */
     ObjectFactory m_agentFactory;
 
     /**
-     * \brief prints the routing path for the source and destination. If the routing path
-     * does not exist, it prints that the path does not exist between the nodes in the ostream.
+     * \brief prints the routing table.
      * \param source the source node pointer to start traversing
-     * \param dest the IP destination address
      * \param stream the output stream object to use
      * \param unit the time unit to be used in the report
-     *
-     * This method calls the PrintRoutingPath() method of the
-     * Aodvv2RoutingProtocol for the source and destination to provide
-     * the routing path.
      */
     static void PrintRoute(Ptr<Node> source,
-                           IpAddress dest,
                            Ptr<OutputStreamWrapper> stream,
                            Time::Unit unit = Time::S);
 };
