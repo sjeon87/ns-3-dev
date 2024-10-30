@@ -201,10 +201,10 @@ Aodvv2MultiExample::CreateNodes()
         Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
 
         positionAlloc->Add(Vector(0.0, 0.0, 0.0));
-        positionAlloc->Add(Vector(0, step / 2, 0.0));
-        positionAlloc->Add(Vector(step / 2, 0, 0.0));
-        positionAlloc->Add(Vector(step - 1, step - 1, 0.0));
-        positionAlloc->Add(Vector(step, step, 0.0));
+        positionAlloc->Add(Vector(step * 5, 0.0, 0.0));
+        positionAlloc->Add(Vector(0.0, step * 5, 0.0));
+        positionAlloc->Add(Vector(step * 8, step * 8, 0.0));
+        positionAlloc->Add(Vector(step * 15, step * 15, 0.0));
 
         mobility.SetPositionAllocator(positionAlloc);
     }
