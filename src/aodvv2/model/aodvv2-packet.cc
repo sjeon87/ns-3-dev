@@ -258,9 +258,9 @@ template <typename T>
 void
 RreqHeader<T>::Print(std::ostream& os) const
 {
-    os << "sequence number " << m_seqNo << " hop limit " << m_hopLimit << " originator ip "
-       << m_origIp << " originator mask " << m_origMask << " target ip " << m_targIp
-       << " target mask " << m_targMask;
+    os << "sequence number " << m_seqNo << " hop limit " << static_cast<uint16_t>(m_hopLimit)
+       << " originator ip " << m_origIp << " originator mask " << m_origMask << " target ip "
+       << m_targIp << " target mask " << m_targMask;
 }
 
 template <typename T>
@@ -599,6 +599,7 @@ template <typename T>
 void
 RrepAckHeader<T>::Print(std::ostream& os) const
 {
+    os << "sequence number " << m_seqNo;
 }
 
 template <typename T>
