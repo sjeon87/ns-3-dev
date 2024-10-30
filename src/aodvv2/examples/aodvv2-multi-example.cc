@@ -175,8 +175,8 @@ Aodvv2MultiExample::Report(std::ostream&)
 void
 Aodvv2MultiExample::CreateNodes()
 {
-    std::cout << "Creating " << (unsigned)size << " nodes with topology type: " << topologyType
-              << " and step " << step << " m apart.\n";
+    std::cout << "Creating " << (unsigned)size << " nodes with topology type '" << topologyType
+              << "' and step " << step << " m apart.\n";
     nodes.Create(size);
     // Name nodes
     for (uint32_t i = 0; i < size; ++i)
@@ -188,7 +188,6 @@ Aodvv2MultiExample::CreateNodes()
 
     // Create positions based on topology
     MobilityHelper mobility;
-    Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
     double dimension = (step * 1.5) * std::sqrt(size / 2);
 
     if (topologyType == "random")
