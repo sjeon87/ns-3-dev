@@ -107,3 +107,7 @@ AODVv2 has not been designed to be interoperable with AODV. However, it would be
 (8). Like 7, but node B send a packet to C, and after the route is cached, A sends a packet to C
 
 - Check that B replies with the cached route
+
+(9). Test to just print headers
+
+- create bunch of different types, serialize them, print and then deserialise
