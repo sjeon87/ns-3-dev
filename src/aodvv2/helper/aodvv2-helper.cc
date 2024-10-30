@@ -104,6 +104,31 @@ Aodvv2Helper<T>::AssignStreams(NodeContainer c, int64_t stream)
     return (currentStream - stream);
 }
 
+template <typename T>
+void
+Aodvv2Helper<T>::PrintRoutingPathAt(Time printTime,
+                                    Ptr<Node> source,
+                                    IpAddress dest,
+                                    Ptr<OutputStreamWrapper> stream,
+                                    Time::Unit unit)
+{
+    Simulator::Schedule(printTime, &Aodvv2Helper<T>::PrintRoute, source, dest, stream, unit);
+}
+
+template <typename T>
+void
+Aodvv2Helper<T>::PrintRoute(Ptr<Node> source,
+                            IpAddress dest,
+                            Ptr<OutputStreamWrapper> stream,
+                            Time::Unit unit)
+{
+    Ptr<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>> rp =
+        T::template GetRouting<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>>(
+            source->GetObject<Ip>()->GetRoutingProtocol());
+    NS_ASSERT(rp);
+    rp->PrintRoutingTable(stream, unit);
+}
+
 template class Aodvv2Helper<Ipv4RoutingHelper>;
 template class Aodvv2Helper<Ipv6RoutingHelper>;
 

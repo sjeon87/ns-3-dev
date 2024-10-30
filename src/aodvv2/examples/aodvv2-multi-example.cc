@@ -201,6 +201,22 @@ Aodvv2MultiExample::CreateNodes()
             StringValue("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(dimension) +
                         "]"));
     }
+    else if (topologyType == "circle")
+    {
+        Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
+        double radius = (step * size) / (2 * M_PI);
+        double angleStep = 2 * M_PI / size;
+
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            double x = radius * std::cos(i * angleStep);
+            double y = radius * std::sin(i * angleStep);
+            positionAlloc->Add(Vector(x, y, 0.0));
+        }
+
+        mobility.SetPositionAllocator(positionAlloc);
+    }
+
     else
     {
         NS_FATAL_ERROR("Unknown topology type: " << topologyType);
