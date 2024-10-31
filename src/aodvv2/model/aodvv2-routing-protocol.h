@@ -14,6 +14,7 @@
 
 #include "aodvv2-dpd.h"
 #include "aodvv2-local-route-set.h"
+#include "aodvv2-metric.h"
 #include "aodvv2-neighbor-set.h"
 #include "aodvv2-packet.h"
 #include "aodvv2-rerr-set.h"
@@ -338,6 +339,39 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     }
 
     /**
+     * \brief Add a metric to the metrics list
+     * \param metric The metric to add
+     */
+    void AddMetric(const Metric<IpAddress>& metric)
+    {
+        // add if the metricType attribute is not already in the list
+        for (auto& m : m_metrics)
+        {
+            if (m.GetMetricType() == metric.GetMetricType())
+            {
+                return;
+            }
+        }
+        m_metrics.push_back(metric);
+    }
+
+    /**
+     * \brief Remove a metric from the metrics list
+     * \param metric The metric to remove
+     * \return true if the metric was found and removed, false otherwise
+     */
+    bool RemoveMetric(const Metric<IpAddress>& metric)
+    {
+        auto it = std::find(m_metrics.begin(), m_metrics.end(), metric);
+        if (it != m_metrics.end())
+        {
+            m_metrics.erase(it);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Assign a fixed random variable stream number to the random variables
      * used by this model.  Return the number of streams (possibly zero) that
      * have been assigned.
@@ -432,6 +466,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     uint16_t m_rrepCount;
     /// Number of RERRs used for RERR rate control
     uint16_t m_rerrCount;
+    /// List of metrics
+    std::vector<Metric<IpAddress>> m_metrics;
 
   private:
     /// Start protocol operation

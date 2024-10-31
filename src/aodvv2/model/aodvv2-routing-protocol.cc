@@ -161,6 +161,12 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0))
 {
+    AddMetric(Metric<IpAddress>(
+        AODVV2_METRIC_HOP,
+        std::numeric_limits<uint8_t>::max(),
+        [](const IpInterfaceAddress& link) -> double { return 1.0; },
+        [](const IpAddress& route) -> double { return 1.0; },
+        [](const IpAddress& r1, const IpAddress& r2) -> bool { return true; }));
 }
 
 template <typename T>

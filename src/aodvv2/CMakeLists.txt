@@ -11,6 +11,7 @@ build_lib(
     model/aodvv2-local-route-set.cc
     model/aodvv2-rerr-set.cc
     model/aodvv2-route-client-set.cc
+    model/aodvv2-metric.cc
   HEADER_FILES
     helper/aodvv2-helper.h
     model/aodvv2-dpd.h
@@ -22,6 +23,7 @@ build_lib(
     model/aodvv2-local-route-set.h
     model/aodvv2-rerr-set.h
     model/aodvv2-route-client-set.h
+    model/aodvv2-metric.h
   LIBRARIES_TO_LINK ${libinternet}
   TEST_SOURCES test/aodvv2-test.cc
 )
