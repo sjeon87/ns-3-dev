@@ -1041,7 +1041,7 @@ RadiotapHeader::SetUsigFields(const UsigFields& usigFields)
     *m_presentExt |= RADIOTAP_USIG;
 
     m_usigTlvPad = ((8 - m_length % 8) % 8);
-    m_usigTlv.type = 32 + __builtin_ctz(RADIOTAP_USIG);
+    m_usigTlv.type = 32 + std::countr_zero<uint16_t>(RADIOTAP_USIG);
     m_usigTlv.length = sizeof(UsigFields);
     m_length += sizeof(TlvFields) + m_usigTlvPad;
 
@@ -1107,7 +1107,7 @@ RadiotapHeader::SetEhtFields(const EhtFields& ehtFields)
     *m_presentExt |= RADIOTAP_EHT_SIG;
 
     m_ehtTlvPad = ((8 - m_length % 8) % 8);
-    m_ehtTlv.type = 32 + __builtin_ctz(RADIOTAP_EHT_SIG);
+    m_ehtTlv.type = 32 + std::countr_zero<uint16_t>(RADIOTAP_EHT_SIG);
     m_ehtTlv.length = (40 + ehtFields.userInfo.size() * 4);
     m_length += sizeof(TlvFields) + m_ehtTlvPad;
 
