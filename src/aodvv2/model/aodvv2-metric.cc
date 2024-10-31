@@ -24,5 +24,35 @@ namespace aodvv2
 template class Metric<Ipv4Address>;
 template class Metric<Ipv6Address>;
 
+template <typename T>
+bool
+Metric<T>::DefaultLoopFree(const std::vector<Ptr<Node>>& r1, const std::vector<Ptr<Node>>& r2)
+{
+    // Check if r2 is a sub-section of r1
+    if (r1.size() <= r2.size())
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i <= r1.size() - r2.size(); ++i)
+    {
+        bool isSubSection = true;
+        for (size_t j = 0; j < r2.size(); ++j)
+        {
+            if (r1[i + j] != r2[j])
+            {
+                isSubSection = false;
+                break;
+            }
+        }
+        if (isSubSection)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 } // namespace aodvv2
 } // namespace ns3

@@ -43,20 +43,18 @@ class Metric
      * constructor
      * @param metricType The type of metric to use.
      * @param maxMetric The maximum value for the metric type.
-     * @param costLink Function to determine the cost of an incoming link.
-     * @param costRoute Function to determine the cost of a route.
-     * @param loopFree Function to analyze routes for potential loops.
+     * @param linkCost Function to determine the cost of an incoming link.
+     * @param routeCost Function to determine the cost of a route.
      */
     Metric(uint8_t metricType,
            uint8_t maxMetric,
-           std::function<double(const IpInterfaceAddress&)> costLink,
-           std::function<double(const T&)> costRoute,
-           std::function<bool(const T&, const T&)> loopFree)
+           std::function<double(const Ptr<Node>&, const Ptr<Node>&)> linkCost,
+           std::function<double(const std::vector<Ptr<Node>>&)> routeCost)
         : m_metricType(metricType),
           m_maxMetric(maxMetric),
-          m_costLink(costLink),
-          m_costRoute(costRoute),
-          m_loopFree(loopFree)
+          m_linkCost(linkCost),
+          m_routeCost(routeCost),
+          m_loopFree(DefaultLoopFree)
     {
     }
 
@@ -80,31 +78,32 @@ class Metric
 
     /**
      * Calculate the cost of an incoming link.
-     * @param link The interface address for the link.
+     * @param node1 The first node of the link.
+     * @param node2 The second node of the link.
      * @return The cost of the incoming link.
      */
-    double Cost(const IpInterfaceAddress& link) const
+    double Cost(const Ptr<Node>& node1, const Ptr<Node>& node2) const
     {
-        return m_costLink(link);
+        return m_linkCost(node1, node2);
     }
 
     /**
      * Calculate the cost of a route.
-     * @param route The route to calculate the cost for.
+     * @param route The vector of nodes representing the route.
      * @return The cost of the route.
      */
-    double Cost(const T& route) const
+    double Cost(const std::vector<Ptr<Node>>& route) const
     {
-        return m_costRoute(route);
+        return m_routeCost(route);
     }
 
     /**
      * Check if the routes are loop-free.
-     * @param r1 First route.
-     * @param r2 Second route.
+     * @param r1 First route as a vector of nodes.
+     * @param r2 Second route as a vector of nodes.
      * @return True if the routes are loop-free, false otherwise.
      */
-    bool LoopFree(const T& r1, const T& r2) const
+    bool LoopFree(const std::vector<Ptr<Node>>& r1, const std::vector<Ptr<Node>>& r2) const
     {
         return m_loopFree(r1, r2);
     }
@@ -112,9 +111,17 @@ class Metric
   private:
     uint8_t m_metricType;
     uint8_t m_maxMetric;
-    std::function<double(const IpInterfaceAddress&)> m_costLink;
-    std::function<double(const T&)> m_costRoute;
-    std::function<bool(const T&, const T&)> m_loopFree;
+    std::function<double(const Ptr<Node>&, const Ptr<Node>&)> m_linkCost;
+    std::function<double(const std::vector<Ptr<Node>>&)> m_routeCost;
+    std::function<bool(const std::vector<Ptr<Node>>&, const std::vector<Ptr<Node>>&)> m_loopFree;
+
+    /**
+     * Default function to check if routes are loop-free.
+     * @param r1 First route as a vector of nodes.
+     * @param r2 Second route as a vector of nodes.
+     * @return True if the routes are loop-free, false otherwise.
+     */
+    static bool DefaultLoopFree(const std::vector<Ptr<Node>>& r1, const std::vector<Ptr<Node>>& r2);
 };
 
 } // namespace aodvv2
