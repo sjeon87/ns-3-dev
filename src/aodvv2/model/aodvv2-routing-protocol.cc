@@ -164,8 +164,8 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
     AddMetric(Metric<IpAddress>(
         AODVV2_METRIC_HOP,
         std::numeric_limits<uint8_t>::max(),
-        [](const Ptr<Node>& node1, const Ptr<Node>& node2) -> double { return 1.0; },
-        [](const std::vector<Ptr<Node>>& route) -> double { return route.size(); }));
+        [](const MetricNode<IpAddress> node1, const MetricNode<IpAddress> node2) { return 1; },
+        [](const std::vector<MetricNode<IpAddress>>& route) { return route.size(); }));
 }
 
 template <typename T>
@@ -1065,7 +1065,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metricType=*/metric.GetMetricType(),
                 /*metric=*/
-                metric.Cost(m_ip->template GetObject<Node>(), m_ip->template GetObject<Node>()));
+                metric.Cost(MetricNode<IpAddress>(dst), MetricNode<IpAddress>(dst)));
             // TODO me: select the right node
 
             newEntry.SetState(UNCONFIRMED);
@@ -1311,7 +1311,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metricType=*/metric.GetMetricType(),
                 /*metric=*/
-                metric.Cost(m_ip->template GetObject<Node>(), m_ip->template GetObject<Node>()));
+                metric.Cost(MetricNode<IpAddress>(sender), MetricNode<IpAddress>(sender)));
             // TODO me: select the right node
             m_routingTable.AddRoute(newEntry);
         }
@@ -1339,8 +1339,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metricType=*/metric.GetMetricType(),
                     /*metric=*/
-                    metric.Cost(m_ip->template GetObject<Node>(),
-                                m_ip->template GetObject<Node>()));
+                    metric.Cost(MetricNode<IpAddress>(sender), MetricNode<IpAddress>(sender)));
                 // TODO me: select the right node
                 m_routingTable.Update(newEntry);
             }

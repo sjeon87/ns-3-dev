@@ -26,6 +26,23 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
+ * \brief Metric node description
+ */
+template <typename T>
+struct MetricNode
+{
+    /// Metric node address
+    T m_address;
+
+    // Constructor
+    MetricNode(const T& address)
+        : m_address(address)
+    {
+    }
+};
+
+/**
+ * \ingroup aodvv2
  * \brief define how a metric is represented in the AODVv2 protocol
  */
 template <typename T>
@@ -42,8 +59,8 @@ class Metric
      */
     Metric(uint8_t metricType,
            uint8_t maxMetric,
-           std::function<double(const Ptr<Node>&, const Ptr<Node>&)> linkCost,
-           std::function<double(const std::vector<Ptr<Node>>&)> routeCost)
+           std::function<double(const MetricNode<T>, const MetricNode<T>)> linkCost,
+           std::function<double(const std::vector<MetricNode<T>>&)> routeCost)
         : m_metricType(metricType),
           m_maxMetric(maxMetric),
           m_linkCost(linkCost),
@@ -76,7 +93,7 @@ class Metric
      * @param node2 The second node of the link.
      * @return The cost of the incoming link.
      */
-    double Cost(const Ptr<Node>& node1, const Ptr<Node>& node2) const
+    double Cost(const MetricNode<T> node1, const MetricNode<T> node2) const
     {
         return m_linkCost(node1, node2);
     }
@@ -86,7 +103,7 @@ class Metric
      * @param route The vector of nodes representing the route.
      * @return The cost of the route.
      */
-    double Cost(const std::vector<Ptr<Node>>& route) const
+    double Cost(const std::vector<MetricNode<T>>& route) const
     {
         return m_routeCost(route);
     }
@@ -97,7 +114,7 @@ class Metric
      * @param r2 Second route as a vector of nodes.
      * @return True if the routes are loop-free, false otherwise.
      */
-    bool LoopFree(const std::vector<Ptr<Node>>& r1, const std::vector<Ptr<Node>>& r2) const
+    bool LoopFree(const std::vector<MetricNode<T>>& r1, const std::vector<MetricNode<T>>& r2) const
     {
         return m_loopFree(r1, r2);
     }
@@ -105,9 +122,10 @@ class Metric
   private:
     uint8_t m_metricType;
     uint8_t m_maxMetric;
-    std::function<double(const Ptr<Node>&, const Ptr<Node>&)> m_linkCost;
-    std::function<double(const std::vector<Ptr<Node>>&)> m_routeCost;
-    std::function<bool(const std::vector<Ptr<Node>>&, const std::vector<Ptr<Node>>&)> m_loopFree;
+    std::function<double(const MetricNode<T>&, const MetricNode<T>&)> m_linkCost;
+    std::function<double(const std::vector<MetricNode<T>>&)> m_routeCost;
+    std::function<bool(const std::vector<MetricNode<T>>&, const std::vector<MetricNode<T>>&)>
+        m_loopFree;
 
     /**
      * Default function to check if routes are loop-free.
@@ -115,7 +133,8 @@ class Metric
      * @param r2 Second route as a vector of nodes.
      * @return True if the routes are loop-free, false otherwise.
      */
-    static bool DefaultLoopFree(const std::vector<Ptr<Node>>& r1, const std::vector<Ptr<Node>>& r2);
+    static bool DefaultLoopFree(const std::vector<MetricNode<T>>& r1,
+                                const std::vector<MetricNode<T>>& r2);
 };
 
 } // namespace aodvv2

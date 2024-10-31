@@ -26,7 +26,8 @@ template class Metric<Ipv6Address>;
 
 template <typename T>
 bool
-Metric<T>::DefaultLoopFree(const std::vector<Ptr<Node>>& r1, const std::vector<Ptr<Node>>& r2)
+Metric<T>::DefaultLoopFree(const std::vector<MetricNode<T>>& r1,
+                           const std::vector<MetricNode<T>>& r2)
 {
     // Check if r2 is a sub-section of r1
     if (r1.size() <= r2.size())
@@ -39,7 +40,7 @@ Metric<T>::DefaultLoopFree(const std::vector<Ptr<Node>>& r1, const std::vector<P
         bool isSubSection = true;
         for (size_t j = 0; j < r2.size(); ++j)
         {
-            if (r1[i + j] != r2[j])
+            if (r1[i + j].m_address != r2[j].m_address)
             {
                 isSubSection = false;
                 break;
