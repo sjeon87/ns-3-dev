@@ -759,27 +759,6 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
         // TODO Ipv6
     }
     m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
-
-    // Add local broadcast record to the routing table
-    Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
-    if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-    {
-        LocalRoute<IpAddress> rt(/*dev=*/dev,
-                                 /*dst=*/iface.GetBroadcast(),
-                                 /*seqNo=*/0,
-                                 /*iface=*/iface,
-                                 /*hops=*/1,
-                                 /*nextHop=*/iface.GetBroadcast(),
-                                 /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
-                                 /*maxIdleTime=*/m_maxIdleTime,
-                                 /*metricType=*/AODVV2_METRIC_HOP,
-                                 /*metric=*/1);
-        m_routingTable.AddRoute(rt);
-    }
-    else
-    {
-        // TODO Ipv6
-    }
 }
 
 template <typename T>
@@ -860,28 +839,6 @@ Aodvv2RoutingProtocol<T>::NotifyAddAddress(uint32_t i, IpInterfaceAddress addres
                 // TODO Ipv6
             }
             m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
-
-            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-            {
-                // Add local broadcast record to the routing table
-                Ptr<NetDevice> dev =
-                    m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
-                LocalRoute<IpAddress> rt(/*dev=*/dev,
-                                         /*dst=*/iface.GetBroadcast(),
-                                         /*seqNo=*/0,
-                                         /*iface=*/iface,
-                                         /*hops=*/1,
-                                         /*nextHop=*/iface.GetBroadcast(),
-                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
-                                         /*maxIdleTime=*/m_maxIdleTime,
-                                         /*metricType=*/AODVV2_METRIC_HOP,
-                                         /*metric=*/1);
-                m_routingTable.AddRoute(rt);
-            }
-            else
-            {
-                // TODO Ipv6
-            }
         }
     }
     else
@@ -942,28 +899,6 @@ Aodvv2RoutingProtocol<T>::NotifyRemoveAddress(uint32_t i, IpInterfaceAddress add
                 // TODO Ipv6
             }
             m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
-
-            // Add local broadcast record to the routing table
-            Ptr<NetDevice> dev =
-                m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
-            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-            {
-                LocalRoute<IpAddress> rt(/*dev=*/dev,
-                                         /*dst=*/iface.GetBroadcast(),
-                                         /*seqNo=*/0,
-                                         /*iface=*/iface,
-                                         /*hops=*/1,
-                                         /*nextHop=*/iface.GetBroadcast(),
-                                         /*lastUsed=*/Simulator::GetMaximumSimulationTime(),
-                                         /*maxIdleTime=*/m_maxIdleTime,
-                                         /*metricType=*/AODVV2_METRIC_HOP,
-                                         /*metric=*/1);
-                m_routingTable.AddRoute(rt);
-            }
-            else
-            {
-                // TODO Ipv6
-            }
         }
         if (m_socketAddresses.empty())
         {
@@ -1117,20 +1052,27 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     else
     {
         Ptr<NetDevice> dev = nullptr;
-        LocalRoute<IpAddress> newEntry(/*dev=*/dev,
-                                       /*dst=*/dst,
-                                       /*seqNo=*/0,
-                                       /*iface=*/IpInterfaceAddress(),
-                                       /*hops=*/hops,
-                                       /*nextHop=*/IpAddress(),
-                                       /*lastUsed=*/m_pathDiscoveryTime,
-                                       /*maxIdleTime=*/m_maxIdleTime,
-                                       /*metricType=*/AODVV2_METRIC_HOP,
-                                       /*metric=*/1);
-        newEntry.SetState(UNCONFIRMED);
-        rreqHeader.SetMetricType(newEntry.GetMetricType());
-        rreqHeader.SetOrigMetric(newEntry.GetMetric());
-        m_routingTable.AddRoute(newEntry);
+        for (auto metric : m_metrics)
+        {
+            LocalRoute<IpAddress> newEntry(
+                /*dev=*/dev,
+                /*dst=*/dst,
+                /*seqNo=*/0,
+                /*iface=*/IpInterfaceAddress(),
+                /*hops=*/hops,
+                /*nextHop=*/IpAddress(),
+                /*lastUsed=*/m_pathDiscoveryTime,
+                /*maxIdleTime=*/m_maxIdleTime,
+                /*metricType=*/metric.GetMetricType(),
+                /*metric=*/
+                metric.Cost(m_ip->template GetObject<Node>(), m_ip->template GetObject<Node>()));
+            // TODO me: select the right node
+
+            newEntry.SetState(UNCONFIRMED);
+            rreqHeader.SetMetricType(newEntry.GetMetricType());
+            rreqHeader.SetOrigMetric(newEntry.GetMetric());
+            m_routingTable.AddRoute(newEntry);
+        }
     }
 
     m_seqNo++;
@@ -1356,18 +1298,23 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
     if (!m_routingTable.LookupRoute(sender, toNeighbor))
     {
         Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        LocalRoute<IpAddress> newEntry(
-            /*dev=*/dev,
-            /*dst=*/sender,
-            /*seqNo=*/0,
-            /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-            /*hops=*/1,
-            /*nextHop=*/sender,
-            /*lastUsed=*/m_activeInterval,
-            /*maxIdleTime=*/m_maxIdleTime,
-            /*metricType=*/AODVV2_METRIC_HOP,
-            /*metric=*/1);
-        m_routingTable.AddRoute(newEntry);
+        for (auto metric : m_metrics)
+        {
+            LocalRoute<IpAddress> newEntry(
+                /*dev=*/dev,
+                /*dst=*/sender,
+                /*seqNo=*/0,
+                /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                /*hops=*/1,
+                /*nextHop=*/sender,
+                /*lastUsed=*/m_activeInterval,
+                /*maxIdleTime=*/m_maxIdleTime,
+                /*metricType=*/metric.GetMetricType(),
+                /*metric=*/
+                metric.Cost(m_ip->template GetObject<Node>(), m_ip->template GetObject<Node>()));
+            // TODO me: select the right node
+            m_routingTable.AddRoute(newEntry);
+        }
     }
     else
     {
@@ -1379,18 +1326,24 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
         }
         else
         {
-            LocalRoute<IpAddress> newEntry(
-                /*dev=*/dev,
-                /*dst=*/sender,
-                /*seqNo=*/0,
-                /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                /*hops=*/1,
-                /*nextHop=*/sender,
-                /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()),
-                /*maxIdleTime=*/m_maxIdleTime,
-                /*metricType=*/AODVV2_METRIC_HOP,
-                /*metric=*/1);
-            m_routingTable.Update(newEntry);
+            for (auto metric : m_metrics)
+            {
+                LocalRoute<IpAddress> newEntry(
+                    /*dev=*/dev,
+                    /*dst=*/sender,
+                    /*seqNo=*/0,
+                    /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                    /*hops=*/1,
+                    /*nextHop=*/sender,
+                    /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()),
+                    /*maxIdleTime=*/m_maxIdleTime,
+                    /*metricType=*/metric.GetMetricType(),
+                    /*metric=*/
+                    metric.Cost(m_ip->template GetObject<Node>(),
+                                m_ip->template GetObject<Node>()));
+                // TODO me: select the right node
+                m_routingTable.Update(newEntry);
+            }
         }
     }
 }
@@ -1583,6 +1536,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         m_routingTable.AddRoute(newEntry);
     }
 
+    // TODO me: update metric based on Cost function
     if (rreqHeader.GetMetricType() == AODVV2_METRIC_HOP)
     {
         rreqHeader.SetOrigMetric(rreqHeader.GetOrigMetric() + 1);
@@ -1803,6 +1757,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         return;
     }
 
+    // TODO me: update metric based on Cost function
     if (rrepHeader.GetMetricType() == AODVV2_METRIC_HOP)
     {
         newEntry.SetHop(rrepHeader.GetTargMetric());

@@ -32,12 +32,6 @@ template <typename T>
 class Metric
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
-    /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
-    static constexpr bool IsIpv4 = std::is_same_v<Ipv4Address, T>;
-    /// Alias for Ipv4InterfaceAddress and Ipv6InterfaceAddress classes
-    using IpInterfaceAddress =
-        typename std::conditional_t<IsIpv4, Ipv4InterfaceAddress, Ipv6InterfaceAddress>;
-
   public:
     /**
      * constructor
