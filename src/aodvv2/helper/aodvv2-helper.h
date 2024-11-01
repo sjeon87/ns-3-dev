@@ -10,6 +10,7 @@
 #ifndef AODVV2_HELPER_H
 #define AODVV2_HELPER_H
 
+#include "ns3/aodvv2-metric.h"
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/ipv6-routing-helper.h"
 #include "ns3/node-container.h"
@@ -59,6 +60,12 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
      */
     Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
+     * \param metric the metric to add
+     *
+     * This method adds a metric to the list of metrics used by the AODVv2 routing protocol.
+     */
+    void AddMetric(const aodvv2::Metric<IpAddress>& metric);
+    /**
      * \param name the name of the attribute to set
      * \param value the value of the attribute to set.
      *
@@ -93,6 +100,8 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
   private:
     /** the factory to create AODVv2 routing object */
     ObjectFactory m_agentFactory;
+    /// List of metrics
+    std::vector<aodvv2::Metric<IpAddress>> m_metrics;
 
     /**
      * \brief prints the routing table.

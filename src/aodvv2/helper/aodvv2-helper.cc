@@ -48,10 +48,28 @@ Aodvv2Helper<T>::Create(Ptr<Node> node) const
     {
         Ptr<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>> agent =
             m_agentFactory.Create<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>>();
+        for (auto& m : m_metrics)
+        {
+            agent->AddMetric(m);
+        }
         node->AggregateObject(agent);
         return agent;
     }
     return nullptr;
+}
+
+template <typename T>
+void
+Aodvv2Helper<T>::AddMetric(const aodvv2::Metric<IpAddress>& metric)
+{
+    for (auto& m : m_metrics)
+    {
+        if (m.GetMetricType() == metric.GetMetricType())
+        {
+            return;
+        }
+    }
+    m_metrics.push_back(metric);
 }
 
 template <typename T>

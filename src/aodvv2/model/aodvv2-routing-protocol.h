@@ -339,6 +339,15 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     }
 
     /**
+     * Set the use of the default metric (hop)
+     * \param useDefaultMetric the use of the default metric
+     */
+    void SetUseDefaultMetric(bool useDefaultMetric)
+    {
+        m_useDefaultMetric = useDefaultMetric;
+    }
+
+    /**
      * \brief Add a metric to the metrics list
      * \param metric The metric to add
      */
@@ -356,19 +365,30 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     }
 
     /**
-     * \brief Remove a metric from the metrics list
-     * \param metric The metric to remove
-     * \return true if the metric was found and removed, false otherwise
+     * \brief Get the list of metrics, if empty return the default metric
      */
-    bool RemoveMetric(const Metric<IpAddress>& metric)
+    std::vector<Metric<IpAddress>> GetMetrics() const
     {
-        auto it = std::find(m_metrics.begin(), m_metrics.end(), metric);
-        if (it != m_metrics.end())
+        if (m_metrics.empty() || m_useDefaultMetric)
         {
-            m_metrics.erase(it);
-            return true;
+            Metric<IpAddress> defaultMetric(
+                AODVV2_METRIC_HOP,
+                std::numeric_limits<uint8_t>::max(),
+                [](const MetricNode<IpAddress>&, const MetricNode<IpAddress>&) { return 1; },
+                [](const std::vector<MetricNode<IpAddress>>& route) { return route.size(); });
+
+            if (m_metrics.empty())
+            {
+                return {defaultMetric};
+            }
+            else
+            {
+                std::vector<Metric<IpAddress>> metrics = {defaultMetric};
+                metrics.insert(metrics.end(), m_metrics.begin(), m_metrics.end());
+                return metrics;
+            }
         }
-        return false;
+        return m_metrics;
     }
 
     /**
@@ -468,6 +488,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     uint16_t m_rerrCount;
     /// List of metrics
     std::vector<Metric<IpAddress>> m_metrics;
+    /// Use default metric
+    bool m_useDefaultMetric;
 
   private:
     /// Start protocol operation

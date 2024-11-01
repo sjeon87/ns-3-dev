@@ -9,6 +9,7 @@
  *          Tommaso Pecorella <tommaso.pecorella@unifi.it>
  */
 
+#include "ns3/aodvv2-metric.h"
 #include "ns3/aodvv2-module.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
@@ -269,6 +270,15 @@ void
 Aodvv2MultiExample::InstallInternetStack()
 {
     Aodvv2Helper<Ipv4RoutingHelper> aodvv2;
+    /* EXAMPLE: add custom metric
+    aodvv2.AddMetric(ns3::aodvv2::Metric<Ipv4Address>(
+        2,
+        std::numeric_limits<uint8_t>::max(),
+        [](const ns3::aodvv2::MetricNode<Ipv4Address> node1,
+           const ns3::aodvv2::MetricNode<Ipv4Address> node2) { return 1; },
+        [](const std::vector<ns3::aodvv2::MetricNode<Ipv4Address>>& route) {
+            return route.size();
+        })); */
     // you can configure AODVv2 attributes here using aodvv2.Set(name, value)
     InternetStackHelper stack;
     stack.SetRoutingHelper(aodvv2); // has effect on the next Install ()

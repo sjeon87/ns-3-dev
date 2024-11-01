@@ -156,16 +156,12 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rreqCount(0),
       m_rrepCount(0),
       m_rerrCount(0),
+      m_useDefaultMetric(true),
       m_rreqRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_rrepRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0))
 {
-    AddMetric(Metric<IpAddress>(
-        AODVV2_METRIC_HOP,
-        std::numeric_limits<uint8_t>::max(),
-        [](const MetricNode<IpAddress> node1, const MetricNode<IpAddress> node2) { return 1; },
-        [](const std::vector<MetricNode<IpAddress>>& route) { return route.size(); }));
 }
 
 template <typename T>
@@ -1052,7 +1048,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     else
     {
         Ptr<NetDevice> dev = nullptr;
-        for (auto metric : m_metrics)
+        for (auto metric : GetMetrics())
         {
             LocalRoute<IpAddress> newEntry(
                 /*dev=*/dev,
@@ -1298,7 +1294,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
     if (!m_routingTable.LookupRoute(sender, toNeighbor))
     {
         Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        for (auto metric : m_metrics)
+        for (auto metric : GetMetrics())
         {
             LocalRoute<IpAddress> newEntry(
                 /*dev=*/dev,
@@ -1325,7 +1321,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
         }
         else
         {
-            for (auto metric : m_metrics)
+            for (auto metric : GetMetrics())
             {
                 LocalRoute<IpAddress> newEntry(
                     /*dev=*/dev,
