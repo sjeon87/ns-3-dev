@@ -1,0 +1,29 @@
+@startuml
+skinparam ranksep 20
+skinparam dpi 125
+skinparam packageTitleAlignment left
+skinparam scale 2
+
+package "ns3::aodvv2" {
+    class RouteClientSet<T> {
+        - std::vector<RouteClient> m_rc
+        --
+        + RouteClientSet()
+        + uint32_t GetCost(T addr)
+        + bool HasClient(T ip)
+        + void Add(T ip, uint32_t mask, uint32_t cost)
+        + void Clear()
+    }
+
+    class RouteClient<T> {
+        T m_ip
+        uint32_t m_mask
+        uint32_t m_cost
+        --
+        + RouteClient(T ip, uint32_t mask, uint32_t cost)
+    }
+
+    RouteClientSet ..> RouteClient : contains
+}
+
+@enduml

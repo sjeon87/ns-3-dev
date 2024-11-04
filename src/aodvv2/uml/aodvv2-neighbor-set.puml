@@ -1,0 +1,41 @@
+@startuml
+skinparam ranksep 20
+skinparam dpi 125
+skinparam packageTitleAlignment left
+skinparam scale 2
+
+package "ns3::aodvv2" {
+    class NeighborSet<T> {
+        - std::vector<Neighbor> m_nb
+        - Time m_maxBlacklistTime
+        --
+        + NeighborSet(Time maxBlacklistTime)
+        + Time GetTimeout(T addr)
+        + NeighborStates GetState(T addr)
+        + bool IsNeighbor(T addr)
+        + void AddNeighbor(T addr, IpInterfaceAddress iface)
+        + void UpdateState(T addr, IpInterfaceAddress iface, Time timeout)
+        + void Clear()
+        + void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const
+    }
+
+    class Neighbor<T> {
+        T m_neighborAddress
+        NeighborStates m_state
+        Time m_timeout
+        IpInterfaceAddress m_interface
+        uint16_t m_ackSeqNo
+        uint16_t m_heardRERRSeqNo
+    }
+
+    enum MessageType {
+        AODVV2_TYPE_RREQ = 10
+        AODVV2_TYPE_RREP = 11
+        AODVV2_TYPE_RERR = 12
+        AODVV2_TYPE_RREP_ACK = 13
+    }
+
+    NeighborSet ..> Neighbor : contains
+}
+
+@enduml

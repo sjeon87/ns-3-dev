@@ -1,0 +1,104 @@
+@startuml
+skinparam ranksep 20
+skinparam dpi 125
+skinparam packageTitleAlignment left
+skinparam scale 2
+
+package "ns3::aodvv2" {
+    class LocalRouteSet<T> {
+        - std::map<T, LocalRoute<T>> m_ipAddressEntry
+        - Time m_badLinkLifetime
+        - Time m_unconfirmedTime
+        --
+        + LocalRouteSet(Time badlinkTime, Time unconfirmedTime)
+        + bool AddRoute(LocalRoute<T>& r)
+        + bool DeleteRoute(T dst)
+        + bool LookupRoute(T dst, LocalRoute<T>& rt)
+        + bool LookupValidRoute(T dst, LocalRoute<T>& rt)
+        + bool Update(LocalRoute<T>& rt)
+        + bool SetEntryState(T dst, RouteStates state)
+        + void GetListOfDestinationWithNextHop(T nextHop, std::map<T, UnreachableDst>& unreachable)
+        + void ActivateRouteWithNextHop(T nextHop)
+        + void InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unreachable)
+        + void DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
+        + void Clear()
+        + void Purge()
+        + bool MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
+        + void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const
+    }
+
+    class LocalRoute<T> {
+        - Ptr<IpRoute> m_ipRoute
+        - uint32_t m_prefixLength
+        - uint16_t m_seqNo
+        - IpInterfaceAddress m_nextHopIface
+        - Time m_lastUsed
+        - Time m_lastSeqNumUpdate
+        - uint8_t m_metricType
+        - uint32_t m_metric
+        - std::vector<T> m_precursorList
+        - T m_seqNoRtr
+        - RouteStates m_state
+        - uint32_t m_hops
+        - uint8_t m_reqCount
+        - uint8_t m_repCount
+        - Time m_maxIdleTime
+        --
+        + LocalRoute(Ptr<NetDevice> dev, T dst, uint16_t seqNo, IpInterfaceAddress iface, uint32_t hops, T nextHop, Time lastUsed, Time maxIdleTime, uint8_t metricType, uint32_t metric, RouteStates state)
+        + ~LocalRoute()
+        + bool InsertPrecursor(T id)
+        + bool LookupPrecursor(T id)
+        + bool DeletePrecursor(T id)
+        + void DeleteAllPrecursors()
+        + bool IsPrecursorListEmpty() const
+        + void GetPrecursors(std::vector<T>& prec) const
+        + bool IsValid()
+        + void Invalidate(Time badLinkLifetime)
+        + Time GetMaxIdleTime() const
+        + T GetSource() const
+        + T GetDestination() const
+        + Ptr<IpRoute> GetRoute() const
+        + void SetRoute(Ptr<IpRoute> r)
+        + void SetNextHop(T nextHop)
+        + T GetNextHop() const
+        + void SetOutputDevice(Ptr<NetDevice> dev)
+        + Ptr<NetDevice> GetOutputDevice() const
+        + IpInterfaceAddress GetInterface() const
+        + void SetInterface(IpInterfaceAddress iface)
+        + bool GetValidSeqNo() const
+        + void SetSeqNo(uint16_t sn)
+        + uint16_t GetSeqNo() const
+        + void SetHop(uint32_t hop)
+        + uint32_t GetHop() const
+        + void SetLastUsed(Time lu)
+        + Time GetLastUsed() const
+        + void SetLastSeqNumUpdate(Time lu)
+        + Time GetLastSeqNumUpdate() const
+        + void SetMetricType(uint8_t type)
+        + uint8_t GetMetricType() const
+        + void SetMetric(uint32_t metric)
+        + uint32_t GetMetric() const
+        + void SetState(RouteStates state)
+        + RouteStates GetState() const
+        + void SetRreqCnt(uint8_t n)
+        + uint8_t GetRreqCnt() const
+        + void SetRrepCnt(uint8_t n)
+        + uint8_t GetRrepCnt() const
+        + void IncrementRreqCnt()
+        + void IncrementRrepCnt()
+        + bool operator==(const T dst) const
+        + void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const
+    }
+
+    enum RouteStates {
+        UNCONFIRMED
+        IDLE
+        ACTIVE
+        INVALID
+    }
+
+    LocalRouteSet ..> LocalRoute : contains
+    LocalRoute ..> RouteStates : uses
+}
+
+@enduml

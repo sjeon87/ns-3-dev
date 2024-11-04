@@ -1,0 +1,103 @@
+@startuml
+skinparam ranksep 20
+skinparam dpi 125
+skinparam packageTitleAlignment left
+skinparam scale 2
+
+package "ns3::aodvv2" {
+    class Aodvv2RoutingProtocol<T> {
+        - uint32_t m_discoveryAttemptsMax
+        - uint32_t m_rrepRetries
+        - uint32_t m_maxHopLimit
+        - uint16_t m_timeoutBuffer
+        - double_t m_controlTrafficLimit
+        - uint16_t m_rreqRateLimit
+        - uint16_t m_rrepRateLimit
+        - uint16_t m_rerrRateLimit
+        - Time m_activeInterval
+        - Time m_nodeTraversalTime
+        - Time m_netTraversalTime
+        - Time m_pathDiscoveryTime
+        - Time m_myRouteTimeout
+        - Time m_nextHopWait
+        - Time m_rreqWaitTime
+        - Time m_rreqHolddownTime
+        - Time m_rrepAckSentTimeout
+        - Time m_rerrTimeout
+        - Time m_maxIdleTime
+        - Time m_maxBlacklistTime
+        - Time m_maxSeqnumLifetime
+        - uint32_t m_maxQueueLen
+        - Time m_maxQueueTime
+        - Time m_rtemsgEntryTime
+        - bool m_destinationOnly
+        - bool m_gratuitousReply
+        - bool m_enableBroadcast
+        - Ptr<Ip> m_ip
+        - std::map<Ptr<Socket>, IpInterfaceAddress> m_socketAddresses
+        - std::map<Ptr<Socket>, IpInterfaceAddress> m_socketSubnetBroadcastAddresses
+        - Ptr<NetDevice> m_lo
+        - LocalRouteSet<IpAddress> m_routingTable
+        - RequestQueue<IpAddress> m_queue
+        - uint32_t m_requestId
+        - uint16_t m_seqNo
+        - IdCache<IpAddress> m_mms
+        - DuplicatePacketDetection<IpHeader> m_dpd
+        - NeighborSet<IpAddress> m_nb
+        - RouteClientSet<IpAddress> m_rcs
+        - RerrSet<IpAddress> m_rerrSet
+        - uint16_t m_rreqCount
+        - uint16_t m_rrepCount
+        - uint16_t m_rerrCount
+        - std::vector<Metric<IpAddress>> m_metrics
+        - bool m_useDefaultMetric
+        - Timer m_rreqRateLimitTimer
+        - Timer m_rrepRateLimitTimer
+        - Timer m_rerrRateLimitTimer
+        - std::map<IpAddress, Timer> m_addressReqTimer
+        - std::map<IpAddress, Timer> m_addressRepTimer
+        - std::map<IpAddress, Timer> m_newDiscoveryTimer
+        - Ptr<UniformRandomVariable> m_uniformRandomVariable
+        - Time m_lastBcastTime
+        --
+        + Aodvv2RoutingProtocol()
+        + ~Aodvv2RoutingProtocol()
+        + static TypeId GetTypeId()
+        + void DoDispose()
+        + Ptr<IpRoute> RouteOutput(Ptr<Packet> p, const IpHeader& header, Ptr<NetDevice> oif, Socket::SocketErrno& sockerr)
+        + bool RouteInput(Ptr<const Packet> p, const IpHeader& header, Ptr<const NetDevice> idev, const UnicastForwardCallback& ucb, const MulticastForwardCallback& mcb, const LocalDeliverCallback& lcb, const ErrorCallback& ecb)
+        + void NotifyInterfaceUp(uint32_t interface)
+        + void NotifyInterfaceDown(uint32_t interface)
+        + void NotifyAddAddress(uint32_t interface, IpInterfaceAddress address)
+        + void NotifyRemoveAddress(uint32_t interface, IpInterfaceAddress address)
+        + void SetIpv4(Ptr<Ipv4> ipv4)
+        + void SetIpv6(Ptr<Ipv6> ipv6)
+        + void NotifyAddRoute(IpAddress dst, Ipv6Prefix mask, IpAddress nextHop, uint32_t interface, IpAddress prefixToUse = IpAddress::GetZero())
+        + void NotifyRemoveRoute(IpAddress dst, Ipv6Prefix mask, IpAddress nextHop, uint32_t interface, IpAddress prefixToUse = IpAddress::GetZero())
+        + void PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const
+        + Time GetMaxQueueTime() const
+        + void SetMaxQueueTime(Time t)
+        + uint32_t GetMaxQueueLen() const
+        + void SetMaxQueueLen(uint32_t len)
+        + bool GetDestinationOnlyFlag() const
+        + void SetDestinationOnlyFlag(bool f)
+        + void SetBroadcastEnable(bool f)
+        + bool GetBroadcastEnable() const
+        + void SetUseDefaultMetric(bool useDefaultMetric)
+        + void AddMetric(const Metric<IpAddress>& metric)
+        + std::vector<Metric<IpAddress>> GetMetrics() const
+        + int64_t AssignStreams(int64_t stream)
+        + void DoInitialize()
+    }
+
+    Aodvv2RoutingProtocol ..> LocalRouteSet : uses
+    Aodvv2RoutingProtocol ..> RequestQueue : uses
+    Aodvv2RoutingProtocol ..> IdCache : uses
+    Aodvv2RoutingProtocol ..> DuplicatePacketDetection : uses
+    Aodvv2RoutingProtocol ..> NeighborSet : uses
+    Aodvv2RoutingProtocol ..> RouteClientSet : uses
+    Aodvv2RoutingProtocol ..> RerrSet : uses
+    Aodvv2RoutingProtocol ..> Metric : uses
+}
+
+@enduml

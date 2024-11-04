@@ -1,0 +1,39 @@
+@startuml
+skinparam ranksep 20
+skinparam dpi 125
+skinparam packageTitleAlignment left
+skinparam scale 2
+
+package "ns3::aodvv2" {
+    class QueueEntry<T> {
+        + QueueEntry(Ptr<const Packet> pa, const T& h, UnicastForwardCallback ucb, ErrorCallback ecb, Time exp)
+        + bool operator==(const QueueEntry& o) const
+        + UnicastForwardCallback GetUnicastForwardCallback() const
+        + void SetUnicastForwardCallback(UnicastForwardCallback ucb)
+        + ErrorCallback GetErrorCallback() const
+        + void SetErrorCallback(ErrorCallback ecb)
+        + Ptr<const Packet> GetPacket() const
+        + void SetPacket(Ptr<const Packet> p)
+        + T GetIpHeader() const
+        + void SetIpHeader(T h)
+        + void SetExpireTime(Time exp)
+        + Time GetExpireTime() const
+    }
+
+    class RequestQueue<T> {
+        + RequestQueue(uint32_t maxLen, Time routeToQueueTimeout)
+        + bool Enqueue(QueueEntry<T>& entry)
+        + bool Dequeue(T dst, QueueEntry<T>& entry)
+        + void DropPacketWithDst(T dst)
+        + bool Find(T dst)
+        + uint32_t GetSize()
+        + uint32_t GetMaxQueueLen() const
+        + void SetMaxQueueLen(uint32_t len)
+        + Time GetQueueTimeout() const
+        + void SetQueueTimeout(Time t)
+    }
+
+    RequestQueue ..> QueueEntry : contains
+}
+
+@enduml

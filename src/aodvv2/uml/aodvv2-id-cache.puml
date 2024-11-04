@@ -1,0 +1,37 @@
+@startuml
+skinparam ranksep 20
+skinparam dpi 125
+skinparam packageTitleAlignment left
+skinparam scale 2
+
+package "ns3::aodvv2" {
+    class IdCache<T> {
+        - std::vector<UniqueId> m_idCache
+        - Time m_lifetime
+        --
+        + IdCache(Time lifetime)
+        + bool IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t origMetric)
+        + void Purge()
+        + uint32_t GetSize()
+        + void SetLifetime(Time lifetime)
+        + Time GetLifeTime() const
+        + void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const
+    }
+
+    class UniqueId {
+        T m_origIp
+        uint32_t m_origMask
+        T m_targIp
+        uint32_t m_metricType
+        Time m_removalTime
+    }
+
+    class IsExpired {
+        + bool operator()(const UniqueId& u) const
+    }
+
+    IdCache ..> UniqueId : contains
+    IdCache ..> IsExpired : uses
+}
+
+@enduml
