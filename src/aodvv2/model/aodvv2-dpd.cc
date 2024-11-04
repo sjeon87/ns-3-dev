@@ -9,6 +9,8 @@
 
 #include "aodvv2-dpd.h"
 
+#include "aodvv2-packet.h"
+
 namespace ns3
 {
 namespace aodvv2
@@ -16,11 +18,16 @@ namespace aodvv2
 
 template <typename T>
 bool
-DuplicatePacketDetection<T>::IsDuplicate(Ptr<const Packet> p, const T& header)
+DuplicatePacketDetection<T>::IsDuplicate(Ptr<const Packet> p,
+                                         const T& header,
+                                         const uint8_t metricType)
 {
     // TODO me: update if needed the mask
-    // TODO me: update the metric
-    return m_idCache.IsDuplicate(header.GetSource(), 32, header.GetDestination(), 1);
+    if (metricType == AODVV2_METRIC_UNASSIGNED)
+    {
+        return false;
+    }
+    return m_idCache.IsDuplicate(header.GetSource(), 32, header.GetDestination(), metricType);
 }
 
 template <typename T>

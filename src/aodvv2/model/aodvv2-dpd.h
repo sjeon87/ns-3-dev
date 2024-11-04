@@ -57,9 +57,10 @@ class DuplicatePacketDetection
      * Check if the packet is a duplicate. If not, save information about this packet.
      * \param p the packet to check
      * \param header the IP header to check
+     * \param metricType the metric type
      * \returns true if duplicate
      */
-    bool IsDuplicate(Ptr<const Packet> p, const T& header);
+    bool IsDuplicate(Ptr<const Packet> p, const T& header, const uint8_t metricType);
     /**
      * Set duplicate record lifetime
      * \param lifetime the lifetime for duplicate records

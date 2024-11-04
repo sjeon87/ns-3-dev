@@ -50,15 +50,15 @@ class IdCache
     }
 
     /**
-     * Check that entry (origIp, origMask, targIp, origMetric) exists in cache.
+     * Check that entry (origIp, origMask, targIp, metricType) exists in cache.
      * Add entry, if it doesn't exist.
      * \param origIp the IP address
      * \param origMask the mask
      * \param targIp the target IP address
-     * \param origMetric the metric
+     * \param metricType the metric
      * \returns true if the pair exists
      */
-    bool IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t origMetric);
+    bool IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t metricType);
     /// Remove all expired entries
     void Purge();
     /**

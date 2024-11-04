@@ -498,7 +498,7 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
             {
                 if (dst == iface.GetBroadcast() || dst.IsBroadcast())
                 {
-                    if (m_dpd.IsDuplicate(p, header))
+                    if (m_dpd.IsDuplicate(p, header, GetRouteMetricType(dst)))
                     {
                         NS_LOG_DEBUG("Duplicated packet " << p->GetUid() << " from " << origin
                                                           << ". Drop.");
@@ -1262,6 +1262,19 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
         break;
     }
     }
+}
+
+template <typename T>
+uint8_t
+Aodvv2RoutingProtocol<T>::GetRouteMetricType(IpAddress addr)
+{
+    NS_LOG_FUNCTION(this << addr);
+    LocalRoute<IpAddress> rt;
+    if (m_routingTable.LookupRoute(addr, rt))
+    {
+        return rt.GetMetricType();
+    }
+    return AODVV2_METRIC_UNASSIGNED;
 }
 
 template <typename T>
