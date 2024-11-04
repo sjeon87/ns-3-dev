@@ -13,6 +13,7 @@ package "ns3::aodvv2" {
         - std::function<bool(const std::vector<MetricNode<T>>&, const std::vector<MetricNode<T>>&)> m_loopFree
         --
         + Metric(uint8_t metricType, uint8_t maxMetric, std::function<double(const MetricNode<T>, const MetricNode<T>)> linkCost, std::function<double(const std::vector<MetricNode<T>>&)> routeCost)
+        + void SetMetricType(uint8_t metricType)
         + uint8_t GetMetricType() const
         + uint8_t GetMaxMetric() const
         + double Cost(const MetricNode<T> node1, const MetricNode<T> node2) const

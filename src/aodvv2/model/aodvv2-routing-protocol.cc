@@ -1042,7 +1042,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         rt.SetState(UNCONFIRMED);
         rt.SetLastUsed(m_pathDiscoveryTime);
         rreqHeader.SetMetricType(rt.GetMetricType());
-        rreqHeader.SetOrigMetric(rt.GetMetric());
+        rreqHeader.SetOrigMetric(rt.GetMetricValue());
         m_routingTable.Update(rt);
     }
     else
@@ -1066,7 +1066,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
             newEntry.SetState(UNCONFIRMED);
             rreqHeader.SetMetricType(newEntry.GetMetricType());
-            rreqHeader.SetOrigMetric(newEntry.GetMetric());
+            rreqHeader.SetOrigMetric(newEntry.GetMetricValue());
             m_routingTable.AddRoute(newEntry);
         }
     }

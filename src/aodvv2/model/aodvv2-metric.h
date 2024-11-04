@@ -13,6 +13,8 @@
 #ifndef AODVV2_METRIC_H
 #define AODVV2_METRIC_H
 
+#include "aodvv2-packet.h"
+
 #include "ns3/internet-module.h"
 
 #include <functional>
@@ -57,16 +59,28 @@ class Metric
      * @param linkCost Function to determine the cost of an incoming link.
      * @param routeCost Function to determine the cost of a route.
      */
-    Metric(uint8_t metricType,
-           uint8_t maxMetric,
-           std::function<double(const MetricNode<T>, const MetricNode<T>)> linkCost,
-           std::function<double(const std::vector<MetricNode<T>>&)> routeCost)
+    Metric(
+        uint8_t metricType = AODVV2_METRIC_HOP,
+        uint8_t maxMetric = std::numeric_limits<uint8_t>::max(),
+        std::function<double(const MetricNode<T>, const MetricNode<T>)> linkCost =
+            [](const MetricNode<T>&, const MetricNode<T>&) { return 1; },
+        std::function<double(const std::vector<MetricNode<T>>&)> routeCost =
+            [](const std::vector<MetricNode<T>> route) { return route.size(); })
         : m_metricType(metricType),
           m_maxMetric(maxMetric),
           m_linkCost(linkCost),
           m_routeCost(routeCost),
           m_loopFree(DefaultLoopFree)
     {
+    }
+
+    /**
+     * Set the metric type.
+     * @param metricType Metric type.
+     */
+    void SetMetricType(uint8_t metricType)
+    {
+        m_metricType = metricType;
     }
 
     /**

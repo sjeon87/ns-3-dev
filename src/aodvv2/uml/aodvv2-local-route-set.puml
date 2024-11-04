@@ -34,8 +34,8 @@ package "ns3::aodvv2" {
         - IpInterfaceAddress m_nextHopIface
         - Time m_lastUsed
         - Time m_lastSeqNumUpdate
-        - uint8_t m_metricType
-        - uint32_t m_metric
+        - Metric<T> m_metric
+        - uint32_t m_metricValue
         - std::vector<T> m_precursorList
         - T m_seqNoRtr
         - RouteStates m_state
@@ -44,7 +44,7 @@ package "ns3::aodvv2" {
         - uint8_t m_repCount
         - Time m_maxIdleTime
         --
-        + LocalRoute(Ptr<NetDevice> dev, T dst, uint16_t seqNo, IpInterfaceAddress iface, uint32_t hops, T nextHop, Time lastUsed, Time maxIdleTime, uint8_t metricType, uint32_t metric, RouteStates state)
+        + LocalRoute(Ptr<NetDevice> dev, T dst, uint16_t seqNo, IpInterfaceAddress iface, uint32_t hops, T nextHop, Time lastUsed, Time maxIdleTime, Metric<T> metric, uint32_t metricValue, RouteStates state)
         + ~LocalRoute()
         + bool InsertPrecursor(T id)
         + bool LookupPrecursor(T id)
@@ -76,8 +76,8 @@ package "ns3::aodvv2" {
         + Time GetLastSeqNumUpdate() const
         + void SetMetricType(uint8_t type)
         + uint8_t GetMetricType() const
-        + void SetMetric(uint32_t metric)
-        + uint32_t GetMetric() const
+        + void SetMetricValue(uint32_t metricValue)
+        + uint32_t GetMetricValue() const
         + void SetState(RouteStates state)
         + RouteStates GetState() const
         + void SetRreqCnt(uint8_t n)
@@ -99,6 +99,7 @@ package "ns3::aodvv2" {
 
     LocalRouteSet ..> LocalRoute : contains
     LocalRoute ..> RouteStates : uses
+    LocalRoute ..> Metric : uses
 }
 
 @enduml

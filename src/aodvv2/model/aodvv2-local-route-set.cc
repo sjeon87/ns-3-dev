@@ -12,6 +12,7 @@
 
 #include "aodvv2-local-route-set.h"
 
+#include "aodvv2-metric.h"
 #include "aodvv2-packet.h"
 
 #include "ns3/log.h"
@@ -40,15 +41,15 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
                           T nextHop,
                           Time lastUsed,
                           Time maxIdleTime,
-                          uint8_t metricType,
-                          uint32_t metric,
+                          Metric<T> metric,
+                          uint32_t metricValue,
                           RouteStates state)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
       m_nextHopIface(iface),
       m_lastUsed(lastUsed + Simulator::Now()),
-      m_metricType(metricType),
       m_metric(metric),
+      m_metricValue(metricValue),
       m_state(state),
       m_hops(hops),
       m_reqCount(0),
@@ -212,7 +213,7 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     gw << m_ipRoute->GetGateway();
     iface << m_nextHopIface.GetAddress();
     expire << std::setprecision(2) << (m_lastUsed - Simulator::Now()).As(unit);
-    metric << static_cast<uint16_t>(m_metricType) << ": " << m_metric;
+    metric << static_cast<uint16_t>(m_metric.GetMetricType()) << ": " << m_metricValue;
     *os << std::setw(16) << dest.str();
     *os << std::setw(16) << gw.str();
     *os << std::setw(16) << iface.str();

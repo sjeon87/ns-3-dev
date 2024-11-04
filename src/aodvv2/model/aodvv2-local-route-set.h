@@ -12,6 +12,7 @@
 #ifndef AODVV2_LOCAL_ROUTE_SET_H
 #define AODVV2_LOCAL_ROUTE_SET_H
 
+#include "aodvv2-metric.h"
 #include "aodvv2-packet.h"
 
 #include "ns3/internet-module.h"
@@ -71,8 +72,8 @@ class LocalRoute
      * \param hops the number of hops
      * \param nextHop the IP address of the next hop
      * \param lastUsed the lastUsed time of the entry
-     * \param metricType the metric type
-     * \param metric the metric value
+     * \param metric the metric
+     * \param metricValue the metric value
      * \param state the route state
      */
     LocalRoute(Ptr<NetDevice> dev = nullptr,
@@ -83,8 +84,8 @@ class LocalRoute
                T nextHop = T(),
                Time lastUsed = Simulator::Now(),
                Time maxIdleTime = Seconds(200),
-               uint8_t metricType = 0,
-               uint32_t metric = 1,
+               Metric<T> metric = Metric<T>(),
+               uint32_t metricValue = 1,
                RouteStates state = UNCONFIRMED);
 
     ~LocalRoute();
@@ -321,7 +322,7 @@ class LocalRoute
      */
     void SetMetricType(uint8_t type)
     {
-        m_metricType = type;
+        m_metric.SetMetricType(type);
     }
 
     /**
@@ -330,25 +331,25 @@ class LocalRoute
      */
     uint8_t GetMetricType() const
     {
-        return m_metricType;
+        return m_metric.GetMetricType();
     }
 
     /**
-     * Set the metric
-     * \param metric the metric
+     * Set the metricValue
+     * \param metricValue the metric value
      */
-    void SetMetric(uint32_t metric)
+    void SetMetricValue(uint32_t metricValue)
     {
-        m_metric = metric;
+        m_metricValue = metricValue;
     }
 
     /**
-     * Get the metric
-     * \returns the metric
+     * Get the metric value
+     * \returns the metric value
      */
-    uint32_t GetMetric() const
+    uint32_t GetMetricValue() const
     {
-        return m_metric;
+        return m_metricValue;
     }
 
     /**
@@ -460,9 +461,9 @@ class LocalRoute
     /// Time the seqNum was last updated
     Time m_lastSeqNumUpdate;
     /// Type of metric used for route
-    uint8_t m_metricType;
+    Metric<T> m_metric;
     /// Cost of route expressed in units
-    uint32_t m_metric;
+    uint32_t m_metricValue;
     /// List of precursors
     std::vector<T> m_precursorList;
     /// ip address of the originator router
