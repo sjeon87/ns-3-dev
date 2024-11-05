@@ -61,12 +61,10 @@ class Metric
         m_metricType = AODVV2_METRIC_HOP;
         m_maxMetric = std::numeric_limits<uint8_t>::max();
         m_linkCost = [](const MetricNode<T>&) { return 1; };
-        m_routeCost = std::bind(&Metric::DefaultRouteCost,
-                                this,
-                                std::placeholders::_1,
-                                std::placeholders::_2);
-        m_loopFree =
-            std::bind(&Metric::DefaultLoopFree, this, std::placeholders::_1, std::placeholders::_2);
+        m_routeCost = [](const uint8_t& routeCost, const MetricNode<T>& currentNode) {
+            return routeCost + 1;
+        };
+        m_loopFree = [](const uint8_t& r1, const uint8_t& r2) { return r1 <= r2; };
     }
 
     /**
@@ -121,7 +119,7 @@ class Metric
      * @param currentNode The current node.
      * @return The cost of the incoming link.
      */
-    uint8_t Cost(const MetricNode<T> currentNode) const
+    uint8_t linkCost(const MetricNode<T> currentNode) const
     {
         return m_linkCost(currentNode);
     }
@@ -132,7 +130,7 @@ class Metric
      * @param currentNode The current node.
      * @return The cost of the route.
      */
-    uint8_t Cost(const uint8_t& routeCost, const MetricNode<T>& currentNode) const
+    uint8_t routeCost(const uint8_t& routeCost, const MetricNode<T>& currentNode) const
     {
         return m_routeCost(routeCost, currentNode);
     }
@@ -154,22 +152,6 @@ class Metric
     std::function<uint8_t(const MetricNode<T>&)> m_linkCost;
     std::function<uint8_t(const uint8_t&, const MetricNode<T>&)> m_routeCost;
     std::function<bool(const uint8_t&, const uint8_t&)> m_loopFree;
-
-    /**
-     * Default function to evaluate the route cost
-     * @param routeCost The cost of the previous part of the route.
-     * @param currentNode The current node.
-     * @return The cost of the route.
-     */
-    uint8_t DefaultRouteCost(const uint8_t& routeCost, const MetricNode<T>& currentNode);
-
-    /**
-     * Default function to check if routes are loop-free.
-     * @param r1 The first route cost.
-     * @param r2 The second route cost.
-     * @return True if the routes are loop-free, false otherwise.
-     */
-    bool DefaultLoopFree(const uint8_t& r1, const uint8_t& r2);
 };
 
 } // namespace aodvv2
