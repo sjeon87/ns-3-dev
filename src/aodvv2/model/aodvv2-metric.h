@@ -73,8 +73,8 @@ class Metric
      */
     Metric(uint8_t metricType,
            uint8_t maxMetric,
-           std::function<double(const MetricNode<T>, const MetricNode<T>)> linkCost,
-           std::function<double(const std::vector<MetricNode<T>>&)> routeCost,
+           std::function<uint8_t(const MetricNode<T>, const MetricNode<T>)> linkCost,
+           std::function<uint8_t(const std::vector<MetricNode<T>>&)> routeCost,
            std::function<bool(const std::vector<MetricNode<T>>&, const std::vector<MetricNode<T>>&)>
                loopFree = DefaultLoopFree)
         : m_metricType(metricType),
@@ -118,7 +118,7 @@ class Metric
      * @param node2 The second node of the link.
      * @return The cost of the incoming link.
      */
-    double Cost(const MetricNode<T> node1, const MetricNode<T> node2) const
+    uint8_t Cost(const MetricNode<T> node1, const MetricNode<T> node2) const
     {
         return m_linkCost(node1, node2);
     }
@@ -128,7 +128,7 @@ class Metric
      * @param route The vector of nodes representing the route.
      * @return The cost of the route.
      */
-    double Cost(const std::vector<MetricNode<T>>& route) const
+    uint8_t Cost(const std::vector<MetricNode<T>>& route) const
     {
         return m_routeCost(route);
     }
@@ -147,8 +147,8 @@ class Metric
   private:
     uint8_t m_metricType;
     uint8_t m_maxMetric;
-    std::function<double(const MetricNode<T>&, const MetricNode<T>&)> m_linkCost;
-    std::function<double(const std::vector<MetricNode<T>>&)> m_routeCost;
+    std::function<uint8_t(const MetricNode<T>&, const MetricNode<T>&)> m_linkCost;
+    std::function<uint8_t(const std::vector<MetricNode<T>>&)> m_routeCost;
     std::function<bool(const std::vector<MetricNode<T>>&, const std::vector<MetricNode<T>>&)>
         m_loopFree;
 
