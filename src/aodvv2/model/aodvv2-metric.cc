@@ -25,34 +25,19 @@ template class Metric<Ipv4Address>;
 template class Metric<Ipv6Address>;
 
 template <typename T>
-bool
-Metric<T>::DefaultLoopFree(const std::vector<MetricNode<T>>& r1,
-                           const std::vector<MetricNode<T>>& r2)
+uint8_t
+Metric<T>::DefaultRouteCost(const uint8_t& routeCost, const MetricNode<T>& currentNode)
 {
-    // Check if r2 is a sub-section of r1
-    if (r1.size() <= r2.size())
-    {
-        return false;
-    }
+    NS_LOG_FUNCTION(&routeCost << &currentNode);
+    return routeCost + m_linkCost(currentNode);
+}
 
-    for (size_t i = 0; i <= r1.size() - r2.size(); ++i)
-    {
-        bool isSubSection = true;
-        for (size_t j = 0; j < r2.size(); ++j)
-        {
-            if (r1[i + j].m_address != r2[j].m_address)
-            {
-                isSubSection = false;
-                break;
-            }
-        }
-        if (isSubSection)
-        {
-            return false;
-        }
-    }
-
-    return true;
+template <typename T>
+bool
+Metric<T>::DefaultLoopFree(const uint8_t& r1, const uint8_t& r2)
+{
+    NS_LOG_FUNCTION(&r1 << &r2);
+    return r1 <= r2;
 }
 
 } // namespace aodvv2

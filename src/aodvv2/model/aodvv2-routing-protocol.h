@@ -372,11 +372,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     {
         if (m_metrics.empty() || m_useDefaultMetric)
         {
-            Metric<IpAddress> defaultMetric(
-                AODVV2_METRIC_HOP,
-                std::numeric_limits<uint8_t>::max(),
-                [](const MetricNode<IpAddress>&, const MetricNode<IpAddress>&) { return 1; },
-                [](const std::vector<MetricNode<IpAddress>>& route) { return route.size(); });
+            Metric<IpAddress> defaultMetric{};
 
             if (m_metrics.empty())
             {

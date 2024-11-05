@@ -54,14 +54,19 @@ class Metric
   public:
     /**
      * constructor
+     * \brief Default constructor sets the metric type to hop count
      */
     Metric()
     {
         m_metricType = AODVV2_METRIC_HOP;
         m_maxMetric = std::numeric_limits<uint8_t>::max();
-        m_linkCost = [](const MetricNode<T>&, const MetricNode<T>&) { return 1; };
-        m_routeCost = [](const std::vector<MetricNode<T>> route) { return route.size(); };
-        m_loopFree = DefaultLoopFree;
+        m_linkCost = [](const MetricNode<T>&) { return 1; };
+        m_routeCost = std::bind(&Metric::DefaultRouteCost,
+                                this,
+                                std::placeholders::_1,
+                                std::placeholders::_2);
+        m_loopFree =
+            std::bind(&Metric::DefaultLoopFree, this, std::placeholders::_1, std::placeholders::_2);
     }
 
     /**
@@ -73,10 +78,9 @@ class Metric
      */
     Metric(uint8_t metricType,
            uint8_t maxMetric,
-           std::function<uint8_t(const MetricNode<T>, const MetricNode<T>)> linkCost,
-           std::function<uint8_t(const std::vector<MetricNode<T>>&)> routeCost,
-           std::function<bool(const std::vector<MetricNode<T>>&, const std::vector<MetricNode<T>>&)>
-               loopFree = DefaultLoopFree)
+           std::function<uint8_t(const MetricNode<T>&)> linkCost,
+           std::function<uint8_t(const uint8_t&, const MetricNode<T>&)> routeCost,
+           std::function<bool(const uint8_t&, const uint8_t&)> loopFree)
         : m_metricType(metricType),
           m_maxMetric(maxMetric),
           m_linkCost(linkCost),
@@ -114,32 +118,32 @@ class Metric
 
     /**
      * Calculate the cost of an incoming link.
-     * @param node1 The first node of the link.
-     * @param node2 The second node of the link.
+     * @param currentNode The current node.
      * @return The cost of the incoming link.
      */
-    uint8_t Cost(const MetricNode<T> node1, const MetricNode<T> node2) const
+    uint8_t Cost(const MetricNode<T> currentNode) const
     {
-        return m_linkCost(node1, node2);
+        return m_linkCost(currentNode);
     }
 
     /**
      * Calculate the cost of a route.
-     * @param route The vector of nodes representing the route.
+     * @param routeCost The cost of the previous part of the route.
+     * @param currentNode The current node.
      * @return The cost of the route.
      */
-    uint8_t Cost(const std::vector<MetricNode<T>>& route) const
+    uint8_t Cost(const uint8_t& routeCost, const MetricNode<T>& currentNode) const
     {
-        return m_routeCost(route);
+        return m_routeCost(routeCost, currentNode);
     }
 
     /**
      * Check if the routes are loop-free.
-     * @param r1 First route as a vector of nodes.
-     * @param r2 Second route as a vector of nodes.
+     * @param r1 The first route cost.
+     * @param r2 The second route cost.
      * @return True if the routes are loop-free, false otherwise.
      */
-    bool LoopFree(const std::vector<MetricNode<T>>& r1, const std::vector<MetricNode<T>>& r2) const
+    bool LoopFree(const uint8_t& r1, const uint8_t& r2) const
     {
         return m_loopFree(r1, r2);
     }
@@ -147,19 +151,25 @@ class Metric
   private:
     uint8_t m_metricType;
     uint8_t m_maxMetric;
-    std::function<uint8_t(const MetricNode<T>&, const MetricNode<T>&)> m_linkCost;
-    std::function<uint8_t(const std::vector<MetricNode<T>>&)> m_routeCost;
-    std::function<bool(const std::vector<MetricNode<T>>&, const std::vector<MetricNode<T>>&)>
-        m_loopFree;
+    std::function<uint8_t(const MetricNode<T>&)> m_linkCost;
+    std::function<uint8_t(const uint8_t&, const MetricNode<T>&)> m_routeCost;
+    std::function<bool(const uint8_t&, const uint8_t&)> m_loopFree;
+
+    /**
+     * Default function to evaluate the route cost
+     * @param routeCost The cost of the previous part of the route.
+     * @param currentNode The current node.
+     * @return The cost of the route.
+     */
+    uint8_t DefaultRouteCost(const uint8_t& routeCost, const MetricNode<T>& currentNode);
 
     /**
      * Default function to check if routes are loop-free.
-     * @param r1 First route as a vector of nodes.
-     * @param r2 Second route as a vector of nodes.
+     * @param r1 The first route cost.
+     * @param r2 The second route cost.
      * @return True if the routes are loop-free, false otherwise.
      */
-    static bool DefaultLoopFree(const std::vector<MetricNode<T>>& r1,
-                                const std::vector<MetricNode<T>>& r2);
+    bool DefaultLoopFree(const uint8_t& r1, const uint8_t& r2);
 };
 
 } // namespace aodvv2

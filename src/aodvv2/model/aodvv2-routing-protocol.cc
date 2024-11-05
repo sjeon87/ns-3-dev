@@ -1061,8 +1061,8 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metric=*/metric,
                 /*metricValue=*/
-                metric.Cost(MetricNode<IpAddress>(dst), MetricNode<IpAddress>(dst)));
-            // TODO me: select the right node
+                metric.Cost(MetricNode<IpAddress>(dst)));
+            // TODO me: select the current node
 
             newEntry.SetState(UNCONFIRMED);
             rreqHeader.SetMetricType(newEntry.GetMetricType());
@@ -1320,7 +1320,8 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metric=*/metric,
                 /*metricValue=*/
-                metric.Cost(MetricNode<IpAddress>(sender), MetricNode<IpAddress>(receiver)));
+                metric.Cost(MetricNode<IpAddress>(sender)));
+            // TODO me: select the current node
             m_routingTable.AddRoute(newEntry);
         }
     }
@@ -1347,7 +1348,8 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
-                    metric.Cost(MetricNode<IpAddress>(sender), MetricNode<IpAddress>(receiver)));
+                    metric.Cost(MetricNode<IpAddress>(sender)));
+                // TODO me: select the current node
                 m_routingTable.Update(newEntry);
             }
         }
