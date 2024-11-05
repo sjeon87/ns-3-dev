@@ -1626,7 +1626,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*seqNo=*/m_seqNo,
         /*hopLimit=*/m_maxHopLimit - hopCount,
         /*metricType=*/rreqHeader.GetMetricType(),
-        /*metric=*/1);
+        /*metric=*/new uint8_t[1]{1});
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);
@@ -1765,7 +1765,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
 
     if (metric.GetMetricType() == AODVV2_METRIC_HOP)
     {
-        newEntry.SetHop(rrepHeader.GetTargMetric());
+        newEntry.SetHop(rrepHeader.GetTargMetric()[0]);
     }
 
     rrepHeader.SetTargMetric(

@@ -85,7 +85,7 @@ class LocalRoute
                Time lastUsed = Simulator::Now(),
                Time maxIdleTime = Seconds(200),
                Metric<T> metric = Metric<T>(),
-               uint32_t metricValue = 1,
+               uint8_t* metricValue = new uint8_t[1]{1},
                RouteStates state = UNCONFIRMED);
 
     ~LocalRoute();
@@ -338,7 +338,7 @@ class LocalRoute
      * Set the metricValue
      * \param metricValue the metric value
      */
-    void SetMetricValue(uint32_t metricValue)
+    void SetMetricValue(uint8_t* metricValue)
     {
         m_metricValue = metricValue;
     }
@@ -347,7 +347,7 @@ class LocalRoute
      * Get the metric value
      * \returns the metric value
      */
-    uint32_t GetMetricValue() const
+    uint8_t* GetMetricValue() const
     {
         return m_metricValue;
     }
@@ -463,7 +463,7 @@ class LocalRoute
     /// Type of metric used for route
     Metric<T> m_metric;
     /// Cost of route expressed in units
-    uint32_t m_metricValue;
+    uint8_t* m_metricValue;
     /// List of precursors
     std::vector<T> m_precursorList;
     /// ip address of the originator router

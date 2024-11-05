@@ -42,7 +42,7 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
                           Time lastUsed,
                           Time maxIdleTime,
                           Metric<T> metric,
-                          uint32_t metricValue,
+                          uint8_t* metricValue,
                           RouteStates state)
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
@@ -213,7 +213,11 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     gw << m_ipRoute->GetGateway();
     iface << m_nextHopIface.GetAddress();
     expire << std::setprecision(2) << (m_lastUsed - Simulator::Now()).As(unit);
-    metric << static_cast<uint16_t>(m_metric.GetMetricType()) << ": " << m_metricValue;
+    metric << static_cast<uint16_t>(m_metric.GetMetricType()) << ": ";
+    for (uint8_t i = 0; i < sizeof(m_metricValue); i++)
+    {
+        metric << static_cast<uint16_t>(m_metricValue[i]) << " ";
+    }
     *os << std::setw(16) << dest.str();
     *os << std::setw(16) << gw.str();
     *os << std::setw(16) << iface.str();
@@ -239,8 +243,8 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     }
 
     *os << std::setw(16) << expire.str();
-    *os << std::setw(16) << metric.str();
-    *os << m_hops << std::endl;
+    *os << std::setw(16) << m_hops;
+    *os << metric.str() << std::endl;
     // Restore the previous ostream state
     (*os).copyfmt(oldState);
 }
@@ -564,8 +568,8 @@ LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Ti
     *os << std::setw(16) << "Interface";
     *os << std::setw(16) << "State";
     *os << std::setw(16) << "Expire";
-    *os << std::setw(16) << "Metric";
-    *os << "Hops" << std::endl;
+    *os << std::setw(16) << "Hops";
+    *os << "Metrics" << std::endl;
     for (auto i = table.begin(); i != table.end(); ++i)
     {
         i->second.Print(stream, unit);

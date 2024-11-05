@@ -140,7 +140,7 @@ class RreqHeader : public Header
                uint16_t seqNo = 1,
                uint8_t hopLimit = 0,
                uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
-               uint8_t origMetric = 1);
+               uint8_t* origMetric = new uint8_t[1]{1});
 
     /**
      * constructor
@@ -318,7 +318,7 @@ class RreqHeader : public Header
      * \brief Set the origin metric
      * \param metric the origin metric
      */
-    void SetOrigMetric(uint8_t metric)
+    void SetOrigMetric(uint8_t* metric)
     {
         m_origMetric = metric;
     }
@@ -327,7 +327,7 @@ class RreqHeader : public Header
      * \brief Get the origin metric
      * \return the origin metric
      */
-    uint8_t GetOrigMetric() const
+    uint8_t* GetOrigMetric() const
     {
         return m_origMetric;
     }
@@ -421,10 +421,10 @@ class RreqHeader : public Header
     uint16_t m_targMask;  ///< Target Mask
     uint16_t m_targSeqNo; ///< Target Sequence number
 
-    uint8_t m_metricType; ///< Metric Type
-    uint8_t m_origMetric; ///< Origin Path Metric
-    uint16_t m_seqNo;     ///< Sequence number
-    uint8_t m_hopLimit;   ///< Hop Limit
+    uint8_t m_metricType;  ///< Metric Type
+    uint8_t* m_origMetric; ///< Origin Path Metric
+    uint16_t m_seqNo;      ///< Sequence number
+    uint8_t m_hopLimit;    ///< Hop Limit
 
     bool m_sendTargSeqNum;              ///< Send Target Sequence Number
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
@@ -491,7 +491,7 @@ class RrepHeader : public Header
                uint16_t seqNo = 1,
                uint8_t hopLimit = 0,
                uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
-               uint8_t targMetric = 1);
+               uint8_t* targMetric = new uint8_t[1]{1});
     /**
      * constructor
      * \param tlvHeader the TLV header
@@ -631,7 +631,7 @@ class RrepHeader : public Header
      * \brief Set the target metric
      * \param metric the target metric
      */
-    void SetTargMetric(uint8_t metric)
+    void SetTargMetric(uint8_t* metric)
     {
         m_targMetric = metric;
     }
@@ -640,7 +640,7 @@ class RrepHeader : public Header
      * \brief Get the target metric
      * \return the target metric
      */
-    uint8_t GetTargMetric() const
+    uint8_t* GetTargMetric() const
     {
         return m_targMetric;
     }
@@ -689,15 +689,15 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    T m_origIp;           ///< Origin IP Address
-    uint16_t m_origMask;  ///< Origin Mask
-    T m_targIp;           ///< Target IP Address
-    uint16_t m_targMask;  ///< Target Mask
-    uint16_t m_targSeqNo; ///< Target Sequence number
-    uint16_t m_seqNo;     ///< Sequence number
-    uint8_t m_hopLimit;   ///< Hop Limit
-    uint8_t m_metricType; ///< Metric Type
-    uint8_t m_targMetric; ///< Target Path Metric
+    T m_origIp;            ///< Origin IP Address
+    uint16_t m_origMask;   ///< Origin Mask
+    T m_targIp;            ///< Target IP Address
+    uint16_t m_targMask;   ///< Target Mask
+    uint16_t m_targSeqNo;  ///< Target Sequence number
+    uint16_t m_seqNo;      ///< Sequence number
+    uint8_t m_hopLimit;    ///< Hop Limit
+    uint8_t m_metricType;  ///< Metric Type
+    uint8_t* m_targMetric; ///< Target Path Metric
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };

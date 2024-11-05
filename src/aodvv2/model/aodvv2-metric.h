@@ -59,11 +59,13 @@ class Metric
     {
         m_metricType = AODVV2_METRIC_HOP;
         m_maxMetric = std::numeric_limits<uint8_t>::max();
-        m_linkCost = [](const MetricNode&) { return 1; };
-        m_routeCost = [](const uint8_t& routeCost, const MetricNode& currentNode) {
-            return routeCost + 1;
+        m_linkCost = [](const MetricNode&) { return new uint8_t[1]{1}; };
+        m_routeCost = [](const uint8_t* routeCost, const MetricNode& currentNode) {
+            uint8_t* newCost = new uint8_t[1];
+            newCost[0] = static_cast<uint8_t>(routeCost[0] + 1);
+            return newCost;
         };
-        m_loopFree = [](const uint8_t& r1, const uint8_t& r2) { return r1 <= r2; };
+        m_loopFree = [](const uint8_t* r1, const uint8_t* r2) { return r1 <= r2; };
     }
 
     /**
@@ -75,9 +77,9 @@ class Metric
      */
     Metric(uint8_t metricType,
            uint8_t maxMetric,
-           std::function<uint8_t(const MetricNode&)> linkCost,
-           std::function<uint8_t(const uint8_t&, const MetricNode&)> routeCost,
-           std::function<bool(const uint8_t&, const uint8_t&)> loopFree)
+           std::function<uint8_t*(const MetricNode&)> linkCost,
+           std::function<uint8_t*(const uint8_t*, const MetricNode&)> routeCost,
+           std::function<bool(const uint8_t*, const uint8_t*)> loopFree)
         : m_metricType(metricType),
           m_maxMetric(maxMetric),
           m_linkCost(linkCost),
@@ -118,7 +120,7 @@ class Metric
      * @param currentNode The current node.
      * @return The cost of the incoming link.
      */
-    uint8_t linkCost(const MetricNode currentNode) const
+    uint8_t* linkCost(const MetricNode currentNode) const
     {
         return m_linkCost(currentNode);
     }
@@ -129,7 +131,7 @@ class Metric
      * @param currentNode The current node.
      * @return The cost of the route.
      */
-    uint8_t routeCost(const uint8_t& routeCost, const MetricNode& currentNode) const
+    uint8_t* routeCost(const uint8_t* routeCost, const MetricNode& currentNode) const
     {
         return m_routeCost(routeCost, currentNode);
     }
@@ -140,7 +142,7 @@ class Metric
      * @param r2 The second route cost.
      * @return True if the routes are loop-free, false otherwise.
      */
-    bool LoopFree(const uint8_t& r1, const uint8_t& r2) const
+    bool LoopFree(const uint8_t* r1, const uint8_t* r2) const
     {
         return m_loopFree(r1, r2);
     }
@@ -148,9 +150,9 @@ class Metric
   private:
     uint8_t m_metricType;
     uint8_t m_maxMetric;
-    std::function<uint8_t(const MetricNode&)> m_linkCost;
-    std::function<uint8_t(const uint8_t&, const MetricNode&)> m_routeCost;
-    std::function<bool(const uint8_t&, const uint8_t&)> m_loopFree;
+    std::function<uint8_t*(const MetricNode&)> m_linkCost;
+    std::function<uint8_t*(const uint8_t*, const MetricNode&)> m_routeCost;
+    std::function<bool(const uint8_t*, const uint8_t*)> m_loopFree;
 };
 
 } // namespace aodvv2
