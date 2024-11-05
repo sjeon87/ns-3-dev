@@ -1061,8 +1061,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metric=*/metric,
                 /*metricValue=*/
-                metric.linkCost(MetricNode<IpAddress>(dst)));
-            // TODO me: select the current node
+                metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
 
             newEntry.SetState(UNCONFIRMED);
             rreqHeader.SetMetricType(newEntry.GetMetricType());
@@ -1320,8 +1319,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metric=*/metric,
                 /*metricValue=*/
-                metric.linkCost(MetricNode<IpAddress>(sender)));
-            // TODO me: select the current node
+                metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
             m_routingTable.AddRoute(newEntry);
         }
     }
@@ -1348,8 +1346,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
-                    metric.linkCost(MetricNode<IpAddress>(sender)));
-                // TODO me: select the current node
+                    metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
                 m_routingTable.Update(newEntry);
             }
         }
@@ -1546,9 +1543,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         m_routingTable.AddRoute(newEntry);
     }
 
-    // TODO me: select the current node
     rreqHeader.SetOrigMetric(
-        metric.routeCost(rreqHeader.GetOrigMetric(), MetricNode<IpAddress>(dst)));
+        metric.routeCost(rreqHeader.GetOrigMetric(), MetricNode(m_ip->template GetObject<Node>())));
 
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
@@ -1772,9 +1768,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         newEntry.SetHop(rrepHeader.GetTargMetric());
     }
 
-    // TODO me: select the current node
     rrepHeader.SetTargMetric(
-        metric.routeCost(rrepHeader.GetTargMetric(), MetricNode<IpAddress>(sender)));
+        metric.routeCost(rrepHeader.GetTargMetric(), MetricNode(m_ip->template GetObject<Node>())));
 
     LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))
