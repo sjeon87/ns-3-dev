@@ -366,6 +366,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /**
      * \brief Get the list of metrics, if empty return the default metric
+     * \returns the list of metrics
      */
     std::vector<Metric<IpAddress>> GetMetrics() const
     {
@@ -389,6 +390,23 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
             }
         }
         return m_metrics;
+    }
+
+    /**
+     * \brief Get the metric based on the metric type
+     * \param metricType The metric type
+     * \returns the metric
+     */
+    Metric<IpAddress> GetMetric(uint8_t metricType) const
+    {
+        for (auto& m : GetMetrics())
+        {
+            if (m.GetMetricType() == metricType)
+            {
+                return m;
+            }
+        }
+        throw std::runtime_error("Metric not found");
     }
 
     /**

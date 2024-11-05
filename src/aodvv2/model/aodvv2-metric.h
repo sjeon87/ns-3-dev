@@ -54,23 +54,34 @@ class Metric
   public:
     /**
      * constructor
+     */
+    Metric()
+    {
+        m_metricType = AODVV2_METRIC_HOP;
+        m_maxMetric = std::numeric_limits<uint8_t>::max();
+        m_linkCost = [](const MetricNode<T>&, const MetricNode<T>&) { return 1; };
+        m_routeCost = [](const std::vector<MetricNode<T>> route) { return route.size(); };
+        m_loopFree = DefaultLoopFree;
+    }
+
+    /**
+     * constructor
      * @param metricType The type of metric to use.
      * @param maxMetric The maximum value for the metric type.
      * @param linkCost Function to determine the cost of an incoming link.
      * @param routeCost Function to determine the cost of a route.
      */
-    Metric(
-        uint8_t metricType = AODVV2_METRIC_HOP,
-        uint8_t maxMetric = std::numeric_limits<uint8_t>::max(),
-        std::function<double(const MetricNode<T>, const MetricNode<T>)> linkCost =
-            [](const MetricNode<T>&, const MetricNode<T>&) { return 1; },
-        std::function<double(const std::vector<MetricNode<T>>&)> routeCost =
-            [](const std::vector<MetricNode<T>> route) { return route.size(); })
+    Metric(uint8_t metricType,
+           uint8_t maxMetric,
+           std::function<double(const MetricNode<T>, const MetricNode<T>)> linkCost,
+           std::function<double(const std::vector<MetricNode<T>>&)> routeCost,
+           std::function<bool(const std::vector<MetricNode<T>>&, const std::vector<MetricNode<T>>&)>
+               loopFree = DefaultLoopFree)
         : m_metricType(metricType),
           m_maxMetric(maxMetric),
           m_linkCost(linkCost),
           m_routeCost(routeCost),
-          m_loopFree(DefaultLoopFree)
+          m_loopFree(loopFree)
     {
     }
 

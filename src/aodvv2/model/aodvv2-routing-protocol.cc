@@ -1059,8 +1059,8 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                 /*nextHop=*/IpAddress(),
                 /*lastUsed=*/m_pathDiscoveryTime,
                 /*maxIdleTime=*/m_maxIdleTime,
-                /*metricType=*/metric.GetMetricType(),
-                /*metric=*/
+                /*metric=*/metric,
+                /*metricValue=*/
                 metric.Cost(MetricNode<IpAddress>(dst), MetricNode<IpAddress>(dst)));
             // TODO me: select the right node
 
@@ -1318,8 +1318,8 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*nextHop=*/sender,
                 /*lastUsed=*/m_activeInterval,
                 /*maxIdleTime=*/m_maxIdleTime,
-                /*metricType=*/metric.GetMetricType(),
-                /*metric=*/
+                /*metric=*/metric,
+                /*metricValue=*/
                 metric.Cost(MetricNode<IpAddress>(sender), MetricNode<IpAddress>(receiver)));
             m_routingTable.AddRoute(newEntry);
         }
@@ -1345,8 +1345,8 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                     /*nextHop=*/sender,
                     /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()),
                     /*maxIdleTime=*/m_maxIdleTime,
-                    /*metricType=*/metric.GetMetricType(),
-                    /*metric=*/
+                    /*metric=*/metric,
+                    /*metricValue=*/
                     metric.Cost(MetricNode<IpAddress>(sender), MetricNode<IpAddress>(receiver)));
                 m_routingTable.Update(newEntry);
             }
@@ -1420,8 +1420,9 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             /*lastUsed=*/
             Time(2 * m_netTraversalTime - 2 * (m_maxHopLimit - hop) * m_nodeTraversalTime),
             /*maxIdleTime=*/m_maxIdleTime,
-            /*metricType=*/rreqHeader.GetMetricType(),
-            /*metric=*/rreqHeader.GetOrigMetric());
+            /*metric=*/
+            GetMetric(rreqHeader.GetMetricType()),
+            /*metricValue=*/rreqHeader.GetOrigMetric());
         m_routingTable.AddRoute(newEntry);
     }
     else
@@ -1460,7 +1461,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                        src,
                                        m_activeInterval,
                                        m_maxIdleTime,
-                                       rreqHeader.GetMetricType(),
+                                       GetMetric(rreqHeader.GetMetricType()),
                                        rreqHeader.GetOrigMetric());
         m_routingTable.AddRoute(newEntry);
     }
@@ -1537,7 +1538,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                        dst,
                                        m_activeInterval,
                                        m_maxIdleTime,
-                                       rreqHeader.GetMetricType(),
+                                       GetMetric(rreqHeader.GetMetricType()),
                                        rreqHeader.GetOrigMetric());
         m_routingTable.AddRoute(newEntry);
     }
@@ -1744,8 +1745,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         /*nextHop=*/sender,
         /*lastUsed=*/m_netTraversalTime,
         /*maxIdleTime=*/m_maxIdleTime,
-        /*metricType=*/rrepHeader.GetMetricType(),
-        /*metric=*/rrepHeader.GetTargMetric(),
+        /*metric=*/GetMetric(rrepHeader.GetMetricType()),
+        /*metricValue=*/rrepHeader.GetTargMetric(),
         /*state=*/ACTIVE);
 
     m_nb.AddNeighbor(sender, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
