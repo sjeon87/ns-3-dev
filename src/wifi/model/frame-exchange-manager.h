@@ -344,7 +344,8 @@ class FrameExchangeManager : public Object
     virtual void StartProtection(const WifiTxParameters& txParams);
 
     /**
-     * Transmit prepared frame upon successful protection mechanism.
+     * Transmit prepared frame immediately, if no protection was used, or in a SIFS, if protection
+     * was completed successfully.
      */
     virtual void ProtectionCompleted();
 
@@ -512,6 +513,7 @@ class FrameExchangeManager : public Object
     Mac48Address m_self;                              //!< the MAC address of this device
     Mac48Address m_bssid;                             //!< BSSID address (Mac48Address)
     Time m_navEnd;                                    //!< NAV expiration time
+    Time m_txNav;                                     //!< the TXNAV timer
     std::set<Mac48Address> m_sentRtsTo; //!< the STA(s) which we sent an RTS to (waiting for CTS)
     std::set<Mac48Address>
         m_sentFrameTo; //!< the STA(s) to which we sent a frame requesting a response

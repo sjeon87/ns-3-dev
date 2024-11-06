@@ -123,13 +123,6 @@ StaWifiMac::GetTypeId()
                             "that disassociated with an AP MLD, the AP MLD address is provided.",
                             MakeTraceSourceAccessor(&StaWifiMac::m_deAssocLogger),
                             "ns3::Mac48Address::TracedCallback")
-            .AddTraceSource("LinkSetupCanceled",
-                            "A link setup in the context of ML setup with an AP MLD was torn down. "
-                            "Provides ID of the setup link and AP MAC address",
-                            MakeTraceSourceAccessor(&StaWifiMac::m_setupCanceled),
-                            "ns3::StaWifiMac::LinkSetupCallback",
-                            TypeId::OBSOLETE,
-                            "Disassociation only occurs at MLD level; use DeAssoc trace.")
             .AddTraceSource("BeaconArrival",
                             "Time of beacons arrival from associated AP",
                             MakeTraceSourceAccessor(&StaWifiMac::m_beaconArrival),
@@ -137,7 +130,15 @@ StaWifiMac::GetTypeId()
             .AddTraceSource("ReceivedBeaconInfo",
                             "Information about every received Beacon frame",
                             MakeTraceSourceAccessor(&StaWifiMac::m_beaconInfo),
-                            "ns3::ApInfo::TracedCallback");
+                            "ns3::ApInfo::TracedCallback")
+            .AddTraceSource("EmlsrLinkSwitch",
+                            "Trace start/end of EMLSR link switch events: when a PHY operating on "
+                            "a link starts switching, provides the ID of the link and a null "
+                            "pointer (indicating no PHY is operating on that link); when a PHY "
+                            "completes switching to a link, provides the ID of the link and a "
+                            "pointer to the PHY (that is now operating on that link)",
+                            MakeTraceSourceAccessor(&StaWifiMac::m_emlsrLinkSwitchLogger),
+                            "ns3::StaWifiMac::EmlsrLinkSwitchCallback");
     return tid;
 }
 
@@ -498,10 +499,9 @@ StaWifiMac::GetMultiLinkElement(bool isReassoc, uint8_t linkId) const
 
     auto ehtConfiguration = GetEhtConfiguration();
     NS_ASSERT(ehtConfiguration);
-    EnumValue<WifiTidToLinkMappingNegSupport> negSupport;
-    ehtConfiguration->GetAttributeFailSafe("TidToLinkMappingNegSupport", negSupport);
 
-    mldCapabilities->tidToLinkMappingSupport = static_cast<uint8_t>(negSupport.Get());
+    mldCapabilities->tidToLinkMappingSupport =
+        static_cast<uint8_t>(ehtConfiguration->m_tidLinkMappingSupport);
     mldCapabilities->freqSepForStrApMld = 0; // not supported yet
     mldCapabilities->aarSupport = 0;         // not supported yet
 
@@ -546,10 +546,9 @@ StaWifiMac::GetTidToLinkMappingElements(WifiTidToLinkMappingNegSupport apNegSupp
     auto ehtConfig = GetEhtConfiguration();
     NS_ASSERT(ehtConfig);
 
-    EnumValue<WifiTidToLinkMappingNegSupport> negSupport;
-    ehtConfig->GetAttributeFailSafe("TidToLinkMappingNegSupport", negSupport);
+    auto negSupport = ehtConfig->m_tidLinkMappingSupport;
 
-    NS_ABORT_MSG_IF(negSupport.Get() == WifiTidToLinkMappingNegSupport::NOT_SUPPORTED,
+    NS_ABORT_MSG_IF(negSupport == WifiTidToLinkMappingNegSupport::NOT_SUPPORTED,
                     "Cannot request TID-to-Link Mapping if negotiation is not supported");
 
     // store the mappings, so that we can enforce them when the AP MLD accepts them
@@ -559,8 +558,7 @@ StaWifiMac::GetTidToLinkMappingElements(WifiTidToLinkMappingNegSupport apNegSupp
     bool mappingValidForNegType1 = TidToLinkMappingValidForNegType1(m_dlTidLinkMappingInAssocReq,
                                                                     m_ulTidLinkMappingInAssocReq);
     NS_ABORT_MSG_IF(
-        negSupport.Get() == WifiTidToLinkMappingNegSupport::SAME_LINK_SET &&
-            !mappingValidForNegType1,
+        negSupport == WifiTidToLinkMappingNegSupport::SAME_LINK_SET && !mappingValidForNegType1,
         "Mapping TIDs to distinct link sets is incompatible with negotiation support of 1");
 
     if (apNegSupport == WifiTidToLinkMappingNegSupport::SAME_LINK_SET && !mappingValidForNegType1)
@@ -1718,9 +1716,7 @@ StaWifiMac::UpdateApInfo(const MgtFrameType& frame,
             if (const auto& heOperation = frame.template Get<HeOperation>();
                 heOperation.has_value())
             {
-                GetHeConfiguration()->SetAttribute(
-                    "BssColor",
-                    UintegerValue(heOperation->m_bssColorInfo.m_bssColor));
+                GetHeConfiguration()->m_bssColor = heOperation->m_bssColorInfo.m_bssColor;
             }
         }
 
@@ -2024,6 +2020,7 @@ StaWifiMac::NotifySwitchingEmlsrLink(Ptr<WifiPhy> phy, uint8_t linkId, Time dela
         if (link->phy == phy && id != linkId)
         {
             link->phy = nullptr;
+            m_emlsrLinkSwitchLogger(id, nullptr);
         }
     }
 
@@ -2045,6 +2042,8 @@ StaWifiMac::NotifySwitchingEmlsrLink(Ptr<WifiPhy> phy, uint8_t linkId, Time dela
         newLink.feManager->SetWifiPhy(phy);
         // Connect the station manager on the new link to the given PHY
         newLink.stationManager->SetupPhy(phy);
+        // log link switch
+        m_emlsrLinkSwitchLogger(linkId, phy);
     };
 
     // cancel any pending event for the given PHY to switch link
@@ -2054,17 +2053,9 @@ StaWifiMac::NotifySwitchingEmlsrLink(Ptr<WifiPhy> phy, uint8_t linkId, Time dela
         m_emlsrLinkSwitch.erase(eventIt);
     }
 
-    // if there is no PHY operating on the new link, connect the PHY to the new link now.
-    // Otherwise, wait until the channel switch is completed, so that the PHY operating on the new
-    // link can possibly continue receiving frames in the meantime.
-    if (!GetLink(linkId).phy)
-    {
-        connectPhy();
-    }
-    else
-    {
-        m_emlsrLinkSwitch.emplace(phy->GetPhyId(), Simulator::Schedule(delay, connectPhy));
-    }
+    // connect the PHY to the new link when the channel switch is completed, so that the PHY
+    // operating on the new link can possibly continue receiving frames in the meantime.
+    m_emlsrLinkSwitch.emplace(phy->GetPhyId(), Simulator::Schedule(delay, connectPhy));
 }
 
 void

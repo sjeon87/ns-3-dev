@@ -304,7 +304,32 @@ HeFrameExchangeManager::ProtectionCompleted()
     {
         m_protectedStas.merge(m_sentRtsTo);
         m_sentRtsTo.clear();
-        SendPsduMap();
+        if (m_muScheduler)
+        {
+            m_muScheduler->NotifyProtectionCompleted(m_linkId, m_psduMap, m_txParams);
+
+            if (m_psduMap.empty())
+            {
+                NS_LOG_INFO("Multi-user scheduler aborted the transmission");
+                NS_ASSERT(m_edca);
+                if (m_edca->GetTxopLimit(m_linkId).IsStrictlyPositive())
+                {
+                    SendCfEndIfNeeded();
+                    return;
+                }
+                NotifyChannelReleased(m_edca);
+                m_edca = nullptr;
+                return;
+            }
+        }
+        if (m_txParams.m_protection->method == WifiProtection::NONE)
+        {
+            SendPsduMap();
+        }
+        else
+        {
+            Simulator::Schedule(m_phy->GetSifs(), &HeFrameExchangeManager::SendPsduMap, this);
+        }
         return;
     }
     VhtFrameExchangeManager::ProtectionCompleted();
@@ -517,7 +542,9 @@ HeFrameExchangeManager::TransmissionSucceeded()
     }
 
     if (m_continueTxopAfterBsrpTf && m_edca && m_edca->GetTxopLimit(m_linkId).IsZero() &&
-        m_txTimer.IsRunning() && m_txTimer.GetReason() == WifiTxTimer::WAIT_QOS_NULL_AFTER_BSRP_TF)
+        m_txTimer.IsRunning() &&
+        m_txTimer.GetReason() == WifiTxTimer::WAIT_QOS_NULL_AFTER_BSRP_TF &&
+        (m_txNav > Simulator::Now() + m_phy->GetSifs()))
     {
         NS_LOG_DEBUG("Schedule another transmission in a SIFS after successful BSRP TF");
         Simulator::Schedule(m_phy->GetSifs(), [=, this]() {
@@ -980,6 +1007,12 @@ HeFrameExchangeManager::ForwardPsduMapDown(WifiConstPsduMap psduMap, WifiTxVecto
         txVector.SetAggregation(true);
     }
 
+    auto txDuration = WifiPhy::CalculateTxDuration(psduMap, txVector, m_phy->GetPhyBand());
+    // The TXNAV timer is a single timer, shared by the EDCAFs within a STA, that is initialized
+    // with the duration from the Duration/ID field in the frame most recently successfully
+    // transmitted by the TXOP holder, except for PS-Poll frames. (Sec.10.23.2.2 IEEE 802.11-2020)
+    m_txNav = Max(m_txNav, Simulator::Now() + txDuration + psduMap.cbegin()->second->GetDuration());
+
     m_phy->Send(psduMap, txVector);
 }
 
@@ -1357,6 +1390,22 @@ HeFrameExchangeManager::DoTbPpduTimeout(WifiPsduMap* psduMap,
         m_edca->ResetCw(m_linkId);
         TransmissionSucceeded();
     }
+    else
+    {
+        // Stations that did not respond must be removed from the set of stations for which
+        // protection is not needed in the current TXOP.
+        for (const auto& address : staMissedTbPpduFrom)
+        {
+            NS_LOG_DEBUG(address << " did not respond, hence it is no longer protected");
+            m_protectedStas.erase(address);
+            m_sentFrameTo.erase(address);
+        }
+        if (m_protectedIfResponded)
+        {
+            m_protectedStas.merge(m_sentFrameTo);
+        }
+        m_sentFrameTo.clear();
+    }
 
     m_psduMap.clear();
 }
@@ -1533,7 +1582,7 @@ HeFrameExchangeManager::GetHeTbTxVector(CtrlTriggerHeader trigger, Mac48Address 
 
     Ptr<HeConfiguration> heConfiguration = m_mac->GetHeConfiguration();
     NS_ASSERT_MSG(heConfiguration, "This STA has to be an HE station to send an HE TB PPDU");
-    v.SetBssColor(heConfiguration->GetBssColor());
+    v.SetBssColor(heConfiguration->m_bssColor);
 
     if (userInfoIt->IsUlTargetRssiMaxTxPower())
     {
@@ -2064,7 +2113,7 @@ HeFrameExchangeManager::IsIntraBssPpdu(Ptr<const WifiPsdu> psdu, const WifiTxVec
     // This condition is used if the BSS is not disabled ("If a STA determines that the BSS color
     // is disabled (see 26.17.3.3), then the RXVECTOR parameter BSS_COLOR of a PPDU shall not be
     // used to classify the PPDU")
-    const auto bssColor = m_mac->GetHeConfiguration()->GetBssColor();
+    const auto bssColor = m_mac->GetHeConfiguration()->m_bssColor;
 
     // the other two conditions using the RXVECTOR parameter PARTIAL_AID are not implemented
     return bssColor != 0 && bssColor == txVector.GetBssColor();
@@ -2396,9 +2445,7 @@ HeFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
 
             m_txTimer.Cancel();
             m_channelAccessManager->NotifyCtsTimeoutResetNow();
-            Simulator::Schedule(m_phy->GetSifs(),
-                                &HeFrameExchangeManager::ProtectionCompleted,
-                                this);
+            ProtectionCompleted();
         }
         else if (hdr.IsCts() && m_txTimer.IsRunning() &&
                  m_txTimer.GetReason() == WifiTxTimer::WAIT_CTS_AFTER_MU_RTS)
@@ -2410,9 +2457,7 @@ HeFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
 
             m_txTimer.Cancel();
             m_channelAccessManager->NotifyCtsTimeoutResetNow();
-            Simulator::Schedule(m_phy->GetSifs(),
-                                &HeFrameExchangeManager::ProtectionCompleted,
-                                this);
+            ProtectionCompleted();
         }
         else if (hdr.IsAck() && m_txTimer.IsRunning() &&
                  m_txTimer.GetReason() == WifiTxTimer::WAIT_NORMAL_ACK_AFTER_DL_MU_PPDU)

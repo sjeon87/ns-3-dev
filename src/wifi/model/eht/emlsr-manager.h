@@ -41,6 +41,9 @@ class EmlsrManager : public Object
     friend class ::EmlsrCcaBusyTest;
 
   public:
+    /// The aMediumSyncThreshold defined by Sec. 35.3.16.18.1 of 802.11be D4.0
+    static constexpr uint16_t MEDIUM_SYNC_THRESHOLD_USEC = 72;
+
     /**
      * \brief Get the type ID.
      * \return the object TypeId
@@ -204,6 +207,25 @@ class EmlsrManager : public Object
     void NotifyUlTxopStart(uint8_t linkId);
 
     /**
+     * Notify that RTS transmission is starting on the given link.
+     *
+     * \param linkId the ID of the given link
+     * \param rts the RTS being transmitted
+     * \param txVector the TXVECTOR used to transmit the RTS
+     */
+    virtual void NotifyRtsSent(uint8_t linkId,
+                               Ptr<const WifiPsdu> rts,
+                               const WifiTxVector& txVector);
+
+    /**
+     * Notify that protection (if required) is completed and data frame exchange can start
+     * on the given link.
+     *
+     * \param linkId the ID of the given link
+     */
+    void NotifyProtectionCompleted(uint8_t linkId);
+
+    /**
      * Notify the end of a TXOP on the given link.
      *
      * \param linkId the ID of the given link
@@ -213,6 +235,15 @@ class EmlsrManager : public Object
      *                      a notification of the end of an UL TXOP)
      */
     void NotifyTxopEnd(uint8_t linkId, bool ulTxopNotStarted = false, bool ongoingDlTxop = false);
+
+    /**
+     * Notify that an STA affiliated with the EMLSR client is causing in-device interference
+     * for the given amount of time.
+     *
+     * \param linkId the ID of the link on which the STA is operating
+     * \param duration the duration of the in-device interference
+     */
+    virtual void NotifyInDeviceInterferenceStart(uint8_t linkId, Time duration);
 
     /**
      * Check whether the MediumSyncDelay timer is running for the STA operating on the given link.
@@ -340,6 +371,14 @@ class EmlsrManager : public Object
     void SwitchAuxPhy(Ptr<WifiPhy> auxPhy, uint8_t currLinkId, uint8_t nextLinkId);
 
     /**
+     * Callback connected to the EmlsrLinkSwitch trace source of StaWifiMac.
+     *
+     * \param linkId the ID of the link involved in the EMLSR link switch event
+     * \param phy a pointer to the PHY involved in the EMLSR link switch event
+     */
+    virtual void EmlsrLinkSwitchCallback(uint8_t linkId, Ptr<WifiPhy> phy);
+
+    /**
      * Set the CCA ED threshold (if needed) on the given PHY that is switching channel to
      * operate on the given link.
      *
@@ -390,12 +429,29 @@ class EmlsrManager : public Object
      */
     virtual std::pair<bool, Time> GetDelayUnlessMainPhyTakesOverUlTxop(uint8_t linkId) = 0;
 
+    /**
+     * Set sleep state or awake state for all aux PHYs.
+     *
+     * \param sleep set sleep state, if true, or awake state, otherwise
+     */
+    void SetSleepStateForAllAuxPhys(bool sleep);
+
+    /**
+     * Cancel all pending events to put aux PHYs into sleep/awake state.
+     */
+    void CancelAllSleepEvents();
+
     Time m_emlsrPaddingDelay;    //!< EMLSR Padding delay
     Time m_emlsrTransitionDelay; //!< EMLSR Transition delay
     uint8_t m_mainPhyId; //!< ID of main PHY (position in the vector of PHYs held by WifiNetDevice)
     MHz_u m_auxPhyMaxWidth;                  //!< max channel width supported by aux PHYs
     WifiModulationClass m_auxPhyMaxModClass; //!< max modulation class supported by aux PHYs
     bool m_auxPhyTxCapable;                  //!< whether Aux PHYs are capable of transmitting PPDUs
+    bool m_auxPhyToSleep; //!< whether Aux PHYs should be put into sleep mode while the Main PHY
+                          //!< is carrying out a (DL or UL) TXOP
+    std::map<uint8_t, EventId> m_auxPhyToSleepEvents; //!< PHY ID-indexed map of events scheduled to
+                                                      //!< put an Aux PHY to sleep
+    std::map<uint8_t, Time> m_startSleep; //!< PHY ID-indexed map of last time sleep mode started
     std::map<uint8_t, EventId> m_ulMainPhySwitch; //!< link ID-indexed map of timers started when
                                                   //!< an aux PHY gains an UL TXOP and schedules
                                                   //!< a channel switch for the main PHY
@@ -423,11 +479,9 @@ class EmlsrManager : public Object
     void SendEmlOmn();
 
     /**
-     * Start the MediumSyncDelay timer and take the appropriate actions, if the timer is not
-     * already running.
+     * Start the MediumSyncDelay timer and take the appropriate actions.
      *
-     * \param linkId the ID of the link on which a TXOP was carried out that caused the STAs
-     *               operating on other links to lose medium synchronization
+     * \param linkId the ID of the link on which medium synchronization was lost
      */
     void StartMediumSyncDelayTimer(uint8_t linkId);
 
@@ -550,6 +604,8 @@ class EmlsrManager : public Object
         m_mainPhyChannels; //!< link ID-indexed map of operating channels for the main PHY
     std::map<uint8_t, WifiPhyOperatingChannel>
         m_auxPhyChannels; //!< link ID-indexed map of operating channels for the aux PHYs
+    std::map<uint8_t, Time>
+        m_noPhySince; //!< link ID-indexed map of the time since no PHY is operating on the link
 };
 
 } // namespace ns3

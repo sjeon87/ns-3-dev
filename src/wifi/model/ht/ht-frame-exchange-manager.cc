@@ -744,7 +744,8 @@ HtFrameExchangeManager::TransmissionSucceeded()
 {
     NS_LOG_DEBUG(this);
 
-    if (m_edca && m_edca->GetTxopLimit(m_linkId).IsZero() && GetBar(m_edca->GetAccessCategory()))
+    if (m_edca && m_edca->GetTxopLimit(m_linkId).IsZero() && GetBar(m_edca->GetAccessCategory()) &&
+        (m_txNav > Simulator::Now() + m_phy->GetSifs()))
     {
         // A TXOP limit of 0 indicates that the TXOP holder may transmit or cause to
         // be transmitted (as responses) the following within the current TXOP:
@@ -957,7 +958,14 @@ HtFrameExchangeManager::ProtectionCompleted()
     {
         m_protectedStas.merge(m_sentRtsTo);
         m_sentRtsTo.clear();
-        SendPsdu();
+        if (m_txParams.m_protection->method == WifiProtection::NONE)
+        {
+            SendPsdu();
+        }
+        else
+        {
+            Simulator::Schedule(m_phy->GetSifs(), &HtFrameExchangeManager::SendPsdu, this);
+        }
         return;
     }
     QosFrameExchangeManager::ProtectionCompleted();
@@ -1146,6 +1154,15 @@ HtFrameExchangeManager::ForwardPsduDown(Ptr<const WifiPsdu> psdu, WifiTxVector& 
     if (psdu->IsAggregate())
     {
         txVector.SetAggregation(true);
+    }
+
+    auto txDuration = WifiPhy::CalculateTxDuration(psdu, txVector, m_phy->GetPhyBand());
+    // The TXNAV timer is a single timer, shared by the EDCAFs within a STA, that is initialized
+    // with the duration from the Duration/ID field in the frame most recently successfully
+    // transmitted by the TXOP holder, except for PS-Poll frames. (Sec.10.23.2.2 IEEE 802.11-2020)
+    if (!psdu->GetHeader(0).IsPsPoll())
+    {
+        m_txNav = Max(m_txNav, Simulator::Now() + txDuration + psdu->GetDuration());
     }
 
     m_phy->Send(psdu, txVector);
@@ -1556,9 +1573,7 @@ HtFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
 
             m_txTimer.Cancel();
             m_channelAccessManager->NotifyCtsTimeoutResetNow();
-            Simulator::Schedule(m_phy->GetSifs(),
-                                &HtFrameExchangeManager::ProtectionCompleted,
-                                this);
+            ProtectionCompleted();
         }
         else if (hdr.IsBlockAck() && m_txTimer.IsRunning() &&
                  m_txTimer.GetReason() == WifiTxTimer::WAIT_BLOCK_ACK && hdr.GetAddr1() == m_self)

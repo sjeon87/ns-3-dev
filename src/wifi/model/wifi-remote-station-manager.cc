@@ -271,7 +271,7 @@ WifiRemoteStationManager::GetLdpcSupported() const
 {
     if (auto htConfiguration = m_wifiPhy->GetDevice()->GetHtConfiguration())
     {
-        return htConfiguration->GetLdpcSupported();
+        return htConfiguration->m_ldpcSupported;
     }
     return false;
 }
@@ -281,7 +281,7 @@ WifiRemoteStationManager::GetShortGuardIntervalSupported() const
 {
     if (auto htConfiguration = m_wifiPhy->GetDevice()->GetHtConfiguration())
     {
-        return htConfiguration->GetShortGuardIntervalSupported();
+        return htConfiguration->m_sgiSupported;
     }
     return false;
 }
@@ -636,7 +636,7 @@ WifiRemoteStationManager::GetDataTxVector(const WifiMacHeader& header, MHz_u all
     Ptr<HeConfiguration> heConfiguration = m_wifiPhy->GetDevice()->GetHeConfiguration();
     if (heConfiguration)
     {
-        txVector.SetBssColor(heConfiguration->GetBssColor());
+        txVector.SetBssColor(heConfiguration->m_bssColor);
     }
     // If both the allowed width and the TXVECTOR channel width are integer multiple
     // of 20 MHz, then the TXVECTOR channel width must not exceed the allowed width

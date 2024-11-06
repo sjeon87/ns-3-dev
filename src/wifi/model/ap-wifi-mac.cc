@@ -627,44 +627,25 @@ ApWifiMac::GetMuEdcaParameterSet() const
     MuEdcaParameterSet muEdcaParameters;
     muEdcaParameters.SetQosInfo(0);
 
-    UintegerValue uintegerValue;
-    TimeValue timeValue;
+    muEdcaParameters.SetMuAifsn(AC_BE, heConfiguration->m_muBeAifsn);
+    muEdcaParameters.SetMuCwMin(AC_BE, heConfiguration->m_muBeCwMin);
+    muEdcaParameters.SetMuCwMax(AC_BE, heConfiguration->m_muBeCwMax);
+    muEdcaParameters.SetMuEdcaTimer(AC_BE, heConfiguration->m_beMuEdcaTimer);
 
-    heConfiguration->GetAttribute("MuBeAifsn", uintegerValue);
-    muEdcaParameters.SetMuAifsn(AC_BE, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuBeCwMin", uintegerValue);
-    muEdcaParameters.SetMuCwMin(AC_BE, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuBeCwMax", uintegerValue);
-    muEdcaParameters.SetMuCwMax(AC_BE, uintegerValue.Get());
-    heConfiguration->GetAttribute("BeMuEdcaTimer", timeValue);
-    muEdcaParameters.SetMuEdcaTimer(AC_BE, timeValue.Get());
+    muEdcaParameters.SetMuAifsn(AC_BK, heConfiguration->m_muBkAifsn);
+    muEdcaParameters.SetMuCwMin(AC_BK, heConfiguration->m_muBkCwMin);
+    muEdcaParameters.SetMuCwMax(AC_BK, heConfiguration->m_muBkCwMax);
+    muEdcaParameters.SetMuEdcaTimer(AC_BK, heConfiguration->m_bkMuEdcaTimer);
 
-    heConfiguration->GetAttribute("MuBkAifsn", uintegerValue);
-    muEdcaParameters.SetMuAifsn(AC_BK, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuBkCwMin", uintegerValue);
-    muEdcaParameters.SetMuCwMin(AC_BK, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuBkCwMax", uintegerValue);
-    muEdcaParameters.SetMuCwMax(AC_BK, uintegerValue.Get());
-    heConfiguration->GetAttribute("BkMuEdcaTimer", timeValue);
-    muEdcaParameters.SetMuEdcaTimer(AC_BK, timeValue.Get());
+    muEdcaParameters.SetMuAifsn(AC_VI, heConfiguration->m_muViAifsn);
+    muEdcaParameters.SetMuCwMin(AC_VI, heConfiguration->m_muViCwMin);
+    muEdcaParameters.SetMuCwMax(AC_VI, heConfiguration->m_muViCwMax);
+    muEdcaParameters.SetMuEdcaTimer(AC_VI, heConfiguration->m_viMuEdcaTimer);
 
-    heConfiguration->GetAttribute("MuViAifsn", uintegerValue);
-    muEdcaParameters.SetMuAifsn(AC_VI, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuViCwMin", uintegerValue);
-    muEdcaParameters.SetMuCwMin(AC_VI, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuViCwMax", uintegerValue);
-    muEdcaParameters.SetMuCwMax(AC_VI, uintegerValue.Get());
-    heConfiguration->GetAttribute("ViMuEdcaTimer", timeValue);
-    muEdcaParameters.SetMuEdcaTimer(AC_VI, timeValue.Get());
-
-    heConfiguration->GetAttribute("MuVoAifsn", uintegerValue);
-    muEdcaParameters.SetMuAifsn(AC_VO, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuVoCwMin", uintegerValue);
-    muEdcaParameters.SetMuCwMin(AC_VO, uintegerValue.Get());
-    heConfiguration->GetAttribute("MuVoCwMax", uintegerValue);
-    muEdcaParameters.SetMuCwMax(AC_VO, uintegerValue.Get());
-    heConfiguration->GetAttribute("VoMuEdcaTimer", timeValue);
-    muEdcaParameters.SetMuEdcaTimer(AC_VO, timeValue.Get());
+    muEdcaParameters.SetMuAifsn(AC_VO, heConfiguration->m_muVoAifsn);
+    muEdcaParameters.SetMuCwMin(AC_VO, heConfiguration->m_muVoCwMin);
+    muEdcaParameters.SetMuCwMax(AC_VO, heConfiguration->m_muVoCwMax);
+    muEdcaParameters.SetMuEdcaTimer(AC_VO, heConfiguration->m_voMuEdcaTimer);
 
     // The timers of the MU EDCA Parameter Set must be either all zero or all
     // non-zero. The information element is advertised if all timers are non-zero
@@ -728,9 +709,7 @@ ApWifiMac::GetMultiLinkElement(uint8_t linkId, WifiMacType frameType, const Mac4
     auto ehtConfiguration = GetEhtConfiguration();
     NS_ASSERT(ehtConfiguration);
 
-    if (BooleanValue emlsrActivated;
-        ehtConfiguration->GetAttributeFailSafe("EmlsrActivated", emlsrActivated) &&
-        emlsrActivated.Get())
+    if (ehtConfiguration->m_emlsrActivated)
     {
         mle.SetEmlsrSupported(true);
         // When the EMLSR Padding Delay subfield is included in a frame sent by an AP affiliated
@@ -739,8 +718,7 @@ ApWifiMac::GetMultiLinkElement(uint8_t linkId, WifiMacType frameType, const Mac4
         // with an AP MLD, the EMLSR Transition Delay subfield is reserved. (Sec. 9.4.2.312.2.3
         // of 802.11be D2.3)
         TimeValue time;
-        ehtConfiguration->GetAttribute("TransitionTimeout", time);
-        mle.SetTransitionTimeout(time.Get());
+        mle.SetTransitionTimeout(ehtConfiguration->m_transitionTimeout);
 
         // An AP affiliated with an AP MLD may include the Medium Synchronization Delay Information
         // subfield in the Common Info field of the Basic Multi-Link element carried in transmitted
@@ -749,17 +727,9 @@ ApWifiMac::GetMultiLinkElement(uint8_t linkId, WifiMacType frameType, const Mac4
         if (frameType == WIFI_MAC_MGT_ASSOCIATION_RESPONSE)
         {
             auto& commonInfo = mle.GetCommonInfoBasic();
-
-            ehtConfiguration->GetAttribute("MediumSyncDuration", time);
-            commonInfo.SetMediumSyncDelayTimer(time.Get());
-
-            IntegerValue ofdmEdThres;
-            ehtConfiguration->GetAttribute("MsdOfdmEdThreshold", ofdmEdThres);
-            commonInfo.SetMediumSyncOfdmEdThreshold(ofdmEdThres.Get());
-
-            UintegerValue maxNTxops;
-            ehtConfiguration->GetAttribute("MsdMaxNTxops", maxNTxops);
-            commonInfo.SetMediumSyncMaxNTxops(maxNTxops.Get());
+            commonInfo.SetMediumSyncDelayTimer(ehtConfiguration->m_mediumSyncDuration);
+            commonInfo.SetMediumSyncOfdmEdThreshold(ehtConfiguration->m_msdOfdmEdThreshold);
+            commonInfo.SetMediumSyncMaxNTxops(ehtConfiguration->m_msdMaxNTxops);
         }
     }
 
@@ -775,9 +745,8 @@ ApWifiMac::GetMultiLinkElement(uint8_t linkId, WifiMacType frameType, const Mac4
         mldCapabilities.emplace();
         mldCapabilities->maxNSimultaneousLinks = GetNLinks() - 1; // assuming STR for now
         mldCapabilities->srsSupport = 0;
-        EnumValue<WifiTidToLinkMappingNegSupport> negSupport;
-        ehtConfiguration->GetAttributeFailSafe("TidToLinkMappingNegSupport", negSupport);
-        mldCapabilities->tidToLinkMappingSupport = static_cast<uint8_t>(negSupport.Get());
+        mldCapabilities->tidToLinkMappingSupport =
+            static_cast<uint8_t>(ehtConfiguration->m_tidLinkMappingSupport);
         mldCapabilities->freqSepForStrApMld = 0; // not supported yet
         mldCapabilities->aarSupport = 0;         // not supported yet
     }
@@ -850,10 +819,10 @@ ApWifiMac::GetHtOperation(uint8_t linkId) const
     {
         uint8_t nss = (mcs.GetMcsValue() / 8) + 1;
         NS_ASSERT(nss > 0 && nss < 5);
-        uint64_t dataRate = mcs.GetDataRate(
-            phy->GetChannelWidth(),
-            NanoSeconds(GetHtConfiguration()->GetShortGuardIntervalSupported() ? 400 : 800),
-            nss);
+        uint64_t dataRate =
+            mcs.GetDataRate(phy->GetChannelWidth(),
+                            NanoSeconds(GetHtConfiguration()->m_sgiSupported ? 400 : 800),
+                            nss);
         if (dataRate > maxSupportedRate)
         {
             maxSupportedRate = dataRate;
@@ -1001,7 +970,7 @@ ApWifiMac::GetHeOperation(uint8_t linkId) const
             nss,
             11); // TBD: hardcode to 11 for now since we assume all MCS values are supported
     }
-    operation.m_bssColorInfo.m_bssColor = GetHeConfiguration()->GetBssColor();
+    operation.m_bssColorInfo.m_bssColor = GetHeConfiguration()->m_bssColor;
 
     if (auto phy = GetWifiPhy(linkId); phy && phy->GetPhyBand() == WIFI_PHY_BAND_6GHZ)
     {
@@ -2106,10 +2075,8 @@ ApWifiMac::ReceiveAssocRequest(const AssocReqRefVariant& assoc,
                     return failure("Incorrect directions in TID-to-Link Mapping IEs");
                 }
 
-                EnumValue<WifiTidToLinkMappingNegSupport> negSupport;
-                ehtConfig->GetAttributeFailSafe("TidToLinkMappingNegSupport", negSupport);
-
-                if (negSupport.Get() == WifiTidToLinkMappingNegSupport::NOT_SUPPORTED)
+                if (ehtConfig->m_tidLinkMappingSupport ==
+                    WifiTidToLinkMappingNegSupport::NOT_SUPPORTED)
                 {
                     return failure("TID-to-Link Mapping negotiation not supported");
                 }
@@ -2147,7 +2114,8 @@ ApWifiMac::ReceiveAssocRequest(const AssocReqRefVariant& assoc,
                     break;
                 }
 
-                if (negSupport.Get() == WifiTidToLinkMappingNegSupport::SAME_LINK_SET &&
+                if (ehtConfig->m_tidLinkMappingSupport ==
+                        WifiTidToLinkMappingNegSupport::SAME_LINK_SET &&
                     !TidToLinkMappingValidForNegType1(dlMapping, ulMapping))
                 {
                     return failure("Mapping TIDs to distinct link sets is incompatible with "
@@ -2307,10 +2275,7 @@ ApWifiMac::ReceiveEmlOmn(MgtEmlOmn& frame, const Mac48Address& sender, uint8_t l
 
     auto ehtConfiguration = GetEhtConfiguration();
 
-    if (BooleanValue emlsrActivated;
-        !ehtConfiguration ||
-        !ehtConfiguration->GetAttributeFailSafe("EmlsrActivated", emlsrActivated) ||
-        !emlsrActivated.Get())
+    if (!ehtConfiguration || !ehtConfiguration->m_emlsrActivated)
     {
         NS_LOG_DEBUG(
             "Received an EML Operating Mode Notification frame but EMLSR is not activated");
@@ -2348,11 +2313,9 @@ ApWifiMac::ReceiveEmlOmn(MgtEmlOmn& frame, const Mac48Address& sender, uint8_t l
             auto ackDuration =
                 WifiPhy::CalculateTxDuration(psduMap, txVector, GetLink(linkId).phy->GetPhyBand());
 
-            TimeValue transitionTimeout;
-            ehtConfiguration->GetAttribute("TransitionTimeout", transitionTimeout);
-
-            m_transitionTimeoutEvents[sender] =
-                Simulator::Schedule(ackDuration + transitionTimeout.Get(), [=, this]() {
+            m_transitionTimeoutEvents[sender] = Simulator::Schedule(
+                ackDuration + ehtConfiguration->m_transitionTimeout,
+                [=, this]() {
                     for (uint8_t id = 0; id < GetNLinks(); id++)
                     {
                         auto linkAddress =

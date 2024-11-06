@@ -296,12 +296,9 @@ AdvancedEmlsrManager::DoNotifyTxopEnd(uint8_t linkId)
     // starts switching to a link on which an aux PHY gained a TXOP and sent an RTS, but the CTS
     // is not received and the UL TXOP ends before the main PHY channel switch is completed.
     // In such cases, wait until the main PHY channel switch is completed (unless the channel
-    // switching can be interrupted) before requesting a new channel switch. Given that the
-    // TXOP ended, the event to put the aux PHY to sleep can be cancelled.
+    // switching can be interrupted) before requesting a new channel switch.
     // Backoff shall not be reset on the link left by the main PHY because a TXOP ended and
     // a new backoff value must be generated.
-    m_auxPhyToSleepEvent.Cancel();
-
     if (m_switchAuxPhy || !mainPhy->IsStateSwitching() || m_interruptSwitching)
     {
         NS_ASSERT_MSG(
@@ -353,19 +350,9 @@ AdvancedEmlsrManager::GetDelayUnlessMainPhyTakesOverUlTxop(uint8_t linkId)
         return {false, timeToCtsEnd};
     }
 
-    // TXOP can be started, schedule main PHY switch. Main PHY shall terminate the channel switch
-    // at the end of CTS reception
-    const auto delay = timeToCtsEnd - switchingTime;
-
-    NS_ASSERT(delay.IsPositive());
-    NS_LOG_DEBUG("Schedule main Phy switch in " << delay.As(Time::US));
-    m_ulMainPhySwitch[linkId] = Simulator::Schedule(delay,
-                                                    &AdvancedEmlsrManager::SwitchMainPhy,
-                                                    this,
-                                                    linkId,
-                                                    false,
-                                                    RESET_BACKOFF,
-                                                    DONT_REQUEST_ACCESS);
+    // TXOP can be started, main PHY will be scheduled to switch by NotifyRtsSent as soon as the
+    // transmission of the RTS is notified
+    m_switchMainPhyOnRtsTx[linkId] = Simulator::Now();
 
     return {true, Time{0}};
 }

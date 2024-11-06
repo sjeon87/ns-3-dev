@@ -192,7 +192,7 @@ RrMultiUserScheduler::GetTxVectorForUlMu(std::function<bool(const MasterInfo&)> 
     txVector.SetPreambleType(WIFI_PREAMBLE_HE_TB);
     txVector.SetChannelWidth(m_allowedWidth);
     txVector.SetGuardInterval(heConfiguration->GetGuardInterval());
-    txVector.SetBssColor(heConfiguration->GetBssColor());
+    txVector.SetBssColor(heConfiguration->m_bssColor);
 
     // iterate over the associated stations until an enough number of stations is identified
     auto staIt = m_staListUl.begin();
@@ -601,6 +601,35 @@ RrMultiUserScheduler::TrySendingBasicTf()
     return UL_MU_TX;
 }
 
+void
+RrMultiUserScheduler::UpdateTriggerFrameAfterProtection(uint8_t linkId,
+                                                        CtrlTriggerHeader& trigger,
+                                                        WifiTxParameters& txParams) const
+{
+    NS_LOG_FUNCTION(this << linkId << &txParams);
+
+    // remove unprotected EMLSR clients, unless this is a BSRP TF (which acts as ICF)
+    if (trigger.IsBsrp())
+    {
+        NS_LOG_INFO("BSRP TF is an ICF for unprotected EMLSR clients");
+        return;
+    }
+
+    NS_LOG_INFO("Checking unprotected EMLSR clients");
+    RemoveRecipientsFromTf(linkId, trigger, txParams, m_isUnprotectedEmlsrClient);
+}
+
+void
+RrMultiUserScheduler::UpdateDlMuAfterProtection(uint8_t linkId,
+                                                WifiPsduMap& psduMap,
+                                                WifiTxParameters& txParams) const
+{
+    NS_LOG_FUNCTION(this << linkId << &txParams);
+
+    NS_LOG_INFO("Checking unprotected EMLSR clients");
+    RemoveRecipientsFromDlMu(linkId, psduMap, txParams, m_isUnprotectedEmlsrClient);
+}
+
 Time
 RrMultiUserScheduler::GetExtraTimeForBsrpTfDurationId(uint8_t linkId) const
 {
@@ -763,7 +792,7 @@ RrMultiUserScheduler::TrySendingDlMuPpdu()
     m_txParams.m_txVector.SetPreambleType(WIFI_PREAMBLE_HE_MU);
     m_txParams.m_txVector.SetChannelWidth(m_allowedWidth);
     m_txParams.m_txVector.SetGuardInterval(heConfiguration->GetGuardInterval());
-    m_txParams.m_txVector.SetBssColor(heConfiguration->GetBssColor());
+    m_txParams.m_txVector.SetBssColor(heConfiguration->m_bssColor);
 
     // The TXOP limit can be exceeded by the TXOP holder if it does not transmit more
     // than one Data or Management frame in the TXOP and the frame is not in an A-MPDU
