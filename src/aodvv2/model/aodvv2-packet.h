@@ -132,6 +132,7 @@ class RreqHeader : public Header
      * \param hopLimit the hop limit
      * \param metricType the metric type
      * \param origMetric the origin metric
+     * \param origMetricSize the origin metric size
      */
     RreqHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -140,7 +141,8 @@ class RreqHeader : public Header
                uint16_t seqNo = 1,
                uint8_t hopLimit = 0,
                uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
-               uint8_t* origMetric = new uint8_t[1]{1});
+               uint8_t* origMetric = new uint8_t[1]{1},
+               u_int8_t origMetricSize = 1);
 
     /**
      * constructor
@@ -317,10 +319,12 @@ class RreqHeader : public Header
     /**
      * \brief Set the origin metric
      * \param metric the origin metric
+     * \param size the origin metric size
      */
-    void SetOrigMetric(uint8_t* metric)
+    void SetOrigMetric(uint8_t* metric, u_int8_t size)
     {
         m_origMetric = metric;
+        m_origMetricSize = size;
     }
 
     /**
@@ -330,6 +334,15 @@ class RreqHeader : public Header
     uint8_t* GetOrigMetric() const
     {
         return m_origMetric;
+    }
+
+    /**
+     * \brief Get the origin metric size
+     * \return the origin metric size
+     */
+    uint8_t GetOrigMetricSize() const
+    {
+        return m_origMetricSize;
     }
 
     /**
@@ -421,10 +434,11 @@ class RreqHeader : public Header
     uint16_t m_targMask;  ///< Target Mask
     uint16_t m_targSeqNo; ///< Target Sequence number
 
-    uint8_t m_metricType;  ///< Metric Type
-    uint8_t* m_origMetric; ///< Origin Path Metric
-    uint16_t m_seqNo;      ///< Sequence number
-    uint8_t m_hopLimit;    ///< Hop Limit
+    uint8_t m_metricType;     ///< Metric Type
+    uint8_t* m_origMetric;    ///< Origin Path Metric
+    uint8_t m_origMetricSize; ///< Origin Path Metric Size
+    uint16_t m_seqNo;         ///< Sequence number
+    uint8_t m_hopLimit;       ///< Hop Limit
 
     bool m_sendTargSeqNum;              ///< Send Target Sequence Number
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
@@ -483,6 +497,7 @@ class RrepHeader : public Header
      * \param hopLimit the hop limit
      * \param metricType the metric type
      * \param targMetric the target metric
+     * \param targMetricSize the target metric size
      */
     RrepHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -491,7 +506,8 @@ class RrepHeader : public Header
                uint16_t seqNo = 1,
                uint8_t hopLimit = 0,
                uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
-               uint8_t* targMetric = new uint8_t[1]{1});
+               uint8_t* targMetric = new uint8_t[1]{1},
+               u_int8_t targMetricSize = 1);
     /**
      * constructor
      * \param tlvHeader the TLV header
@@ -630,10 +646,12 @@ class RrepHeader : public Header
     /**
      * \brief Set the target metric
      * \param metric the target metric
+     * \param size the target metric size
      */
-    void SetTargMetric(uint8_t* metric)
+    void SetTargMetric(uint8_t* metric, u_int8_t size)
     {
         m_targMetric = metric;
+        m_targMetricSize = size;
     }
 
     /**
@@ -643,6 +661,15 @@ class RrepHeader : public Header
     uint8_t* GetTargMetric() const
     {
         return m_targMetric;
+    }
+
+    /**
+     * \brief Get the target metric size
+     * \return the target metric size
+     */
+    uint8_t GetTargMetricSize() const
+    {
+        return m_targMetricSize;
     }
 
     /**
@@ -689,15 +716,16 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    T m_origIp;            ///< Origin IP Address
-    uint16_t m_origMask;   ///< Origin Mask
-    T m_targIp;            ///< Target IP Address
-    uint16_t m_targMask;   ///< Target Mask
-    uint16_t m_targSeqNo;  ///< Target Sequence number
-    uint16_t m_seqNo;      ///< Sequence number
-    uint8_t m_hopLimit;    ///< Hop Limit
-    uint8_t m_metricType;  ///< Metric Type
-    uint8_t* m_targMetric; ///< Target Path Metric
+    T m_origIp;               ///< Origin IP Address
+    uint16_t m_origMask;      ///< Origin Mask
+    T m_targIp;               ///< Target IP Address
+    uint16_t m_targMask;      ///< Target Mask
+    uint16_t m_targSeqNo;     ///< Target Sequence number
+    uint16_t m_seqNo;         ///< Sequence number
+    uint8_t m_hopLimit;       ///< Hop Limit
+    uint8_t m_metricType;     ///< Metric Type
+    uint8_t* m_targMetric;    ///< Target Path Metric
+    uint8_t m_targMetricSize; ///< Target Path Metric Size
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };

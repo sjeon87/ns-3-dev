@@ -50,6 +50,7 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
       m_lastUsed(lastUsed + Simulator::Now()),
       m_metric(metric),
       m_metricValue(metricValue),
+      m_metricSize(metric.GetMaxMetric()),
       m_state(state),
       m_hops(hops),
       m_reqCount(0),
@@ -214,7 +215,7 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     iface << m_nextHopIface.GetAddress();
     expire << std::setprecision(2) << (m_lastUsed - Simulator::Now()).As(unit);
     metric << static_cast<uint16_t>(m_metric.GetMetricType()) << ": ";
-    for (uint8_t i = 0; i < sizeof(m_metricValue); i++)
+    for (uint8_t i = 0; i < m_metricSize; i++)
     {
         metric << static_cast<uint16_t>(m_metricValue[i]) << " ";
     }

@@ -1042,7 +1042,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
         rt.SetState(UNCONFIRMED);
         rt.SetLastUsed(m_pathDiscoveryTime);
         rreqHeader.SetMetricType(rt.GetMetricType());
-        rreqHeader.SetOrigMetric(rt.GetMetricValue());
+        rreqHeader.SetOrigMetric(rt.GetMetricValue(), rt.GetMetricSize());
         m_routingTable.Update(rt);
     }
     else
@@ -1065,7 +1065,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
             newEntry.SetState(UNCONFIRMED);
             rreqHeader.SetMetricType(newEntry.GetMetricType());
-            rreqHeader.SetOrigMetric(newEntry.GetMetricValue());
+            rreqHeader.SetOrigMetric(newEntry.GetMetricValue(), newEntry.GetMetricSize());
             m_routingTable.AddRoute(newEntry);
         }
     }
@@ -1544,7 +1544,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     }
 
     rreqHeader.SetOrigMetric(
-        metric.routeCost(rreqHeader.GetOrigMetric(), MetricNode(m_ip->template GetObject<Node>())));
+        metric.routeCost(rreqHeader.GetOrigMetric(), MetricNode(m_ip->template GetObject<Node>())),
+        rreqHeader.GetOrigMetricSize());
 
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
@@ -1769,7 +1770,8 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     }
 
     rrepHeader.SetTargMetric(
-        metric.routeCost(rrepHeader.GetTargMetric(), MetricNode(m_ip->template GetObject<Node>())));
+        metric.routeCost(rrepHeader.GetTargMetric(), MetricNode(m_ip->template GetObject<Node>())),
+        rrepHeader.GetTargMetricSize());
 
     LocalRoute<IpAddress> toDst;
     if (m_routingTable.LookupRoute(dst, toDst))

@@ -58,7 +58,7 @@ class Metric
     Metric()
     {
         m_metricType = AODVV2_METRIC_HOP;
-        m_maxMetric = std::numeric_limits<uint8_t>::max();
+        m_maxMetric = 1;
         m_linkCost = [](const MetricNode&) { return new uint8_t[1]{1}; };
         m_routeCost = [](const uint8_t* routeCost, const MetricNode& currentNode) {
             uint8_t* newCost = new uint8_t[1];

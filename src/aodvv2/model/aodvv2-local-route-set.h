@@ -337,10 +337,12 @@ class LocalRoute
     /**
      * Set the metricValue
      * \param metricValue the metric value
+     * \param size the metric size
      */
-    void SetMetricValue(uint8_t* metricValue)
+    void SetMetricValue(uint8_t* metricValue, uint8_t size)
     {
         m_metricValue = metricValue;
+        m_metricSize = size;
     }
 
     /**
@@ -350,6 +352,15 @@ class LocalRoute
     uint8_t* GetMetricValue() const
     {
         return m_metricValue;
+    }
+
+    /**
+     * Get the metric size
+     * \returns the metric size
+     */
+    uint8_t GetMetricSize() const
+    {
+        return m_metricSize;
     }
 
     /**
@@ -464,6 +475,8 @@ class LocalRoute
     Metric<T> m_metric;
     /// Cost of route expressed in units
     uint8_t* m_metricValue;
+    /// Cost of route size
+    uint8_t m_metricSize;
     /// List of precursors
     std::vector<T> m_precursorList;
     /// ip address of the originator router
