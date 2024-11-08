@@ -719,6 +719,24 @@ class RrepHeader : public Header
     }
 
     /**
+     * \brief Set the RREP_ACK flag
+     * \param ack the RREP_ACK flag
+     */
+    void SetHasRrepAck(bool ack)
+    {
+        m_hasRrepAck = ack;
+    }
+
+    /**
+     * \brief Get the RREP_ACK flag
+     * \return the RREP_ACK flag
+     */
+    bool GetHasRrepAck() const
+    {
+        return m_hasRrepAck;
+    }
+
+    /**
      * \brief Comparison operator
      * \param o RREP header to compare
      * \return true if the RREP headers are equal
@@ -736,6 +754,7 @@ class RrepHeader : public Header
     uint8_t m_metricType;     ///< Metric Type
     uint8_t* m_targMetric;    ///< Target Path Metric
     uint8_t m_targMetricSize; ///< Target Path Metric Size
+    bool m_hasRrepAck;        ///< RREP_ACK flag
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
@@ -771,9 +790,8 @@ class RrepAckHeader : public Header
   public:
     /**
      * constructor
-     * \param rrepHeader the RREP header
      */
-    RrepAckHeader(RrepHeader<T> rrepHeader = RrepHeader<T>());
+    RrepAckHeader();
 
     /**
      * \brief Get the type ID.
@@ -826,8 +844,7 @@ class RrepAckHeader : public Header
     bool operator==(const RrepAckHeader& o) const;
 
   private:
-    uint16_t m_seqNo;           ///< Sequence number
-    RrepHeader<T> m_rrepHeader; ///< RREP header
+    uint16_t m_seqNo; ///< Sequence number
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };

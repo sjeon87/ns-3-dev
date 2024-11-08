@@ -295,9 +295,9 @@ LocalRouteSet<T>::LookupValidRoute(T id, LocalRoute<T>& rt)
         NS_LOG_LOGIC("Route to " << id << " not found");
         return false;
     }
-    NS_LOG_LOGIC("Route to " << id << " flag is "
-                             << ((rt.GetState() == ACTIVE) ? "valid" : "not valid"));
-    return (rt.GetState() == ACTIVE);
+    bool isValid = rt.GetState() == ACTIVE || rt.GetState() == UNCONFIRMED;
+    NS_LOG_LOGIC("Route to " << id << " flag is " << (isValid ? "valid" : "not valid"));
+    return isValid;
 }
 
 template <typename T>

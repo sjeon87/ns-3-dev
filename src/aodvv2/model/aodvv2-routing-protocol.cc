@@ -1249,7 +1249,7 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
     {
         bool hasRrepAck = false;
         bool hasRrep = false;
-        // The only case where we have more than one message is when we have a RREP_Ack
+        // The only case where we have more than one message is when we have a RREP and a RREP-ACK
         for (auto i = tlvHeader.MessageBegin(); i != tlvHeader.MessageEnd(); ++i)
         {
             auto tlvMessage = *i;
@@ -1265,7 +1265,7 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
 
         if (hasRrepAck && hasRrep)
         {
-            tlvType = AODVV2_TYPE_RREP_ACK;
+            tlvType = AODVV2_TYPE_RREP;
         }
         else
         {
@@ -1501,7 +1501,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     {
         toNeighbor.SetLastUsed(m_activeInterval);
         toNeighbor.SetSeqNo(rreqHeader.GetOrigSeqNo());
-        toNeighbor.SetState(ACTIVE);
+        // toNeighbor.SetState(ACTIVE);
         toNeighbor.SetOutputDevice(m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
         toNeighbor.SetInterface(m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
         toNeighbor.SetHop(1);
@@ -1660,8 +1660,13 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*hopLimit=*/m_maxHopLimit - hopCount,
         /*metricType=*/rreqHeader.GetMetricType(),
         /*metric=*/new uint8_t[1]{1});
-
     Ptr<Packet> packet = Create<Packet>();
+
+    if (m_routingTable.LookupRoute(toOrigin.GetNextHop(), rt) && rt.GetState() == UNCONFIRMED)
+    {
+        rrepHeader.SetHasRrepAck(true);
+    }
+
     packet->AddHeader(rrepHeader);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
     NS_ASSERT(socket);
@@ -1718,7 +1723,7 @@ void
 Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor, RrepHeader<IpAddress> rrepHeader)
 {
     NS_LOG_FUNCTION(this << " to " << neighbor);
-    RrepAckHeader h(/*rrepHeader=*/rrepHeader);
+    RrepAckHeader<IpAddress> h;
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(h);
     LocalRoute<IpAddress> toNeighbor;

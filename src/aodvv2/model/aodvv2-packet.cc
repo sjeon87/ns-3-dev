@@ -371,6 +371,12 @@ RrepHeader<T>::CreateTlvHeader() const
 
     Ptr<PbbMessageIp> msg1 = GetPbbMessage();
 
+    if (m_hasRrepAck)
+    {
+        RrepAckHeader<T> rrepAckHeader;
+        m_tlvHeader->MessagePushBack(rrepAckHeader.GetPbbMessage());
+    }
+
     // Add msg to tlv header
     m_tlvHeader->MessagePushBack(msg1);
 }
@@ -379,11 +385,28 @@ template <typename T>
 void
 RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
-    Ptr<PbbMessage> msg1 = tlvHeader.MessageFront();
-    this->SetSeqNo(tlvHeader.GetSequenceNumber());
-    this->SetHopLimit(msg1->GetHopLimit());
+    Ptr<PbbMessage> rrepMsg;
+    Ptr<PbbMessage> ackMsg;
+    m_hasRrepAck = false;
 
-    for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
+    for (auto i = tlvHeader.MessageBegin(); i != tlvHeader.MessageEnd(); ++i)
+    {
+        auto tlvMessage = *i;
+        if (tlvMessage->GetType() == AODVV2_TYPE_RREP_ACK)
+        {
+            ackMsg = *i;
+            m_hasRrepAck = true;
+        }
+        else if (tlvMessage->GetType() == AODVV2_TYPE_RREP)
+        {
+            rrepMsg = *i;
+        }
+    }
+
+    this->SetSeqNo(tlvHeader.GetSequenceNumber());
+    this->SetHopLimit(rrepMsg->GetHopLimit());
+
+    for (auto i = rrepMsg->AddressBlockBegin(); i != rrepMsg->AddressBlockEnd(); i++)
     {
         bool hasAddrType = false;
         bool hasSeqNum = false;
@@ -546,8 +569,7 @@ template class RrepHeader<Ipv6Address>;
 //-----------------------------------------------------------------------------
 
 template <typename T>
-RrepAckHeader<T>::RrepAckHeader(RrepHeader<T> rrepHeader)
-    : m_rrepHeader(rrepHeader)
+RrepAckHeader<T>::RrepAckHeader()
 {
 }
 
@@ -596,9 +618,6 @@ RrepAckHeader<T>::CreateTlvHeader() const
     Ptr<PbbMessageIp> msg1 = GetPbbMessage();
 
     m_tlvHeader->MessagePushBack(msg1);
-
-    Ptr<PbbMessageIp> msg2 = m_rrepHeader.GetPbbMessage();
-    m_tlvHeader->MessagePushBack(msg2);
 }
 
 template <typename T>
