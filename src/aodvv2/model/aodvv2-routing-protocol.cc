@@ -1849,7 +1849,10 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
             m_addressReqTimer.erase(dst);
         }
         m_routingTable.LookupRoute(dst, toDst);
-        SendReplyAck(sender, rrepHeader);
+        if (rrepHeader.HasRrepAck())
+        {
+            SendReplyAck(sender, rrepHeader);
+        }
         SendPacketFromQueue(dst, toDst.GetRoute());
         return;
     }
@@ -1884,7 +1887,10 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         m_routingTable.Update(toNextHopToOrigin);
     }
 
-    SendReplyAck(sender, rrepHeader);
+    if (rrepHeader.HasRrepAck())
+    {
+        SendReplyAck(sender, rrepHeader);
+    }
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);

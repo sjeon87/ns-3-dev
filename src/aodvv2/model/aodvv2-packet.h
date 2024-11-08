@@ -731,7 +731,7 @@ class RrepHeader : public Header
      * \brief Get the RREP_ACK flag
      * \return the RREP_ACK flag
      */
-    bool GetHasRrepAck() const
+    bool HasRrepAck() const
     {
         return m_hasRrepAck;
     }
