@@ -1231,6 +1231,7 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
 
     UpdateRouteToNeighbor(sender, receiver);
 
+    u_int8_t tlvType = 0;
     PbbPacket tlvHeader;
     packet->RemoveHeader(tlvHeader);
 
@@ -1240,7 +1241,38 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
                                        << " with no tlv message received. Drop");
         return; // drop
     }
-    u_int8_t tlvType = tlvHeader.MessageFront()->GetType();
+    else if (tlvHeader.MessageSize() == 1)
+    {
+        tlvType = tlvHeader.MessageFront()->GetType();
+    }
+    else
+    {
+        bool hasRrepAck = false;
+        bool hasRrep = false;
+        // The only case where we have more than one message is when we have a RREP_Ack
+        for (auto i = tlvHeader.MessageBegin(); i != tlvHeader.MessageEnd(); ++i)
+        {
+            auto tlvMessage = *i;
+            if (tlvMessage->GetType() == AODVV2_TYPE_RREP_ACK)
+            {
+                hasRrepAck = true;
+            }
+            else if (tlvMessage->GetType() == AODVV2_TYPE_RREP)
+            {
+                hasRrep = true;
+            }
+        }
+
+        if (hasRrepAck && hasRrep)
+        {
+            tlvType = AODVV2_TYPE_RREP_ACK;
+        }
+        else
+        {
+            NS_LOG_DEBUG("AODVv2 packet malformed. Drop");
+            return; // drop
+        }
+    }
 
     switch (tlvType)
     {
