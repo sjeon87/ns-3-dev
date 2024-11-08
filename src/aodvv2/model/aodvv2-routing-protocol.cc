@@ -1683,10 +1683,10 @@ Aodvv2RoutingProtocol<T>::ScheduleRrepAckCheck(LocalRoute<IpAddress> toOrigin)
 
 template <typename T>
 void
-Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor)
+Aodvv2RoutingProtocol<T>::SendReplyAck(IpAddress neighbor, RrepHeader<IpAddress> rrepHeader)
 {
     NS_LOG_FUNCTION(this << " to " << neighbor);
-    RrepAckHeader<IpAddress> h;
+    RrepAckHeader h(/*rrepHeader=*/rrepHeader);
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(h);
     LocalRoute<IpAddress> toNeighbor;
@@ -1812,7 +1812,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
             m_addressReqTimer.erase(dst);
         }
         m_routingTable.LookupRoute(dst, toDst);
-        SendReplyAck(sender);
+        SendReplyAck(sender, rrepHeader);
         SendPacketFromQueue(dst, toDst.GetRoute());
         return;
     }
@@ -1847,7 +1847,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         m_routingTable.Update(toNextHopToOrigin);
     }
 
-    SendReplyAck(sender);
+    SendReplyAck(sender, rrepHeader);
 
     Ptr<Packet> packet = Create<Packet>();
     packet->AddHeader(rrepHeader);

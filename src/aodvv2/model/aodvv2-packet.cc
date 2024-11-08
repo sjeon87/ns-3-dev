@@ -95,72 +95,7 @@ RreqHeader<T>::CreateTlvHeader() const
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
-    msg1->SetType(AODVV2_TYPE_RREQ);
-    msg1->SetHopLimit(this->m_hopLimit);
-
-    // ****************************** OrigPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
-    msg1a1->AddressPushBack(this->m_origIp);
-    msg1a1->PrefixPushBack(this->m_origMask);
-
-    // Add ADDRESS_TYPE TLV
-    Ptr<PbbAddressTlv> msg1a1tlv1 = Create<PbbAddressTlv>();
-    msg1a1tlv1->SetType(AODVV2_ADDRESS_TYPE);
-    uint8_t msg1a1tlv1val[] = {AODVV2_ORIGPREFIX};
-    msg1a1tlv1->SetValue(msg1a1tlv1val, sizeof(msg1a1tlv1val));
-    msg1a1->TlvPushBack(msg1a1tlv1);
-
-    // Add SEQ_NUM TLV
-    Ptr<PbbAddressTlv> msg1a1tlv2 = Create<PbbAddressTlv>();
-    msg1a1tlv2->SetType(AODVV2_SEQ_NUM);
-    msg1a1tlv2->SetValue(this->m_seqNo);
-    msg1a1->TlvPushBack(msg1a1tlv2);
-
-    // Add PATH_METRIC TLV
-    Ptr<PbbAddressTlv> msg1a1tlv3 = Create<PbbAddressTlv>();
-    msg1a1tlv3->SetType(AODVV2_PATH_METRIC);
-    msg1a1tlv3->SetTypeExt(this->m_metricType);
-    msg1a1tlv3->SetValue(this->m_origMetric, this->m_origMetricSize);
-    msg1a1->TlvPushBack(msg1a1tlv3);
-
-    msg1->AddressBlockPushBack(msg1a1);
-    // **************************************************************************************
-
-    // ****************************** TargPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
-    msg1a2->AddressPushBack(this->m_targIp);
-    msg1a2->PrefixPushBack(this->m_targMask);
-
-    // Add ADDRESS_TYPE TLV
-    Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
-    msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
-    uint8_t msg1a2tlv1val[] = {AODVV2_TARGPREFIX};
-    msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
-    msg1a2->TlvPushBack(msg1a2tlv1);
-
-    // Add SEQ_NUM TLV
-    if (this->m_sendTargSeqNum)
-    {
-        Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
-        msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-        msg1a2tlv2->SetValue(this->m_origSeqNo);
-        msg1a2->TlvPushBack(msg1a2tlv2);
-    }
-
-    msg1->AddressBlockPushBack(msg1a2);
-    // **************************************************************************************
-
-    // ****************************** SeqNoRtr Address Block ******************************
-    if (this->m_rtrIp != T() && this->m_rtrIp != this->m_origIp)
-    {
-        Ptr<PbbAddressBlockIp> msg1a3 = Create<PbbAddressBlockIp>();
-        msg1a3->AddressPushBack(this->m_rtrIp);
-        msg1a3->PrefixPushBack(this->m_rtrMask);
-
-        msg1->AddressBlockPushBack(msg1a3);
-    }
-    // **************************************************************************************
+    Ptr<PbbMessageIp> msg1 = GetPbbMessage();
 
     // Add msg to tlv header
     m_tlvHeader->MessagePushBack(msg1);
@@ -243,6 +178,80 @@ RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
     }
 
     CreateTlvHeader();
+}
+
+template <typename T>
+Ptr<typename RreqHeader<T>::PbbMessageIp>
+RreqHeader<T>::GetPbbMessage() const
+{
+    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
+    msg1->SetType(AODVV2_TYPE_RREQ);
+    msg1->SetHopLimit(this->m_hopLimit);
+
+    // ****************************** OrigPrefix Address Block ******************************
+    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
+    msg1a1->AddressPushBack(this->m_origIp);
+    msg1a1->PrefixPushBack(this->m_origMask);
+
+    // Add ADDRESS_TYPE TLV
+    Ptr<PbbAddressTlv> msg1a1tlv1 = Create<PbbAddressTlv>();
+    msg1a1tlv1->SetType(AODVV2_ADDRESS_TYPE);
+    uint8_t msg1a1tlv1val[] = {AODVV2_ORIGPREFIX};
+    msg1a1tlv1->SetValue(msg1a1tlv1val, sizeof(msg1a1tlv1val));
+    msg1a1->TlvPushBack(msg1a1tlv1);
+
+    // Add SEQ_NUM TLV
+    Ptr<PbbAddressTlv> msg1a1tlv2 = Create<PbbAddressTlv>();
+    msg1a1tlv2->SetType(AODVV2_SEQ_NUM);
+    msg1a1tlv2->SetValue(this->m_seqNo);
+    msg1a1->TlvPushBack(msg1a1tlv2);
+
+    // Add PATH_METRIC TLV
+    Ptr<PbbAddressTlv> msg1a1tlv3 = Create<PbbAddressTlv>();
+    msg1a1tlv3->SetType(AODVV2_PATH_METRIC);
+    msg1a1tlv3->SetTypeExt(this->m_metricType);
+    msg1a1tlv3->SetValue(this->m_origMetric, this->m_origMetricSize);
+    msg1a1->TlvPushBack(msg1a1tlv3);
+
+    msg1->AddressBlockPushBack(msg1a1);
+    // **************************************************************************************
+
+    // ****************************** TargPrefix Address Block ******************************
+    Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
+    msg1a2->AddressPushBack(this->m_targIp);
+    msg1a2->PrefixPushBack(this->m_targMask);
+
+    // Add ADDRESS_TYPE TLV
+    Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
+    msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
+    uint8_t msg1a2tlv1val[] = {AODVV2_TARGPREFIX};
+    msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
+    msg1a2->TlvPushBack(msg1a2tlv1);
+
+    // Add SEQ_NUM TLV
+    if (this->m_sendTargSeqNum)
+    {
+        Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
+        msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
+        msg1a2tlv2->SetValue(this->m_origSeqNo);
+        msg1a2->TlvPushBack(msg1a2tlv2);
+    }
+
+    msg1->AddressBlockPushBack(msg1a2);
+    // **************************************************************************************
+
+    // ****************************** SeqNoRtr Address Block ******************************
+    if (this->m_rtrIp != T() && this->m_rtrIp != this->m_origIp)
+    {
+        Ptr<PbbAddressBlockIp> msg1a3 = Create<PbbAddressBlockIp>();
+        msg1a3->AddressPushBack(this->m_rtrIp);
+        msg1a3->PrefixPushBack(this->m_rtrMask);
+
+        msg1->AddressBlockPushBack(msg1a3);
+    }
+    // **************************************************************************************
+
+    return msg1;
 }
 
 template <typename T>
@@ -360,52 +369,7 @@ RrepHeader<T>::CreateTlvHeader() const
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
-    msg1->SetType(AODVV2_TYPE_RREP);
-    msg1->SetHopLimit(this->m_hopLimit);
-
-    // ****************************** OrigPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
-    msg1a1->AddressPushBack(this->m_origIp);
-    msg1a1->PrefixPushBack(this->m_origMask);
-
-    // Add ADDRESS_TYPE TLV
-    Ptr<PbbAddressTlv> msg1a1tlv1 = Create<PbbAddressTlv>();
-    msg1a1tlv1->SetType(AODVV2_ADDRESS_TYPE);
-    uint8_t msg1a1tlv1val[] = {AODVV2_ORIGPREFIX};
-    msg1a1tlv1->SetValue(msg1a1tlv1val, sizeof(msg1a1tlv1val));
-    msg1a1->TlvPushBack(msg1a1tlv1);
-
-    msg1->AddressBlockPushBack(msg1a1);
-    // **************************************************************************************
-
-    // ****************************** TargPrefix Address Block ******************************
-    Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
-    msg1a2->AddressPushBack(this->m_targIp);
-    msg1a2->PrefixPushBack(this->m_targMask);
-
-    // Add ADDRESS_TYPE TLV
-    Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
-    msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
-    uint8_t msg1a2tlv1val[] = {AODVV2_TARGPREFIX};
-    msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
-    msg1a2->TlvPushBack(msg1a2tlv1);
-
-    // Add SEQ_NUM TLV
-    Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
-    msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-    msg1a2tlv2->SetValue(this->m_seqNo);
-    msg1a2->TlvPushBack(msg1a2tlv2);
-
-    // Add PATH_METRIC TLV
-    Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
-    msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
-    msg1a2tlv3->SetTypeExt(this->m_metricType);
-    msg1a2tlv3->SetValue(this->m_targMetric, this->m_targMetricSize);
-    msg1a2->TlvPushBack(msg1a2tlv3);
-
-    msg1->AddressBlockPushBack(msg1a2);
-    // **************************************************************************************
+    Ptr<PbbMessageIp> msg1 = GetPbbMessage();
 
     // Add msg to tlv header
     m_tlvHeader->MessagePushBack(msg1);
@@ -484,6 +448,60 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 }
 
 template <typename T>
+Ptr<typename RrepHeader<T>::PbbMessageIp>
+RrepHeader<T>::GetPbbMessage() const
+{
+    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
+    msg1->SetType(AODVV2_TYPE_RREP);
+    msg1->SetHopLimit(this->m_hopLimit);
+
+    // ****************************** OrigPrefix Address Block ******************************
+    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
+    msg1a1->AddressPushBack(this->m_origIp);
+    msg1a1->PrefixPushBack(this->m_origMask);
+
+    // Add ADDRESS_TYPE TLV
+    Ptr<PbbAddressTlv> msg1a1tlv1 = Create<PbbAddressTlv>();
+    msg1a1tlv1->SetType(AODVV2_ADDRESS_TYPE);
+    uint8_t msg1a1tlv1val[] = {AODVV2_ORIGPREFIX};
+    msg1a1tlv1->SetValue(msg1a1tlv1val, sizeof(msg1a1tlv1val));
+    msg1a1->TlvPushBack(msg1a1tlv1);
+
+    msg1->AddressBlockPushBack(msg1a1);
+    // **************************************************************************************
+
+    // ****************************** TargPrefix Address Block ******************************
+    Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
+    msg1a2->AddressPushBack(this->m_targIp);
+    msg1a2->PrefixPushBack(this->m_targMask);
+
+    // Add ADDRESS_TYPE TLV
+    Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
+    msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
+    uint8_t msg1a2tlv1val[] = {AODVV2_TARGPREFIX};
+    msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
+    msg1a2->TlvPushBack(msg1a2tlv1);
+
+    // Add SEQ_NUM TLV
+    Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
+    msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
+    msg1a2tlv2->SetValue(this->m_seqNo);
+    msg1a2->TlvPushBack(msg1a2tlv2);
+
+    // Add PATH_METRIC TLV
+    Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
+    msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
+    msg1a2tlv3->SetTypeExt(this->m_metricType);
+    msg1a2tlv3->SetValue(this->m_targMetric, this->m_targMetricSize);
+    msg1a2->TlvPushBack(msg1a2tlv3);
+
+    msg1->AddressBlockPushBack(msg1a2);
+    // **************************************************************************************
+
+    return msg1;
+}
+
+template <typename T>
 uint32_t
 RrepHeader<T>::Deserialize(Buffer::Iterator start)
 {
@@ -528,7 +546,8 @@ template class RrepHeader<Ipv6Address>;
 //-----------------------------------------------------------------------------
 
 template <typename T>
-RrepAckHeader<T>::RrepAckHeader()
+RrepAckHeader<T>::RrepAckHeader(RrepHeader<T> rrepHeader)
+    : m_rrepHeader(rrepHeader)
 {
 }
 
@@ -574,13 +593,12 @@ RrepAckHeader<T>::CreateTlvHeader() const
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
-    msg1->SetType(AODVV2_TYPE_RREP_ACK);
-    Ptr<PbbTlv> msg1tlv1 = Create<PbbTlv>();
-    msg1tlv1->SetType(AODVV2_ACK_REQ);
-    msg1->TlvPushBack(msg1tlv1);
+    Ptr<PbbMessageIp> msg1 = GetPbbMessage();
 
     m_tlvHeader->MessagePushBack(msg1);
+
+    Ptr<PbbMessageIp> msg2 = m_rrepHeader.GetPbbMessage();
+    m_tlvHeader->MessagePushBack(msg2);
 }
 
 template <typename T>
@@ -588,6 +606,19 @@ void
 RrepAckHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
     CreateTlvHeader();
+}
+
+template <typename T>
+Ptr<typename RrepAckHeader<T>::PbbMessageIp>
+RrepAckHeader<T>::GetPbbMessage() const
+{
+    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
+    msg1->SetType(AODVV2_TYPE_RREP_ACK);
+    Ptr<PbbTlv> msg1tlv1 = Create<PbbTlv>();
+    msg1tlv1->SetType(AODVV2_ACK_REQ);
+    msg1->TlvPushBack(msg1tlv1);
+
+    return msg1;
 }
 
 template <typename T>
@@ -684,55 +715,7 @@ RerrHeader<T>::CreateTlvHeader() const
     m_tlvHeader = Create<PbbPacket>();
     // m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
-    msg1->SetType(AODVV2_TYPE_RERR);
-
-    // ****************************** PktSource Address Block *******************************
-    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
-    msg1a1->AddressPushBack(this->m_origIp);
-    msg1a1->PrefixPushBack(this->m_origMask);
-
-    // Add ADDRESS_TYPE TLV
-    Ptr<PbbAddressTlv> msg1a1tlv1 = Create<PbbAddressTlv>();
-    msg1a1tlv1->SetType(AODVV2_ADDRESS_TYPE);
-    uint8_t msg1a1tlv1val[] = {AODVV2_PKTSOURCE};
-    msg1a1tlv1->SetValue(msg1a1tlv1val, sizeof(msg1a1tlv1val));
-    msg1a1->TlvPushBack(msg1a1tlv1);
-
-    msg1->AddressBlockPushBack(msg1a1);
-    // **************************************************************************************
-
-    // ****************************** AddressList Address Block ******************************
-    // for each unreachable destination
-    for (auto j = m_unreachableDst.begin(); j != m_unreachableDst.end(); ++j)
-    {
-        Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
-        msg1a2->AddressPushBack((*j).first);
-        msg1a2->PrefixPushBack(32); // TODO me: update if needed
-
-        // Add ADDRESS_TYPE TLV
-        Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
-        msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
-        uint8_t msg1a2tlv1val[] = {AODVV2_UNREACHABLE};
-        msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
-        msg1a2->TlvPushBack(msg1a2tlv1);
-
-        // Add SEQ_NUM TLV
-        Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
-        msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
-        uint8_t msg1a2tlv2val[] = {(uint8_t)(*j).second.m_seqNo};
-        msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
-        msg1a2->TlvPushBack(msg1a2tlv2);
-
-        // Add PATH_METRIC TLV
-        Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
-        msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
-        msg1a2tlv3->SetTypeExt((*j).second.m_metricType);
-        msg1a2->TlvPushBack(msg1a2tlv3);
-
-        msg1->AddressBlockPushBack(msg1a2);
-    }
-    // **************************************************************************************
+    Ptr<PbbMessageIp> msg1 = GetPbbMessage();
 
     // Add msg to tlv header
     m_tlvHeader->MessagePushBack(msg1);
@@ -799,6 +782,63 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
     }
 
     CreateTlvHeader();
+}
+
+template <typename T>
+Ptr<typename RerrHeader<T>::PbbMessageIp>
+RerrHeader<T>::GetPbbMessage() const
+{
+    Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
+    msg1->SetType(AODVV2_TYPE_RERR);
+
+    // ****************************** PktSource Address Block *******************************
+    Ptr<PbbAddressBlockIp> msg1a1 = Create<PbbAddressBlockIp>();
+    msg1a1->AddressPushBack(this->m_origIp);
+    msg1a1->PrefixPushBack(this->m_origMask);
+
+    // Add ADDRESS_TYPE TLV
+    Ptr<PbbAddressTlv> msg1a1tlv1 = Create<PbbAddressTlv>();
+    msg1a1tlv1->SetType(AODVV2_ADDRESS_TYPE);
+    uint8_t msg1a1tlv1val[] = {AODVV2_PKTSOURCE};
+    msg1a1tlv1->SetValue(msg1a1tlv1val, sizeof(msg1a1tlv1val));
+    msg1a1->TlvPushBack(msg1a1tlv1);
+
+    msg1->AddressBlockPushBack(msg1a1);
+    // **************************************************************************************
+
+    // ****************************** AddressList Address Block ******************************
+    // for each unreachable destination
+    for (auto j = m_unreachableDst.begin(); j != m_unreachableDst.end(); ++j)
+    {
+        Ptr<PbbAddressBlockIp> msg1a2 = Create<PbbAddressBlockIp>();
+        msg1a2->AddressPushBack((*j).first);
+        msg1a2->PrefixPushBack(32); // TODO me: update if needed
+
+        // Add ADDRESS_TYPE TLV
+        Ptr<PbbAddressTlv> msg1a2tlv1 = Create<PbbAddressTlv>();
+        msg1a2tlv1->SetType(AODVV2_ADDRESS_TYPE);
+        uint8_t msg1a2tlv1val[] = {AODVV2_UNREACHABLE};
+        msg1a2tlv1->SetValue(msg1a2tlv1val, sizeof(msg1a2tlv1val));
+        msg1a2->TlvPushBack(msg1a2tlv1);
+
+        // Add SEQ_NUM TLV
+        Ptr<PbbAddressTlv> msg1a2tlv2 = Create<PbbAddressTlv>();
+        msg1a2tlv2->SetType(AODVV2_SEQ_NUM);
+        uint8_t msg1a2tlv2val[] = {(uint8_t)(*j).second.m_seqNo};
+        msg1a2tlv2->SetValue(msg1a2tlv2val, sizeof(msg1a2tlv2val));
+        msg1a2->TlvPushBack(msg1a2tlv2);
+
+        // Add PATH_METRIC TLV
+        Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
+        msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
+        msg1a2tlv3->SetTypeExt((*j).second.m_metricType);
+        msg1a2->TlvPushBack(msg1a2tlv3);
+
+        msg1->AddressBlockPushBack(msg1a2);
+    }
+    // **************************************************************************************
+
+    return msg1;
 }
 
 template <typename T>

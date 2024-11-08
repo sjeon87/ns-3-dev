@@ -680,8 +680,9 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     void ScheduleRrepAckCheck(LocalRoute<IpAddress> toOrigin);
     /** Send RREP_ACK
      * \param neighbor neighbor address
+     * \param rrepHeader route reply header
      */
-    void SendReplyAck(IpAddress neighbor);
+    void SendReplyAck(IpAddress neighbor, RrepHeader<IpAddress> rrepHeader);
     /** Initiate RERR
      * \param nextHop next hop address
      */

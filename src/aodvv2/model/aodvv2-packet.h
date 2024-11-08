@@ -164,6 +164,11 @@ class RreqHeader : public Header
      * \param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
+    /**
+     * \brief Get the pbb message
+     * \return the pbb message
+     */
+    Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -528,6 +533,11 @@ class RrepHeader : public Header
      * \param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
+    /**
+     * \brief Get the pbb message
+     * \return the pbb message
+     */
+    Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -761,8 +771,9 @@ class RrepAckHeader : public Header
   public:
     /**
      * constructor
+     * \param rrepHeader the RREP header
      */
-    RrepAckHeader();
+    RrepAckHeader(RrepHeader<T> rrepHeader = RrepHeader<T>());
 
     /**
      * \brief Get the type ID.
@@ -778,6 +789,11 @@ class RrepAckHeader : public Header
      * \param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
+    /**
+     * \brief Get the pbb message
+     * \return the pbb message
+     */
+    Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -810,7 +826,8 @@ class RrepAckHeader : public Header
     bool operator==(const RrepAckHeader& o) const;
 
   private:
-    uint16_t m_seqNo; ///< Sequence number
+    uint16_t m_seqNo;           ///< Sequence number
+    RrepHeader<T> m_rrepHeader; ///< RREP header
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };
@@ -878,6 +895,11 @@ class RerrHeader : public Header
      * \param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
+    /**
+     * \brief Get the pbb message
+     * \return the pbb message
+     */
+    Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator i) const override;
