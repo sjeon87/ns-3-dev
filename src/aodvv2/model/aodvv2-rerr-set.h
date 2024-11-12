@@ -28,7 +28,7 @@ namespace aodvv2
 {
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief maintain list of sent rerr messages
  */
 template <typename T>

@@ -28,7 +28,7 @@ namespace aodvv2
 {
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief maintain list of addresses used
  */
 template <typename T>

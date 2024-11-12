@@ -33,7 +33,7 @@ namespace aodvv2
 {
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Route record states
  */
 enum RouteStates
@@ -45,7 +45,7 @@ enum RouteStates
 };
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Local Route entry
  */
 template <typename T>
@@ -90,7 +90,7 @@ class LocalRoute
 
     ~LocalRoute();
 
-    ///\name Precursors management
+    ///@name Precursors management
     //\{
     /**
      * Insert precursor in precursor list if it doesn't yet exist in the list
@@ -495,7 +495,7 @@ class LocalRoute
 };
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief The Local Route Set used by AODVv2 protocol
  */
 template <typename T>

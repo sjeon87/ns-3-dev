@@ -25,7 +25,7 @@ namespace ns3
 namespace aodvv2
 {
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  *
  * @brief Unique packets identification cache used for simple duplicate detection.
  */

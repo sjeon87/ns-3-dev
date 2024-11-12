@@ -27,13 +27,13 @@ using namespace ns3;
 
 /**
  * \defgroup aodvv2-examples AODVv2 Examples
- * \ingroup aodvv2
- * \ingroup examples
+ * @ingroup aodvv2
+ * @ingroup examples
  */
 
 /**
- * \ingroup aodvv2-examples
- * \ingroup examples
+ * @ingroup aodvv2-examples
+ * @ingroup examples
  * @brief Test script.
  *
  * This script creates a random network topology and then send some pings from random nodes:

@@ -41,7 +41,7 @@ namespace ns3
 namespace aodvv2
 {
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  *
  * @brief AODVv2 routing protocol
  */
@@ -598,7 +598,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     Ptr<IpRoute> LoopbackRoute(const IpHeader& header, Ptr<NetDevice> oif) const;
 
     /**
-     * \name Receive control packets
+     * @name Receive control packets
      * @{
      */
     /**
@@ -639,7 +639,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /** @} */
 
     /**
-     * \name Send
+     * @name Send
      * @{
      */
     /** Forward packet from route request queue

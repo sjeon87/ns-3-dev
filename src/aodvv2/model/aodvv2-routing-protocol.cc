@@ -38,7 +38,7 @@ NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv4Rou
 NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv6RoutingProtocol);
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Tag used by AODVv2 implementation
  */
 class DeferredRouteOutputTag : public Tag

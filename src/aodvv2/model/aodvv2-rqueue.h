@@ -24,7 +24,7 @@ namespace aodvv2
 {
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief AODVv2 Queue Entry
  */
 template <typename T>
@@ -183,7 +183,7 @@ class QueueEntry
 };
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief AODVv2 route request queue
  *
  * Since AODVv2 is an on demand routing we queue requests while looking for route.

@@ -17,7 +17,7 @@
 using namespace ns3;
 
 /**
- * \ingroup internet-test
+ * @ingroup internet-test
  *
  * @brief AODVv2 Test
  */
@@ -92,7 +92,7 @@ Aodvv2Test::DoRun()
 }
 
 /**
- * \ingroup internet-test
+ * @ingroup internet-test
  *
  * @brief AODVv2 TestSuite
  */

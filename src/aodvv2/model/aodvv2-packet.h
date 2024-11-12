@@ -27,7 +27,7 @@ namespace aodvv2
 {
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief MessageType enumeration
  */
 enum MessageType
@@ -39,7 +39,7 @@ enum MessageType
 };
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Message TLV Type
  */
 enum MessageTlvType
@@ -48,7 +48,7 @@ enum MessageTlvType
 };
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Address Block TLV Type
  */
 enum AddressTlvType
@@ -59,7 +59,7 @@ enum AddressTlvType
 };
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Address Block TLV Value
  */
 enum AddressTlvValue
@@ -71,7 +71,7 @@ enum AddressTlvValue
 };
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Address Block TLV Metric Type
  */
 enum AddressTlvMetricType
@@ -88,7 +88,7 @@ struct UnreachableDst
 };
 
 /**
-* \ingroup aodvv2
+* @ingroup aodvv2
 * @brief   Route Request (RREQ) Message Format
   \verbatim
   0                   1                   2                   3
@@ -458,7 +458,7 @@ template <typename T>
 std::ostream& operator<<(std::ostream& os, const RreqHeader<T>&);
 
 /**
-* \ingroup aodvv2
+* @ingroup aodvv2
 * @brief Route Reply (RREP) Message Format
   \verbatim
   0                   1                   2                   3
@@ -768,7 +768,7 @@ template <typename T>
 std::ostream& operator<<(std::ostream& os, const RrepHeader<T>&);
 
 /**
-* \ingroup aodvv2
+* @ingroup aodvv2
 * @brief Route Reply Acknowledgment (RREP-ACK) Message Format
   \verbatim
   0                   1
@@ -858,7 +858,7 @@ template <typename T>
 std::ostream& operator<<(std::ostream& os, const RrepAckHeader<T>&);
 
 /**
-* \ingroup aodvv2
+* @ingroup aodvv2
 * @brief Route Error (RERR) Message Format
   \verbatim
   0                   1                   2                   3

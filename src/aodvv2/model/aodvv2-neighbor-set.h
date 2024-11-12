@@ -26,7 +26,7 @@ namespace ns3
 namespace aodvv2
 {
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Route record states
  */
 enum NeighborStates
@@ -41,7 +41,7 @@ const Time INFINITY_TIME = Seconds(99999);
 class RoutingProtocol;
 
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief maintain list of active neighbors
  */
 template <typename T>

@@ -24,7 +24,7 @@ namespace ns3
 namespace aodvv2
 {
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  *
  * @brief Helper class used to remember already seen packets and detect duplicates.
  *

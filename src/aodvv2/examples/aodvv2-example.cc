@@ -25,13 +25,13 @@ using namespace ns3;
 
 /**
  * \defgroup aodvv2-examples AODVv2 Examples
- * \ingroup aodvv2
- * \ingroup examples
+ * @ingroup aodvv2
+ * @ingroup examples
  */
 
 /**
- * \ingroup aodvv2-examples
- * \ingroup examples
+ * @ingroup aodvv2-examples
+ * @ingroup examples
  * @brief Test script.
  *
  * This script creates 1-dimensional grid topology and then ping last node from the first one:

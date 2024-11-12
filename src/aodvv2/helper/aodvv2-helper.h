@@ -20,7 +20,7 @@
 namespace ns3
 {
 /**
- * \ingroup aodvv2
+ * @ingroup aodvv2
  * @brief Helper class that adds AODVv2 routing to nodes.
  */
 template <typename T>
