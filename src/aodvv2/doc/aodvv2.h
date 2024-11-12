@@ -14,7 +14,7 @@
 #define AODVV2_H
 
 /**
- * \defgroup aodvv2 AODVv2 Routing
+ * @defgroup aodvv2 AODVv2 Routing
  *
  * This section documents the API of the ns-3 AODVv2 module. For a generic functional description,
  * please refer to the ns-3 manual.

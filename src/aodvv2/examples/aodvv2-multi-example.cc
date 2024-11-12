@@ -26,7 +26,7 @@
 using namespace ns3;
 
 /**
- * \defgroup aodvv2-examples AODVv2 Examples
+ * @defgroup aodvv2-examples AODVv2 Examples
  * @ingroup aodvv2
  * @ingroup examples
  */

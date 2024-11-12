@@ -46,7 +46,7 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
     /**
      * @returns pointer to clone of this Aodvv2Helper
      *
-     * \internal
+     * @internal
      * This method is mainly for internal use by the other helpers;
      * clients are expected to free the dynamic memory allocated by this method
      */
