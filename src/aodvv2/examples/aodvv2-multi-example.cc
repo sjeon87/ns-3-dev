@@ -90,6 +90,8 @@ class Aodvv2MultiExample
     NetDeviceContainer devices;
     /// interfaces used in the example
     Ipv4InterfaceContainer interfaces;
+    /// Adjacency matrix
+    std::vector<std::vector<int>> adjacencyMatrix;
 
   private:
     /// Create the nodes
@@ -100,8 +102,14 @@ class Aodvv2MultiExample
     void InstallInternetStack();
     /// Create the simulation applications
     void InstallApplications();
+    /// Create the adjacency matrix
+    void CreateAdjacencyMatrix();
     /// Print nodes positions
     void PrintNodes();
+    /// Get if there is a route between two nodes
+    bool HasRoute(uint32_t src, uint32_t dst);
+    /// Get if there is a route between two nodes using DFS
+    bool HasRouteDFS(uint32_t src, uint32_t dst, std::vector<bool>& visited);
 };
 
 int
@@ -162,6 +170,7 @@ Aodvv2MultiExample::Run()
     //  enable rts cts all the time.
     CreateNodes();
     CreateDevices();
+    CreateAdjacencyMatrix();
     InstallInternetStack();
     InstallApplications();
 
@@ -195,7 +204,7 @@ Aodvv2MultiExample::CreateNodes()
 
     // Create positions based on topology
     MobilityHelper mobility;
-    double dimension = (step * 1.5) * std::sqrt(size / 2);
+    double dimension = step * 3;
 
     if (topologyType == "custom")
     {
@@ -322,7 +331,7 @@ Aodvv2MultiExample::InstallApplications()
             uint32_t srcNodeIndex = rand->GetInteger(0, size - 1);
             uint32_t dstNodeIndex = rand->GetInteger(0, size - 1);
 
-            while (dstNodeIndex == srcNodeIndex)
+            while (srcNodeIndex == dstNodeIndex && !HasRoute(srcNodeIndex, dstNodeIndex))
             {
                 dstNodeIndex = rand->GetInteger(0, size - 1);
             }
@@ -340,22 +349,13 @@ Aodvv2MultiExample::InstallApplications()
 }
 
 void
-Aodvv2MultiExample::PrintNodes()
+Aodvv2MultiExample::CreateAdjacencyMatrix()
 {
-    std::cout << "\n\n";
-    std::vector<std::vector<int>> adjacencyMatrix(size, std::vector<int>(size, 0));
+    adjacencyMatrix.assign(size, std::vector<int>(size, 0));
 
-    // std::cout << "\nNodes neighbors:\n";
     for (uint32_t i = 0; i < size; ++i)
     {
-        Ptr<Node> node = nodes.Get(i);
-        Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
-        Ipv4InterfaceAddress addr = ipv4->GetAddress(1, 0);
-        Ipv4Address ip = addr.GetLocal();
         Ptr<MobilityModel> nodeMobility = nodes.Get(i)->GetObject<MobilityModel>();
-
-        std::cout << "Node " << i << " IP " << ip << " at " << nodeMobility->GetPosition()
-                  << " neighbors: ";
 
         for (uint32_t j = 0; j < size; ++j)
         {
@@ -370,10 +370,35 @@ Aodvv2MultiExample::PrintNodes()
                 std::pow(nodeMobility->GetPosition().x - neighborMobility->GetPosition().x, 2) +
                 std::pow(nodeMobility->GetPosition().y - neighborMobility->GetPosition().y, 2));
 
-            if (distance <= step * 10)
+            if (distance <= 50)
+            {
+                adjacencyMatrix[i][j] = 1;
+            }
+        }
+    }
+}
+
+void
+Aodvv2MultiExample::PrintNodes()
+{
+    std::cout << "\n\n";
+
+    for (uint32_t i = 0; i < size; ++i)
+    {
+        Ptr<Node> node = nodes.Get(i);
+        Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
+        Ipv4InterfaceAddress addr = ipv4->GetAddress(1, 0);
+        Ipv4Address ip = addr.GetLocal();
+        Ptr<MobilityModel> nodeMobility = nodes.Get(i)->GetObject<MobilityModel>();
+
+        std::cout << "Node " << i << " IP " << ip << " at " << nodeMobility->GetPosition()
+                  << " neighbors: ";
+
+        for (uint32_t j = 0; j < size; ++j)
+        {
+            if (adjacencyMatrix[i][j] == 1)
             {
                 std::cout << j << " ";
-                adjacencyMatrix[i][j] = 1;
             }
         }
         std::cout << std::endl;
@@ -389,4 +414,33 @@ Aodvv2MultiExample::PrintNodes()
         std::cout << std::endl;
     }
     std::cout << "\n\n";
+}
+
+bool
+Aodvv2MultiExample::HasRoute(uint32_t src, uint32_t dst)
+{
+    std::vector<bool> visited(size, false);
+    return HasRouteDFS(src, dst, visited);
+}
+
+bool
+Aodvv2MultiExample::HasRouteDFS(uint32_t src, uint32_t dst, std::vector<bool>& visited)
+{
+    if (src == dst)
+        return true;
+
+    visited[src] = true;
+
+    for (size_t i = 0; i < adjacencyMatrix.size(); ++i)
+    {
+        if (adjacencyMatrix[src][i] == 1 && !visited[i])
+        {
+            if (HasRouteDFS(i, dst, visited))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
