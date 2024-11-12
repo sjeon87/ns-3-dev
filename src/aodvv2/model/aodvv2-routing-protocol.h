@@ -43,7 +43,7 @@ namespace aodvv2
 /**
  * \ingroup aodvv2
  *
- * \brief AODVv2 routing protocol
+ * @brief AODVv2 routing protocol
  */
 
 /// UDP Port for AODVv2 control traffic
@@ -117,8 +117,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
   public:
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
 
@@ -134,15 +134,15 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /* From Ipv4RoutingProtocol and Ipv6RoutingProtocol */
     /**
-     * \brief Query routing cache for an existing route, for an outbound packet
-     * \param p packet to be routed.  Note that this method may modify the packet.
+     * @brief Query routing cache for an existing route, for an outbound packet
+     * @param p packet to be routed.  Note that this method may modify the packet.
      *          Callers may also pass in a null pointer.
-     * \param header input parameter (used to form key to search for the route)
-     * \param oif Output interface Netdevice.  May be zero, or may be bound via
+     * @param header input parameter (used to form key to search for the route)
+     * @param oif Output interface Netdevice.  May be zero, or may be bound via
      *            socket options to a particular output interface.
-     * \param sockerr Output parameter; socket errno
+     * @param sockerr Output parameter; socket errno
      *
-     * \returns a code that indicates what happened in the lookup
+     * @returns a code that indicates what happened in the lookup
      *
      * \sa Ipv4RoutingProtocol::RouteOutput
      * \sa Ipv6RoutingProtocol::RouteOutput
@@ -152,19 +152,19 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                                      Ptr<NetDevice> oif,
                                      Socket::SocketErrno& sockerr);
     /**
-     * \brief Route an input packet (to be forwarded or locally delivered)
-     * \param p received packet
-     * \param header input parameter used to form a search key for a route
-     * \param idev Pointer to ingress network device
-     * \param ucb Callback for the case in which the packet is to be forwarded
+     * @brief Route an input packet (to be forwarded or locally delivered)
+     * @param p received packet
+     * @param header input parameter used to form a search key for a route
+     * @param idev Pointer to ingress network device
+     * @param ucb Callback for the case in which the packet is to be forwarded
      *            as unicast
-     * \param mcb Callback for the case in which the packet is to be forwarded
+     * @param mcb Callback for the case in which the packet is to be forwarded
      *            as multicast
-     * \param lcb Callback for the case in which the packet is to be locally
+     * @param lcb Callback for the case in which the packet is to be locally
      *            delivered
-     * \param ecb Callback to call if there is an error in forwarding
+     * @param ecb Callback to call if there is an error in forwarding
      *
-     * \returns true if Aodvv2RoutingProtocol class takes responsibility for
+     * @returns true if Aodvv2RoutingProtocol class takes responsibility for
      *          forwarding or delivering the packet, false otherwise
      *
      * \sa Ipv4RoutingProtocol::RouteInput
@@ -178,30 +178,30 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                             const LocalDeliverCallback& lcb,
                             const ErrorCallback& ecb);
     /**
-     * \param interface the index of the interface we are being notified about
+     * @param interface the index of the interface we are being notified about
      *
      * \sa Ipv4RoutingProtocol::NotifyInterfaceUp
      * \sa Ipv6RoutingProtocol::NotifyInterfaceUp
      */
     virtual void NotifyInterfaceUp(uint32_t interface);
     /**
-     * \param interface the index of the interface we are being notified about
+     * @param interface the index of the interface we are being notified about
      *
      * \sa Ipv4RoutingProtocol::NotifyInterfaceDown
      * \sa Ipv6RoutingProtocol::NotifyInterfaceDown
      */
     virtual void NotifyInterfaceDown(uint32_t interface);
     /**
-     * \param interface the index of the interface we are being notified about
-     * \param address a new address being added to an interface
+     * @param interface the index of the interface we are being notified about
+     * @param address a new address being added to an interface
      *
      * \sa Ipv4RoutingProtocol::NotifyAddAddress
      * \sa Ipv6RoutingProtocol::NotifyAddAddress
      */
     virtual void NotifyAddAddress(uint32_t interface, IpInterfaceAddress address);
     /**
-     * \param interface the index of the interface we are being notified about
-     * \param address a new address being added to an interface
+     * @param interface the index of the interface we are being notified about
+     * @param address a new address being added to an interface
      *
      * \sa Ipv4RoutingProtocol::NotifyRemoveAddress
      * \sa Ipv6RoutingProtocol::NotifyRemoveAddress
@@ -209,31 +209,31 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     virtual void NotifyRemoveAddress(uint32_t interface, IpInterfaceAddress address);
     /* From IPv4RoutingProtocol */
     /**
-     * \brief Typically, invoked directly or indirectly from ns3::Ipv4::SetRoutingProtocol
+     * @brief Typically, invoked directly or indirectly from ns3::Ipv4::SetRoutingProtocol
      *
-     * \param ipv4 the ipv4 object this routing protocol is being associated with
+     * @param ipv4 the ipv4 object this routing protocol is being associated with
      *
      * \sa Ipv4RoutingProtocol::SetIpv4
      */
     virtual void SetIpv4(Ptr<Ipv4> ipv4);
     /* From IPv6RoutingProtocol */
     /**
-     * \brief Typically, invoked directly or indirectly from ns3::Ipv6::SetRoutingProtocol
+     * @brief Typically, invoked directly or indirectly from ns3::Ipv6::SetRoutingProtocol
      *
-     * \param ipv6 the ipv6 object this routing protocol is being associated with
+     * @param ipv6 the ipv6 object this routing protocol is being associated with
      *
      * \sa Ipv6RoutingProtocol::SetIpv6
      */
     virtual void SetIpv6(Ptr<Ipv6> ipv6);
 
     /**
-     * \brief Notify a new route.
+     * @brief Notify a new route.
      *
-     * \param dst destination address
-     * \param mask destination mask
-     * \param nextHop nextHop for this destination
-     * \param interface output interface
-     * \param prefixToUse prefix to use as source with this route
+     * @param dst destination address
+     * @param mask destination mask
+     * @param nextHop nextHop for this destination
+     * @param interface output interface
+     * @param prefixToUse prefix to use as source with this route
      *
      * \sa Ipv6RoutingProtocol::NotifyAddRoute
      */
@@ -244,13 +244,13 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                                 IpAddress prefixToUse = IpAddress::GetZero());
 
     /**
-     * \brief Notify route removing.
+     * @brief Notify route removing.
      *
-     * \param dst destination address
-     * \param mask destination mask
-     * \param nextHop nextHop for this destination
-     * \param interface output interface
-     * \param prefixToUse prefix to use as source with this route
+     * @param dst destination address
+     * @param mask destination mask
+     * @param nextHop nextHop for this destination
+     * @param interface output interface
+     * @param prefixToUse prefix to use as source with this route
      *
      * \sa Ipv6RoutingProtocol::NotifyRemoveRoute
      */
@@ -260,10 +260,10 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                                    uint32_t interface,
                                    IpAddress prefixToUse = IpAddress::GetZero());
     /**
-     * \brief Print the Routing Table entries
+     * @brief Print the Routing Table entries
      *
-     * \param stream The ostream the Routing table is printed to
-     * \param unit The time unit to be used in the report
+     * @param stream The ostream the Routing table is printed to
+     * @param unit The time unit to be used in the report
      *
      * \sa Ipv4RoutingProtocol::PrintRoutingTable
      * \sa Ipv6RoutingProtocol::PrintRoutingTable
@@ -274,7 +274,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     // Handle protocol parameters
     /**
      * Get maximum queue time
-     * \returns the maximum queue time
+     * @returns the maximum queue time
      */
     Time GetMaxQueueTime() const
     {
@@ -283,13 +283,13 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /**
      * Set the maximum queue time
-     * \param t the maximum queue time
+     * @param t the maximum queue time
      */
     void SetMaxQueueTime(Time t);
 
     /**
      * Get the maximum queue length
-     * \returns the maximum queue length
+     * @returns the maximum queue length
      */
     uint32_t GetMaxQueueLen() const
     {
@@ -298,13 +298,13 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /**
      * Set the maximum queue length
-     * \param len the maximum queue length
+     * @param len the maximum queue length
      */
     void SetMaxQueueLen(uint32_t len);
 
     /**
      * Get destination only flag
-     * \returns the destination only flag
+     * @returns the destination only flag
      */
     bool GetDestinationOnlyFlag() const
     {
@@ -313,7 +313,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /**
      * Set destination only flag
-     * \param f the destination only flag
+     * @param f the destination only flag
      */
     void SetDestinationOnlyFlag(bool f)
     {
@@ -322,7 +322,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /**
      * Set broadcast enable flag
-     * \param f enable broadcast flag
+     * @param f enable broadcast flag
      */
     void SetBroadcastEnable(bool f)
     {
@@ -331,7 +331,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /**
      * Get broadcast enable flag
-     * \returns the broadcast enable flag
+     * @returns the broadcast enable flag
      */
     bool GetBroadcastEnable() const
     {
@@ -340,7 +340,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     /**
      * Set the use of the default metric (hop)
-     * \param useDefaultMetric the use of the default metric
+     * @param useDefaultMetric the use of the default metric
      */
     void SetUseDefaultMetric(bool useDefaultMetric)
     {
@@ -348,8 +348,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     }
 
     /**
-     * \brief Add a metric to the metrics list
-     * \param metric The metric to add
+     * @brief Add a metric to the metrics list
+     * @param metric The metric to add
      */
     void AddMetric(const Metric<IpAddress>& metric)
     {
@@ -365,8 +365,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     }
 
     /**
-     * \brief Get the list of metrics, if empty return the default metric
-     * \returns the list of metrics
+     * @brief Get the list of metrics, if empty return the default metric
+     * @returns the list of metrics
      */
     std::vector<Metric<IpAddress>> GetMetrics() const
     {
@@ -389,9 +389,9 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     }
 
     /**
-     * \brief Get the metric based on the metric type
-     * \param metricType The metric type
-     * \returns the metric
+     * @brief Get the metric based on the metric type
+     * @param metricType The metric type
+     * @returns the metric
      */
     Metric<IpAddress> GetMetric(uint8_t metricType) const
     {
@@ -410,8 +410,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * used by this model.  Return the number of streams (possibly zero) that
      * have been assigned.
      *
-     * \param stream first stream index to use
-     * \return the number of stream indices assigned by this model
+     * @param stream first stream index to use
+     * @return the number of stream indices assigned by this model
      */
     int64_t AssignStreams(int64_t stream);
 
@@ -511,10 +511,10 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /**
      * Queue packet and send route request
      *
-     * \param p the packet to route
-     * \param header the IP header
-     * \param ucb the UnicastForwardCallback function
-     * \param ecb the ErrorCallback function
+     * @param p the packet to route
+     * @param header the IP header
+     * @param ucb the UnicastForwardCallback function
+     * @param ecb the ErrorCallback function
      */
     void DeferredRouteOutput(Ptr<const Packet> p,
                              const IpHeader& header,
@@ -523,11 +523,11 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /**
      * If route exists and is valid, forward packet.
      *
-     * \param p the packet to route
-     * \param header the IP header
-     * \param ucb the UnicastForwardCallback function
-     * \param ecb the ErrorCallback function
-     * \returns true if forwarded
+     * @param p the packet to route
+     * @param header the IP header
+     * @param ucb the UnicastForwardCallback function
+     * @param ecb the ErrorCallback function
+     * @returns true if forwarded
      */
     bool Forwarding(Ptr<const Packet> p,
                     const IpHeader& header,
@@ -535,65 +535,65 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
                     ErrorCallback ecb);
     /**
      * Repeated attempts by a source node at route discovery for a single destination
-     * \param dst the destination IP address
+     * @param dst the destination IP address
      */
     void ScheduleRreqRetry(IpAddress dst);
     /**
      * Repeated attempts by a destination node at route discovery for a single source
-     * \param rreqHeader route request header
-     * \param toOrigin routing table entry to originator
-     * \param hopCount hop count
+     * @param rreqHeader route request header
+     * @param toOrigin routing table entry to originator
+     * @param hopCount hop count
      */
     void ScheduleRrepRetry(const RreqHeader<IpAddress>& rreqHeader,
                            const LocalRoute<IpAddress>& toOrigin,
                            uint8_t hopCount);
     /**
      * Get route metric type
-     * \param addr destination address
-     * \returns the route metric type
+     * @param addr destination address
+     * @returns the route metric type
      */
     uint8_t GetRouteMetricType(IpAddress addr);
     /**
      * Set lifetime field in routing table entry to the maximum of existing lifetime and lt, if the
      * entry exists
-     * \param addr destination address
-     * \param lt proposed time for lifetime field in routing table entry for destination with
+     * @param addr destination address
+     * @param lt proposed time for lifetime field in routing table entry for destination with
      * address addr.
-     * \return true if route to destination address addr exist
+     * @return true if route to destination address addr exist
      */
     bool UpdateRouteLifeTime(IpAddress addr, Time lt);
     /**
      * UpdateTimeout neighbor record.
-     * \param receiver is supposed to be my interface
-     * \param sender is supposed to be IP address of my neighbor.
+     * @param receiver is supposed to be my interface
+     * @param sender is supposed to be IP address of my neighbor.
      */
     void UpdateRouteToNeighbor(IpAddress sender, IpAddress receiver);
     /**
      * Test whether the provided address is assigned to an interface on this node
-     * \param src the source IP address
-     * \returns true if the IP address is the node's IP address
+     * @param src the source IP address
+     * @returns true if the IP address is the node's IP address
      */
     bool IsMyOwnAddress(IpAddress src);
     /**
      * Find unicast socket with local interface address iface
      *
-     * \param iface the interface
-     * \returns the socket associated with the interface
+     * @param iface the interface
+     * @returns the socket associated with the interface
      */
     Ptr<Socket> FindSocketWithInterfaceAddress(IpInterfaceAddress iface) const;
     /**
      * Find subnet directed broadcast socket with local interface address iface
      *
-     * \param iface the interface
-     * \returns the socket associated with the interface
+     * @param iface the interface
+     * @returns the socket associated with the interface
      */
     Ptr<Socket> FindSubnetBroadcastSocketWithInterfaceAddress(IpInterfaceAddress iface) const;
     /**
      * Create loopback route for given header
      *
-     * \param header the IP header
-     * \param oif the output interface net device
-     * \returns the route
+     * @param header the IP header
+     * @param oif the output interface net device
+     * @returns the route
      */
     Ptr<IpRoute> LoopbackRoute(const IpHeader& header, Ptr<NetDevice> oif) const;
 
@@ -603,36 +603,36 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      */
     /**
      * Receive and process control packet
-     * \param socket input socket
+     * @param socket input socket
      */
     void RecvAodvv2(Ptr<Socket> socket);
     /**
      * Receive RREQ
-     * \param p packet
-     * \param receiver receiver address
-     * \param src sender address
-     * \param tlvHeader TLV header
+     * @param p packet
+     * @param receiver receiver address
+     * @param src sender address
+     * @param tlvHeader TLV header
      */
     void RecvRequest(Ptr<Packet> p, IpAddress receiver, IpAddress src, PbbPacket tlvHeader);
     /**
      * Receive RREP
-     * \param p packet
-     * \param my destination address
-     * \param src sender address
-     * \param tlvHeader TLV header
+     * @param p packet
+     * @param my destination address
+     * @param src sender address
+     * @param tlvHeader TLV header
      */
     void RecvReply(Ptr<Packet> p, IpAddress my, IpAddress src, PbbPacket tlvHeader);
     /**
      * Receive RREP_ACK
-     * \param neighbor neighbor address
-     * \param tlvHeader TLV header
+     * @param neighbor neighbor address
+     * @param tlvHeader TLV header
      */
     void RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader);
     /**
      * Receive RERR
-     * \param p packet
-     * \param src sender address
-     * \param tlvHeader TLV header
+     * @param p packet
+     * @param src sender address
+     * @param tlvHeader TLV header
      */
     /// Receive  from node with address src
     void RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvHeader);
@@ -643,69 +643,69 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * @{
      */
     /** Forward packet from route request queue
-     * \param dst destination address
-     * \param route route to use
+     * @param dst destination address
+     * @param route route to use
      */
     void SendPacketFromQueue(IpAddress dst, Ptr<IpRoute> route);
     /** Send RREQ
-     * \param dst destination address
+     * @param dst destination address
      */
     void SendRequest(IpAddress dst);
     /** Add TLV headers to packet
-     * \param packet packet
-     * \param socket socket
-     * \param dst destination address
-     * \param sequenceNumber sequence number
+     * @param packet packet
+     * @param socket socket
+     * @param dst destination address
+     * @param sequenceNumber sequence number
      */
     void AddTlvHeaders(Ptr<Packet> packet,
                        Ptr<Socket> socket,
                        IpAddress dst,
                        uint32_t sequenceNumber);
     /** Send RREP
-     * \param rreqHeader route request header
-     * \param toOrigin routing table entry to originator
-     * \param hopCount hop count
+     * @param rreqHeader route request header
+     * @param toOrigin routing table entry to originator
+     * @param hopCount hop count
      */
     void SendReply(const RreqHeader<IpAddress>& rreqHeader,
                    const LocalRoute<IpAddress>& toOrigin,
                    uint8_t hopCount);
     /** Send RREP by intermediate node
-     * \param toDst routing table entry to destination
-     * \param toOrigin routing table entry to originator
+     * @param toDst routing table entry to destination
+     * @param toOrigin routing table entry to originator
      */
     void SendReplyByIntermediateNode(LocalRoute<IpAddress>& toDst, LocalRoute<IpAddress>& toOrigin);
     /** Schedule RREP_ACK check
-     * \param toOrigin routing table entry to originator
+     * @param toOrigin routing table entry to originator
      */
     void ScheduleRrepAckCheck(LocalRoute<IpAddress> toOrigin);
     /** Send RREP_ACK
-     * \param neighbor neighbor address
-     * \param rrepHeader route reply header
+     * @param neighbor neighbor address
+     * @param rrepHeader route reply header
      */
     void SendReplyAck(IpAddress neighbor, RrepHeader<IpAddress> rrepHeader);
     /** Initiate RERR
-     * \param nextHop next hop address
+     * @param nextHop next hop address
      */
     void SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop);
     /** Forward RERR
-     * \param packet packet
-     * \param precursors list of addresses of the visited nodes
+     * @param packet packet
+     * @param precursors list of addresses of the visited nodes
      */
     void SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddress> precursors);
     /**
      * Send RERR message when no route to forward input packet. Unicast if there is reverse
-     * route to originating node, broadcast otherwise. \param dst destination node IP address
-     * \param dstSeqNo destination node sequence number
-     * \param origin originating node IP address
+     * route to originating node, broadcast otherwise. @param dst destination node IP address
+     * @param dstSeqNo destination node sequence number
+     * @param origin originating node IP address
      */
     void SendRerrWhenNoRouteToForward(IpAddress dst, uint16_t dstSeqNo, IpAddress origin);
     /** @} */
 
     /**
      * Send packet to destination socket
-     * \param socket destination node socket
-     * \param packet packet to send
-     * \param destination destination node IP address
+     * @param socket destination node socket
+     * @param packet packet to send
+     * @param destination destination node IP address
      */
     void SendTo(Ptr<Socket> socket, Ptr<Packet> packet, IpAddress destination);
 
@@ -729,14 +729,14 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     std::map<IpAddress, Timer> m_newDiscoveryTimer;
     /**
      * Handle route discovery process
-     * \param dst the destination IP address
+     * @param dst the destination IP address
      */
     void RouteRequestTimerExpire(IpAddress dst);
     /**
      * Handle route discovery process
-     * \param rreqHeader route request header
-     * \param toOrigin routing table entry to originator
-     * \param hopCount hop count
+     * @param rreqHeader route request header
+     * @param toOrigin routing table entry to originator
+     * @param hopCount hop count
      */
     void RouteReplyTimerExpire(const RreqHeader<IpAddress>& rreqHeader,
                                const LocalRoute<IpAddress>& toOrigin,
@@ -744,8 +744,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /**
      * Mark link to neighbor node as unidirectional for blacklistTimeout
      *
-     * \param neighbor the IP address of the neighbor node
-     * \param blacklistTimeout the black list timeout time
+     * @param neighbor the IP address of the neighbor node
+     * @param blacklistTimeout the black list timeout time
      */
     void AckTimerExpire(IpAddress neighbor, Time blacklistTimeout);
 

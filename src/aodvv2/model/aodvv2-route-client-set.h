@@ -29,7 +29,7 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief maintain list of addresses used
+ * @brief maintain list of addresses used
  */
 template <typename T>
 class RouteClientSet
@@ -55,11 +55,11 @@ class RouteClientSet
         uint32_t m_cost;
 
         /**
-         * \brief RouteClient structure constructor
+         * @brief RouteClient structure constructor
          *
-         * \param ip T ip address
-         * \param mask uint32_t mask
-         * \param cost uint32_t cost
+         * @param ip T ip address
+         * @param mask uint32_t mask
+         * @param cost uint32_t cost
          */
         RouteClient(T ip, uint32_t mask, uint32_t cost)
             : m_ip(ip),
@@ -71,21 +71,21 @@ class RouteClientSet
 
     /**
      * Return cost for address addr, if exists, else return 0.
-     * \param addr the IP address of the client
-     * \returns the cost for the address
+     * @param addr the IP address of the client
+     * @returns the cost for the address
      */
     uint32_t GetCost(T addr);
     /**
      * Check that node with address ip is already in the list
-     * \param ip the ip address
-     * \returns true if the node with IP address is in the list
+     * @param ip the ip address
+     * @returns true if the node with IP address is in the list
      */
     bool HasClient(T ip);
     /**
      * Add new entry to the list
-     * \param ip the ip address
-     * \param mask the mask of the address
-     * \param cost the cost of the address
+     * @param ip the ip address
+     * @param mask the mask of the address
+     * @param cost the cost of the address
      */
     void Add(T ip, uint32_t mask, uint32_t cost);
 

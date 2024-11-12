@@ -32,7 +32,7 @@ using namespace ns3;
 /**
  * \ingroup aodvv2-examples
  * \ingroup examples
- * \brief Test script.
+ * @brief Test script.
  *
  * This script creates 1-dimensional grid topology and then ping last node from the first one:
  *
@@ -50,17 +50,17 @@ class Aodvv2Example
   public:
     Aodvv2Example();
     /**
-     * \brief Configure script parameters
-     * \param argc is the command line argument count
-     * \param argv is the command line arguments
-     * \return true on successful configuration
+     * @brief Configure script parameters
+     * @param argc is the command line argument count
+     * @param argv is the command line arguments
+     * @return true on successful configuration
      */
     bool Configure(int argc, char** argv);
     /// Run simulation
     void Run();
     /**
      * Report results
-     * \param os the output stream
+     * @param os the output stream
      */
     void Report(std::ostream& os);
 

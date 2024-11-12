@@ -19,22 +19,22 @@ using namespace ns3;
 /**
  * \ingroup internet-test
  *
- * \brief AODVv2 Test
+ * @brief AODVv2 Test
  */
 class Aodvv2Test : public TestCase
 {
     Ptr<Packet> m_receivedPacket; //!< Received packet
 
     /**
-     * \brief Send data.
-     * \param socket The sending socket.
-     * \param to Destination address.
+     * @brief Send data.
+     * @param socket The sending socket.
+     * @param to Destination address.
      */
     void DoSendData(Ptr<Socket> socket, std::string to);
     /**
-     * \brief Send data.
-     * \param socket The sending socket.
-     * \param to Destination address.
+     * @brief Send data.
+     * @param socket The sending socket.
+     * @param to Destination address.
      */
     void SendData(Ptr<Socket> socket, std::string to);
 
@@ -43,8 +43,8 @@ class Aodvv2Test : public TestCase
     Aodvv2Test();
 
     /**
-     * \brief Receive data.
-     * \param socket The receiving socket.
+     * @brief Receive data.
+     * @param socket The receiving socket.
      */
     void ReceivePkt(Ptr<Socket> socket);
 };
@@ -94,7 +94,7 @@ Aodvv2Test::DoRun()
 /**
  * \ingroup internet-test
  *
- * \brief AODVv2 TestSuite
+ * @brief AODVv2 TestSuite
  */
 class Aodvv2TestSuite : public TestSuite
 {

@@ -27,7 +27,7 @@ namespace aodvv2
 /**
  * \ingroup aodvv2
  *
- * \brief Unique packets identification cache used for simple duplicate detection.
+ * @brief Unique packets identification cache used for simple duplicate detection.
  */
 template <typename T>
 class IdCache
@@ -42,7 +42,7 @@ class IdCache
   public:
     /**
      * constructor
-     * \param lifetime the lifetime for added entries
+     * @param lifetime the lifetime for added entries
      */
     IdCache(Time lifetime)
         : m_lifetime(lifetime)
@@ -52,23 +52,23 @@ class IdCache
     /**
      * Check that entry (origIp, origMask, targIp, metricType) exists in cache.
      * Add entry, if it doesn't exist.
-     * \param origIp the IP address
-     * \param origMask the mask
-     * \param targIp the target IP address
-     * \param metricType the metric
-     * \returns true if the pair exists
+     * @param origIp the IP address
+     * @param origMask the mask
+     * @param targIp the target IP address
+     * @param metricType the metric
+     * @returns true if the pair exists
      */
     bool IsDuplicate(T origIp, uint32_t origMask, T targIp, uint32_t metricType);
     /// Remove all expired entries
     void Purge();
     /**
-     * \returns number of entries in cache
+     * @returns number of entries in cache
      */
     uint32_t GetSize();
 
     /**
      * Set lifetime for future added entries.
-     * \param lifetime the lifetime for entries
+     * @param lifetime the lifetime for entries
      */
     void SetLifetime(Time lifetime)
     {
@@ -77,7 +77,7 @@ class IdCache
 
     /**
      * Return lifetime for existing entries in cache
-     * \returns the lifetime
+     * @returns the lifetime
      */
     Time GetLifeTime() const
     {
@@ -86,8 +86,8 @@ class IdCache
 
     /**
      * Print multicast msg
-     * \param stream the output stream
-     * \param unit The time unit to use (default Time::S)
+     * @param stream the output stream
+     * @param unit The time unit to use (default Time::S)
      */
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 
@@ -108,15 +108,15 @@ class IdCache
     };
 
     /**
-     * \brief IsExpired structure
+     * @brief IsExpired structure
      */
     struct IsExpired
     {
         /**
-         * \brief Check if the entry is expired
+         * @brief Check if the entry is expired
          *
-         * \param u UniqueId entry
-         * \return true if expired, false otherwise
+         * @param u UniqueId entry
+         * @return true if expired, false otherwise
          */
         bool operator()(const UniqueId& u) const
         {

@@ -29,7 +29,7 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief maintain list of sent rerr messages
+ * @brief maintain list of sent rerr messages
  */
 template <typename T>
 class RerrSet
@@ -58,11 +58,11 @@ class RerrSet
         T m_pktSource;
 
         /**
-         * \brief Rerr structure constructor
+         * @brief Rerr structure constructor
          *
-         * \param t Time timeout after which the entry should be removed
-         * \param unreachableAddr T unreachable address
-         * \param pktSource T the packet source address
+         * @param t Time timeout after which the entry should be removed
+         * @param unreachableAddr T unreachable address
+         * @param pktSource T the packet source address
          */
         Rerr(Time t, T unreachableAddr, T pktSource)
             : m_timeout(t),
@@ -74,22 +74,22 @@ class RerrSet
 
     /**
      * Return timeout for error packet with address addr, if exists, else return 0.
-     * \param addr the IP address of the unreachable node
-     * \returns the timeout for the error packet
+     * @param addr the IP address of the unreachable node
+     * @returns the timeout for the error packet
      */
     Time GetTimeout(T addr);
     /**
      * Check that node with address addr is already in the list
-     * \param unreachableAddr the unreachable address
-     * \param pktSource the packet source address
-     * \returns true if the node with inputs is in the list
+     * @param unreachableAddr the unreachable address
+     * @param pktSource the packet source address
+     * @returns true if the node with inputs is in the list
      */
     bool HasRerr(T unreachableAddr, T pktSource);
     /**
      * Add new entry to the list
-     * \param unreachableAddr the unreachable address
-     * \param pktSource the packet source address
-     * \param timeout the timeout for the entry
+     * @param unreachableAddr the unreachable address
+     * @param pktSource the packet source address
+     * @param timeout the timeout for the entry
      */
     void Add(T unreachableAddr, T pktSource, Time timeout);
 
@@ -101,8 +101,8 @@ class RerrSet
 
     /**
      * Print rerrs
-     * \param stream the output stream
-     * \param unit The time unit to use (default Time::S)
+     * @param stream the output stream
+     * @param unit The time unit to use (default Time::S)
      */
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 

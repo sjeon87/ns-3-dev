@@ -28,7 +28,7 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief MessageType enumeration
+ * @brief MessageType enumeration
  */
 enum MessageType
 {
@@ -40,7 +40,7 @@ enum MessageType
 
 /**
  * \ingroup aodvv2
- * \brief Message TLV Type
+ * @brief Message TLV Type
  */
 enum MessageTlvType
 {
@@ -49,7 +49,7 @@ enum MessageTlvType
 
 /**
  * \ingroup aodvv2
- * \brief Address Block TLV Type
+ * @brief Address Block TLV Type
  */
 enum AddressTlvType
 {
@@ -60,7 +60,7 @@ enum AddressTlvType
 
 /**
  * \ingroup aodvv2
- * \brief Address Block TLV Value
+ * @brief Address Block TLV Value
  */
 enum AddressTlvValue
 {
@@ -72,7 +72,7 @@ enum AddressTlvValue
 
 /**
  * \ingroup aodvv2
- * \brief Address Block TLV Metric Type
+ * @brief Address Block TLV Metric Type
  */
 enum AddressTlvMetricType
 {
@@ -89,7 +89,7 @@ struct UnreachableDst
 
 /**
 * \ingroup aodvv2
-* \brief   Route Request (RREQ) Message Format
+* @brief   Route Request (RREQ) Message Format
   \verbatim
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -124,15 +124,15 @@ class RreqHeader : public Header
   public:
     /**
      * constructor
-     * \param origIp the origin IP address
-     * \param origMask the origin mask
-     * \param targIp the target IP address
-     * \param targMask the target mask
-     * \param seqNo the sequence number
-     * \param hopLimit the hop limit
-     * \param metricType the metric type
-     * \param origMetric the origin metric
-     * \param origMetricSize the origin metric size
+     * @param origIp the origin IP address
+     * @param origMask the origin mask
+     * @param targIp the target IP address
+     * @param targMask the target mask
+     * @param seqNo the sequence number
+     * @param hopLimit the hop limit
+     * @param metricType the metric type
+     * @param origMetric the origin metric
+     * @param origMetricSize the origin metric size
      */
     RreqHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -146,27 +146,27 @@ class RreqHeader : public Header
 
     /**
      * constructor
-     * \param tlvHeader the TLV header
+     * @param tlvHeader the TLV header
      */
     RreqHeader(PbbPacket tlvHeader);
 
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
     /**
-     * \brief Create TLV header for RREQ
+     * @brief Create TLV header for RREQ
      */
     void CreateTlvHeader() const;
     /**
-     * \brief Dispatch TLV header inside the RREQ header
-     * \param tlvHeader the TLV header
+     * @brief Dispatch TLV header inside the RREQ header
+     * @param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
     /**
-     * \brief Get the pbb message
-     * \return the pbb message
+     * @brief Get the pbb message
+     * @return the pbb message
      */
     Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
@@ -178,8 +178,8 @@ class RreqHeader : public Header
     // Fields
 
     /**
-     * \brief Set the router IP address
-     * \param ip the router IP address
+     * @brief Set the router IP address
+     * @param ip the router IP address
      */
     void SetRtrIp(T ip)
     {
@@ -187,8 +187,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the router IP address
-     * \return the router IP address
+     * @brief Get the router IP address
+     * @return the router IP address
      */
     T GetRtrIp() const
     {
@@ -196,8 +196,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the router mask
-     * \param mask the router mask
+     * @brief Set the router mask
+     * @param mask the router mask
      */
     void SetRtrMask(uint16_t mask)
     {
@@ -205,8 +205,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the router mask
-     * \return the router mask
+     * @brief Get the router mask
+     * @return the router mask
      */
     uint16_t GetRtrMask() const
     {
@@ -214,8 +214,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the origin IP address
-     * \param ip the origin IP address
+     * @brief Set the origin IP address
+     * @param ip the origin IP address
      */
     void SetOrigIp(T ip)
     {
@@ -223,8 +223,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the origin IP address
-     * \return the origin IP address
+     * @brief Get the origin IP address
+     * @return the origin IP address
      */
     T GetOrigIp() const
     {
@@ -232,8 +232,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the origin mask
-     * \param mask the origin mask
+     * @brief Set the origin mask
+     * @param mask the origin mask
      */
     void SetOrigMask(uint16_t mask)
     {
@@ -241,8 +241,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the origin mask
-     * \return the origin mask
+     * @brief Get the origin mask
+     * @return the origin mask
      */
     uint16_t GetOrigMask() const
     {
@@ -250,8 +250,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the origin sequence number
-     * \param seq the origin sequence number
+     * @brief Set the origin sequence number
+     * @param seq the origin sequence number
      */
     void SetOrigSeqNo(uint16_t seq)
     {
@@ -259,8 +259,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the origin sequence number
-     * \return the origin sequence number
+     * @brief Set the origin sequence number
+     * @return the origin sequence number
      */
     uint16_t GetOrigSeqNo() const
     {
@@ -268,8 +268,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the target IP address
-     * \param ip the target IP address
+     * @brief Set the target IP address
+     * @param ip the target IP address
      */
     void SetTargIp(T ip)
     {
@@ -277,8 +277,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the target IP address
-     * \return the target IP address
+     * @brief Get the target IP address
+     * @return the target IP address
      */
     T GetTargIp() const
     {
@@ -286,8 +286,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the target mask
-     * \param mask the target mask
+     * @brief Set the target mask
+     * @param mask the target mask
      */
     void SetTargMask(uint16_t mask)
     {
@@ -295,8 +295,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the target mask
-     * \return the target mask
+     * @brief Get the target mask
+     * @return the target mask
      */
     uint16_t GetTargMask() const
     {
@@ -304,8 +304,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the metric type
-     * \param type the metric type
+     * @brief Set the metric type
+     * @param type the metric type
      */
     void SetMetricType(uint8_t type)
     {
@@ -313,8 +313,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the metric type
-     * \return the metric type
+     * @brief Get the metric type
+     * @return the metric type
      */
     uint8_t GetMetricType() const
     {
@@ -322,9 +322,9 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the origin metric
-     * \param metric the origin metric
-     * \param size the origin metric size
+     * @brief Set the origin metric
+     * @param metric the origin metric
+     * @param size the origin metric size
      */
     void SetOrigMetric(uint8_t* metric, u_int8_t size)
     {
@@ -333,8 +333,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the origin metric
-     * \return the origin metric
+     * @brief Get the origin metric
+     * @return the origin metric
      */
     uint8_t* GetOrigMetric() const
     {
@@ -342,8 +342,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the origin metric size
-     * \return the origin metric size
+     * @brief Get the origin metric size
+     * @return the origin metric size
      */
     uint8_t GetOrigMetricSize() const
     {
@@ -351,8 +351,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the target sequence number
-     * \param seq the target sequence number
+     * @brief Set the target sequence number
+     * @param seq the target sequence number
      */
     void SetTargSeqNo(uint16_t seq)
     {
@@ -360,8 +360,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the target sequence number
-     * \return the target sequence number
+     * @brief Get the target sequence number
+     * @return the target sequence number
      */
     uint16_t GetTargSeqNo() const
     {
@@ -369,8 +369,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the sequence number
-     * \param seq the sequence number
+     * @brief Set the sequence number
+     * @param seq the sequence number
      */
     void SetSeqNo(uint16_t seq)
     {
@@ -378,8 +378,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the sequence number
-     * \return the sequence number
+     * @brief Get the sequence number
+     * @return the sequence number
      */
     uint16_t GetSeqNo() const
     {
@@ -387,8 +387,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the hop limit
-     * \param count the hop limit
+     * @brief Set the hop limit
+     * @param count the hop limit
      */
     void SetHopLimit(uint8_t count)
     {
@@ -396,8 +396,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the hop limit
-     * \return the hop limit
+     * @brief Get the hop limit
+     * @return the hop limit
      */
     uint8_t GetHopLimit() const
     {
@@ -405,8 +405,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Set the send target sequence number flag
-     * \param send the send target sequence number flag
+     * @brief Set the send target sequence number flag
+     * @param send the send target sequence number flag
      */
     void SetSendTargSeqNum(bool send)
     {
@@ -414,8 +414,8 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Get the send target sequence number flag
-     * \return the send target sequence number flag
+     * @brief Get the send target sequence number flag
+     * @return the send target sequence number flag
      */
     bool GetSendTargSeqNum() const
     {
@@ -423,9 +423,9 @@ class RreqHeader : public Header
     }
 
     /**
-     * \brief Comparison operator
-     * \param o RREQ header to compare
-     * \return true if the RREQ headers are equal
+     * @brief Comparison operator
+     * @param o RREQ header to compare
+     * @return true if the RREQ headers are equal
      */
     bool operator==(const RreqHeader& o) const;
 
@@ -450,16 +450,16 @@ class RreqHeader : public Header
 };
 
 /**
- * \brief Stream output operator
- * \param os output stream
- * \return updated stream
+ * @brief Stream output operator
+ * @param os output stream
+ * @return updated stream
  */
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const RreqHeader<T>&);
 
 /**
 * \ingroup aodvv2
-* \brief Route Reply (RREP) Message Format
+* @brief Route Reply (RREP) Message Format
   \verbatim
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -494,15 +494,15 @@ class RrepHeader : public Header
     /**
      * constructor
      *
-     * \param origIp the origin IP address
-     * \param origMask the origin mask
-     * \param targIp the target IP address
-     * \param targMask the target mask
-     * \param seqNo the sequence number
-     * \param hopLimit the hop limit
-     * \param metricType the metric type
-     * \param targMetric the target metric
-     * \param targMetricSize the target metric size
+     * @param origIp the origin IP address
+     * @param origMask the origin mask
+     * @param targIp the target IP address
+     * @param targMask the target mask
+     * @param seqNo the sequence number
+     * @param hopLimit the hop limit
+     * @param metricType the metric type
+     * @param targMetric the target metric
+     * @param targMetricSize the target metric size
      */
     RrepHeader(T origIp = T(),
                uint16_t origMask = 0,
@@ -515,27 +515,27 @@ class RrepHeader : public Header
                u_int8_t targMetricSize = 1);
     /**
      * constructor
-     * \param tlvHeader the TLV header
+     * @param tlvHeader the TLV header
      */
     RrepHeader(PbbPacket tlvHeader);
 
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
     /**
-     * \brief Create TLV header for RREP
+     * @brief Create TLV header for RREP
      */
     void CreateTlvHeader() const;
     /**
-     * \brief Dispatch TLV header inside the RREP header
-     * \param tlvHeader the TLV header
+     * @brief Dispatch TLV header inside the RREP header
+     * @param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
     /**
-     * \brief Get the pbb message
-     * \return the pbb message
+     * @brief Get the pbb message
+     * @return the pbb message
      */
     Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
@@ -546,8 +546,8 @@ class RrepHeader : public Header
 
     // Fields
     /**
-     * \brief Set the origin IP address
-     * \param ip the origin IP address
+     * @brief Set the origin IP address
+     * @param ip the origin IP address
      */
     void SetOrigIp(T ip)
     {
@@ -555,8 +555,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the origin IP address
-     * \return the origin IP address
+     * @brief Get the origin IP address
+     * @return the origin IP address
      */
     T GetOrigIp() const
     {
@@ -564,8 +564,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the origin mask
-     * \param mask the origin mask
+     * @brief Set the origin mask
+     * @param mask the origin mask
      */
     void SetOrigMask(uint16_t mask)
     {
@@ -573,8 +573,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the origin mask
-     * \return the origin mask
+     * @brief Get the origin mask
+     * @return the origin mask
      */
     uint16_t GetOrigMask() const
     {
@@ -582,8 +582,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the target IP address
-     * \param ip the target IP address
+     * @brief Set the target IP address
+     * @param ip the target IP address
      */
     void SetTargIp(T ip)
     {
@@ -591,8 +591,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the target IP address
-     * \return the target IP address
+     * @brief Get the target IP address
+     * @return the target IP address
      */
     T GetTargIp() const
     {
@@ -600,8 +600,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the target mask
-     * \param mask the target mask
+     * @brief Set the target mask
+     * @param mask the target mask
      */
     void SetTargMask(uint16_t mask)
     {
@@ -609,8 +609,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the target mask
-     * \return the target mask
+     * @brief Get the target mask
+     * @return the target mask
      */
     uint16_t GetTargMask() const
     {
@@ -618,8 +618,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the target sequence number
-     * \param seq the target sequence number
+     * @brief Set the target sequence number
+     * @param seq the target sequence number
      */
     void SetTargSeqNo(uint16_t seq)
     {
@@ -627,8 +627,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the target sequence number
-     * \return the target sequence number
+     * @brief Get the target sequence number
+     * @return the target sequence number
      */
     uint16_t GetTargSeqNo() const
     {
@@ -636,8 +636,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the metric type
-     * \param type the metric type
+     * @brief Set the metric type
+     * @param type the metric type
      */
     void SetMetricType(uint8_t type)
     {
@@ -645,8 +645,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the metric type
-     * \return the metric type
+     * @brief Get the metric type
+     * @return the metric type
      */
     uint8_t GetMetricType() const
     {
@@ -654,9 +654,9 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the target metric
-     * \param metric the target metric
-     * \param size the target metric size
+     * @brief Set the target metric
+     * @param metric the target metric
+     * @param size the target metric size
      */
     void SetTargMetric(uint8_t* metric, u_int8_t size)
     {
@@ -665,8 +665,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the target metric
-     * \return the target metric
+     * @brief Get the target metric
+     * @return the target metric
      */
     uint8_t* GetTargMetric() const
     {
@@ -674,8 +674,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the target metric size
-     * \return the target metric size
+     * @brief Get the target metric size
+     * @return the target metric size
      */
     uint8_t GetTargMetricSize() const
     {
@@ -683,8 +683,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the sequence number
-     * \param seq the sequence number
+     * @brief Set the sequence number
+     * @param seq the sequence number
      */
     void SetSeqNo(uint16_t seq)
     {
@@ -692,8 +692,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the sequence number
-     * \return the sequence number
+     * @brief Get the sequence number
+     * @return the sequence number
      */
     uint16_t GetSeqNo() const
     {
@@ -701,8 +701,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the hop limit
-     * \param count the hop limit
+     * @brief Set the hop limit
+     * @param count the hop limit
      */
     void SetHopLimit(uint8_t count)
     {
@@ -710,8 +710,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the hop limit
-     * \return the hop limit
+     * @brief Get the hop limit
+     * @return the hop limit
      */
     uint8_t GetHopLimit() const
     {
@@ -719,8 +719,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Set the RREP_ACK flag
-     * \param ack the RREP_ACK flag
+     * @brief Set the RREP_ACK flag
+     * @param ack the RREP_ACK flag
      */
     void SetHasRrepAck(bool ack)
     {
@@ -728,8 +728,8 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Get the RREP_ACK flag
-     * \return the RREP_ACK flag
+     * @brief Get the RREP_ACK flag
+     * @return the RREP_ACK flag
      */
     bool HasRrepAck() const
     {
@@ -737,9 +737,9 @@ class RrepHeader : public Header
     }
 
     /**
-     * \brief Comparison operator
-     * \param o RREP header to compare
-     * \return true if the RREP headers are equal
+     * @brief Comparison operator
+     * @param o RREP header to compare
+     * @return true if the RREP headers are equal
      */
     bool operator==(const RrepHeader& o) const;
 
@@ -760,16 +760,16 @@ class RrepHeader : public Header
 };
 
 /**
- * \brief Stream output operator
- * \param os output stream
- * \return updated stream
+ * @brief Stream output operator
+ * @param os output stream
+ * @return updated stream
  */
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const RrepHeader<T>&);
 
 /**
 * \ingroup aodvv2
-* \brief Route Reply Acknowledgment (RREP-ACK) Message Format
+* @brief Route Reply Acknowledgment (RREP-ACK) Message Format
   \verbatim
   0                   1
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
@@ -794,22 +794,22 @@ class RrepAckHeader : public Header
     RrepAckHeader();
 
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
     /**
-     * \brief Create TLV header for RREP_ACK
+     * @brief Create TLV header for RREP_ACK
      */
     void CreateTlvHeader() const;
     /**
-     * \brief Dispatch TLV header inside the RREP_ACK header
-     * \param tlvHeader the TLV header
+     * @brief Dispatch TLV header inside the RREP_ACK header
+     * @param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
     /**
-     * \brief Get the pbb message
-     * \return the pbb message
+     * @brief Get the pbb message
+     * @return the pbb message
      */
     Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
@@ -819,8 +819,8 @@ class RrepAckHeader : public Header
     void Print(std::ostream& os) const override;
 
     /**
-     * \brief Set the sequence number
-     * \param seq the sequence number
+     * @brief Set the sequence number
+     * @param seq the sequence number
      */
     void SetSeqNo(uint16_t seq)
     {
@@ -828,8 +828,8 @@ class RrepAckHeader : public Header
     }
 
     /**
-     * \brief Get the sequence number
-     * \return the sequence number
+     * @brief Get the sequence number
+     * @return the sequence number
      */
     uint16_t GetSeqNo() const
     {
@@ -837,9 +837,9 @@ class RrepAckHeader : public Header
     }
 
     /**
-     * \brief Comparison operator
-     * \param o RREP header to compare
-     * \return true if the RREQ headers are equal
+     * @brief Comparison operator
+     * @param o RREP header to compare
+     * @return true if the RREQ headers are equal
      */
     bool operator==(const RrepAckHeader& o) const;
 
@@ -850,16 +850,16 @@ class RrepAckHeader : public Header
 };
 
 /**
- * \brief Stream output operator
- * \param os output stream
- * \return updated stream
+ * @brief Stream output operator
+ * @param os output stream
+ * @return updated stream
  */
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const RrepAckHeader<T>&);
 
 /**
 * \ingroup aodvv2
-* \brief Route Error (RERR) Message Format
+* @brief Route Error (RERR) Message Format
   \verbatim
   0                   1                   2                   3
   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -894,27 +894,27 @@ class RerrHeader : public Header
     RerrHeader();
     /**
      * constructor
-     * \param tlvHeader the TLV header
+     * @param tlvHeader the TLV header
      */
     RerrHeader(PbbPacket tlvHeader);
 
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
     /**
-     * \brief Create TLV header for RRER
+     * @brief Create TLV header for RRER
      */
     void CreateTlvHeader() const;
     /**
-     * \brief Dispatch TLV header inside the RRER header
-     * \param tlvHeader the TLV header
+     * @brief Dispatch TLV header inside the RRER header
+     * @param tlvHeader the TLV header
      */
     void SetTlvHeader(PbbPacket tlvHeader);
     /**
-     * \brief Get the pbb message
-     * \return the pbb message
+     * @brief Get the pbb message
+     * @return the pbb message
      */
     Ptr<PbbMessageIp> GetPbbMessage() const;
     TypeId GetInstanceTypeId() const override;
@@ -925,8 +925,8 @@ class RerrHeader : public Header
 
     // Fields
     /**
-     * \brief Set the origin IP address
-     * \param ip the origin IP address
+     * @brief Set the origin IP address
+     * @param ip the origin IP address
      */
     void SetOrigIp(T ip)
     {
@@ -934,8 +934,8 @@ class RerrHeader : public Header
     }
 
     /**
-     * \brief Get the origin IP address
-     * \return the origin IP address
+     * @brief Get the origin IP address
+     * @return the origin IP address
      */
     T GetOrigIp() const
     {
@@ -943,8 +943,8 @@ class RerrHeader : public Header
     }
 
     /**
-     * \brief Set the origin mask
-     * \param mask the origin mask
+     * @brief Set the origin mask
+     * @param mask the origin mask
      */
     void SetOrigMask(uint16_t mask)
     {
@@ -952,8 +952,8 @@ class RerrHeader : public Header
     }
 
     /**
-     * \brief Get the origin mask
-     * \return the origin mask
+     * @brief Get the origin mask
+     * @return the origin mask
      */
     uint16_t GetOrigMask() const
     {
@@ -961,25 +961,25 @@ class RerrHeader : public Header
     }
 
     /**
-     * \brief Add unreachable node address and its sequence number in RERR header
-     * \param dst unreachable IP address
-     * \param seqNo unreachable sequence number
-     * \param metricType metric type
-     * \return false if we already added maximum possible number of unreachable destinations
+     * @brief Add unreachable node address and its sequence number in RERR header
+     * @param dst unreachable IP address
+     * @param seqNo unreachable sequence number
+     * @param metricType metric type
+     * @return false if we already added maximum possible number of unreachable destinations
      */
     bool AddUnDestination(T dst, uint16_t seqNo, uint8_t metricType = AODVV2_METRIC_UNASSIGNED);
     /**
-     * \brief Delete pair (address + sequence number) from REER header, if the number of unreachable
+     * @brief Delete pair (address + sequence number) from REER header, if the number of unreachable
      * destinations > 0
-     * \param un unreachable pair (address + sequence number)
-     * \return true on success
+     * @param un unreachable pair (address + sequence number)
+     * @return true on success
      */
     bool RemoveUnDestination(std::pair<T, UnreachableDst>& un);
     /// Clear header
     void Clear();
 
     /**
-     * \returns number of unreachable destinations in RERR message
+     * @returns number of unreachable destinations in RERR message
      */
     uint8_t GetDestCount() const
     {
@@ -987,9 +987,9 @@ class RerrHeader : public Header
     }
 
     /**
-     * \brief Comparison operator
-     * \param o RERR header to compare
-     * \return true if the RERR headers are equal
+     * @brief Comparison operator
+     * @param o RERR header to compare
+     * @return true if the RERR headers are equal
      */
     bool operator==(const RerrHeader& o) const;
 
@@ -1004,9 +1004,9 @@ class RerrHeader : public Header
 };
 
 /**
- * \brief Stream output operator
- * \param os output stream
- * \return updated stream
+ * @brief Stream output operator
+ * @param os output stream
+ * @return updated stream
  */
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const RerrHeader<T>&);

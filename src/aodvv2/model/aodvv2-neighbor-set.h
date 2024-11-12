@@ -27,7 +27,7 @@ namespace aodvv2
 {
 /**
  * \ingroup aodvv2
- * \brief Route record states
+ * @brief Route record states
  */
 enum NeighborStates
 {
@@ -42,7 +42,7 @@ class RoutingProtocol;
 
 /**
  * \ingroup aodvv2
- * \brief maintain list of active neighbors
+ * @brief maintain list of active neighbors
  */
 template <typename T>
 class NeighborSet
@@ -77,11 +77,11 @@ class NeighborSet
         uint16_t m_heardRERRSeqNo;
 
         /**
-         * \brief Neighbor structure constructor
+         * @brief Neighbor structure constructor
          *
-         * \param ip T entry
-         * \param interface IpInterfaceAddress entry
-         * \param t Time timeout
+         * @param ip T entry
+         * @param interface IpInterfaceAddress entry
+         * @param t Time timeout
          */
         Neighbor(T ip, IpInterfaceAddress interface)
             : m_neighborAddress(ip),
@@ -96,33 +96,33 @@ class NeighborSet
 
     /**
      * Return timeout for neighbor node with address addr, if exists, else return 0.
-     * \param addr the IP address of the neighbor node
-     * \returns the timeout for the neighbor node
+     * @param addr the IP address of the neighbor node
+     * @returns the timeout for the neighbor node
      */
     Time GetTimeout(T addr);
     /**
      * Return state for neighbor node with address addr.
-     * \param addr the IP address of the neighbor node
-     * \returns the state for the neighbor node
+     * @param addr the IP address of the neighbor node
+     * @returns the state for the neighbor node
      */
     NeighborStates GetState(T addr);
     /**
      * Check that node with address addr is neighbor
-     * \param addr the IP address to check
-     * \returns true if the node with IP address is a neighbor
+     * @param addr the IP address to check
+     * @returns true if the node with IP address is a neighbor
      */
     bool IsNeighbor(T addr);
     /**
      * Update timeout for entry with address addr, if it exists, else add new entry
-     * \param addr the IP address to check
-     * \param iface the interface address
+     * @param addr the IP address to check
+     * @param iface the interface address
      */
     void AddNeighbor(T addr, IpInterfaceAddress iface);
     /**
      * Update state for entry
-     * \param addr the IP address to check
-     * \param iface the interface address
-     * \param timeout the timeout for the address
+     * @param addr the IP address to check
+     * @param iface the interface address
+     * @param timeout the timeout for the address
      */
     void UpdateState(T addr, IpInterfaceAddress iface, Time timeout);
 
@@ -134,8 +134,8 @@ class NeighborSet
 
     /**
      * Print neighbors
-     * \param stream the output stream
-     * \param unit The time unit to use (default Time::S)
+     * @param stream the output stream
+     * @param unit The time unit to use (default Time::S)
      */
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 

@@ -39,14 +39,14 @@ NS_OBJECT_TEMPLATE_CLASS_NAMESPACE_DEFINE(aodvv2, Aodvv2RoutingProtocol, Ipv6Rou
 
 /**
  * \ingroup aodvv2
- * \brief Tag used by AODVv2 implementation
+ * @brief Tag used by AODVv2 implementation
  */
 class DeferredRouteOutputTag : public Tag
 {
   public:
     /**
-     * \brief Constructor
-     * \param o the output interface
+     * @brief Constructor
+     * @param o the output interface
      */
     DeferredRouteOutputTag(int32_t o = -1)
         : Tag(),
@@ -55,8 +55,8 @@ class DeferredRouteOutputTag : public Tag
     }
 
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId()
     {
@@ -73,8 +73,8 @@ class DeferredRouteOutputTag : public Tag
     }
 
     /**
-     * \brief Get the output interface
-     * \return the output interface
+     * @brief Get the output interface
+     * @return the output interface
      */
     int32_t GetInterface() const
     {
@@ -82,8 +82,8 @@ class DeferredRouteOutputTag : public Tag
     }
 
     /**
-     * \brief Set the output interface
-     * \param oif the output interface
+     * @brief Set the output interface
+     * @param oif the output interface
      */
     void SetInterface(int32_t oif)
     {

@@ -108,15 +108,15 @@ RequestQueue<T>::Find(T dst)
 }
 
 /**
- * \brief IsExpired structure
+ * @brief IsExpired structure
  */
 struct IsExpired
 {
     /**
      * Check if the entry is expired
      *
-     * \param e QueueEntry entry
-     * \return true if expired, false otherwise
+     * @param e QueueEntry entry
+     * @return true if expired, false otherwise
      */
     bool operator()(const QueueEntry<Ipv4Header>& e) const
     {
@@ -126,8 +126,8 @@ struct IsExpired
     /**
      * Check if the entry is expired
      *
-     * \param e QueueEntry entry
-     * \return true if expired, false otherwise
+     * @param e QueueEntry entry
+     * @return true if expired, false otherwise
      */
     bool operator()(const QueueEntry<Ipv6Header>& e) const
     {

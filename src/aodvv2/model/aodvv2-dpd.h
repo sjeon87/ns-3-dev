@@ -26,7 +26,7 @@ namespace aodvv2
 /**
  * \ingroup aodvv2
  *
- * \brief Helper class used to remember already seen packets and detect duplicates.
+ * @brief Helper class used to remember already seen packets and detect duplicates.
  *
  * Currently duplicate detection is based on unique packet ID given by Packet::GetUid ()
  * This approach is known to be weak (ns3::Packet UID is an internal identifier and not intended for
@@ -46,7 +46,7 @@ class DuplicatePacketDetection
   public:
     /**
      * Constructor
-     * \param lifetime the lifetime for added entries
+     * @param lifetime the lifetime for added entries
      */
     DuplicatePacketDetection(Time lifetime)
         : m_idCache(lifetime)
@@ -55,20 +55,20 @@ class DuplicatePacketDetection
 
     /**
      * Check if the packet is a duplicate. If not, save information about this packet.
-     * \param p the packet to check
-     * \param header the IP header to check
-     * \param metricType the metric type
-     * \returns true if duplicate
+     * @param p the packet to check
+     * @param header the IP header to check
+     * @param metricType the metric type
+     * @returns true if duplicate
      */
     bool IsDuplicate(Ptr<const Packet> p, const T& header, const uint8_t metricType);
     /**
      * Set duplicate record lifetime
-     * \param lifetime the lifetime for duplicate records
+     * @param lifetime the lifetime for duplicate records
      */
     void SetLifetime(Time lifetime);
     /**
      * Get duplicate record lifetime
-     * \returns the duplicate record lifetime
+     * @returns the duplicate record lifetime
      */
     Time GetLifetime() const;
 

@@ -28,7 +28,7 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief Metric node description
+ * @brief Metric node description
  */
 struct MetricNode
 {
@@ -44,7 +44,7 @@ struct MetricNode
 
 /**
  * \ingroup aodvv2
- * \brief define how a metric is represented in the AODVv2 protocol
+ * @brief define how a metric is represented in the AODVv2 protocol
  */
 template <typename T>
 class Metric
@@ -53,7 +53,7 @@ class Metric
   public:
     /**
      * constructor
-     * \brief Default constructor sets the metric type to hop count
+     * @brief Default constructor sets the metric type to hop count
      */
     Metric()
     {

@@ -34,7 +34,7 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief Route record states
+ * @brief Route record states
  */
 enum RouteStates
 {
@@ -46,7 +46,7 @@ enum RouteStates
 
 /**
  * \ingroup aodvv2
- * \brief Local Route entry
+ * @brief Local Route entry
  */
 template <typename T>
 class LocalRoute
@@ -65,16 +65,16 @@ class LocalRoute
     /**
      * constructor
      *
-     * \param dev the device
-     * \param dst the destination IP address
-     * \param seqNo the sequence number
-     * \param iface the interface
-     * \param hops the number of hops
-     * \param nextHop the IP address of the next hop
-     * \param lastUsed the lastUsed time of the entry
-     * \param metric the metric
-     * \param metricValue the metric value
-     * \param state the route state
+     * @param dev the device
+     * @param dst the destination IP address
+     * @param seqNo the sequence number
+     * @param iface the interface
+     * @param hops the number of hops
+     * @param nextHop the IP address of the next hop
+     * @param lastUsed the lastUsed time of the entry
+     * @param metric the metric
+     * @param metricValue the metric value
+     * @param state the route state
      */
     LocalRoute(Ptr<NetDevice> dev = nullptr,
                T dst = T(),
@@ -94,32 +94,32 @@ class LocalRoute
     //\{
     /**
      * Insert precursor in precursor list if it doesn't yet exist in the list
-     * \param id precursor address
-     * \return true on success
+     * @param id precursor address
+     * @return true on success
      */
     bool InsertPrecursor(T id);
     /**
      * Lookup precursor by address
-     * \param id precursor address
-     * \return true on success
+     * @param id precursor address
+     * @return true on success
      */
     bool LookupPrecursor(T id);
     /**
-     * \brief Delete precursor
-     * \param id precursor address
-     * \return true on success
+     * @brief Delete precursor
+     * @param id precursor address
+     * @return true on success
      */
     bool DeletePrecursor(T id);
     /// Delete all precursors
     void DeleteAllPrecursors();
     /**
      * Check that precursor list is empty
-     * \return true if precursor list is empty
+     * @return true if precursor list is empty
      */
     bool IsPrecursorListEmpty() const;
     /**
      * Inserts precursors in output parameter prec if they do not yet exist in vector
-     * \param prec vector of precursor addresses
+     * @param prec vector of precursor addresses
      */
     void GetPrecursors(std::vector<T>& prec) const;
     //\}
@@ -130,14 +130,14 @@ class LocalRoute
     bool IsValid();
     /**
      * Mark entry as "down" (i.e. disable it)
-     * \param badLinkLifetime duration to keep entry marked as invalid
+     * @param badLinkLifetime duration to keep entry marked as invalid
      */
     void Invalidate(Time badLinkLifetime);
 
     // Fields
     /**
      * Get the max idle time
-     * \returns the max idle time
+     * @returns the max idle time
      */
     Time GetMaxIdleTime() const
     {
@@ -146,7 +146,7 @@ class LocalRoute
 
     /**
      * Get source address function
-     * \returns the IP source address
+     * @returns the IP source address
      */
     T GetSource() const
     {
@@ -155,7 +155,7 @@ class LocalRoute
 
     /**
      * Get destination address function
-     * \returns the IP destination address
+     * @returns the IP destination address
      */
     T GetDestination() const
     {
@@ -164,7 +164,7 @@ class LocalRoute
 
     /**
      * Get route function
-     * \returns The IP route
+     * @returns The IP route
      */
     Ptr<IpRoute> GetRoute() const
     {
@@ -173,7 +173,7 @@ class LocalRoute
 
     /**
      * Set route function
-     * \param r the IP route
+     * @param r the IP route
      */
     void SetRoute(Ptr<IpRoute> r)
     {
@@ -182,7 +182,7 @@ class LocalRoute
 
     /**
      * Set next hop address
-     * \param nextHop the next hop IP address
+     * @param nextHop the next hop IP address
      */
     void SetNextHop(T nextHop)
     {
@@ -191,7 +191,7 @@ class LocalRoute
 
     /**
      * Get next hop address
-     * \returns the next hop address
+     * @returns the next hop address
      */
     T GetNextHop() const
     {
@@ -200,7 +200,7 @@ class LocalRoute
 
     /**
      * Set output device
-     * \param dev The output device
+     * @param dev The output device
      */
     void SetOutputDevice(Ptr<NetDevice> dev)
     {
@@ -209,7 +209,7 @@ class LocalRoute
 
     /**
      * Get output device
-     * \returns the output device
+     * @returns the output device
      */
     Ptr<NetDevice> GetOutputDevice() const
     {
@@ -218,7 +218,7 @@ class LocalRoute
 
     /**
      * Get the IpInterfaceAddress
-     * \returns the IpInterfaceAddress
+     * @returns the IpInterfaceAddress
      */
     IpInterfaceAddress GetInterface() const
     {
@@ -227,7 +227,7 @@ class LocalRoute
 
     /**
      * Set the IpInterfaceAddress
-     * \param iface The IpInterfaceAddress
+     * @param iface The IpInterfaceAddress
      */
     void SetInterface(IpInterfaceAddress iface)
     {
@@ -236,7 +236,7 @@ class LocalRoute
 
     /**
      * Get the valid sequence number
-     * \returns the valid sequence number
+     * @returns the valid sequence number
      */
     bool GetValidSeqNo() const
     {
@@ -245,7 +245,7 @@ class LocalRoute
 
     /**
      * Set the sequence number
-     * \param sn the sequence number
+     * @param sn the sequence number
      */
     void SetSeqNo(uint16_t sn)
     {
@@ -255,7 +255,7 @@ class LocalRoute
 
     /**
      * Get the sequence number
-     * \returns the sequence number
+     * @returns the sequence number
      */
     uint16_t GetSeqNo() const
     {
@@ -264,7 +264,7 @@ class LocalRoute
 
     /**
      * Set the number of hops
-     * \param hop the number of hops
+     * @param hop the number of hops
      */
     void SetHop(uint32_t hop)
     {
@@ -273,7 +273,7 @@ class LocalRoute
 
     /**
      * Get the number of hops
-     * \returns the number of hops
+     * @returns the number of hops
      */
     uint32_t GetHop() const
     {
@@ -282,7 +282,7 @@ class LocalRoute
 
     /**
      * Set the lastUsed
-     * \param lu The lastUsed
+     * @param lu The lastUsed
      */
     void SetLastUsed(Time lu)
     {
@@ -291,7 +291,7 @@ class LocalRoute
 
     /**
      * Get the lastUsed
-     * \returns the lastUsed
+     * @returns the lastUsed
      */
     Time GetLastUsed() const
     {
@@ -300,7 +300,7 @@ class LocalRoute
 
     /**
      * Set the lastSeqNumUpdate
-     * \param lu The lastSeqNumUpdate
+     * @param lu The lastSeqNumUpdate
      */
     void SetLastSeqNumUpdate(Time lu)
     {
@@ -309,7 +309,7 @@ class LocalRoute
 
     /**
      * Get the lastSeqNumUpdate
-     * \returns the lastSeqNumUpdate
+     * @returns the lastSeqNumUpdate
      */
     Time GetLastSeqNumUpdate() const
     {
@@ -318,7 +318,7 @@ class LocalRoute
 
     /**
      * Set the metric type
-     * \param type the metric type
+     * @param type the metric type
      */
     void SetMetricType(uint8_t type)
     {
@@ -327,7 +327,7 @@ class LocalRoute
 
     /**
      * Get the metric type
-     * \returns the metric type
+     * @returns the metric type
      */
     uint8_t GetMetricType() const
     {
@@ -336,8 +336,8 @@ class LocalRoute
 
     /**
      * Set the metricValue
-     * \param metricValue the metric value
-     * \param size the metric size
+     * @param metricValue the metric value
+     * @param size the metric size
      */
     void SetMetricValue(uint8_t* metricValue, uint8_t size)
     {
@@ -347,7 +347,7 @@ class LocalRoute
 
     /**
      * Get the metric value
-     * \returns the metric value
+     * @returns the metric value
      */
     uint8_t* GetMetricValue() const
     {
@@ -356,7 +356,7 @@ class LocalRoute
 
     /**
      * Get the metric size
-     * \returns the metric size
+     * @returns the metric size
      */
     uint8_t GetMetricSize() const
     {
@@ -365,7 +365,7 @@ class LocalRoute
 
     /**
      * Set the route state
-     * \param state the route state
+     * @param state the route state
      */
     void SetState(RouteStates state)
     {
@@ -374,7 +374,7 @@ class LocalRoute
 
     /**
      * Get the route flags
-     * \returns the route flags
+     * @returns the route flags
      */
     RouteStates GetState() const
     {
@@ -383,7 +383,7 @@ class LocalRoute
 
     /**
      * Set the RREQ count
-     * \param n the RREQ count
+     * @param n the RREQ count
      */
     void SetRreqCnt(uint8_t n)
     {
@@ -392,7 +392,7 @@ class LocalRoute
 
     /**
      * Get the RREQ count
-     * \returns the RREQ count
+     * @returns the RREQ count
      */
     uint8_t GetRreqCnt() const
     {
@@ -401,7 +401,7 @@ class LocalRoute
 
     /**
      * Set the RREP count
-     * \param n the RREP count
+     * @param n the RREP count
      */
     void SetRrepCnt(uint8_t n)
     {
@@ -410,7 +410,7 @@ class LocalRoute
 
     /**
      * Get the RREP count
-     * \returns the RREP count
+     * @returns the RREP count
      */
     uint8_t GetRrepCnt() const
     {
@@ -437,9 +437,9 @@ class LocalRoute
     Timer m_ackTimer;
 
     /**
-     * \brief Compare destination address
-     * \param dst IP address to compare
-     * \return true if equal
+     * @brief Compare destination address
+     * @param dst IP address to compare
+     * @return true if equal
      */
     bool operator==(const T dst) const
     {
@@ -448,8 +448,8 @@ class LocalRoute
 
     /**
      * Print packet to trace file
-     * \param stream The output stream
-     * \param unit The time unit to use (default Time::S)
+     * @param stream The output stream
+     * @param unit The time unit to use (default Time::S)
      */
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 
@@ -496,7 +496,7 @@ class LocalRoute
 
 /**
  * \ingroup aodvv2
- * \brief The Local Route Set used by AODVv2 protocol
+ * @brief The Local Route Set used by AODVv2 protocol
  */
 template <typename T>
 class LocalRouteSet
@@ -512,62 +512,62 @@ class LocalRouteSet
   public:
     /**
      * constructor
-     * \param badlinkTime the local route entry badlink time
-     * \param unconfirmedTime the local route entry unconfirmed time
+     * @param badlinkTime the local route entry badlink time
+     * @param unconfirmedTime the local route entry unconfirmed time
      */
     LocalRouteSet(Time badlinkTime, Time unconfirmedTime);
 
     //\}
     /**
      * Add local route entry if it doesn't yet exist in the set
-     * \param r local route entry
-     * \return true in success
+     * @param r local route entry
+     * @return true in success
      */
     bool AddRoute(LocalRoute<T>& r);
     /**
      * Delete local route entry with destination address dst, if it exists.
-     * \param dst destination address
-     * \return true on success
+     * @param dst destination address
+     * @return true on success
      */
     bool DeleteRoute(T dst);
     /**
      * Lookup local route entry with destination address dst
-     * \param dst destination address
-     * \param rt entry with destination address dst, if exists
-     * \return true on success
+     * @param dst destination address
+     * @param rt entry with destination address dst, if exists
+     * @return true on success
      */
     bool LookupRoute(T dst, LocalRoute<T>& rt);
     /**
      * Lookup route in VALID state
-     * \param dst destination address
-     * \param rt entry with destination address dst, if exists
-     * \return true on success
+     * @param dst destination address
+     * @param rt entry with destination address dst, if exists
+     * @return true on success
      */
     bool LookupValidRoute(T dst, LocalRoute<T>& rt);
     /**
      * Update local route
-     * \param rt entry with destination address dst, if exists
-     * \return true on success
+     * @param rt entry with destination address dst, if exists
+     * @return true on success
      */
     bool Update(LocalRoute<T>& rt);
     /**
      * Set local route entry flags
-     * \param dst destination address
-     * \param state the routing flags
-     * \return true on success
+     * @param dst destination address
+     * @param state the routing flags
+     * @return true on success
      */
     bool SetEntryState(T dst, RouteStates state);
     /**
      * Lookup routing entries with next hop Address dst and not empty list of precursors.
      *
-     * \param nextHop the next hop IP address
-     * \param unreachable
+     * @param nextHop the next hop IP address
+     * @param unreachable
      */
     void GetListOfDestinationWithNextHop(T nextHop, std::map<T, UnreachableDst>& unreachable);
     /**
      * Activate route with next hop
      *
-     * \param nextHop the next hop IP address
+     * @param nextHop the next hop IP address
      */
     void ActivateRouteWithNextHop(T nextHop);
     /**
@@ -576,12 +576,12 @@ class LocalRouteSet
      *    exists and is valid, is incremented.
      * 2. The entry is invalidated by marking the route entry as invalid
      * 3. The lastUsed time field is updated to current time plus DELETE_PERIOD.
-     * \param unreachable routes to invalidate
+     * @param unreachable routes to invalidate
      */
     void InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unreachable);
     /**
      * Delete all route from interface with address iface
-     * \param iface the interface IP address
+     * @param iface the interface IP address
      */
     void DeleteAllRoutesFromInterface(IpInterfaceAddress iface);
 
@@ -595,15 +595,15 @@ class LocalRouteSet
     void Purge();
     /** Mark entry as unidirectional (e.g. add this neighbor to "blacklist" for blacklistTimeout
      * period)
-     * \param neighbor neighbor address link to which assumed to be unidirectional
-     * \param blacklistTimeout time for which the neighboring node is put into the blacklist
-     * \return true on success
+     * @param neighbor neighbor address link to which assumed to be unidirectional
+     * @param blacklistTimeout time for which the neighboring node is put into the blacklist
+     * @return true on success
      */
     bool MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout);
     /**
      * Print local route
-     * \param stream the output stream
-     * \param unit The time unit to use (default Time::S)
+     * @param stream the output stream
+     * @param unit The time unit to use (default Time::S)
      */
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 
@@ -616,7 +616,7 @@ class LocalRouteSet
     Time m_unconfirmedTime;
     /**
      * const version of Purge, for use by Print() method
-     * \param table the local route set to purge
+     * @param table the local route set to purge
      */
     void Purge(std::map<T, LocalRoute<T>>& table) const;
 };

@@ -25,7 +25,7 @@ namespace aodvv2
 
 /**
  * \ingroup aodvv2
- * \brief AODVv2 Queue Entry
+ * @brief AODVv2 Queue Entry
  */
 template <typename T>
 class QueueEntry
@@ -47,11 +47,11 @@ class QueueEntry
     /**
      * constructor
      *
-     * \param pa the packet to add to the queue
-     * \param h the IpHeader
-     * \param ucb the UnicastForwardCallback function
-     * \param ecb the ErrorCallback function
-     * \param exp the expiration time
+     * @param pa the packet to add to the queue
+     * @param h the IpHeader
+     * @param ucb the UnicastForwardCallback function
+     * @param ecb the ErrorCallback function
+     * @param exp the expiration time
      */
     QueueEntry(Ptr<const Packet> pa = nullptr,
                const T& h = T(),
@@ -67,9 +67,9 @@ class QueueEntry
     }
 
     /**
-     * \brief Compare queue entries
-     * \param o QueueEntry to compare
-     * \return true if equal
+     * @brief Compare queue entries
+     * @param o QueueEntry to compare
+     * @return true if equal
      */
     bool operator==(const QueueEntry& o) const
     {
@@ -81,7 +81,7 @@ class QueueEntry
     // Fields
     /**
      * Get unicast forward callback
-     * \returns unicast callback
+     * @returns unicast callback
      */
     UnicastForwardCallback GetUnicastForwardCallback() const
     {
@@ -90,7 +90,7 @@ class QueueEntry
 
     /**
      * Set unicast forward callback
-     * \param ucb The unicast callback
+     * @param ucb The unicast callback
      */
     void SetUnicastForwardCallback(UnicastForwardCallback ucb)
     {
@@ -99,7 +99,7 @@ class QueueEntry
 
     /**
      * Get error callback
-     * \returns the error callback
+     * @returns the error callback
      */
     ErrorCallback GetErrorCallback() const
     {
@@ -108,7 +108,7 @@ class QueueEntry
 
     /**
      * Set error callback
-     * \param ecb The error callback
+     * @param ecb The error callback
      */
     void SetErrorCallback(ErrorCallback ecb)
     {
@@ -117,7 +117,7 @@ class QueueEntry
 
     /**
      * Get packet from entry
-     * \returns the packet
+     * @returns the packet
      */
     Ptr<const Packet> GetPacket() const
     {
@@ -126,7 +126,7 @@ class QueueEntry
 
     /**
      * Set packet in entry
-     * \param p The packet
+     * @param p The packet
      */
     void SetPacket(Ptr<const Packet> p)
     {
@@ -135,7 +135,7 @@ class QueueEntry
 
     /**
      * Get IP header
-     * \returns the IP header
+     * @returns the IP header
      */
     T GetIpHeader() const
     {
@@ -144,7 +144,7 @@ class QueueEntry
 
     /**
      * Set IP header
-     * \param h the IP header
+     * @param h the IP header
      */
     void SetIpHeader(T h)
     {
@@ -153,7 +153,7 @@ class QueueEntry
 
     /**
      * Set expire time
-     * \param exp The expiration time
+     * @param exp The expiration time
      */
     void SetExpireTime(Time exp)
     {
@@ -162,7 +162,7 @@ class QueueEntry
 
     /**
      * Get expire time
-     * \returns the expiration time
+     * @returns the expiration time
      */
     Time GetExpireTime() const
     {
@@ -184,7 +184,7 @@ class QueueEntry
 
 /**
  * \ingroup aodvv2
- * \brief AODVv2 route request queue
+ * @brief AODVv2 route request queue
  *
  * Since AODVv2 is an on demand routing we queue requests while looking for route.
  */
@@ -202,8 +202,8 @@ class RequestQueue
     /**
      * constructor
      *
-     * \param maxLen the maximum length
-     * \param routeToQueueTimeout the route to queue timeout
+     * @param maxLen the maximum length
+     * @param routeToQueueTimeout the route to queue timeout
      */
     RequestQueue(uint32_t maxLen, Time routeToQueueTimeout)
         : m_maxLen(maxLen),
@@ -214,39 +214,39 @@ class RequestQueue
     /**
      * Push entry in queue, if there is no entry with the same packet and destination address in
      * queue.
-     * \param entry the queue entry
-     * \returns true if the entry is queued
+     * @param entry the queue entry
+     * @returns true if the entry is queued
      */
     bool Enqueue(QueueEntry<IpHeader>& entry);
     /**
      * Return first found (the earliest) entry for given destination
      *
-     * \param dst the destination IP address
-     * \param entry the queue entry
-     * \returns true if the entry is dequeued
+     * @param dst the destination IP address
+     * @param entry the queue entry
+     * @returns true if the entry is dequeued
      */
     bool Dequeue(T dst, QueueEntry<IpHeader>& entry);
     /**
      * Remove all packets with destination IP address dst
-     * \param dst the destination IP address
+     * @param dst the destination IP address
      */
     void DropPacketWithDst(T dst);
     /**
      * Finds whether a packet with destination dst exists in the queue
      *
-     * \param dst the destination IP address
-     * \returns true if an entry with the IP address is found
+     * @param dst the destination IP address
+     * @returns true if an entry with the IP address is found
      */
     bool Find(T dst);
     /**
-     * \returns the number of entries
+     * @returns the number of entries
      */
     uint32_t GetSize();
 
     // Fields
     /**
      * Get maximum queue length
-     * \returns the maximum queue length
+     * @returns the maximum queue length
      */
     uint32_t GetMaxQueueLen() const
     {
@@ -255,7 +255,7 @@ class RequestQueue
 
     /**
      * Set maximum queue length
-     * \param len The maximum queue length
+     * @param len The maximum queue length
      */
     void SetMaxQueueLen(uint32_t len)
     {
@@ -264,7 +264,7 @@ class RequestQueue
 
     /**
      * Get queue timeout
-     * \returns the queue timeout
+     * @returns the queue timeout
      */
     Time GetQueueTimeout() const
     {
@@ -273,7 +273,7 @@ class RequestQueue
 
     /**
      * Set queue timeout
-     * \param t The queue timeout
+     * @param t The queue timeout
      */
     void SetQueueTimeout(Time t)
     {
@@ -287,8 +287,8 @@ class RequestQueue
     void Purge();
     /**
      * Notify that packet is dropped from queue by timeout
-     * \param en the queue entry to drop
-     * \param reason the reason to drop the entry
+     * @param en the queue entry to drop
+     * @param reason the reason to drop the entry
      */
     void Drop(QueueEntry<IpHeader> en, std::string reason);
     /// The maximum number of packets that we allow a routing protocol to buffer.

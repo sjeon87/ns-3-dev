@@ -21,7 +21,7 @@ namespace ns3
 {
 /**
  * \ingroup aodvv2
- * \brief Helper class that adds AODVv2 routing to nodes.
+ * @brief Helper class that adds AODVv2 routing to nodes.
  */
 template <typename T>
 class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T> ||
@@ -44,7 +44,7 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
     Aodvv2Helper();
 
     /**
-     * \returns pointer to clone of this Aodvv2Helper
+     * @returns pointer to clone of this Aodvv2Helper
      *
      * \internal
      * This method is mainly for internal use by the other helpers;
@@ -53,21 +53,21 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
     Aodvv2Helper* Copy() const override;
 
     /**
-     * \param node the node on which the routing protocol will run
-     * \returns a newly-created routing protocol
+     * @param node the node on which the routing protocol will run
+     * @returns a newly-created routing protocol
      *
      * This method will be called by ns3::InternetStackHelper::Install
      */
     Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
-     * \param metric the metric to add
+     * @param metric the metric to add
      *
      * This method adds a metric to the list of metrics used by the AODVv2 routing protocol.
      */
     void AddMetric(const aodvv2::Metric<IpAddress>& metric);
     /**
-     * \param name the name of the attribute to set
-     * \param value the value of the attribute to set.
+     * @param name the name of the attribute to set
+     * @param value the value of the attribute to set.
      *
      * This method controls the attributes of ns3::aodvv2::Aodvv2RoutingProtocol
      */
@@ -78,19 +78,19 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
      * have been assigned.  The Install() method of the InternetStackHelper
      * should have previously been called by the user.
      *
-     * \param stream first stream index to use
-     * \param c NodeContainer of the set of nodes for which AODVv2
+     * @param stream first stream index to use
+     * @param c NodeContainer of the set of nodes for which AODVv2
      *          should be modified to use a fixed stream
-     * \return the number of stream indices assigned by this helper
+     * @return the number of stream indices assigned by this helper
      */
     int64_t AssignStreams(NodeContainer c, int64_t stream);
 
     /**
-     * \brief prints the routing table using PrintRoute.
-     * \param printTime the time at which the routing path is supposed to be printed.
-     * \param source the source node pointer to start traversing
-     * \param stream the output stream object to use
-     * \param unit the time unit to be used in the report
+     * @brief prints the routing table using PrintRoute.
+     * @param printTime the time at which the routing path is supposed to be printed.
+     * @param source the source node pointer to start traversing
+     * @param stream the output stream object to use
+     * @param unit the time unit to be used in the report
      */
     void PrintRoutingTable(Time printTime,
                            Ptr<Node> source,
@@ -104,10 +104,10 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
     std::vector<aodvv2::Metric<IpAddress>> m_metrics;
 
     /**
-     * \brief prints the routing table.
-     * \param source the source node pointer to start traversing
-     * \param stream the output stream object to use
-     * \param unit the time unit to be used in the report
+     * @brief prints the routing table.
+     * @param source the source node pointer to start traversing
+     * @param stream the output stream object to use
+     * @param unit the time unit to be used in the report
      */
     static void PrintRoute(Ptr<Node> source,
                            Ptr<OutputStreamWrapper> stream,
