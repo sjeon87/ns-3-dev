@@ -154,6 +154,7 @@ The script performs multiple style checks. By default, the script runs the follo
 
 * Check code formatting using clang-format. Respects clang-format guards.
 * Check if local ``#include`` headers do not use the "ns3/" prefix. Respects clang-format guards.
+* Check if Doxygen tags use ``@`` rather than ``\\``. Respects clang-format guards.
 * Check if there are no trailing whitespace. Always checked.
 * Check if there are no tabs. Respects clang-format guards.
 * Check if source code files use SPDX licenses rather than GPL license text. Respects clang-format guards.
@@ -168,6 +169,7 @@ flags:
 
 * ``--no-formatting``
 * ``--no-include-prefixes``
+* ``--no-doxygen-tags``
 * ``--no-whitespace``
 * ``--no-tabs``
 * ``--no-licenses``
@@ -683,7 +685,7 @@ is described in the `Doxygen website <https://www.doxygen.nl/index.html>`_.
   {
 
   /**
-   * \brief short one-line description of the purpose of your class
+   * @brief short one-line description of the purpose of your class
    *
    * A longer description of the purpose of your class after a blank
    * empty line.
@@ -696,8 +698,8 @@ is described in the `Doxygen website <https://www.doxygen.nl/index.html>`_.
       /**
        * A detailed description of the purpose of the method.
        *
-       * \param firstParam a short description of the purpose of this parameter
-       * \return a short description of what is returned from this function.
+       * @param firstParam a short description of the purpose of this parameter
+       * @return a short description of what is returned from this function.
        */
       int DoSomething(int firstParam);
 
@@ -925,9 +927,10 @@ Doxygen comments should use the C-style comment (also known as Javadoc) style.
 For comments that are intended to not be exposed publicly in the Doxygen output,
 use the ``@internal`` and ``@endinternal`` tags.
 Please use the ``@see`` tag for cross-referencing.
-All parameters and return values should be documented. The |ns3| codebase uses
-both the ``@`` or ``\`` characters for tag identification; please make sure
-that usage is consistent within a file.
+All parameters and return values should be documented. The |ns3| codebase prefers
+the ``@`` character for tag identification. This character is recognized by clang-format
+as the start of Doxygen tags, which enables it to keep tags properly formatted;
+therefore please don't use ``\`` as the delimiter.
 
 .. sourcecode:: cpp
 
@@ -939,7 +942,7 @@ that usage is consistent within a file.
       /**
        * Constructor.
        *
-       * \param n Number of elements.
+       * @param n Number of elements.
        */
       MyClass(int n);
   };
@@ -954,11 +957,11 @@ classes (e.g., all the classes in a module). E.g.;
 .. sourcecode:: cpp
 
   /**
-   * \defgroup mynewmodule This is a new module
+   * @defgroup mynewmodule This is a new module
    */
 
   /**
-   * \ingroup mynewmodule
+   * @ingroup mynewmodule
    *
    * MyClassOne description.
    */
@@ -967,7 +970,7 @@ classes (e.g., all the classes in a module). E.g.;
   };
 
   /**
-   * \ingroup mynewmodule
+   * @ingroup mynewmodule
    *
    * MyClassTwo description.
    */
@@ -980,22 +983,22 @@ In the tests for the module, it is suggested to add an ancillary group:
 .. sourcecode:: cpp
 
   /**
-   * \defgroup mynewmodule-test Tests for new module
-   * \ingroup mynewmodule
-   * \ingroup tests
+   * @defgroup mynewmodule-test Tests for new module
+   * @ingroup mynewmodule
+   * @ingroup tests
    */
 
   /**
-   * \ingroup mynewmodule-tests
-   * \brief MyNewModule Test
+   * @ingroup mynewmodule-tests
+   * @brief MyNewModule Test
    */
   class MyNewModuleTest : public TestCase
   {
   };
 
   /**
-   * \ingroup mynewmodule-tests
-   * \brief MyNewModule TestSuite
+   * @ingroup mynewmodule-tests
+   * @brief MyNewModule TestSuite
    */
   class MyNewModuleTestSuite : public TestSuite
   {
@@ -1004,7 +1007,7 @@ In the tests for the module, it is suggested to add an ancillary group:
   };
 
   /**
-   * \ingroup mynewmodule-tests
+   * @ingroup mynewmodule-tests
    * Static variable for test initialization
    */
   static MyNewModuleTestSuite g_myNewModuleTestSuite;
@@ -1132,8 +1135,8 @@ The general guidelines are as follows:
     /**
      * Receive packet from lower layer (passed to PHY as callback).
      *
-     * \param pkt Packet being received.
-     * \param txMode Mode of received packet.
+     * @param pkt Packet being received.
+     * @param txMode Mode of received packet.
      */
     void RxPacketGood(Ptr<Packet> pkt, double, UanTxMode txMode);
 

@@ -52,19 +52,19 @@ PhyRxEndOkTrace(std::string context, Ptr<const Packet> p)
 }
 
 /**
- * \ingroup spectrum-tests
+ * @ingroup spectrum-tests
  *
- * \brief Ideal Spectrum PHY Test
+ * @brief Ideal Spectrum PHY Test
  */
 class SpectrumIdealPhyTestCase : public TestCase
 {
   public:
     /**
      * Constructor
-     * \param snrLinear SNR (linear)
-     * \param phyRate PHY rate (bps)
-     * \param rateIsAchievable Check if the rate is achievable
-     * \param channelType Channel type
+     * @param snrLinear SNR (linear)
+     * @param phyRate PHY rate (bps)
+     * @param rateIsAchievable Check if the rate is achievable
+     * @param channelType Channel type
      */
     SpectrumIdealPhyTestCase(double snrLinear,
                              uint64_t phyRate,
@@ -76,10 +76,10 @@ class SpectrumIdealPhyTestCase : public TestCase
     void DoRun() override;
     /**
      * Get the test name
-     * \param channelType Channel type
-     * \param snrLinear SNR (linear)
-     * \param phyRate PHY rate (bps)
-     * \return the test name
+     * @param channelType Channel type
+     * @param snrLinear SNR (linear)
+     * @param phyRate PHY rate (bps)
+     * @return the test name
      */
     static std::string Name(std::string channelType, double snrLinear, uint64_t phyRate);
 
@@ -187,7 +187,7 @@ SpectrumIdealPhyTestCase::DoRun()
                          TimeValue(Seconds(double(pktSize * 8) / (1.2 * double(phyRate)))));
     client->SetAttribute("PacketSize", UintegerValue(pktSize));
     client->SetAttribute("MaxPackets", UintegerValue(0));
-    client->SetStartTime(Seconds(0.0));
+    client->SetStartTime(Seconds(0));
     client->SetStopTime(Seconds(testDuration));
     c.Get(0)->AddApplication(client);
 
@@ -218,9 +218,9 @@ SpectrumIdealPhyTestCase::DoRun()
 }
 
 /**
- * \ingroup spectrum-tests
+ * @ingroup spectrum-tests
  *
- * \brief Ideal Spectrum PHY TestSuite
+ * @brief Ideal Spectrum PHY TestSuite
  */
 class SpectrumIdealPhyTestSuite : public TestSuite
 {

@@ -57,7 +57,7 @@ LteSecondaryCellSelectionTestSuite::LteSecondaryCellSelectionTestSuite()
 } // end of LteSecondaryCellSelectionTestSuite::LteSecondaryCellSelectionTestSuite ()
 
 /**
- * \ingroup lte-test
+ * @ingroup lte-test
  * Static variable for test initialization
  */
 static LteSecondaryCellSelectionTestSuite g_lteSecondaryCellSelectionTestSuite;
@@ -142,7 +142,7 @@ LteSecondaryCellSelectionTestCase::DoRun()
         MakeCallback(&LteSecondaryCellSelectionTestCase::ConnectionEstablishedCallback, this));
 
     // Run simulation.
-    Simulator::Stop(Seconds(2.0));
+    Simulator::Stop(Seconds(2));
     Simulator::Run();
 
     for (auto& it : enbDev->GetCcMap())

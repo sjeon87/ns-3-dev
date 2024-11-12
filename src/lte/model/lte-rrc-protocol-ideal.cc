@@ -26,12 +26,12 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("LteRrcProtocolIdeal");
 
 /**
- * \ingroup lte
+ * @ingroup lte
  *
  */
 
 /// RRC ideal message delay
-static const Time RRC_IDEAL_MSG_DELAY = MilliSeconds(0);
+static const Time RRC_IDEAL_MSG_DELAY;
 
 NS_OBJECT_ENSURE_REGISTERED(LteUeRrcProtocolIdeal);
 
@@ -461,18 +461,18 @@ class IdealHandoverPreparationInfoHeader : public Header
     /**
      * Get the message ID function
      *
-     * \returns the message ID
+     * @returns the message ID
      */
     uint32_t GetMsgId() const;
     /**
      * Set the message ID function
      *
-     * \param id the message ID
+     * @param id the message ID
      */
     void SetMsgId(uint32_t id);
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
     TypeId GetInstanceTypeId() const override;
@@ -585,18 +585,18 @@ class IdealHandoverCommandHeader : public Header
     /**
      * Get the message ID function
      *
-     * \returns the message ID
+     * @returns the message ID
      */
     uint32_t GetMsgId() const;
     /**
      * Set the message ID function
      *
-     * \param id the message ID
+     * @param id the message ID
      */
     void SetMsgId(uint32_t id);
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
     TypeId GetInstanceTypeId() const override;

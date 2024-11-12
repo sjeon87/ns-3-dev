@@ -22,7 +22,7 @@ namespace ns3
 {
 
 /**
- * \ingroup spectrum
+ * @ingroup spectrum
  *
  * SpectrumPhy implementation that creates a customizable TV transmitter which
  * transmits a PSD spectrum specified by user-set attributes.
@@ -49,7 +49,7 @@ class TvSpectrumTransmitter : public SpectrumPhy
 
     /**
      * Register this type.
-     * \return The object TypeId.
+     * @return The object TypeId.
      */
     static TypeId GetTypeId();
 
@@ -84,7 +84,7 @@ class TvSpectrumTransmitter : public SpectrumPhy
      * Digital_Terrestrial_Television_Broadcasting_(DTTB)_Standard>.
      *
      * COFDM PSD approximated from Figure 12 (8k mode) of the following article:
-     * Kopp, Carlo. "High Definition Television." High Definition Television. Air
+     * Kopp, Carlo. "High Definition Television." High Definition Television. Air
      * Power Australia. <http://www.ausairpower.net/AC-1100.html>.
      *
      * Analog PSD approximated from Figure 4 of the following paper:

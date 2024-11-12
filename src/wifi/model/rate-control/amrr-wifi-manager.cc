@@ -20,7 +20,7 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("AmrrWifiManager");
 
 /**
- * \brief hold per-remote-station state for AMRR Wifi manager.
+ * @brief hold per-remote-station state for AMRR Wifi manager.
  *
  * This struct extends from WifiRemoteStation struct to hold additional
  * information required by the AMRR Wifi manager
@@ -50,7 +50,7 @@ AmrrWifiManager::GetTypeId()
             .AddConstructor<AmrrWifiManager>()
             .AddAttribute("UpdatePeriod",
                           "The interval between decisions about rate control changes",
-                          TimeValue(Seconds(1.0)),
+                          TimeValue(Seconds(1)),
                           MakeTimeAccessor(&AmrrWifiManager::m_updatePeriod),
                           MakeTimeChecker())
             .AddAttribute(

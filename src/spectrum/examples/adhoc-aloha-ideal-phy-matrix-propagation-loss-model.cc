@@ -36,8 +36,8 @@ static uint64_t g_rxBytes;     //!< Rx bytes counter.
 /**
  * Trace for PHY Rx successful end.
  *
- * \param context The context.
- * \param p The packet.
+ * @param context The context.
+ * @param p The packet.
  */
 void
 PhyRxEndOkTrace(std::string context, Ptr<const Packet> p)
@@ -50,7 +50,7 @@ PhyRxEndOkTrace(std::string context, Ptr<const Packet> p)
 }
 
 /**
- * \ingroup spectrum
+ * @ingroup spectrum
  *
  * Store the last pathloss value for each TX-RX pair. This is an
  * example of how the PathlossTrace (provided by some SpectrumChannel
@@ -63,10 +63,10 @@ class GlobalPathlossDatabase
     /**
      * update the pathloss value
      *
-     * \param context
-     * \param txPhy the transmitting PHY
-     * \param rxPhy the receiving PHY
-     * \param lossDb the loss in dB
+     * @param context
+     * @param txPhy the transmitting PHY
+     * @param rxPhy the receiving PHY
+     * @param lossDb the loss in dB
      */
     void UpdatePathloss(std::string context,
                         Ptr<const SpectrumPhy> txPhy,
@@ -179,7 +179,7 @@ main(int argc, char** argv)
     onoff.SetAttribute("PacketSize", UintegerValue(pktSize));
 
     ApplicationContainer apps = onoff.Install(c.Get(0));
-    apps.Start(Seconds(0.0));
+    apps.Start(Seconds(0));
     apps.Stop(Seconds(simDuration));
 
     Config::Connect("/NodeList/*/DeviceList/*/Phy/RxEndOk", MakeCallback(&PhyRxEndOkTrace));

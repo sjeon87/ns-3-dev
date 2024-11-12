@@ -23,15 +23,15 @@
 using namespace ns3;
 
 /**
- * \ingroup mesh
- * \ingroup tests
- * \defgroup mesh-test mesh module tests
+ * @ingroup mesh
+ * @ingroup tests
+ * @defgroup mesh-test mesh module tests
  */
 
 /**
- * \ingroup mesh-test
+ * @ingroup mesh-test
  *
- * \brief Built-in self test for MeshInformationElementVector and all IE
+ * @brief Built-in self test for MeshInformationElementVector and all IE
  */
 struct MeshInformationElementVectorBist : public TestCase
 {
@@ -73,10 +73,10 @@ MeshInformationElementVectorBist::DoRun()
     }
     {
         Ptr<dot11s::IeBeaconTiming> beaconTiming = Create<dot11s::IeBeaconTiming>();
-        beaconTiming->AddNeighboursTimingElementUnit(1, Seconds(1.0), Seconds(4.0));
-        beaconTiming->AddNeighboursTimingElementUnit(2, Seconds(2.0), Seconds(3.0));
-        beaconTiming->AddNeighboursTimingElementUnit(3, Seconds(3.0), Seconds(2.0));
-        beaconTiming->AddNeighboursTimingElementUnit(4, Seconds(4.0), Seconds(1.0));
+        beaconTiming->AddNeighboursTimingElementUnit(1, Seconds(1), Seconds(4));
+        beaconTiming->AddNeighboursTimingElementUnit(2, Seconds(2), Seconds(3));
+        beaconTiming->AddNeighboursTimingElementUnit(3, Seconds(3), Seconds(2));
+        beaconTiming->AddNeighboursTimingElementUnit(4, Seconds(4), Seconds(1));
         vector.AddInformationElement(beaconTiming);
     }
     {
@@ -143,9 +143,9 @@ MeshInformationElementVectorBist::DoRun()
 }
 
 /**
- * \ingroup mesh-test
+ * @ingroup mesh-test
  *
- * \brief Mesh Test Suite
+ * @brief Mesh Test Suite
  */
 class MeshTestSuite : public TestSuite
 {

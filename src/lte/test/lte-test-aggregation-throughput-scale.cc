@@ -44,7 +44,7 @@ LteAggregationThroughputScaleTestSuite::LteAggregationThroughputScaleTestSuite()
 }
 
 /**
- * \ingroup lte-test
+ * @ingroup lte-test
  * Static variable for test initialization
  */
 static LteAggregationThroughputScaleTestSuite g_lteAggregationThroughputScaleTestSuite;
@@ -132,9 +132,9 @@ LteAggregationThroughputScaleTestCase::GetThroughput(uint8_t numberOfComponentCa
     pgwNode->AddApplication(client);
 
     apps.Add(client);
-    apps.Start(Seconds(1.0));
+    apps.Start(Seconds(1));
 
-    Simulator::Stop(Seconds(2.0));
+    Simulator::Stop(Seconds(2));
     Simulator::Run();
 
     m_actualCellId = ueDev->GetRrc()->GetCellId();

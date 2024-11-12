@@ -64,7 +64,7 @@ class UeMemberLteUePhySapProvider : public LteUePhySapProvider
     /**
      * Constructor
      *
-     * \param phy the LTE UE Phy
+     * @param phy the LTE UE Phy
      */
     UeMemberLteUePhySapProvider(LteUePhy* phy);
 
@@ -118,8 +118,8 @@ static const std::string g_uePhyStateName[LteUePhy::NUM_STATES] = {
 };
 
 /**
- * \param s The UE PHY state.
- * \return The string representation of the given state.
+ * @param s The UE PHY state.
+ * @return The string representation of the given state.
  */
 static inline const std::string&
 ToString(LteUePhy::State s)
@@ -146,7 +146,7 @@ LteUePhy::LteUePhy(Ptr<LteSpectrumPhy> dlPhy, Ptr<LteSpectrumPhy> ulPhy)
       m_dataInterferencePowerUpdated(false),
       m_pssReceived(false),
       m_ueMeasurementsFilterPeriod(MilliSeconds(200)),
-      m_ueMeasurementsFilterLast(MilliSeconds(0)),
+      m_ueMeasurementsFilterLast(),
       m_rsrpSinrSampleCounter(0),
       m_imsi(0)
 {

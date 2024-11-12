@@ -20,7 +20,7 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("OnoeWifiManager");
 
 /**
- * \brief hold per-remote-station state for ONOE Wifi manager.
+ * @brief hold per-remote-station state for ONOE Wifi manager.
  *
  * This struct extends from WifiRemoteStation struct to hold additional
  * information required by the ONOE Wifi manager
@@ -50,7 +50,7 @@ OnoeWifiManager::GetTypeId()
             .AddConstructor<OnoeWifiManager>()
             .AddAttribute("UpdatePeriod",
                           "The interval between decisions about rate control changes",
-                          TimeValue(Seconds(1.0)),
+                          TimeValue(Seconds(1)),
                           MakeTimeAccessor(&OnoeWifiManager::m_updatePeriod),
                           MakeTimeChecker())
             .AddAttribute("RaiseThreshold",

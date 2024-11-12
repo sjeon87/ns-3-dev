@@ -36,10 +36,10 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("WifiMacOfdmaTestSuite");
 
 /**
- * \ingroup wifi-test
- * \ingroup tests
+ * @ingroup wifi-test
+ * @ingroup tests
  *
- * \brief Dummy Multi User Scheduler used to test OFDMA ack sequences
+ * @brief Dummy Multi User Scheduler used to test OFDMA ack sequences
  *
  * This Multi User Scheduler returns SU_TX until the simulation time reaches 1.5 seconds
  * (when all BA agreements have been established). Afterwards, it cycles through UL_MU_TX
@@ -51,8 +51,8 @@ class TestMultiUserScheduler : public MultiUserScheduler
 {
   public:
     /**
-     * \brief Get the type ID.
-     * \return the object TypeId
+     * @brief Get the type ID.
+     * @return the object TypeId
      */
     static TypeId GetTypeId();
     TestMultiUserScheduler();
@@ -355,7 +355,7 @@ TestMultiUserScheduler::ComputeUlMuInfo()
 }
 
 /**
- * \ingroup wifi-test
+ * @ingroup wifi-test
  * The scenarios
  */
 enum class WifiOfdmaScenario : uint8_t
@@ -366,10 +366,10 @@ enum class WifiOfdmaScenario : uint8_t
 };
 
 /**
- * \ingroup wifi-test
- * \ingroup tests
+ * @ingroup wifi-test
+ * @ingroup tests
  *
- * \brief Test OFDMA acknowledgment sequences
+ * @brief Test OFDMA acknowledgment sequences
  *
  * Run this test with:
  *
@@ -415,30 +415,30 @@ class OfdmaAckSequenceTest : public TestCase
     /**
      * Constructor
      *
-     * \param params parameters for the OFDMA acknowledgment sequences test
+     * @param params parameters for the OFDMA acknowledgment sequences test
      */
     OfdmaAckSequenceTest(const Params& params);
     ~OfdmaAckSequenceTest() override;
 
     /**
      * Function to trace packets received by the server application
-     * \param context the context
-     * \param p the packet
-     * \param addr the address
+     * @param context the context
+     * @param p the packet
+     * @param addr the address
      */
     void L7Receive(std::string context, Ptr<const Packet> p, const Address& addr);
     /**
      * Function to trace CW value used by the given station after the MU exchange
-     * \param staIndex the index of the given station
-     * \param cw the current Contention Window value
+     * @param staIndex the index of the given station
+     * @param cw the current Contention Window value
      */
     void TraceCw(uint32_t staIndex, uint32_t cw, uint8_t /* linkId */);
     /**
      * Callback invoked when FrameExchangeManager passes PSDUs to the PHY
-     * \param context the context
-     * \param psduMap the PSDU map
-     * \param txVector the TX vector
-     * \param txPowerW the tx power in Watts
+     * @param context the context
+     * @param psduMap the PSDU map
+     * @param txVector the TX vector
+     * @param txPowerW the tx power in Watts
      */
     void Transmit(std::string context,
                   WifiConstPsduMap psduMap,
@@ -446,9 +446,9 @@ class OfdmaAckSequenceTest : public TestCase
                   double txPowerW);
     /**
      * Check correctness of transmitted frames
-     * \param sifs the SIFS duration
-     * \param slotTime a slot duration
-     * \param aifsn the AIFSN
+     * @param sifs the SIFS duration
+     * @param slotTime a slot duration
+     * @param aifsn the AIFSN
      */
     void CheckResults(Time sifs, Time slotTime, uint8_t aifsn);
 
@@ -510,7 +510,7 @@ OfdmaAckSequenceTest::OfdmaAckSequenceTest(const Params& params)
       m_ulPktsGenerated(false),
       m_received(0),
       m_flushed(0),
-      m_edcaDisabledStartTime(Seconds(0)),
+      m_edcaDisabledStartTime(),
       m_cwValues(std::vector<uint32_t>(m_nStations, 2)), // 2 is an invalid CW value
       m_defaultTbPpduDuration(MilliSeconds(2))
 {
@@ -695,8 +695,8 @@ OfdmaAckSequenceTest::Transmit(std::string context,
                 client->SetAttribute("Priority", UintegerValue(i * 2)); // 0, 2, 4 and 6
                 client->SetRemote(m_sockets[i]);
                 m_staDevices.Get(i)->GetNode()->AddApplication(client);
-                client->SetStartTime(txDuration);  // start when TX ends
-                client->SetStopTime(Seconds(1.0)); // stop in a second
+                client->SetStartTime(txDuration); // start when TX ends
+                client->SetStopTime(Seconds(1));  // stop in a second
                 client->Initialize();
             }
             m_ulPktsGenerated = true;
@@ -2265,7 +2265,7 @@ OfdmaAckSequenceTest::DoRun()
         client1->SetRemote(socket);
         wifiApNode.Get(0)->AddApplication(client1);
         client1->SetStartTime(Seconds(1) + i * MilliSeconds(1));
-        client1->SetStopTime(Seconds(2.0));
+        client1->SetStopTime(Seconds(2));
 
         // the second client application generates the selected number of packets,
         // which are sent in DL MU PPDUs.
@@ -2282,8 +2282,8 @@ OfdmaAckSequenceTest::DoRun()
         Ptr<PacketSocketServer> server = CreateObject<PacketSocketServer>();
         server->SetLocal(socket);
         wifiStaNodes.Get(i)->AddApplication(server);
-        server->SetStartTime(Seconds(0.0));
-        server->SetStopTime(Seconds(3.0));
+        server->SetStartTime(Seconds(0));
+        server->SetStopTime(Seconds(3));
     }
 
     // UL Traffic
@@ -2303,7 +2303,7 @@ OfdmaAckSequenceTest::DoRun()
         client1->SetRemote(m_sockets[i]);
         wifiStaNodes.Get(i)->AddApplication(client1);
         client1->SetStartTime(Seconds(1.005) + i * MilliSeconds(1));
-        client1->SetStopTime(Seconds(2.0));
+        client1->SetStopTime(Seconds(2));
 
         // packets to be included in HE TB PPDUs are generated (by Transmit()) when
         // the first Basic Trigger Frame is sent by the AP
@@ -2311,8 +2311,8 @@ OfdmaAckSequenceTest::DoRun()
         Ptr<PacketSocketServer> server = CreateObject<PacketSocketServer>();
         server->SetLocal(m_sockets[i]);
         wifiApNode.Get(0)->AddApplication(server);
-        server->SetStartTime(Seconds(0.0));
-        server->SetStopTime(Seconds(3.0));
+        server->SetStartTime(Seconds(0));
+        server->SetStopTime(Seconds(3));
     }
 
     Config::Connect("/NodeList/*/ApplicationList/0/$ns3::PacketSocketServer/Rx",
@@ -2336,10 +2336,10 @@ OfdmaAckSequenceTest::DoRun()
 }
 
 /**
- * \ingroup wifi-test
- * \ingroup tests
+ * @ingroup wifi-test
+ * @ingroup tests
  *
- * \brief wifi MAC OFDMA Test Suite
+ * @brief wifi MAC OFDMA Test Suite
  */
 class WifiMacOfdmaTestSuite : public TestSuite
 {

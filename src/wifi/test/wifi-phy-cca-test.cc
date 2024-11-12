@@ -56,10 +56,10 @@ const std::map<MHz_u, Time> PpduDurations = {
 };
 
 /**
- * \ingroup wifi-test
- * \ingroup tests
+ * @ingroup wifi-test
+ * @ingroup tests
  *
- * \brief PHY CCA thresholds test
+ * @brief PHY CCA thresholds test
  */
 class WifiPhyCcaThresholdsTest : public TestCase
 {
@@ -78,45 +78,45 @@ class WifiPhyCcaThresholdsTest : public TestCase
 
     /**
      * Create a dummy PSDU whose payload is 1000 bytes
-     * \return a dummy PSDU whose payload is 1000 bytes
+     * @return a dummy PSDU whose payload is 1000 bytes
      */
     Ptr<WifiPsdu> CreateDummyPsdu();
     /**
      * Create a non-HT PPDU
-     * \param channel the operating channel of the PHY used for the transmission
-     * \return a non-HT PPDU
+     * @param channel the operating channel of the PHY used for the transmission
+     * @return a non-HT PPDU
      */
     Ptr<OfdmPpdu> CreateDummyNonHtPpdu(const WifiPhyOperatingChannel& channel);
     /**
      * Create a HT PPDU
-     * \param bandwidth the bandwidth used for the transmission the PPDU
-     * \param channel the operating channel of the PHY used for the transmission
-     * \return a HT PPDU
+     * @param bandwidth the bandwidth used for the transmission the PPDU
+     * @param channel the operating channel of the PHY used for the transmission
+     * @return a HT PPDU
      */
     Ptr<HtPpdu> CreateDummyHtPpdu(MHz_u bandwidth, const WifiPhyOperatingChannel& channel);
     /**
      * Create a VHT PPDU
-     * \param bandwidth the bandwidth used for the transmission the PPDU
-     * \param channel the operating channel of the PHY used for the transmission
-     * \return a VHT PPDU
+     * @param bandwidth the bandwidth used for the transmission the PPDU
+     * @param channel the operating channel of the PHY used for the transmission
+     * @return a VHT PPDU
      */
     Ptr<VhtPpdu> CreateDummyVhtPpdu(MHz_u bandwidth, const WifiPhyOperatingChannel& channel);
     /**
      * Create a HE PPDU
-     * \param bandwidth the bandwidth used for the transmission the PPDU
-     * \param channel the operating channel of the PHY used for the transmission
-     * \return a HE PPDU
+     * @param bandwidth the bandwidth used for the transmission the PPDU
+     * @param channel the operating channel of the PHY used for the transmission
+     * @return a HE PPDU
      */
     Ptr<HePpdu> CreateDummyHePpdu(MHz_u bandwidth, const WifiPhyOperatingChannel& channel);
 
     /**
      * Function to verify the CCA threshold that is being reported by a given PHY entity upon
      * reception of a signal or a PPDU
-     * \param phy the PHY entity to verify
-     * \param ppdu the incoming PPDU or signal (if nullptr)
-     * \param channelType the channel list type that indicates which channel the PPDU or the
+     * @param phy the PHY entity to verify
+     * @param ppdu the incoming PPDU or signal (if nullptr)
+     * @param channelType the channel list type that indicates which channel the PPDU or the
      * signal occupies
-     * \param expectedCcaThreshold the CCA threshold that is expected to be reported
+     * @param expectedCcaThreshold the CCA threshold that is expected to be reported
      */
     void VerifyCcaThreshold(const Ptr<PhyEntity> phy,
                             const Ptr<const WifiPpdu> ppdu,
@@ -604,10 +604,10 @@ WifiPhyCcaThresholdsTest::DoRun()
 }
 
 /**
- * \ingroup wifi-test
- * \ingroup tests
+ * @ingroup wifi-test
+ * @ingroup tests
  *
- * \brief PHY listener for CCA tests
+ * @brief PHY listener for CCA tests
  */
 class CcaTestPhyListener : public ns3::WifiPhyListener
 {
@@ -685,10 +685,10 @@ class CcaTestPhyListener : public ns3::WifiPhyListener
 };
 
 /**
- * \ingroup wifi-test
- * \ingroup tests
+ * @ingroup wifi-test
+ * @ingroup tests
  *
- * \brief Wifi Phy Threshold Test base class
+ * @brief Wifi Phy Threshold Test base class
  */
 class WifiPhyCcaIndicationTest : public TestCase
 {
@@ -702,19 +702,19 @@ class WifiPhyCcaIndicationTest : public TestCase
 
     /**
      * Send an HE SU PPDU
-     * \param txPower the transmit power
-     * \param frequency the center frequency the transmitter is operating on
-     * \param bandwidth the bandwidth to use for the transmission
+     * @param txPower the transmit power
+     * @param frequency the center frequency the transmitter is operating on
+     * @param bandwidth the bandwidth to use for the transmission
      */
     void SendHeSuPpdu(dBm_u txPower, MHz_u frequency, MHz_u bandwidth);
 
     /**
      * Start to generate a signal
-     * \param signalGenerator the signal generator to use
-     * \param txPower the transmit power
-     * \param frequency the center frequency of the signal to send
-     * \param bandwidth the bandwidth of the signal to send
-     * \param duration the duration of the signal
+     * @param signalGenerator the signal generator to use
+     * @param txPower the transmit power
+     * @param frequency the center frequency of the signal to send
+     * @param bandwidth the bandwidth of the signal to send
+     * @param duration the duration of the signal
      */
     void StartSignal(Ptr<WaveformGenerator> signalGenerator,
                      dBm_u txPower,
@@ -723,23 +723,23 @@ class WifiPhyCcaIndicationTest : public TestCase
                      Time duration);
     /**
      * Stop to generate a signal
-     * \param signalGenerator the signal generator to use
+     * @param signalGenerator the signal generator to use
      */
     void StopSignal(Ptr<WaveformGenerator> signalGenerator);
 
     /**
      * Check the PHY state
-     * \param expectedState the expected state of the PHY
+     * @param expectedState the expected state of the PHY
      */
     void CheckPhyState(WifiPhyState expectedState);
-    /// \copydoc CheckPhyState
+    /// @copydoc CheckPhyState
     void DoCheckPhyState(WifiPhyState expectedState);
 
     /**
      * Check the last CCA-BUSY notification
-     * \param expectedEndTime the expected CCA-BUSY end time
-     * \param expectedChannelType the expected channel type
-     * \param expectedPer20MhzDurations the expected per-20 MHz CCA-BUSY durations
+     * @param expectedEndTime the expected CCA-BUSY end time
+     * @param expectedChannelType the expected channel type
+     * @param expectedPer20MhzDurations the expected per-20 MHz CCA-BUSY durations
      */
     void CheckLastCcaBusyNotification(Time expectedEndTime,
                                       WifiChannelListType expectedChannelType,
@@ -748,7 +748,7 @@ class WifiPhyCcaIndicationTest : public TestCase
     /**
      * Log scenario description
      *
-     * \param log the scenario description to add to log
+     * @param log the scenario description to add to log
      */
     void LogScenario(const std::string& log) const;
 
@@ -798,11 +798,11 @@ class WifiPhyCcaIndicationTest : public TestCase
 
     /**
      * Schedule test to perform.
-     * \param delay the reference delay to schedule the events
-     * \param generatedSignals the vector of signals to be generated
-     * \param generatedPpdus the vector of PPDUs to be generated
-     * \param stateCheckpoints the vector of PHY state checks
-     * \param ccaCheckpoints the vector of PHY CCA checks
+     * @param delay the reference delay to schedule the events
+     * @param generatedSignals the vector of signals to be generated
+     * @param generatedPpdus the vector of PPDUs to be generated
+     * @param stateCheckpoints the vector of PHY state checks
+     * @param ccaCheckpoints the vector of PHY CCA checks
      */
     void ScheduleTest(Time delay,
                       const std::vector<TxSignalInfo>& generatedSignals,
@@ -1105,9 +1105,9 @@ WifiPhyCcaIndicationTest::RunOne()
         WifiPhy::ChannelTuple{channelNum, m_channelWidth, WIFI_PHY_BAND_5GHZ, 0});
 
     std::vector<Time> expectedPer20MhzCcaBusyDurations{};
-    Time delay = Seconds(0.0);
+    Time delay;
     Simulator::Schedule(delay, &WifiPhyCcaIndicationTest::Reset, this);
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // Verify PHY state stays IDLE and no CCA-BUSY indication is reported when a signal below the
@@ -1127,7 +1127,7 @@ WifiPhyCcaIndicationTest::RunOne()
                       WifiPhyState::IDLE} // IDLE just after the transmission ends
                  },
                  {});
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // Verify PHY state is CCA-BUSY as long as a 20 MHz signal above the energy detection threshold
@@ -1165,7 +1165,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                             MicroSeconds(0)})
                                : std::vector<Time>{MicroSeconds(100), MicroSeconds(0)})
                         : std::vector<Time>{})}});
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // Verify PHY state is CCA-BUSY as long as the sum of 20 MHz signals occupying P20 is above the
@@ -1206,7 +1206,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                    MicroSeconds(0)})
                       : std::vector<Time>{MicroSeconds(50), MicroSeconds(0)})
                : std::vector<Time>{})}});
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // Verify PHY state stays IDLE when a 20 MHz HE SU PPDU with received power below the
@@ -1227,7 +1227,7 @@ WifiPhyCcaIndicationTest::RunOne()
                       WifiPhyState::IDLE} // IDLE just after the transmission ends
                  },
                  {});
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // Verify PHY state transitions to CCA-BUSY when an HE SU PPDU with received power above the CCA
@@ -1266,7 +1266,7 @@ WifiPhyCcaIndicationTest::RunOne()
                              : std::vector<Time>{Seconds(0), Seconds(0), Seconds(0), Seconds(0)})
                       : std::vector<Time>{Seconds(0), Seconds(0)})
                : std::vector<Time>{})}});
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // Verify PHY state stays IDLE when a 40 MHz HE SU PPDU with received power below the CCA
@@ -1287,7 +1287,7 @@ WifiPhyCcaIndicationTest::RunOne()
                       WifiPhyState::IDLE} // IDLE just after the transmission ends
                  },
                  {});
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // Verify PHY state transitions to CCA-BUSY when an HE SU PPDU with received power above the CCA
@@ -1328,7 +1328,7 @@ WifiPhyCcaIndicationTest::RunOne()
                              : std::vector<Time>{Seconds(0), Seconds(0), Seconds(0), Seconds(0)})
                       : std::vector<Time>{Seconds(0), Seconds(0)})
                : std::vector<Time>{})}});
-    delay += Seconds(1.0);
+    delay += Seconds(1);
 
     if (m_channelWidth > 20)
     {
@@ -1350,7 +1350,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but CCA-BUSY indication is reported when a 20 MHz signal
@@ -1386,7 +1386,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                                   MicroSeconds(0),
                                                                                   MicroSeconds(0)})
                                      : std::vector<Time>{MicroSeconds(0), MicroSeconds(100)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state is CCA-BUSY as long as a 40 MHz signal above the energy detection
@@ -1422,7 +1422,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                                   MicroSeconds(0),
                                                                                   MicroSeconds(0)})
                                      : std::vector<Time>{MicroSeconds(100), MicroSeconds(100)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY notifies CCA-BUSY for the primary channel while the secondary channel was
@@ -1479,7 +1479,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                                   MicroSeconds(0),
                                                                                   MicroSeconds(0)})
                                      : std::vector<Time>{MicroSeconds(100), MicroSeconds(50)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY updates per-20 MHz CCA durations if a signal arrives on the secondary channel
@@ -1536,7 +1536,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                                   MicroSeconds(0),
                                                                                   MicroSeconds(0)})
                                      : std::vector<Time>{MicroSeconds(50), MicroSeconds(100)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE when a 20 MHz HE SU PPDU with received power below the CCA
@@ -1557,7 +1557,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but CCA-BUSY indication is reported when a 20 MHz HE SU PPDU
@@ -1594,7 +1594,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                          NanoSeconds(0),
                                                                          NanoSeconds(0)})
                             : std::vector<Time>{NanoSeconds(0), PpduDurations.at(20)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but CCA-BUSY indication is still reported as long as a signal
@@ -1652,7 +1652,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                                   MicroSeconds(0),
                                                                                   MicroSeconds(0)})
                                      : std::vector<Time>{MicroSeconds(0), MicroSeconds(46)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
     }
 
     if (m_channelWidth > 40)
@@ -1676,7 +1676,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY notifies CCA-BUSY for the S40 as long as a signal above the energy detection
@@ -1713,7 +1713,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                   MicroSeconds(0),
                                                                   MicroSeconds(100),
                                                                   MicroSeconds(0)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE for the S40 if a signal below the energy detection threshold
@@ -1734,7 +1734,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY notifies CCA-BUSY for the S40 as long as a signal above the energy detection
@@ -1771,7 +1771,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                   MicroSeconds(0),
                                                                   MicroSeconds(0),
                                                                   MicroSeconds(100)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE for the S40 if a signal below the energy detection threshold
@@ -1791,7 +1791,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY notifies CCA-BUSY for the S40 as long as a signal above the energy detection
@@ -1828,7 +1828,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                   MicroSeconds(0),
                                                                   MicroSeconds(100),
                                                                   MicroSeconds(100)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state is CCA-BUSY as long as a 80 MHz signal above the energy detection
@@ -1862,7 +1862,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                   MicroSeconds(100),
                                                                   MicroSeconds(100),
                                                                   MicroSeconds(100)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY notifies CCA-BUSY for the P20 channel while the S40 channel was already in
@@ -1917,7 +1917,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                          MicroSeconds(0),
                                                          MicroSeconds(50),
                                                          MicroSeconds(0)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but notifies CCA-BUSY for the S20 channel while the S40
@@ -1970,7 +1970,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                          MicroSeconds(100),
                                                          MicroSeconds(50),
                                                          MicroSeconds(0)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE when a 40 MHz HE SU PPDU with received power below the CCA
@@ -1991,7 +1991,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but CCA-BUSY indication is reported when a 40 MHz HE SU PPDU
@@ -2026,7 +2026,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                   NanoSeconds(0),
                                                                   PpduDurations.at(40),
                                                                   PpduDurations.at(40)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but CCA-BUSY indication is still reported as long as a signal
@@ -2079,7 +2079,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                          MicroSeconds(0),
                                                          MicroSeconds(46),
                                                          MicroSeconds(46)})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
     }
     else // 20 or 40 MHz receiver
     {
@@ -2140,7 +2140,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                                 Seconds(0)})
                                    : std::vector<Time>{Seconds(0), Seconds(0)})
                             : std::vector<Time>{})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY notifies CCA-BUSY when a 80 MHz HE SU PPDU with received power above the CCA
@@ -2200,7 +2200,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                                                        NanoSeconds(243200)})
                           : std::vector<Time>{NanoSeconds(243200), NanoSeconds(243200)})
                    : std::vector<Time>{})}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and no CCA-BUSY indication is reported when a signal not
@@ -2221,7 +2221,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
     }
 
     if (m_channelWidth > 80)
@@ -2245,7 +2245,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if a signal above the
@@ -2277,7 +2277,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(0),
                                          MicroSeconds(0),
                                          MicroSeconds(0)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and no CCA-BUSY indication is reported if a signal below the
@@ -2298,7 +2298,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if a signal above the
@@ -2330,7 +2330,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(100),
                                          MicroSeconds(0),
                                          MicroSeconds(0)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and no CCA-BUSY indication is reported if a signal below the
@@ -2351,7 +2351,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if a signal above the
@@ -2383,7 +2383,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(0),
                                          MicroSeconds(100),
                                          MicroSeconds(0)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and no CCA-BUSY indication is reported if a signal below the
@@ -2404,7 +2404,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if a signal above the
@@ -2436,7 +2436,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(0),
                                          MicroSeconds(0),
                                          MicroSeconds(100)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and no CCA-BUSY indication is reported if a signal below the
@@ -2457,7 +2457,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if a signal above the
@@ -2489,7 +2489,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(100),
                                          MicroSeconds(0),
                                          MicroSeconds(0)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and no CCA-BUSY indication is reported if a signal below the
@@ -2510,7 +2510,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if a signal above the
@@ -2542,7 +2542,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(0),
                                          MicroSeconds(100),
                                          MicroSeconds(100)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and no CCA-BUSY indication is reported if a signal below the
@@ -2562,7 +2562,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if a signal above the
@@ -2593,7 +2593,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(100),
                                          MicroSeconds(100),
                                          MicroSeconds(100)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE as long as a 160 MHz signal below the energy detection
@@ -2615,7 +2615,7 @@ WifiPhyCcaIndicationTest::RunOne()
                      },
                      {});
 
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state is CCA-BUSY as long as a 160 MHz signal above the energy detection
@@ -2646,7 +2646,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(100),
                                          MicroSeconds(100),
                                          MicroSeconds(100)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY notifies CCA-BUSY for the P20 channel while the S80 channel was already in
@@ -2693,7 +2693,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                 MicroSeconds(0),
                                 MicroSeconds(50),
                                 MicroSeconds(0)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but notifies CCA-BUSY for the S40 channel while the S80
@@ -2738,7 +2738,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                 MicroSeconds(0),
                                 MicroSeconds(0),
                                 MicroSeconds(50)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but notifies CCA-BUSY for the S20 channel while the S80
@@ -2783,7 +2783,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                 MicroSeconds(0),
                                 MicroSeconds(0),
                                 MicroSeconds(0)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE when a 80 MHz HE SU PPDU with received power below the CCA
@@ -2804,7 +2804,7 @@ WifiPhyCcaIndicationTest::RunOne()
                           WifiPhyState::IDLE} // IDLE just after the transmission ends
                      },
                      {});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE but CCA-BUSY indication is reported when a 80 MHz HE SU PPDU
@@ -2835,7 +2835,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          PpduDurations.at(80),
                                          PpduDurations.at(80),
                                          PpduDurations.at(80)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays IDLE and CCA-BUSY indication is reported if only the per20bitmap
@@ -2866,7 +2866,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                          MicroSeconds(0),
                                          MicroSeconds(0),
                                          MicroSeconds(100)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
 
         //----------------------------------------------------------------------------------------------------------------------------------
         // Verify PHY state stays CCA_BUSY and CCA-BUSY indication is reported if only the
@@ -2911,7 +2911,7 @@ WifiPhyCcaIndicationTest::RunOne()
                                 MicroSeconds(0),
                                 MicroSeconds(0),
                                 MicroSeconds(200)}}});
-        delay += Seconds(1.0);
+        delay += Seconds(1);
     }
 
     Simulator::Run();
@@ -2954,10 +2954,10 @@ WifiPhyCcaIndicationTest::DoTeardown()
 }
 
 /**
- * \ingroup wifi-test
- * \ingroup tests
+ * @ingroup wifi-test
+ * @ingroup tests
  *
- * \brief Wi-Fi PHY CCA Test Suite
+ * @brief Wi-Fi PHY CCA Test Suite
  */
 class WifiPhyCcaTestSuite : public TestSuite
 {
