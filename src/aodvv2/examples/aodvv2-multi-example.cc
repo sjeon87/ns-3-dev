@@ -202,8 +202,8 @@ Aodvv2MultiExample::CreateNodes()
         Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
 
         positionAlloc->Add(Vector(0.0, 0.0, 0.0));
-        positionAlloc->Add(Vector(step * 5, 0.0, 0.0));
-        positionAlloc->Add(Vector(0.0, step * 5, 0.0));
+        positionAlloc->Add(Vector(step * 8, 0.0, 0.0));
+        positionAlloc->Add(Vector(0.0, step * 8, 0.0));
         positionAlloc->Add(Vector(step * 8, step * 8, 0.0));
         positionAlloc->Add(Vector(step * 15, step * 15, 0.0));
 
@@ -370,7 +370,7 @@ Aodvv2MultiExample::PrintNodes()
                 std::pow(nodeMobility->GetPosition().x - neighborMobility->GetPosition().x, 2) +
                 std::pow(nodeMobility->GetPosition().y - neighborMobility->GetPosition().y, 2));
 
-            if (distance < step)
+            if (distance <= step * 10)
             {
                 std::cout << j << " ";
                 adjacencyMatrix[i][j] = 1;
