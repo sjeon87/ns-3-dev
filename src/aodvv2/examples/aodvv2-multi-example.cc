@@ -151,7 +151,7 @@ Aodvv2MultiExample::Configure(int argc, char** argv)
     cmd.AddValue("size", "Number of nodes.", size);
     cmd.AddValue("time", "Simulation time, s.", totalTime);
     cmd.AddValue("step", "Grid step, m", step);
-    cmd.AddValue("topologyType", "Type of network topology (random, grid)", topologyType);
+    cmd.AddValue("topologyType", "Type of network topology (random, custom, circle)", topologyType);
 
     cmd.Parse(argc, argv);
     return true;
@@ -324,16 +324,36 @@ Aodvv2MultiExample::InstallApplications()
     }
     else
     {
+        uint32_t maxPings = size / 2;
         Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
+        std::set<std::pair<uint32_t, uint32_t>> pingPairs;
 
-        for (uint32_t i = 0; i < size / 2; ++i)
+        for (uint32_t i = 0; i < maxPings; ++i)
         {
-            uint32_t srcNodeIndex = rand->GetInteger(0, size - 1);
-            uint32_t dstNodeIndex = rand->GetInteger(0, size - 1);
+            std::vector<uint32_t> nodesList(size);
+            std::iota(nodesList.begin(), nodesList.end(), 0);
 
-            while (srcNodeIndex == dstNodeIndex && !HasRoute(srcNodeIndex, dstNodeIndex))
+            uint32_t srcNodeIndex = rand->GetInteger(0, size - 1);
+            uint32_t dstNodeIndex = srcNodeIndex;
+
+            nodesList.erase(std::remove(nodesList.begin(), nodesList.end(), srcNodeIndex),
+                            nodesList.end());
+
+            while (nodesList.size() > 0)
             {
-                dstNodeIndex = rand->GetInteger(0, size - 1);
+                dstNodeIndex = nodesList[rand->GetInteger(0, nodesList.size() - 1)];
+                if (HasRoute(srcNodeIndex, dstNodeIndex) &&
+                    pingPairs.find(std::make_pair(srcNodeIndex, dstNodeIndex)) == pingPairs.end())
+                {
+                    break;
+                }
+                nodesList.erase(std::remove(nodesList.begin(), nodesList.end(), dstNodeIndex),
+                                nodesList.end());
+            }
+
+            if (nodesList.size() == 0 || srcNodeIndex == dstNodeIndex)
+            {
+                continue;
             }
 
             std::cout << "Node " << srcNodeIndex << " pinging " << dstNodeIndex << std::endl;
@@ -344,6 +364,8 @@ Aodvv2MultiExample::InstallApplications()
             ApplicationContainer p = ping.Install(nodes.Get(srcNodeIndex));
             p.Start(Seconds(0));
             p.Stop(Seconds(totalTime) - Seconds(0.001));
+
+            pingPairs.insert(std::make_pair(srcNodeIndex, dstNodeIndex));
         }
     }
 }
