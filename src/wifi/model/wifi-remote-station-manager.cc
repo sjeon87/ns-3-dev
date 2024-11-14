@@ -15,6 +15,7 @@
 #include "wifi-mpdu.h"
 #include "wifi-net-device.h"
 #include "wifi-phy.h"
+#include "wifi-psdu.h"
 #include "wifi-tx-parameters.h"
 
 #include "ns3/boolean.h"
@@ -49,14 +50,29 @@ WifiRemoteStationManager::GetTypeId()
                           "This value will not have any effect on some rate control algorithms.",
                           UintegerValue(7),
                           MakeUintegerAccessor(&WifiRemoteStationManager::SetMaxSsrc),
-                          MakeUintegerChecker<uint32_t>())
+                          MakeUintegerChecker<uint32_t>(),
+                          TypeId::OBSOLETE,
+                          "Use WifiMac::FrameRetryLimit instead")
             .AddAttribute("MaxSlrc",
                           "The maximum number of retransmission attempts for any packet with size "
                           "> RtsCtsThreshold. "
                           "This value will not have any effect on some rate control algorithms.",
                           UintegerValue(4),
                           MakeUintegerAccessor(&WifiRemoteStationManager::SetMaxSlrc),
-                          MakeUintegerChecker<uint32_t>())
+                          MakeUintegerChecker<uint32_t>(),
+                          TypeId::OBSOLETE,
+                          "Use WifiMac::FrameRetryLimit instead")
+            .AddAttribute(
+                "IncrementRetryCountUnderBa",
+                "The 802.11-2020 standard states that the retry count for frames that are part of "
+                "a Block Ack agreement shall not be incremented when a transmission fails. As a "
+                "consequence, frames that are part of a Block Ack agreement are not dropped based "
+                "on the number of retries. Set this attribute to true to override the standard "
+                "behavior and increment the retry count (and eventually drop) frames that are "
+                "part of a Block Ack agreement.",
+                BooleanValue(false),
+                MakeBooleanAccessor(&WifiRemoteStationManager::m_incrRetryCountUnderBa),
+                MakeBooleanChecker())
             .AddAttribute("RtsCtsThreshold",
                           "If the size of the PSDU is bigger than this value, we use an RTS/CTS "
                           "handshake before sending the data frame."
@@ -135,7 +151,8 @@ WifiRemoteStationManager::GetTypeId()
 }
 
 WifiRemoteStationManager::WifiRemoteStationManager()
-    : m_useNonErpProtection(false),
+    : m_linkId(0),
+      m_useNonErpProtection(false),
       m_useNonHtProtection(false),
       m_shortPreambleEnabled(false),
       m_shortSlotTimeEnabled(false)
@@ -176,6 +193,13 @@ WifiRemoteStationManager::SetupMac(const Ptr<WifiMac> mac)
     // We need to track our MAC because it is the object that knows the
     // full set of interframe spaces.
     m_wifiMac = mac;
+}
+
+void
+WifiRemoteStationManager::SetLinkId(uint8_t linkId)
+{
+    NS_LOG_FUNCTION(this << +linkId);
+    m_linkId = linkId;
 }
 
 int64_t
@@ -1102,6 +1126,63 @@ WifiRemoteStationManager::ReportAmpduTxStatus(Mac48Address address,
                           dataTxVector.GetNss(GetStaId(address, dataTxVector)));
 }
 
+std::list<Ptr<WifiMpdu>>
+WifiRemoteStationManager::GetMpdusToDropOnTxFailure(Ptr<WifiPsdu> psdu)
+{
+    NS_LOG_FUNCTION(this << *psdu);
+
+    auto* station = Lookup(psdu->GetHeader(0).GetAddr1());
+
+    DoIncrementRetryCountOnTxFailure(station, psdu);
+    return DoGetMpdusToDropOnTxFailure(station, psdu);
+}
+
+void
+WifiRemoteStationManager::DoIncrementRetryCountOnTxFailure(WifiRemoteStation* station,
+                                                           Ptr<WifiPsdu> psdu)
+{
+    NS_LOG_FUNCTION(this << *psdu);
+
+    // The frame retry count for an MSDU or A-MSDU that is not part of a block ack agreement or
+    // for an MMPDU shall be incremented every time transmission fails for that MSDU, A-MSDU, or
+    // MMPDU, including of an associated RTS (Sec. 10.23.2.12.1 of 802.11-2020).
+    // Frames for which the retry count needs to be incremented:
+    // - management frames
+    // - non-QoS Data frames
+    // - QoS Data frames that are not part of a Block Ack agreement
+    // - QoS Data frames that are part of a Block Ack agreement if the IncrementRetryCountUnderBa
+    //   attribute is set to true
+    const auto& hdr = psdu->GetHeader(0);
+
+    if (hdr.IsMgt() || (hdr.IsData() && !hdr.IsQosData()) ||
+        (hdr.IsQosData() && (!m_wifiMac->GetBaAgreementEstablishedAsOriginator(
+                                hdr.GetAddr1(),
+                                hdr.GetQosTid() || m_incrRetryCountUnderBa))))
+    {
+        psdu->IncrementRetryCount();
+    }
+}
+
+std::list<Ptr<WifiMpdu>>
+WifiRemoteStationManager::DoGetMpdusToDropOnTxFailure(WifiRemoteStation* station,
+                                                      Ptr<WifiPsdu> psdu)
+{
+    NS_LOG_FUNCTION(this << *psdu);
+
+    std::list<Ptr<WifiMpdu>> mpdusToDrop;
+
+    for (const auto& mpdu : *PeekPointer(psdu))
+    {
+        if (mpdu->GetRetryCount() == m_wifiMac->GetFrameRetryLimit())
+        {
+            // this MPDU needs to be dropped
+            mpdusToDrop.push_back(mpdu);
+        }
+    }
+
+    return mpdusToDrop;
+}
+
 bool
 WifiRemoteStationManager::NeedRts(const WifiMacHeader& header, const WifiTxParameters& txParams)
 {
@@ -1218,32 +1299,6 @@ bool
 WifiRemoteStationManager::GetUseNonHtProtection() const
 {
     return m_useNonHtProtection;
-}
-
-bool
-WifiRemoteStationManager::NeedRetransmission(Ptr<const WifiMpdu> mpdu)
-{
-    NS_LOG_FUNCTION(this << *mpdu);
-    NS_ASSERT(!mpdu->GetHeader().GetAddr1().IsGroup());
-    AcIndex ac =
-        QosUtilsMapTidToAc((mpdu->GetHeader().IsQosData()) ? mpdu->GetHeader().GetQosTid() : 0);
-    bool longMpdu = (mpdu->GetSize() > m_rtsCtsThreshold);
-    uint32_t retryCount;
-    uint32_t maxRetryCount;
-    if (longMpdu)
-    {
-        retryCount = m_slrc[ac];
-        maxRetryCount = m_maxSlrc;
-    }
-    else
-    {
-        retryCount = m_ssrc[ac];
-        maxRetryCount = m_maxSsrc;
-    }
-    bool normally = retryCount < maxRetryCount;
-    NS_LOG_DEBUG("WifiRemoteStationManager::NeedRetransmission count: "
-                 << retryCount << " result: " << std::boolalpha << normally);
-    return DoNeedRetransmission(Lookup(mpdu->GetHeader().GetAddr1()), mpdu->GetPacket(), normally);
 }
 
 bool
@@ -1874,14 +1929,6 @@ WifiRemoteStationManager::GetNonUnicastMode() const
 
 bool
 WifiRemoteStationManager::DoNeedRts(WifiRemoteStation* station, uint32_t size, bool normally)
-{
-    return normally;
-}
-
-bool
-WifiRemoteStationManager::DoNeedRetransmission(WifiRemoteStation* station,
-                                               Ptr<const Packet> packet,
-                                               bool normally)
 {
     return normally;
 }

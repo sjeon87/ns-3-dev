@@ -26,6 +26,7 @@
 #include "ns3/vht-capabilities.h"
 
 #include <array>
+#include <list>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -38,6 +39,7 @@ class WifiMac;
 class WifiMacHeader;
 class Packet;
 class WifiMpdu;
+class WifiPsdu;
 class WifiTxVector;
 class WifiTxParameters;
 
@@ -171,6 +173,13 @@ class WifiRemoteStationManager : public Object
      * @param mac the MAC of this device
      */
     virtual void SetupMac(const Ptr<WifiMac> mac);
+
+    /**
+     * Set the ID of the link this Remote Station Manager is associated with.
+     *
+     * @param linkId the ID of the link this Remote Station Manager is associated with
+     */
+    void SetLinkId(uint8_t linkId);
 
     /**
      * Assign a fixed random variable stream number to the random variables
@@ -927,15 +936,13 @@ class WifiRemoteStationManager : public Object
                       double dataSnr,
                       WifiTxVector dataTxVector);
     /**
-     * Should be invoked after calling ReportRtsFailed if
-     * NeedRetransmission returns false
+     * Should be invoked after calling ReportRtsFailed if frames are dropped
      *
      * @param header MAC header of the DATA packet
      */
     void ReportFinalRtsFailed(const WifiMacHeader& header);
     /**
-     * Should be invoked after calling ReportDataFailed if
-     * NeedRetransmission returns false
+     * Should be invoked after calling ReportDataFailed if frames are dropped
      *
      * @param mpdu the MPDU which was discarded
      */
@@ -969,6 +976,15 @@ class WifiRemoteStationManager : public Object
     void ReportRxOk(Mac48Address address, RxSignalInfo rxSignalInfo, const WifiTxVector& txVector);
 
     /**
+     * Increment the retry count for all the MPDUs (if needed) in the given PSDU and find the
+     * MPDUs to drop based on the frame retry count.
+     *
+     * @param psdu the given PSDU, whose transmission failed
+     * @return the list of MPDUs that have to be dropped
+     */
+    std::list<Ptr<WifiMpdu>> GetMpdusToDropOnTxFailure(Ptr<WifiPsdu> psdu);
+
+    /**
      * @param header MAC header of the data frame to send
      * @param txParams the TX parameters for the data frame to send
      *
@@ -986,13 +1002,6 @@ class WifiRemoteStationManager : public Object
      */
     bool NeedCtsToSelf(WifiTxVector txVector);
 
-    /**
-     * @param mpdu the MPDU to send
-     *
-     * @return true if we want to resend a packet after a failed transmission attempt,
-     *         false otherwise.
-     */
-    bool NeedRetransmission(Ptr<const WifiMpdu> mpdu);
     /**
      * @param mpdu the MPDU to send
      *
@@ -1270,6 +1279,10 @@ class WifiRemoteStationManager : public Object
      */
     uint8_t GetNess(const WifiRemoteStation* station) const;
 
+    uint8_t m_linkId;             //!< the ID of the link this object is associated with
+    bool m_incrRetryCountUnderBa; //!< whether  to increment the retry count of frames that are
+                                  //!< part of a Block Ack agreement
+
   private:
     /**
      * If the given TXVECTOR is used for a MU transmission, return the STAID of
@@ -1283,6 +1296,25 @@ class WifiRemoteStationManager : public Object
     uint16_t GetStaId(Mac48Address address, const WifiTxVector& txVector) const;
 
     /**
+     * Increment the retry count (if needed) for the given PSDU, whose transmission failed.
+     *
+     * @param station the station the PSDU is addressed to
+     * @param psdu the given PSDU
+     */
+    virtual void DoIncrementRetryCountOnTxFailure(WifiRemoteStation* station, Ptr<WifiPsdu> psdu);
+
+    /**
+     * Find the MPDUs to drop (possibly based on their frame retry count) in the given PSDU,
+     * whose transmission failed.
+     *
+     * @param station the station the PSDU is addressed to
+     * @param psdu the given PSDU
+     * @return the MPDUs in the PSDU to drop
+     */
+    virtual std::list<Ptr<WifiMpdu>> DoGetMpdusToDropOnTxFailure(WifiRemoteStation* station,
+                                                                 Ptr<WifiPsdu> psdu);
+
+    /**
      * @param station the station that we need to communicate
      * @param size the size of the frame to send in bytes
      * @param normally indicates whether the normal 802.11 RTS enable mechanism would
@@ -1294,20 +1326,6 @@ class WifiRemoteStationManager : public Object
      * Note: This method is called before a unicast packet is sent on the medium.
      */
     virtual bool DoNeedRts(WifiRemoteStation* station, uint32_t size, bool normally);
-    /**
-     * @param station the station that we need to communicate
-     * @param packet the packet to send
-     * @param normally indicates whether the normal 802.11 data retransmission mechanism
-     *        would request that the data is retransmitted or not.
-     * @return true if we want to resend a packet after a failed transmission attempt,
-     *         false otherwise.
-     *
-     * Note: This method is called after any unicast packet transmission (control, management,
-     *       or data) has been attempted and has failed.
-     */
-    virtual bool DoNeedRetransmission(WifiRemoteStation* station,
-                                      Ptr<const Packet> packet,
-                                      bool normally);
     /**
      * @param station the station that we need to communicate
      * @param packet the packet to send

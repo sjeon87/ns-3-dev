@@ -146,6 +146,14 @@ WifiMac::GetTypeId()
                 UintegerValue(1024),
                 MakeUintegerAccessor(&WifiMac::GetMpduBufferSize, &WifiMac::SetMpduBufferSize),
                 MakeUintegerChecker<uint16_t>(1, 1024))
+            .AddAttribute(
+                "FrameRetryLimit",
+                "The maximum number of transmission attempts of a frame that are made before a "
+                "failure condition is indicated. This corresponds to the dot11ShortRetryLimit "
+                "parameter in the standard.",
+                UintegerValue(7),
+                MakeUintegerAccessor(&WifiMac::GetFrameRetryLimit, &WifiMac::SetFrameRetryLimit),
+                MakeUintegerChecker<uint32_t>(1, 65535))
             .AddAttribute("VO_MaxAmsduSize",
                           "Maximum length in bytes of an A-MSDU for AC_VO access class "
                           "(capped to 7935 for HT PPDUs and 11398 for VHT/HE/EHT PPDUs). "
@@ -751,6 +759,9 @@ WifiMac::SetupEdcaQueue(AcIndex ac)
         MakeCallback(&MpduTracedCallback::operator(), &m_nackedMpduCallback));
     edcaIt->second->SetDroppedMpduCallback(
         MakeCallback(&DroppedMpduTracedCallback::operator(), &m_droppedMpduCallback));
+    edcaIt->second->GetWifiMacQueue()->TraceConnectWithoutContext(
+        "Expired",
+        MakeCallback(&WifiMac::NotifyRsmOfExpiredMpdu, this));
 }
 
 void
@@ -1051,6 +1062,7 @@ WifiMac::SetWifiRemoteStationManagers(
     for (auto managerIt = stationManagers.cbegin(); auto& [id, link] : m_links)
     {
         link->stationManager = *managerIt++;
+        link->stationManager->SetLinkId(id);
     }
 
     CompleteConfig();
@@ -1108,6 +1120,10 @@ WifiMac::UpdateLinkId(uint8_t id)
     if (link.channelAccessManager)
     {
         link.channelAccessManager->SetLinkId(id);
+    }
+    if (link.stationManager)
+    {
+        link.stationManager->SetLinkId(id);
     }
 }
 
@@ -1670,6 +1686,37 @@ WifiMac::GetTxBlockedOnLink(AcIndex ac,
 }
 
 void
+WifiMac::NotifyRsmOfExpiredMpdu(Ptr<const WifiMpdu> mpdu)
+{
+    NS_LOG_FUNCTION(this << *mpdu);
+
+    const auto& hdr = mpdu->GetHeader();
+    const auto remoteAddr = hdr.GetAddr1();
+
+    if (remoteAddr.IsGroup() || hdr.IsCtl() || !hdr.IsRetry() || mpdu->IsInFlight())
+    {
+        return; // nothing to do
+    }
+
+    std::optional<Mac48Address> optAddr;
+    for (const auto& [id, link] : m_links)
+    {
+        if (link->stationManager->GetMldAddress(remoteAddr) == remoteAddr)
+        {
+            // this is a link setup with a remote MLD and remoteAddr is the MLD address
+            optAddr = link->feManager->GetAddress(); // use local address of this setup link
+        }
+    }
+
+    const auto localAddr =
+        optAddr.value_or(GetNLinks() == 1 ? m_address : DoGetLocalAddress(remoteAddr));
+    const auto linkId = GetLinkIdByAddress(localAddr);
+    NS_ASSERT_MSG(linkId.has_value(), "No link with address " << localAddr);
+
+    GetLink(*linkId).stationManager->ReportFinalDataFailed(mpdu);
+}
+
+void
 WifiMac::Enqueue(Ptr<Packet> packet, Mac48Address to)
 {
     NS_LOG_FUNCTION(this << packet << to);
@@ -2030,6 +2077,19 @@ uint16_t
 WifiMac::GetMpduBufferSize() const
 {
     return m_mpduBufferSize;
+}
+
+void
+WifiMac::SetFrameRetryLimit(uint32_t limit)
+{
+    NS_LOG_FUNCTION(this << limit);
+    m_frameRetryLimit = limit;
+}
+
+uint32_t
+WifiMac::GetFrameRetryLimit() const
+{
+    return m_frameRetryLimit;
 }
 
 void

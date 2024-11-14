@@ -2660,7 +2660,8 @@ Issue40TestCase::RunOne(bool useAmpdu)
     phy.SetChannel(channel.Create());
 
     WifiHelper wifi;
-    wifi.SetStandard(WIFI_STANDARD_80211ac);
+    // use HT standard so that BlockAck agreement is not established in the useAmpdu false case
+    wifi.SetStandard(useAmpdu ? WIFI_STANDARD_80211ac : WIFI_STANDARD_80211n);
     wifi.SetRemoteStationManager("ns3::IdealWifiManager");
 
     WifiMacHelper mac;
@@ -2768,7 +2769,9 @@ Issue40TestCase::RunOne(bool useAmpdu)
     NS_TEST_ASSERT_MSG_EQ(m_rxCount,
                           (useAmpdu ? 12 : 6),
                           "Incorrect number of successfully received packets");
-    NS_TEST_ASSERT_MSG_EQ(m_txMacFinalDataFailedCount, 1, "Incorrect number of dropped TX packets");
+    NS_TEST_ASSERT_MSG_EQ(m_txMacFinalDataFailedCount,
+                          (useAmpdu ? 2 : 1),
+                          "Incorrect number of dropped TX packets");
 
     Simulator::Destroy();
 }

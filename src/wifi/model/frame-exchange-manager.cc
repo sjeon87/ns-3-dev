@@ -277,6 +277,7 @@ FrameExchangeManager::GetWifiTxTimer() const
 void
 FrameExchangeManager::NotifyPacketDiscarded(Ptr<const WifiMpdu> mpdu)
 {
+    NS_LOG_FUNCTION(this << *mpdu);
     NS_ASSERT(!m_droppedMpduCallback.IsNull());
     m_droppedMpduCallback(WIFI_MAC_DROP_REACHED_RETRY_LIMIT, mpdu);
 }
@@ -975,9 +976,13 @@ FrameExchangeManager::TransmissionSucceeded()
 }
 
 void
-FrameExchangeManager::TransmissionFailed()
+FrameExchangeManager::TransmissionFailed(bool forceCurrentCw)
 {
-    NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this << forceCurrentCw);
+    if (!forceCurrentCw)
+    {
+        m_dcf->UpdateFailedCw(m_linkId);
+    }
     m_sentFrameTo.clear();
     // A non-QoS station always releases the channel upon a transmission failure
     NotifyChannelReleased(m_dcf);
@@ -994,33 +999,45 @@ FrameExchangeManager::NotifyChannelReleased(Ptr<Txop> txop)
     m_protectedStas.clear();
 }
 
+Ptr<WifiMpdu>
+FrameExchangeManager::DropMpduIfRetryLimitReached(Ptr<WifiPsdu> psdu)
+{
+    NS_LOG_FUNCTION(this << *psdu);
+
+    const auto mpdusToDrop = GetWifiRemoteStationManager()->GetMpdusToDropOnTxFailure(psdu);
+    Ptr<WifiMpdu> droppedMpdu{nullptr};
+
+    for (const auto& mpdu : mpdusToDrop)
+    {
+        // this MPDU needs to be dropped
+        droppedMpdu = mpdu;
+        NotifyPacketDiscarded(mpdu);
+        DequeueMpdu(mpdu);
+    }
+
+    return droppedMpdu;
+}
+
 void
 FrameExchangeManager::NormalAckTimeout(Ptr<WifiMpdu> mpdu, const WifiTxVector& txVector)
 {
     NS_LOG_FUNCTION(this << *mpdu << txVector);
 
     GetWifiRemoteStationManager()->ReportDataFailed(mpdu);
-
-    if (!GetWifiRemoteStationManager()->NeedRetransmission(mpdu))
+    if (auto droppedMpdu = DropMpduIfRetryLimitReached(Create<WifiPsdu>(mpdu, false)))
     {
-        NS_LOG_DEBUG("Missed Ack, discard MPDU");
-        NotifyPacketDiscarded(mpdu);
-        // Dequeue the MPDU if it is stored in a queue
-        DequeueMpdu(mpdu);
-        GetWifiRemoteStationManager()->ReportFinalDataFailed(mpdu);
-        m_dcf->ResetCw(m_linkId);
+        // notify remote station manager if at least an MPDU was dropped
+        GetWifiRemoteStationManager()->ReportFinalDataFailed(droppedMpdu);
     }
-    else
+
+    // the MPDU may have been dropped due to lifetime expiration or maximum amount of
+    // retransmissions reached
+    if (mpdu->IsQueued())
     {
-        NS_LOG_DEBUG("Missed Ack, retransmit MPDU");
-        if (mpdu->IsQueued()) // the MPDU may have been removed due to lifetime expiration
-        {
-            mpdu = m_mac->GetTxopQueue(mpdu->GetQueueAc())->GetOriginal(mpdu);
-            mpdu->ResetInFlight(m_linkId);
-        }
+        mpdu = m_mac->GetTxopQueue(mpdu->GetQueueAc())->GetOriginal(mpdu);
+        mpdu->ResetInFlight(m_linkId);
         mpdu->GetHeader().SetRetry();
         RetransmitMpduAfterMissedAck(mpdu);
-        m_dcf->UpdateFailedCw(m_linkId);
     }
 
     m_mpdu = nullptr;
@@ -1057,24 +1074,11 @@ FrameExchangeManager::DoCtsTimeout(Ptr<WifiPsdu> psdu)
     }
 
     GetWifiRemoteStationManager()->ReportRtsFailed(psdu->GetHeader(0));
+    if (auto droppedMpdu = DropMpduIfRetryLimitReached(psdu))
+    {
+        GetWifiRemoteStationManager()->ReportFinalRtsFailed(droppedMpdu->GetHeader());
+    }
 
-    if (!GetWifiRemoteStationManager()->NeedRetransmission(*psdu->begin()))
-    {
-        NS_LOG_DEBUG("Missed CTS, discard MPDU(s)");
-        GetWifiRemoteStationManager()->ReportFinalRtsFailed(psdu->GetHeader(0));
-        for (const auto& mpdu : *PeekPointer(psdu))
-        {
-            // Dequeue the MPDU if it is stored in a queue
-            DequeueMpdu(mpdu);
-            NotifyPacketDiscarded(mpdu);
-        }
-        m_dcf->ResetCw(m_linkId);
-    }
-    else
-    {
-        NS_LOG_DEBUG("Missed CTS, retransmit MPDU(s)");
-        m_dcf->UpdateFailedCw(m_linkId);
-    }
     // Make the sequence numbers of the MPDUs available again if the MPDUs have never
     // been transmitted, both in case the MPDUs have been discarded and in case the
     // MPDUs have to be transmitted (because a new sequence number is assigned to
@@ -1108,40 +1112,28 @@ FrameExchangeManager::NotifyInternalCollision(Ptr<Txop> txop)
 {
     NS_LOG_FUNCTION(this);
 
-    // For internal collisions occurring with the EDCA access method, the appropriate
-    // retry counters (short retry counter for MSDU, A-MSDU, or MMPDU and QSRC[AC] or
-    // long retry counter for MSDU, A-MSDU, or MMPDU and QLRC[AC]) are incremented
-    // (Sec. 10.22.2.11.1 of 802.11-2016).
+    // For internal collisions, the frame retry counts associated with the MSDUs, A-MSDUs, or MMPDUs
+    // involved in the internal collision shall be incremented. (Sec. 10.23.2.12.1 of 802.11-2020)
     // We do not prepare the PSDU that the AC losing the internal collision would have
     // sent. As an approximation, we consider the frame peeked from the queues of the AC.
     Ptr<QosTxop> qosTxop = (txop->IsQosTxop() ? StaticCast<QosTxop>(txop) : nullptr);
 
-    auto mpdu =
-        (qosTxop ? qosTxop->PeekNextMpdu(m_linkId) : txop->GetWifiMacQueue()->Peek(m_linkId));
-
-    if (mpdu)
+    if (auto mpdu =
+            (qosTxop ? qosTxop->PeekNextMpdu(m_linkId) : txop->GetWifiMacQueue()->Peek(m_linkId));
+        mpdu && !mpdu->GetHeader().GetAddr1().IsGroup())
     {
-        if (mpdu->GetHeader().HasData() && !mpdu->GetHeader().GetAddr1().IsGroup())
+        if (mpdu->GetHeader().HasData())
         {
             GetWifiRemoteStationManager()->ReportDataFailed(mpdu);
         }
 
-        if (!mpdu->GetHeader().GetAddr1().IsGroup() &&
-            !GetWifiRemoteStationManager()->NeedRetransmission(mpdu))
+        if (DropMpduIfRetryLimitReached(Create<WifiPsdu>(mpdu, false)))
         {
-            NS_LOG_DEBUG("reset DCF");
             GetWifiRemoteStationManager()->ReportFinalDataFailed(mpdu);
-            DequeueMpdu(mpdu);
-            NotifyPacketDiscarded(mpdu);
-            txop->ResetCw(m_linkId);
-        }
-        else
-        {
-            NS_LOG_DEBUG("Update CW");
-            txop->UpdateFailedCw(m_linkId);
         }
     }
 
+    txop->UpdateFailedCw(m_linkId);
     txop->Txop::NotifyChannelReleased(m_linkId);
 }
 

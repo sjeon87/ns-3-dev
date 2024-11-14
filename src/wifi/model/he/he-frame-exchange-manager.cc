@@ -451,47 +451,30 @@ HeFrameExchangeManager::DoCtsAfterMuRtsTimeout(Ptr<WifiMpdu> muRts,
         }
     }
 
-    // NOTE Implementation of QSRC[AC] and QLRC[AC] should be improved...
-    const auto& hdr = m_psduMap.cbegin()->second->GetHeader(0);
-    if (!hdr.GetAddr1().IsGroup())
+    if (const auto& hdr = m_psduMap.cbegin()->second->GetHeader(0); !hdr.GetAddr1().IsGroup())
     {
         GetWifiRemoteStationManager()->ReportRtsFailed(hdr);
     }
 
-    if (!hdr.GetAddr1().IsGroup() &&
-        !GetWifiRemoteStationManager()->NeedRetransmission(*m_psduMap.cbegin()->second->begin()))
-    {
-        NS_LOG_DEBUG("Missed CTS, discard MPDUs");
-        GetWifiRemoteStationManager()->ReportFinalRtsFailed(hdr);
-        for (const auto& psdu : m_psduMap)
-        {
-            // Dequeue the MPDUs if they are stored in a queue
-            DequeuePsdu(psdu.second);
-            for (const auto& mpdu : *PeekPointer(psdu.second))
-            {
-                NotifyPacketDiscarded(mpdu);
-            }
-        }
-        m_edca->ResetCw(m_linkId);
-    }
-    else
-    {
-        NS_LOG_DEBUG("Missed CTS, retransmit MPDUs");
-        if (updateFailedCw)
-        {
-            m_edca->UpdateFailedCw(m_linkId);
-        }
-    }
-    // Make the sequence numbers of the MPDUs available again if the MPDUs have never
-    // been transmitted, both in case the MPDUs have been discarded and in case the
-    // MPDUs have to be transmitted (because a new sequence number is assigned to
-    // MPDUs that have never been transmitted and are selected for transmission)
     for (const auto& [staId, psdu] : m_psduMap)
     {
+        if (psdu->GetAddr1().IsGroup())
+        {
+            continue;
+        }
+        if (auto droppedMpdu = DropMpduIfRetryLimitReached(psdu))
+        {
+            GetWifiRemoteStationManager()->ReportFinalRtsFailed(droppedMpdu->GetHeader());
+        }
+        // Make the sequence numbers of the MPDUs available again if the MPDUs have never
+        // been transmitted, both in case the MPDUs have been discarded and in case the
+        // MPDUs have to be transmitted (because a new sequence number is assigned to
+        // MPDUs that have never been transmitted and are selected for transmission)
         ReleaseSequenceNumbers(psdu);
     }
+
     m_psduMap.clear();
-    TransmissionFailed();
+    TransmissionFailed(!updateFailedCw);
 }
 
 Ptr<WifiPsdu>
@@ -1369,11 +1352,6 @@ HeFrameExchangeManager::DoTbPpduTimeout(WifiPsduMap* psduMap,
     if (staMissedTbPpduFrom.size() == nSolicitedStations)
     {
         // no station replied, the transmission failed
-        if (updateFailedCw)
-        {
-            m_edca->UpdateFailedCw(m_linkId);
-        }
-
         CtrlTriggerHeader trigger;
         psduMap->cbegin()->second->GetPayload(0)->PeekHeader(trigger);
 
@@ -1383,7 +1361,7 @@ HeFrameExchangeManager::DoTbPpduTimeout(WifiPsduMap* psduMap,
             SendCfEndIfNeeded();
         }
 
-        TransmissionFailed();
+        TransmissionFailed(!updateFailedCw);
     }
     else if (!m_multiStaBaEvent.IsPending())
     {
@@ -1425,19 +1403,10 @@ HeFrameExchangeManager::BlockAcksInTbPpduTimeout(WifiPsduMap* psduMap,
     const auto& staMissedBlockAckFrom = m_txTimer.GetStasExpectedToRespond();
     NS_ASSERT(!staMissedBlockAckFrom.empty());
 
-    bool resetCw;
-
     if (staMissedBlockAckFrom.size() == nSolicitedStations)
     {
         // no station replied, the transmission failed
-        // call ReportDataFailed to increase SRC/LRC
         GetWifiRemoteStationManager()->ReportDataFailed(*psduMap->begin()->second->begin());
-        resetCw = false;
-    }
-    else
-    {
-        // the transmission succeeded
-        resetCw = true;
     }
 
     if (m_triggerFrame)
@@ -1448,27 +1417,12 @@ HeFrameExchangeManager::BlockAcksInTbPpduTimeout(WifiPsduMap* psduMap,
 
     for (const auto& sta : staMissedBlockAckFrom)
     {
-        Ptr<WifiPsdu> psdu = GetPsduTo(sta, *psduMap);
+        auto psdu = GetPsduTo(sta, *psduMap);
         NS_ASSERT(psdu);
-        // If the QSRC[AC] or the QLRC[AC] has reached dot11ShortRetryLimit or dot11LongRetryLimit
-        // respectively, CW[AC] shall be reset to CWmin[AC] (sec. 10.22.2.2 of 802.11-2016).
-        // We should get that psduResetCw is the same for all PSDUs, but the handling of QSRC/QLRC
-        // needs to be aligned to the specifications.
-        bool psduResetCw;
-        MissedBlockAck(psdu, m_txParams.m_txVector, psduResetCw);
-        resetCw = resetCw || psduResetCw;
+        MissedBlockAck(psdu, m_txParams.m_txVector);
     }
 
     NS_ASSERT(m_edca);
-
-    if (resetCw)
-    {
-        m_edca->ResetCw(m_linkId);
-    }
-    else
-    {
-        m_edca->UpdateFailedCw(m_linkId);
-    }
 
     if (staMissedBlockAckFrom.size() == nSolicitedStations)
     {
@@ -1477,6 +1431,7 @@ HeFrameExchangeManager::BlockAcksInTbPpduTimeout(WifiPsduMap* psduMap,
     }
     else
     {
+        m_edca->ResetCw(m_linkId);
         TransmissionSucceeded();
     }
     m_psduMap.clear();
@@ -1487,12 +1442,9 @@ HeFrameExchangeManager::BlockAckAfterTbPpduTimeout(Ptr<WifiPsdu> psdu, const Wif
 {
     NS_LOG_FUNCTION(this << *psdu << txVector);
 
-    bool resetCw;
-
-    // call ReportDataFailed to increase SRC/LRC
     GetWifiRemoteStationManager()->ReportDataFailed(*psdu->begin());
 
-    MissedBlockAck(psdu, m_txParams.m_txVector, resetCw);
+    MissedBlockAck(psdu, m_txParams.m_txVector);
 
     // This is a PSDU sent in a TB PPDU. An HE STA resumes the EDCA backoff procedure
     // without modifying CW or the backoff counter for the associated EDCAF, after

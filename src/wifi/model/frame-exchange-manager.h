@@ -649,8 +649,22 @@ class FrameExchangeManager : public Object
     /**
      * Take necessary actions upon a transmission failure. A non-QoS station
      * releases the channel when this method is called.
+     *
+     * @param forceCurrentCw whether to force the contention window to stay equal to the current
+     *                       value (normally, contention window is updated upon TX failure)
      */
-    virtual void TransmissionFailed();
+    virtual void TransmissionFailed(bool forceCurrentCw = false);
+
+    /**
+     * Wrapper for the GetMpdusToDropOnTxFailure function of the remote station manager that
+     * additionally drops the MPDUs in the given PSDU that the remote station manager requested
+     * to drop.
+     *
+     * @param psdu the given PSDU
+     * @return an MPDU that has been dropped, if any, to be notified to the remote station manager
+     *         through the appropriate function
+     */
+    Ptr<WifiMpdu> DropMpduIfRetryLimitReached(Ptr<WifiPsdu> psdu);
 
     /**
      * Called when the Ack timeout expires.
