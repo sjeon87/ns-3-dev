@@ -552,7 +552,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
      * @param addr destination address
      * @returns the route metric type
      */
-    uint8_t GetRouteMetricType(IpAddress addr);
+    std::vector<uint8_t> GetRouteMetricTypes(IpAddress addr);
     /**
      * Set lifetime field in routing table entry to the maximum of existing lifetime and lt, if the
      * entry exists

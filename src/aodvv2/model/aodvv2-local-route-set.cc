@@ -177,7 +177,7 @@ LocalRoute<T>::IsValid()
         }
         return true;
     }
-    return m_state == ACTIVE;
+    return m_state == ACTIVE || m_state == UNCONFIRMED;
 }
 
 template <typename T>
@@ -265,39 +265,66 @@ LocalRouteSet<T>::LocalRouteSet(Time badlinkTime, Time unconfirmedTime)
 
 template <typename T>
 bool
-LocalRouteSet<T>::LookupRoute(T id, LocalRoute<T>& rt)
+LocalRouteSet<T>::LookupRoute(T id, uint8_t metricType, LocalRoute<T>& route)
 {
     NS_LOG_FUNCTION(this << id);
     Purge();
-    if (m_ipAddressEntry.empty())
+    for (auto& r : m_ipAddressEntry)
     {
-        NS_LOG_LOGIC("Route to " << id << " not found; m_ipAddressEntry is empty");
-        return false;
+        if (r.GetDestination() == id && r.GetMetricType() == metricType)
+        {
+            route = r;
+            NS_LOG_LOGIC("Route to " << id << " found");
+            return true;
+        }
     }
-    auto i = m_ipAddressEntry.find(id);
-    if (i == m_ipAddressEntry.end())
-    {
-        NS_LOG_LOGIC("Route to " << id << " not found");
-        return false;
-    }
-    rt = i->second;
-    NS_LOG_LOGIC("Route to " << id << " found");
-    return true;
+    NS_LOG_LOGIC("Route to " << id << " not found");
+    return false;
 }
 
 template <typename T>
 bool
-LocalRouteSet<T>::LookupValidRoute(T id, LocalRoute<T>& rt)
+LocalRouteSet<T>::LookupRoutes(T dst, std::vector<LocalRoute<T>>& routes)
+{
+    NS_LOG_FUNCTION(this << dst);
+    Purge();
+    bool found = false;
+    for (auto& route : m_ipAddressEntry)
+    {
+        if (route.GetDestination() == dst)
+        {
+            routes.push_back(route);
+            found = true;
+            NS_LOG_LOGIC("Route to " << dst << " found");
+        }
+    }
+    if (!found)
+    {
+        NS_LOG_LOGIC("Route to " << dst << " not found");
+    }
+    return found;
+}
+
+template <typename T>
+bool
+LocalRouteSet<T>::LookupValidRoutes(T id, std::vector<LocalRoute<T>>& routes)
 {
     NS_LOG_FUNCTION(this << id);
-    if (!LookupRoute(id, rt))
+    std::vector<LocalRoute<T>> tmpRoutes;
+    if (!LookupRoutes(id, tmpRoutes))
     {
         NS_LOG_LOGIC("Route to " << id << " not found");
         return false;
     }
-    bool isValid = rt.GetState() == ACTIVE || rt.GetState() == UNCONFIRMED;
-    NS_LOG_LOGIC("Route to " << id << " flag is " << (isValid ? "valid" : "not valid"));
-    return isValid;
+    for (const auto& route : tmpRoutes)
+    {
+        if (route.GetState() == ACTIVE || route.GetState() == UNCONFIRMED)
+        {
+            routes.push_back(route);
+            NS_LOG_LOGIC("Route to " << id << " is valid");
+        }
+    }
+    return !routes.empty();
 }
 
 template <typename T>
@@ -306,8 +333,13 @@ LocalRouteSet<T>::DeleteRoute(T dst)
 {
     NS_LOG_FUNCTION(this << dst);
     Purge();
-    if (m_ipAddressEntry.erase(dst) != 0)
+    auto it =
+        std::remove_if(m_ipAddressEntry.begin(),
+                       m_ipAddressEntry.end(),
+                       [dst](const LocalRoute<T>& route) { return route.GetDestination() == dst; });
+    if (it != m_ipAddressEntry.end())
     {
+        m_ipAddressEntry.erase(it, m_ipAddressEntry.end());
         NS_LOG_LOGIC("Route deletion to " << dst << " successful");
         return true;
     }
@@ -325,8 +357,8 @@ LocalRouteSet<T>::AddRoute(LocalRoute<T>& rt)
     {
         rt.SetRreqCnt(0);
     }
-    auto result = m_ipAddressEntry.insert(std::make_pair(rt.GetDestination(), rt));
-    return result.second;
+    m_ipAddressEntry.push_back(rt);
+    return true;
 }
 
 template <typename T>
@@ -334,20 +366,22 @@ bool
 LocalRouteSet<T>::Update(LocalRoute<T>& rt)
 {
     NS_LOG_FUNCTION(this);
-    auto i = m_ipAddressEntry.find(rt.GetDestination());
-    if (i == m_ipAddressEntry.end())
+    for (auto& route : m_ipAddressEntry)
     {
-        NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " fails; not found");
-        return false;
+        if (route.GetDestination() == rt.GetDestination())
+        {
+            route.SetSeqNo(std::max(rt.GetSeqNo(), route.GetSeqNo()));
+            route = rt;
+            if (route.GetState() != UNCONFIRMED)
+            {
+                NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " set RreqCnt to 0");
+                route.SetRreqCnt(0);
+            }
+            return true;
+        }
     }
-    rt.SetSeqNo(std::max(rt.GetSeqNo(), i->second.GetSeqNo()));
-    i->second = rt;
-    if (i->second.GetState() != UNCONFIRMED)
-    {
-        NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " set RreqCnt to 0");
-        i->second.SetRreqCnt(0);
-    }
-    return true;
+    NS_LOG_LOGIC("Route update to " << rt.GetDestination() << " fails; not found");
+    return false;
 }
 
 template <typename T>
@@ -355,16 +389,18 @@ bool
 LocalRouteSet<T>::SetEntryState(T id, RouteStates state)
 {
     NS_LOG_FUNCTION(this);
-    auto i = m_ipAddressEntry.find(id);
-    if (i == m_ipAddressEntry.end())
+    for (auto& route : m_ipAddressEntry)
     {
-        NS_LOG_LOGIC("Route set entry state to " << id << " fails; not found");
-        return false;
+        if (route.GetDestination() == id)
+        {
+            route.SetState(state);
+            route.SetRreqCnt(0);
+            NS_LOG_LOGIC("Route set entry state to " << id << ": new state is " << state);
+            return true;
+        }
     }
-    i->second.SetState(state);
-    i->second.SetRreqCnt(0);
-    NS_LOG_LOGIC("Route set entry state to " << id << ": new state is " << state);
-    return true;
+    NS_LOG_LOGIC("Route set entry state to " << id << " fails; not found");
+    return false;
 }
 
 template <typename T>
@@ -375,15 +411,15 @@ LocalRouteSet<T>::GetListOfDestinationWithNextHop(T nextHop,
     NS_LOG_FUNCTION(this);
     Purge();
     unreachable.clear();
-    for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end(); ++i)
+    for (const auto& route : m_ipAddressEntry)
     {
-        if (i->second.GetNextHop() == nextHop)
+        if (route.GetNextHop() == nextHop)
         {
-            NS_LOG_LOGIC("Unreachable insert " << i->first << " " << i->second.GetSeqNo() << " "
-                                               << i->second.GetMetricType());
+            NS_LOG_LOGIC("Unreachable insert " << route.GetDestination() << " " << route.GetSeqNo()
+                                               << " " << route.GetMetricType());
             unreachable.insert(
-                std::make_pair(i->first,
-                               UnreachableDst{i->second.GetSeqNo(), i->second.GetMetricType()}));
+                std::make_pair(route.GetDestination(),
+                               UnreachableDst{route.GetSeqNo(), route.GetMetricType()}));
         }
     }
 }
@@ -394,12 +430,12 @@ LocalRouteSet<T>::ActivateRouteWithNextHop(T nextHop)
 {
     NS_LOG_FUNCTION(this);
     Purge();
-    for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end(); ++i)
+    for (auto& route : m_ipAddressEntry)
     {
-        if (i->second.GetNextHop() == nextHop)
+        if (route.GetNextHop() == nextHop)
         {
-            NS_LOG_LOGIC("Activate route with destination address " << i->first);
-            i->second.SetState(ACTIVE);
+            NS_LOG_LOGIC("Activate route with destination address " << route.GetDestination());
+            route.SetState(ACTIVE);
         }
     }
 }
@@ -410,14 +446,15 @@ LocalRouteSet<T>::InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unr
 {
     NS_LOG_FUNCTION(this);
     Purge();
-    for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end(); ++i)
+    for (auto& route : m_ipAddressEntry)
     {
-        for (auto j = unreachable.begin(); j != unreachable.end(); ++j)
+        for (const auto& un : unreachable)
         {
-            if ((i->first == j->first) && (i->second.GetState() == ACTIVE))
+            if ((route.GetDestination() == un.first) && (route.GetState() == ACTIVE))
             {
-                NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
-                i->second.Invalidate(m_badLinkLifetime);
+                NS_LOG_LOGIC("Invalidate route with destination address "
+                             << route.GetDestination());
+                route.Invalidate(m_badLinkLifetime);
             }
         }
     }
@@ -428,22 +465,13 @@ void
 LocalRouteSet<T>::DeleteAllRoutesFromInterface(IpInterfaceAddress iface)
 {
     NS_LOG_FUNCTION(this);
-    if (m_ipAddressEntry.empty())
+    auto it = std::remove_if(
+        m_ipAddressEntry.begin(),
+        m_ipAddressEntry.end(),
+        [iface](const LocalRoute<T>& route) { return route.GetInterface() == iface; });
+    if (it != m_ipAddressEntry.end())
     {
-        return;
-    }
-    for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end();)
-    {
-        if (i->second.GetInterface() == iface)
-        {
-            auto tmp = i;
-            ++i;
-            m_ipAddressEntry.erase(tmp);
-        }
-        else
-        {
-            ++i;
-        }
+        m_ipAddressEntry.erase(it, m_ipAddressEntry.end());
     }
 }
 
@@ -452,85 +480,61 @@ void
 LocalRouteSet<T>::Purge()
 {
     NS_LOG_FUNCTION(this);
-    if (m_ipAddressEntry.empty())
-    {
-        return;
-    }
-    for (auto i = m_ipAddressEntry.begin(); i != m_ipAddressEntry.end();)
-    {
-        if (i->second.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
-        {
-            i->second.SetSeqNo(0);
-
-            if (i->second.GetState() == UNCONFIRMED)
+    auto it = std::remove_if(
+        m_ipAddressEntry.begin(),
+        m_ipAddressEntry.end(),
+        [this](LocalRoute<T>& route) {
+            if (route.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
             {
-                auto tmp = i;
-                ++i;
-                m_ipAddressEntry.erase(tmp);
+                route.SetSeqNo(0);
+                if (route.GetState() == UNCONFIRMED)
+                {
+                    return true;
+                }
+                else if (route.GetState() == ACTIVE)
+                {
+                    NS_LOG_LOGIC("Invalidate route with destination address "
+                                 << route.GetDestination());
+                    route.Invalidate(m_badLinkLifetime);
+                }
             }
-            else if (i->second.GetState() == ACTIVE)
+            else if (route.GetState() == IDLE &&
+                     route.GetLastSeqNumUpdate() < Simulator::Now() + route.GetMaxIdleTime())
             {
-                NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
-                i->second.Invalidate(m_badLinkLifetime);
-                ++i;
+                route.SetState(INVALID);
             }
-            else
-            {
-                ++i;
-            }
-        }
-        else
-        {
-            if (i->second.GetState() == IDLE &&
-                i->second.GetLastSeqNumUpdate() < Simulator::Now() + i->second.GetMaxIdleTime())
-            {
-                i->second.SetState(INVALID);
-            }
-            ++i;
-        }
-    }
+            return false;
+        });
+    m_ipAddressEntry.erase(it, m_ipAddressEntry.end());
 }
 
 template <typename T>
 void
-LocalRouteSet<T>::Purge(std::map<T, LocalRoute<T>>& table) const
+LocalRouteSet<T>::Purge(std::vector<LocalRoute<T>>& table) const
 {
     NS_LOG_FUNCTION(this);
-    if (table.empty())
-    {
-        return;
-    }
-    for (auto i = table.begin(); i != table.end();)
-    {
-        if (i->second.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
+    auto it = std::remove_if(table.begin(), table.end(), [this](LocalRoute<T>& route) {
+        if (route.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
         {
-            if (i->second.GetState() == UNCONFIRMED)
+            if (route.GetState() == UNCONFIRMED)
             {
-                auto tmp = i;
-                ++i;
-                table.erase(tmp);
+                return true;
             }
-            else if (i->second.GetState() == ACTIVE)
+            else if (route.GetState() == ACTIVE)
             {
-                NS_LOG_LOGIC("Invalidate route with destination address " << i->first);
-                i->second.Invalidate(m_badLinkLifetime);
-                ++i;
-            }
-            else
-            {
-                ++i;
+                NS_LOG_LOGIC("Invalidate route with destination address "
+                             << route.GetDestination());
+                route.Invalidate(m_badLinkLifetime);
             }
         }
-        else
+        else if (route.GetState() == IDLE &&
+                 route.GetLastSeqNumUpdate() < Simulator::Now() + route.GetMaxIdleTime())
         {
-            if (i->second.GetState() == IDLE &&
-                i->second.GetLastSeqNumUpdate() < Simulator::Now() + i->second.GetMaxIdleTime())
-            {
-                i->second.SetState(INVALID);
-            }
-            ++i;
+            route.SetState(INVALID);
         }
-    }
+        return false;
+    });
+    table.erase(it, table.end());
 }
 
 template <typename T>
@@ -538,24 +542,26 @@ bool
 LocalRouteSet<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
 {
     NS_LOG_FUNCTION(this << neighbor << blacklistTimeout.As(Time::S));
-    auto i = m_ipAddressEntry.find(neighbor);
-    if (i == m_ipAddressEntry.end())
+    for (auto& route : m_ipAddressEntry)
     {
-        NS_LOG_LOGIC("Mark link unidirectional to  " << neighbor << " fails; not found");
-        return false;
+        if (route.GetDestination() == neighbor)
+        {
+            route.SetState(INVALID);
+            route.SetLastUsed(blacklistTimeout);
+            route.SetRreqCnt(0);
+            NS_LOG_LOGIC("Set link to " << neighbor << " to unidirectional");
+            return true;
+        }
     }
-    i->second.SetState(INVALID);
-    i->second.SetLastUsed(blacklistTimeout);
-    i->second.SetRreqCnt(0);
-    NS_LOG_LOGIC("Set link to " << neighbor << " to unidirectional");
-    return true;
+    NS_LOG_LOGIC("Mark link unidirectional to  " << neighbor << " fails; not found");
+    return false;
 }
 
 template <typename T>
 void
 LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
-    std::map<T, LocalRoute<T>> table = m_ipAddressEntry;
+    std::vector<LocalRoute<T>> table = m_ipAddressEntry;
     Purge(table);
     std::ostream* os = stream->GetStream();
     // Copy the current ostream state
@@ -571,9 +577,9 @@ LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Ti
     *os << std::setw(16) << "Expire";
     *os << std::setw(16) << "Hops";
     *os << "Metrics" << std::endl;
-    for (auto i = table.begin(); i != table.end(); ++i)
+    for (const auto& route : table)
     {
-        i->second.Print(stream, unit);
+        route.Print(stream, unit);
     }
     *stream->GetStream() << "\n";
 }

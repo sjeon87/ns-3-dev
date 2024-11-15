@@ -26,6 +26,7 @@
 #include <map>
 #include <stdint.h>
 #include <sys/types.h>
+#include <vector>
 
 namespace ns3
 {
@@ -533,17 +534,25 @@ class LocalRouteSet
     /**
      * Lookup local route entry with destination address dst
      * @param dst destination address
-     * @param rt entry with destination address dst, if exists
+     * @param metricType the metric type
+     * @param route entry with destination address dst, if exists
      * @return true on success
      */
-    bool LookupRoute(T dst, LocalRoute<T>& rt);
+    bool LookupRoute(T dst, uint8_t metricType, LocalRoute<T>& route);
+    /**
+     * Lookup local route entry with destination address dst
+     * @param dst destination address
+     * @param routes entries with destination address dst, if exists
+     * @return true on success
+     */
+    bool LookupRoutes(T dst, std::vector<LocalRoute<T>>& routes);
     /**
      * Lookup route in VALID state
      * @param dst destination address
-     * @param rt entry with destination address dst, if exists
+     * @param routes entries with destination address dst, if exists
      * @return true on success
      */
-    bool LookupValidRoute(T dst, LocalRoute<T>& rt);
+    bool LookupValidRoutes(T dst, std::vector<LocalRoute<T>>& routes);
     /**
      * Update local route
      * @param rt entry with destination address dst, if exists
@@ -609,7 +618,7 @@ class LocalRouteSet
 
   private:
     /// The local route set
-    std::map<T, LocalRoute<T>> m_ipAddressEntry;
+    std::vector<LocalRoute<T>> m_ipAddressEntry;
     /// Deletion time for invalid routes
     Time m_badLinkLifetime;
     /// Invalidation time for unconfirmed routes
@@ -618,7 +627,7 @@ class LocalRouteSet
      * const version of Purge, for use by Print() method
      * @param table the local route set to purge
      */
-    void Purge(std::map<T, LocalRoute<T>>& table) const;
+    void Purge(std::vector<LocalRoute<T>>& table) const;
 };
 
 } // namespace aodvv2
