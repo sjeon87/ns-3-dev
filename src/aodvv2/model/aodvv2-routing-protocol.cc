@@ -2206,15 +2206,21 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
     std::vector<IpAddress> precursors;
     std::map<IpAddress, UnreachableDst> unreachable;
 
-    LocalRoute<IpAddress> toNextHop;
-    if (!m_routingTable.LookupRoutes(nextHop, toNextHop))
+    std::vector<LocalRoute<IpAddress>> routes;
+    if (!m_routingTable.LookupRoutes(nextHop, routes))
     {
         return;
     }
-    toNextHop.SetState(INVALID);
-    m_routingTable.Update(toNextHop);
-    toNextHop.GetPrecursors(precursors);
-    rerrHeader.AddUnDestination(nextHop, toNextHop.GetSeqNo());
+
+    LocalRoute<IpAddress> validRoute = routes[0];
+    for (LocalRoute<IpAddress>& toNextHop : routes)
+    {
+        toNextHop.SetState(INVALID);
+        m_routingTable.Update(toNextHop);
+        toNextHop.GetPrecursors(precursors);
+        rerrHeader.AddUnDestination(nextHop, toNextHop.GetSeqNo());
+    }
+
     m_routingTable.GetListOfDestinationWithNextHop(nextHop, unreachable);
     for (auto i = unreachable.begin(); i != unreachable.end();)
     {
@@ -2228,12 +2234,14 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         }
         else
         {
-            LocalRoute<IpAddress> toDst;
-            m_routingTable.LookupRoutes(i->first, toDst);
-            toDst.SetState(INVALID);
-            m_routingTable.Update(toDst);
-            toDst.GetPrecursors(precursors);
-            ++i;
+            m_routingTable.LookupRoutes(i->first, routes);
+            for (LocalRoute<IpAddress>& toDst : routes)
+            {
+                toDst.SetState(INVALID);
+                m_routingTable.Update(toDst);
+                toDst.GetPrecursors(precursors);
+                ++i;
+            }
         }
     }
     if (rerrHeader.GetDestCount() != 0)
@@ -2242,7 +2250,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
-    unreachable.insert(std::make_pair(nextHop, toNextHop.GetSeqNo()));
+    unreachable.insert(std::make_pair(nextHop, validRoute.GetSeqNo()));
     m_routingTable.InvalidateRoutesWithDst(unreachable);
 }
 
