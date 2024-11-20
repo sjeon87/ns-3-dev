@@ -1681,6 +1681,17 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         m_rrepCount++;
     }
 
+    Metric<IpAddress> metric;
+    for (Metric<IpAddress> m : GetMetrics())
+    {
+        if (metric.GetMetricType() == rreqHeader.GetMetricType())
+        {
+            metric = m;
+            break;
+        }
+    }
+    NS_ASSERT(metric.GetMetricType() != 0);
+
     /*
      * Destination node MUST increment its own sequence number by one if the sequence number in
      * the RREQ packet is equal to that incremented value. Otherwise, the destination does not
@@ -1707,8 +1718,8 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*targMask=*/32,
         /*seqNo=*/m_seqNo,
         /*hopLimit=*/m_maxHopLimit - hopCount,
-        /*metricType=*/rreqHeader.GetMetricType(),
-        /*metric=*/new uint8_t[1]{1});
+        /*metricType=*/metric.GetMetricType(),
+        /*metric=*/metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
     Ptr<Packet> packet = Create<Packet>();
 
     if (m_routingTable.LookupRoutes(toOrigin.GetNextHop(), routes) &&
