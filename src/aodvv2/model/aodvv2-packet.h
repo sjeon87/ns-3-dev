@@ -87,6 +87,25 @@ struct UnreachableDst
     uint8_t m_metricType;
 };
 
+/// Metric struct for packet description
+struct MetricPacket
+{
+    /// Metric type
+    uint8_t m_metricType;
+    /// Origin metric
+    uint8_t* m_metricValue;
+    /// Origin metric size
+    uint8_t m_metricSize;
+
+    // Constructor
+    MetricPacket(uint8_t metricType, uint8_t* metricValue, uint8_t metricSize)
+        : m_metricType(metricType),
+          m_metricValue(metricValue),
+          m_metricSize(metricSize)
+    {
+    }
+};
+
 /**
 * @ingroup aodvv2
 * @brief   Route Request (RREQ) Message Format
@@ -130,19 +149,13 @@ class RreqHeader : public Header
      * @param targMask the target mask
      * @param seqNo the sequence number
      * @param hopLimit the hop limit
-     * @param metricType the metric type
-     * @param origMetric the origin metric
-     * @param origMetricSize the origin metric size
      */
     RreqHeader(T origIp = T(),
                uint16_t origMask = 0,
                T targIp = T(),
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
-               uint8_t hopLimit = 0,
-               uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
-               uint8_t* origMetric = new uint8_t[1]{1},
-               u_int8_t origMetricSize = 1);
+               uint8_t hopLimit = 0);
 
     /**
      * constructor
@@ -166,9 +179,10 @@ class RreqHeader : public Header
     void SetTlvHeader(PbbPacket tlvHeader);
     /**
      * @brief Get the pbb message
+     * @param metric the metric
      * @return the pbb message
      */
-    Ptr<PbbMessageIp> GetPbbMessage() const;
+    Ptr<PbbMessageIp> GetPbbMessage(MetricPacket metric) const;
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -304,50 +318,55 @@ class RreqHeader : public Header
     }
 
     /**
-     * @brief Set the metric type
-     * @param type the metric type
+     * @brief Get the metric types
+     * @return the list of metric types
      */
-    void SetMetricType(uint8_t type)
+    std::vector<uint8_t> GetMetricTypes() const
     {
-        m_metricType = type;
+        std::vector<uint8_t> metricTypes;
+        for (const MetricPacket& m : m_metrics)
+        {
+            metricTypes.push_back(m.m_metricType);
+        }
+        return metricTypes;
     }
 
     /**
-     * @brief Get the metric type
-     * @return the metric type
+     * @brief Add a metric
+     * @param metricType the metric type
+     * @param metricValue the origin metric
+     * @param metricSize the origin metric size
      */
-    uint8_t GetMetricType() const
+    void AddMetric(uint8_t metricType, uint8_t* metricValue, uint8_t metricSize)
     {
-        return m_metricType;
+        for (MetricPacket& m : m_metrics)
+        {
+            if (m.m_metricType == metricType)
+            {
+                m.m_metricValue = metricValue;
+                m.m_metricSize = metricSize;
+                return;
+            }
+        }
+
+        m_metrics.push_back(MetricPacket(metricType, metricValue, metricSize));
     }
 
     /**
-     * @brief Set the origin metric
-     * @param metric the origin metric
-     * @param size the origin metric size
+     * @brief Get the metric value
+     * @param metricType the metric type
+     * @return the metric value
      */
-    void SetOrigMetric(uint8_t* metric, u_int8_t size)
+    uint8_t* GetMetricValue(uint8_t metricType) const
     {
-        m_origMetric = metric;
-        m_origMetricSize = size;
-    }
-
-    /**
-     * @brief Get the origin metric
-     * @return the origin metric
-     */
-    uint8_t* GetOrigMetric() const
-    {
-        return m_origMetric;
-    }
-
-    /**
-     * @brief Get the origin metric size
-     * @return the origin metric size
-     */
-    uint8_t GetOrigMetricSize() const
-    {
-        return m_origMetricSize;
+        for (MetricPacket m : m_metrics)
+        {
+            if (m.m_metricType == metricType)
+            {
+                return m.m_metricValue;
+            }
+        }
+        return nullptr;
     }
 
     /**
@@ -439,11 +458,9 @@ class RreqHeader : public Header
     uint16_t m_targMask;  ///< Target Mask
     uint16_t m_targSeqNo; ///< Target Sequence number
 
-    uint8_t m_metricType;     ///< Metric Type
-    uint8_t* m_origMetric;    ///< Origin Path Metric
-    uint8_t m_origMetricSize; ///< Origin Path Metric Size
-    uint16_t m_seqNo;         ///< Sequence number
-    uint8_t m_hopLimit;       ///< Hop Limit
+    std::vector<MetricPacket> m_metrics; ///< Metric List
+    uint16_t m_seqNo;                    ///< Sequence number
+    uint8_t m_hopLimit;                  ///< Hop Limit
 
     bool m_sendTargSeqNum;              ///< Send Target Sequence Number
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
@@ -500,19 +517,13 @@ class RrepHeader : public Header
      * @param targMask the target mask
      * @param seqNo the sequence number
      * @param hopLimit the hop limit
-     * @param metricType the metric type
-     * @param targMetric the target metric
-     * @param targMetricSize the target metric size
      */
     RrepHeader(T origIp = T(),
                uint16_t origMask = 0,
                T targIp = T(),
                uint16_t targMask = 0,
                uint16_t seqNo = 1,
-               uint8_t hopLimit = 0,
-               uint8_t metricType = AODVV2_METRIC_UNASSIGNED,
-               uint8_t* targMetric = new uint8_t[1]{1},
-               u_int8_t targMetricSize = 1);
+               uint8_t hopLimit = 0);
     /**
      * constructor
      * @param tlvHeader the TLV header
@@ -535,9 +546,10 @@ class RrepHeader : public Header
     void SetTlvHeader(PbbPacket tlvHeader);
     /**
      * @brief Get the pbb message
+     * @param metric the metric
      * @return the pbb message
      */
-    Ptr<PbbMessageIp> GetPbbMessage() const;
+    Ptr<PbbMessageIp> GetPbbMessage(MetricPacket metric) const;
     TypeId GetInstanceTypeId() const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -636,50 +648,53 @@ class RrepHeader : public Header
     }
 
     /**
-     * @brief Set the metric type
-     * @param type the metric type
+     * @brief Get the metric types
+     * @return the list of metric types
      */
-    void SetMetricType(uint8_t type)
+    std::vector<uint8_t> GetMetricTypes() const
     {
-        m_metricType = type;
+        std::vector<uint8_t> metricTypes;
+        for (const MetricPacket& m : m_metrics)
+        {
+            metricTypes.push_back(m.m_metricType);
+        }
+        return metricTypes;
     }
 
     /**
-     * @brief Get the metric type
-     * @return the metric type
+     * @brief Add a metric
+     * @param metricType the metric type
      */
-    uint8_t GetMetricType() const
+    void AddMetric(uint8_t metricType, uint8_t* metricValue, uint8_t metricSize)
     {
-        return m_metricType;
+        for (MetricPacket& m : m_metrics)
+        {
+            if (m.m_metricType == metricType)
+            {
+                m.m_metricValue = metricValue;
+                m.m_metricSize = metricSize;
+                return;
+            }
+        }
+
+        m_metrics.push_back(MetricPacket(metricType, metricValue, metricSize));
     }
 
     /**
-     * @brief Set the target metric
-     * @param metric the target metric
-     * @param size the target metric size
+     * @brief Get the metric value
+     * @param metricType the metric type
+     * @return the metric value
      */
-    void SetTargMetric(uint8_t* metric, u_int8_t size)
+    uint8_t* GetMetricValue(uint8_t metricType) const
     {
-        m_targMetric = metric;
-        m_targMetricSize = size;
-    }
-
-    /**
-     * @brief Get the target metric
-     * @return the target metric
-     */
-    uint8_t* GetTargMetric() const
-    {
-        return m_targMetric;
-    }
-
-    /**
-     * @brief Get the target metric size
-     * @return the target metric size
-     */
-    uint8_t GetTargMetricSize() const
-    {
-        return m_targMetricSize;
+        for (MetricPacket m : m_metrics)
+        {
+            if (m.m_metricType == metricType)
+            {
+                return m.m_metricValue;
+            }
+        }
+        return nullptr;
     }
 
     /**
@@ -744,17 +759,16 @@ class RrepHeader : public Header
     bool operator==(const RrepHeader& o) const;
 
   private:
-    T m_origIp;               ///< Origin IP Address
-    uint16_t m_origMask;      ///< Origin Mask
-    T m_targIp;               ///< Target IP Address
-    uint16_t m_targMask;      ///< Target Mask
-    uint16_t m_targSeqNo;     ///< Target Sequence number
-    uint16_t m_seqNo;         ///< Sequence number
-    uint8_t m_hopLimit;       ///< Hop Limit
-    uint8_t m_metricType;     ///< Metric Type
-    uint8_t* m_targMetric;    ///< Target Path Metric
-    uint8_t m_targMetricSize; ///< Target Path Metric Size
-    bool m_hasRrepAck;        ///< RREP_ACK flag
+    T m_origIp;           ///< Origin IP Address
+    uint16_t m_origMask;  ///< Origin Mask
+    T m_targIp;           ///< Target IP Address
+    uint16_t m_targMask;  ///< Target Mask
+    uint16_t m_targSeqNo; ///< Target Sequence number
+
+    std::vector<MetricPacket> m_metrics; ///< Metric List
+    uint16_t m_seqNo;                    ///< Sequence number
+    uint8_t m_hopLimit;                  ///< Hop Limit
+    bool m_hasRrepAck;                   ///< RREP_ACK flag
 
     mutable Ptr<PbbPacket> m_tlvHeader; ///< TLV header
 };

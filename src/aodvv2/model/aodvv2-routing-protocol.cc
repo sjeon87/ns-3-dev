@@ -1048,53 +1048,55 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
     LocalRoute<IpAddress> rt;
     // Using the Hop field in Routing Table to store the number of hops to the destination
     uint16_t hops = 1;
-    if (m_routingTable.LookupRoute(dst, AODVV2_METRIC_HOP, rt))
+    for (Metric<IpAddress> metric : GetMetrics())
     {
-        if (rt.GetState() != UNCONFIRMED)
+        if (m_routingTable.LookupRoute(dst, metric.GetMetricType(), rt))
         {
-            hops = std::min<uint16_t>(rt.GetHop() + 2, m_maxHopLimit);
+            if (rt.GetState() != UNCONFIRMED)
+            {
+                hops = std::min<uint16_t>(rt.GetHop() + 2, m_maxHopLimit);
+            }
+            else
+            {
+                hops = rt.GetHop() + 2;
+                if (hops > m_maxHopLimit)
+                {
+                    hops = m_maxHopLimit;
+                }
+            }
+            rt.IncrementRreqCnt();
+            rt.SetHop(hops);
+            rt.SetState(UNCONFIRMED);
+            rt.SetLastUsed(m_pathDiscoveryTime);
+            rreqHeader.AddMetric(rt.GetMetricType(), rt.GetMetricValue(), rt.GetMetricSize());
+            m_routingTable.Update(rt);
         }
         else
         {
-            hops = rt.GetHop() + 2;
-            if (hops > m_maxHopLimit)
+            Ptr<NetDevice> dev = nullptr;
+            for (Metric<IpAddress> metric : GetMetrics())
             {
-                hops = m_maxHopLimit;
+                LocalRoute<IpAddress> newEntry(
+                    /*dev=*/dev,
+                    /*dst=*/dst,
+                    /*seqNo=*/0,
+                    /*iface=*/IpInterfaceAddress(),
+                    /*hops=*/hops,
+                    /*nextHop=*/IpAddress(),
+                    /*lastUsed=*/m_pathDiscoveryTime,
+                    /*maxIdleTime=*/m_maxIdleTime,
+                    /*metric=*/metric,
+                    /*metricValue=*/
+                    metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
+
+                newEntry.SetState(UNCONFIRMED);
+                rreqHeader.AddMetric(newEntry.GetMetricType(),
+                                     newEntry.GetMetricValue(),
+                                     newEntry.GetMetricSize());
+                m_routingTable.AddRoute(newEntry);
             }
         }
-        rt.IncrementRreqCnt();
-        rt.SetHop(hops);
-        rt.SetState(UNCONFIRMED);
-        rt.SetLastUsed(m_pathDiscoveryTime);
-        rreqHeader.SetMetricType(rt.GetMetricType());
-        rreqHeader.SetOrigMetric(rt.GetMetricValue(), rt.GetMetricSize());
-        m_routingTable.Update(rt);
     }
-    else
-    {
-        Ptr<NetDevice> dev = nullptr;
-        for (Metric<IpAddress> metric : GetMetrics())
-        {
-            LocalRoute<IpAddress> newEntry(
-                /*dev=*/dev,
-                /*dst=*/dst,
-                /*seqNo=*/0,
-                /*iface=*/IpInterfaceAddress(),
-                /*hops=*/hops,
-                /*nextHop=*/IpAddress(),
-                /*lastUsed=*/m_pathDiscoveryTime,
-                /*maxIdleTime=*/m_maxIdleTime,
-                /*metric=*/metric,
-                /*metricValue=*/
-                metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
-
-            newEntry.SetState(UNCONFIRMED);
-            rreqHeader.SetMetricType(newEntry.GetMetricType());
-            rreqHeader.SetOrigMetric(newEntry.GetMetricValue(), newEntry.GetMetricSize());
-            m_routingTable.AddRoute(newEntry);
-        }
-    }
-
     m_seqNo++;
     rreqHeader.SetSeqNo(m_seqNo);
     rreqHeader.SetHopLimit(m_maxHopLimit);
@@ -1112,7 +1114,10 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
             m_ip->GetAddress(m_ip->GetInterfaceForAddress(iface.GetAddress()), 0).GetAddress());
         rreqHeader.SetRtrMask(32); // TODO me: update if needed
 
-        m_mms.IsDuplicate(iface.GetAddress(), 32, dst, rreqHeader.GetMetricType());
+        for (uint8_t type : rreqHeader.GetMetricTypes())
+        {
+            m_mms.IsDuplicate(iface.GetAddress(), 32, dst, type);
+        }
 
         Ptr<Packet> packet = Create<Packet>();
 
@@ -1260,7 +1265,6 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
 
     UpdateRouteToNeighbor(sender, receiver);
 
-    u_int8_t tlvType = 0;
     PbbPacket tlvHeader;
     packet->RemoveHeader(tlvHeader);
 
@@ -1270,57 +1274,50 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
                                        << " with no tlv message received. Drop");
         return; // drop
     }
-    else if (tlvHeader.MessageSize() == 1)
-    {
-        tlvType = tlvHeader.MessageFront()->GetType();
-    }
-    else
-    {
-        bool hasRrepAck = false;
-        bool hasRrep = false;
-        // The only case where we have more than one message is when we have a RREP and a RREP-ACK
-        for (auto i = tlvHeader.MessageBegin(); i != tlvHeader.MessageEnd(); ++i)
-        {
-            auto tlvMessage = *i;
-            if (tlvMessage->GetType() == AODVV2_TYPE_RREP_ACK)
-            {
-                hasRrepAck = true;
-            }
-            else if (tlvMessage->GetType() == AODVV2_TYPE_RREP)
-            {
-                hasRrep = true;
-            }
-        }
 
-        if (hasRrepAck && hasRrep)
+    uint8_t rreqMessages = 0;
+    uint8_t rrepMessages = 0;
+    uint8_t rerrMessages = 0;
+    uint8_t rrepAckMessages = 0;
+
+    for (auto i = tlvHeader.MessageBegin(); i != tlvHeader.MessageEnd(); ++i)
+    {
+        auto tlvMessage = *i;
+        switch (tlvMessage->GetType())
         {
-            tlvType = AODVV2_TYPE_RREP;
-        }
-        else
-        {
-            NS_LOG_DEBUG("AODVv2 packet malformed. Drop");
+        case AODVV2_TYPE_RREQ:
+            rreqMessages++;
+            break;
+        case AODVV2_TYPE_RREP:
+            rrepMessages++;
+            break;
+        case AODVV2_TYPE_RERR:
+            rerrMessages++;
+            break;
+        case AODVV2_TYPE_RREP_ACK:
+            rrepAckMessages++;
+            break;
+        default:
+            NS_LOG_DEBUG("Unknown AODVv2 message type. Drop");
             return; // drop
         }
     }
 
-    switch (tlvType)
+    if (rreqMessages > 0)
     {
-    case AODVV2_TYPE_RREQ: {
         RecvRequest(packet, receiver, sender, tlvHeader);
-        break;
     }
-    case AODVV2_TYPE_RREP: {
+    else if (rrepMessages > 0 || (rrepMessages > 0 && rrepAckMessages > 0))
+    {
         RecvReply(packet, receiver, sender, tlvHeader);
-        break;
     }
-    case AODVV2_TYPE_RERR: {
-        RecvError(packet, sender, tlvHeader);
-        break;
-    }
-    case AODVV2_TYPE_RREP_ACK: {
+    else if (rrepAckMessages > 0)
+    {
         RecvReplyAck(sender, tlvHeader);
-        break;
     }
+    else if (rerrMessages > 0)
+    {
+        RecvError(packet, sender, tlvHeader);
     }
 }
 
@@ -1436,69 +1433,76 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
 
     // A node ignores all RREQs received from any node in its blacklist
     LocalRoute<IpAddress> toPrev;
-    if (m_routingTable.LookupRoute(src, rreqHeader.GetMetricType(), toPrev))
+    for (uint8_t type : rreqHeader.GetMetricTypes())
     {
-        if (toPrev.GetState() == INVALID)
+        if (m_routingTable.LookupRoute(src, type, toPrev))
         {
-            NS_LOG_DEBUG("Ignoring RREQ from node in blacklist");
-            return;
+            if (toPrev.GetState() == INVALID)
+            {
+                NS_LOG_DEBUG("Ignoring RREQ from node in blacklist");
+                return;
+            }
         }
     }
 
     IpAddress origin = rreqHeader.GetOrigIp();
 
     /*
-     *  Node checks to determine whether it has received a RREQ with the same Originator IP Address
-     * and RREQ ID. If such a RREQ has been received, the node silently discards the newly received
-     * RREQ.
+     *  Node checks to determine whether it has received a RREQ with the same Originator IP
+     * Address and RREQ ID. If such a RREQ has been received, the node silently discards the
+     * newly received RREQ.
      */
-    if (m_mms.IsDuplicate(origin,
-                          rreqHeader.GetOrigMask(),
-                          rreqHeader.GetTargIp(),
-                          rreqHeader.GetMetricType()))
-    {
-        NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
-        return;
-    }
 
-    Metric<IpAddress> metric = GetMetric(rreqHeader.GetMetricType());
+    for (uint8_t type : rreqHeader.GetMetricTypes())
+    {
+        if (m_mms.IsDuplicate(origin, rreqHeader.GetOrigMask(), rreqHeader.GetTargIp(), type))
+        {
+            NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
+            return;
+        }
+    }
 
     // Decrement RREQ hop count
     uint8_t hop = rreqHeader.GetHopLimit() - 1;
     rreqHeader.SetHopLimit(hop);
 
-    /*
-     *  When the reverse route is created or updated, the following actions on the route are also
-     * carried out:
-     *  1. the Originator Sequence Number from the RREQ is compared to the corresponding destination
-     * sequence number in the route table entry and copied if greater than the existing value there
-     *  2. the valid sequence number field is set to true;
-     *  3. the next hop in the routing table becomes the node from which the RREQ was received
-     *  4. the hop count is copied from the Hop Count in the RREQ message;
-     *  5. the Lifetime is set to be the maximum of (ExistingLifetime, MinimalLifetime), where
-     *     MinimalLifetime = current time + 2*NetTraversalTime - 2*HopCount*NodeTraversalTime
-     */
-    std::vector<LocalRoute<IpAddress>> routes;
-    if (!m_routingTable.LookupRoutes(origin, routes))
+    Metric<IpAddress> metric = GetMetric(rreqHeader.GetMetricTypes()[0]);
+    for (uint8_t metricType : rreqHeader.GetMetricTypes())
     {
-        Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        LocalRoute<IpAddress> newEntry(
-            /*dev=*/dev,
-            /*dst=*/origin,
-            /*seqNo=*/rreqHeader.GetSeqNo(),
-            /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-            /*hops=*/m_maxHopLimit - hop,
-            /*nextHop=*/src,
-            /*lastUsed=*/
-            Time(2 * m_netTraversalTime - 2 * (m_maxHopLimit - hop) * m_nodeTraversalTime),
-            /*maxIdleTime=*/m_maxIdleTime,
-            /*metric=*/metric,
-            /*metricValue=*/rreqHeader.GetOrigMetric());
-        m_routingTable.AddRoute(newEntry);
-    }
-    else
-    {
-        for (LocalRoute<IpAddress> toOrigin : routes)
+        metric = GetMetric(metricType);
+        /*
+         *  When the reverse route is created or updated, the following actions on the route are
+         * also carried out:
+         *  1. the Originator Sequence Number from the RREQ is compared to the corresponding
+         * destination sequence number in the route table entry and copied if greater than the
+         * existing value there
+         *  2. the valid sequence number field is set to true;
+         *  3. the next hop in the routing table becomes the node from which the RREQ was
+         * received
+         *  4. the hop count is copied from the Hop Count in the RREQ message;
+         *  5. the Lifetime is set to be the maximum of (ExistingLifetime, MinimalLifetime),
+         * where MinimalLifetime = current time + 2*NetTraversalTime -
+         * 2*HopCount*NodeTraversalTime
+         */
+        LocalRoute<IpAddress> toOrigin;
+        if (!m_routingTable.LookupRoute(origin, metricType, toOrigin))
+        {
+            Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
+            LocalRoute<IpAddress> newEntry(
+                /*dev=*/dev,
+                /*dst=*/origin,
+                /*seqNo=*/rreqHeader.GetSeqNo(),
+                /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                /*hops=*/m_maxHopLimit - hop,
+                /*nextHop=*/src,
+                /*lastUsed=*/
+                Time(2 * m_netTraversalTime - 2 * (m_maxHopLimit - hop) * m_nodeTraversalTime),
+                /*maxIdleTime=*/m_maxIdleTime,
+                /*metric=*/metric,
+                /*metricValue=*/rreqHeader.GetMetricValue(metric.GetMetricType()));
+            m_routingTable.AddRoute(newEntry);
+        }
+        else
         {
             if (toOrigin.GetValidSeqNo())
             {
@@ -1521,27 +1525,26 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                          toOrigin.GetLastUsed()));
             m_routingTable.Update(toOrigin);
         }
-    }
 
-    if (!m_routingTable.LookupRoutes(src, routes))
-    {
-        NS_LOG_DEBUG("Neighbor:" << src << " not found in routing table. Creating an entry");
-        Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        LocalRoute<IpAddress> newEntry(dev,
-                                       src,
-                                       rreqHeader.GetOrigSeqNo(),
-                                       m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                                       1,
-                                       src,
-                                       m_activeInterval,
-                                       m_maxIdleTime,
-                                       metric,
-                                       rreqHeader.GetOrigMetric());
-        m_routingTable.AddRoute(newEntry);
-    }
-    else
-    {
-        for (LocalRoute<IpAddress> toNeighbor : routes)
+        LocalRoute<IpAddress> toNeighbor;
+        if (!m_routingTable.LookupRoute(src, metricType, toNeighbor))
+        {
+            NS_LOG_DEBUG("Neighbor:" << src << " not found in routing table. Creating an entry");
+            Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
+            LocalRoute<IpAddress> newEntry(
+                dev,
+                src,
+                rreqHeader.GetOrigSeqNo(),
+                m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                1,
+                src,
+                m_activeInterval,
+                m_maxIdleTime,
+                metric,
+                rreqHeader.GetMetricValue(metric.GetMetricType()));
+            m_routingTable.AddRoute(newEntry);
+        }
+        else
         {
             toNeighbor.SetLastUsed(m_activeInterval);
             toNeighbor.SetSeqNo(rreqHeader.GetOrigSeqNo());
@@ -1552,6 +1555,11 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             toNeighbor.SetNextHop(src);
             m_routingTable.Update(toNeighbor);
         }
+
+        rreqHeader.AddMetric(metric.GetMetricType(),
+                             metric.routeCost(rreqHeader.GetMetricValue(metric.GetMetricType()),
+                                              MetricNode(m_ip->template GetObject<Node>())),
+                             metric.GetMaxMetric());
     }
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
@@ -1563,15 +1571,16 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     //  (i)  it is itself the destination,
     if (IsMyOwnAddress(rreqHeader.GetTargIp()))
     {
-        m_routingTable.LookupRoute(origin, metric.GetMetricType(), toOrigin);
+        m_routingTable.LookupRoute(origin, rreqHeader.GetMetricTypes()[0], toOrigin);
         NS_LOG_DEBUG("Send reply since I am the destination");
         SendReply(rreqHeader, toOrigin, rreqHeader.GetHopLimit() - 1);
         return;
     }
     /*
      * (ii) or it has an active route to the destination, the destination sequence number in the
-     * node's existing route table entry for the destination is valid and greater than or equal to
-     * the Destination Sequence Number of the RREQ, and the "destination only" flag is NOT set.
+     * node's existing route table entry for the destination is valid and greater than or equal
+     * to the Destination Sequence Number of the RREQ, and the "destination only" flag is NOT
+     * set.
      */
     LocalRoute<IpAddress> toDst;
     IpAddress dst = rreqHeader.GetTargIp();
@@ -1586,12 +1595,12 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
             return;
         }
         /*
-         * The Destination Sequence number for the requested destination is set to the maximum of
-         * the corresponding value received in the RREQ message, and the destination sequence value
-         * currently maintained by the node for the requested destination. However, the forwarding
-         * node MUST NOT modify its maintained value for the destination sequence number, even if
-         * the value received in the incoming RREQ is larger than the value currently maintained by
-         * the forwarding node.
+         * The Destination Sequence number for the requested destination is set to the maximum
+         * of the corresponding value received in the RREQ message, and the destination sequence
+         * value currently maintained by the node for the requested destination. However, the
+         * forwarding node MUST NOT modify its maintained value for the destination sequence
+         * number, even if the value received in the incoming RREQ is larger than the value
+         * currently maintained by the forwarding node.
          */
         if (((uint16_t(toDst.GetSeqNo()) - uint16_t(rreqHeader.GetSeqNo()) >= 0)) &&
             toDst.GetValidSeqNo())
@@ -1607,23 +1616,24 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     }
     else
     {
-        Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-        LocalRoute<IpAddress> newEntry(dev,
-                                       dst,
-                                       rreqHeader.GetOrigSeqNo(),
-                                       m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                                       m_maxHopLimit - rreqHeader.GetHopLimit(),
-                                       dst,
-                                       m_activeInterval,
-                                       m_maxIdleTime,
-                                       metric,
-                                       rreqHeader.GetOrigMetric());
-        m_routingTable.AddRoute(newEntry);
+        for (uint8_t metricType : rreqHeader.GetMetricTypes())
+        {
+            metric = GetMetric(metricType);
+            Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
+            LocalRoute<IpAddress> newEntry(
+                dev,
+                dst,
+                rreqHeader.GetOrigSeqNo(),
+                m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                m_maxHopLimit - rreqHeader.GetHopLimit(),
+                dst,
+                m_activeInterval,
+                m_maxIdleTime,
+                metric,
+                rreqHeader.GetMetricValue(metric.GetMetricType()));
+            m_routingTable.AddRoute(newEntry);
+        }
     }
-
-    rreqHeader.SetOrigMetric(
-        metric.routeCost(rreqHeader.GetOrigMetric(), MetricNode(m_ip->template GetObject<Node>())),
-        rreqHeader.GetOrigMetricSize());
 
     for (auto j = m_socketAddresses.begin(); j != m_socketAddresses.end(); ++j)
     {
@@ -1681,17 +1691,6 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         m_rrepCount++;
     }
 
-    Metric<IpAddress> metric;
-    for (Metric<IpAddress> m : GetMetrics())
-    {
-        if (metric.GetMetricType() == rreqHeader.GetMetricType())
-        {
-            metric = m;
-            break;
-        }
-    }
-    NS_ASSERT(metric.GetMetricType() != 0);
-
     /*
      * Destination node MUST increment its own sequence number by one if the sequence number in
      * the RREQ packet is equal to that incremented value. Otherwise, the destination does not
@@ -1717,9 +1716,17 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         /*targIp=*/rreqHeader.GetTargIp(),
         /*targMask=*/32,
         /*seqNo=*/m_seqNo,
-        /*hopLimit=*/m_maxHopLimit - hopCount,
-        /*metricType=*/metric.GetMetricType(),
-        /*metric=*/metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
+        /*hopLimit=*/m_maxHopLimit - hopCount);
+
+    for (uint8_t type : rreqHeader.GetMetricTypes())
+    {
+        Metric<IpAddress> metric = GetMetric(type);
+
+        rrepHeader.AddMetric(metric.GetMetricType(),
+                             metric.linkCost(MetricNode(m_ip->template GetObject<Node>())),
+                             metric.GetMaxMetric());
+    }
+
     Ptr<Packet> packet = Create<Packet>();
 
     if (m_routingTable.LookupRoutes(toOrigin.GetNextHop(), routes) &&
@@ -1828,97 +1835,108 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     uint8_t hop = rrepHeader.GetHopLimit() - 1;
     rrepHeader.SetHopLimit(hop);
 
-    Metric<IpAddress> metric = GetMetric(rrepHeader.GetMetricType());
-
-    /*
-     * If the route table entry to the destination is created or updated, then the following
-     * actions occur:
-     * -  the route is marked as active,
-     * -  the destination sequence number is marked as valid,
-     * -  the next hop in the route entry is assigned to be the node from which the RREP is
-     * received, which is indicated by the source IP address field in the IP header,
-     * -  the hop count is set to the value of the hop count from RREP message + 1
-     * -  the expiry time is set to the current time plus the value of the Lifetime in the
-     * RREP message,
-     * -  and the destination sequence number is the Destination Sequence Number in the RREP
-     * message.
-     */
-    Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-    LocalRoute<IpAddress> newEntry(
-        /*dev=*/dev,
-        /*dst=*/dst,
-        /*seqNo=*/rrepHeader.GetSeqNo(),
-        /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-        /*hops=*/hop,
-        /*nextHop=*/sender,
-        /*lastUsed=*/m_netTraversalTime,
-        /*maxIdleTime=*/m_maxIdleTime,
-        /*metric=*/metric,
-        /*metricValue=*/rrepHeader.GetTargMetric(),
-        /*state=*/ACTIVE);
-
-    m_nb.AddNeighbor(sender, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
-    m_nb.UpdateState(sender,
-                     m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                     m_rreqWaitTime);
-
-    if (m_nb.GetState(sender) == HEARD)
-    {
-        newEntry.SetState(UNCONFIRMED);
-    }
-    if (m_nb.GetState(sender) == BLACKLISTED) // drop
-    {
-        newEntry.SetState(INVALID);
-        return;
-    }
-
-    if (metric.GetMetricType() == AODVV2_METRIC_HOP)
-    {
-        newEntry.SetHop(rrepHeader.GetTargMetric()[0]);
-    }
-
-    rrepHeader.SetTargMetric(
-        metric.routeCost(rrepHeader.GetTargMetric(), MetricNode(m_ip->template GetObject<Node>())),
-        rrepHeader.GetTargMetricSize());
-
     LocalRoute<IpAddress> toDst;
-    if (m_routingTable.LookupRoute(dst, metric.GetMetricType(), toDst))
+    Metric<IpAddress> metric = GetMetric(rrepHeader.GetMetricTypes()[0]);
+
+    for (uint8_t metricType : rrepHeader.GetMetricTypes())
     {
-        // The existing entry is updated only in the following circumstances:
-        if (
-            // (i) the sequence number in the routing table is marked as invalid in route
-            // table entry.
-            (!toDst.GetValidSeqNo()) ||
+        metric = GetMetric(metricType);
 
-            // (ii) the Destination Sequence Number in the RREP is greater than the node's
-            // copy of the destination sequence number and the known value is valid,
-            ((uint16_t(rrepHeader.GetSeqNo()) - uint16_t(toDst.GetSeqNo())) > 0) ||
+        /*
+         * If the route table entry to the destination is created or updated, then the following
+         * actions occur:
+         * -  the route is marked as active,
+         * -  the destination sequence number is marked as valid,
+         * -  the next hop in the route entry is assigned to be the node from which the RREP is
+         * received, which is indicated by the source IP address field in the IP header,
+         * -  the hop count is set to the value of the hop count from RREP message + 1
+         * -  the expiry time is set to the current time plus the value of the Lifetime in the
+         * RREP message,
+         * -  and the destination sequence number is the Destination Sequence Number in the RREP
+         * message.
+         */
+        Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
+        LocalRoute<IpAddress> newEntry(
+            /*dev=*/dev,
+            /*dst=*/dst,
+            /*seqNo=*/rrepHeader.GetSeqNo(),
+            /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+            /*hops=*/hop,
+            /*nextHop=*/sender,
+            /*lastUsed=*/m_netTraversalTime,
+            /*maxIdleTime=*/m_maxIdleTime,
+            /*metric=*/metric,
+            /*metricValue=*/rrepHeader.GetMetricValue(metric.GetMetricType()),
+            /*state=*/ACTIVE);
 
-            // (iii) the sequence numbers are the same, but the route is marked as inactive.
-            (rrepHeader.GetSeqNo() == toDst.GetSeqNo() && toDst.GetState() != ACTIVE) ||
+        m_nb.AddNeighbor(sender, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
+        m_nb.UpdateState(sender,
+                         m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                         m_rreqWaitTime);
 
-            // (iv) the sequence numbers are the same, and the New Hop Count is smaller than
-            // the hop count in route table entry.
-            (rrepHeader.GetSeqNo() == toDst.GetSeqNo() && hop < toDst.GetHop()))
+        if (m_nb.GetState(sender) == HEARD)
         {
-            m_routingTable.Update(newEntry);
+            newEntry.SetState(UNCONFIRMED);
+        }
+        if (m_nb.GetState(sender) == BLACKLISTED) // drop
+        {
+            newEntry.SetState(INVALID);
+            return;
+        }
+
+        if (metric.GetMetricType() == AODVV2_METRIC_HOP)
+        {
+            newEntry.SetHop(rrepHeader.GetMetricValue(metric.GetMetricType())[0]);
+        }
+
+        rrepHeader.AddMetric(metric.GetMetricType(),
+                             metric.routeCost(rrepHeader.GetMetricValue(metric.GetMetricType()),
+                                              MetricNode(m_ip->template GetObject<Node>())),
+                             metric.GetMaxMetric());
+
+        if (m_routingTable.LookupRoute(dst, metric.GetMetricType(), toDst))
+        {
+            // The existing entry is updated only in the following circumstances:
+            if (
+                // (i) the sequence number in the routing table is marked as invalid in route
+                // table entry.
+                (!toDst.GetValidSeqNo()) ||
+
+                // (ii) the Destination Sequence Number in the RREP is greater than the node's
+                // copy of the destination sequence number and the known value is valid,
+                ((uint16_t(rrepHeader.GetSeqNo()) - uint16_t(toDst.GetSeqNo())) > 0) ||
+
+                // (iii) the sequence numbers are the same, but the route is marked as inactive.
+                (rrepHeader.GetSeqNo() == toDst.GetSeqNo() && toDst.GetState() != ACTIVE) ||
+
+                // (iv) the sequence numbers are the same, and the New Hop Count is smaller than
+                // the hop count in route table entry.
+                (rrepHeader.GetSeqNo() == toDst.GetSeqNo() && hop < toDst.GetHop()))
+            {
+                m_routingTable.Update(newEntry);
+            }
+        }
+        else
+        {
+            // The forward route for this destination is created if it does not already exist.
+            NS_LOG_LOGIC("add new route");
+            // TODO me: understand why this is not working
+            // m_routingTable.AddRoute(newEntry);
+        }
+        NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigIp());
+        if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
+        {
+            if (toDst.GetState() == UNCONFIRMED)
+            {
+                m_routingTable.Update(newEntry);
+                m_addressReqTimer[dst].Cancel();
+                m_addressReqTimer.erase(dst);
+            }
         }
     }
-    else
-    {
-        // The forward route for this destination is created if it does not already exist.
-        NS_LOG_LOGIC("add new route");
-        m_routingTable.AddRoute(newEntry);
-    }
-    NS_LOG_LOGIC("receiver " << receiver << " origin " << rrepHeader.GetOrigIp());
+
     if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
     {
-        if (toDst.GetState() == UNCONFIRMED)
-        {
-            m_routingTable.Update(newEntry);
-            m_addressReqTimer[dst].Cancel();
-            m_addressReqTimer.erase(dst);
-        }
         m_routingTable.LookupRoute(dst, metric.GetMetricType(), toDst);
         if (rrepHeader.HasRrepAck())
         {
@@ -1945,20 +1963,27 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
             toDst.InsertPrecursor(toOrigin.GetNextHop());
             m_routingTable.Update(toDst);
 
-            LocalRoute<IpAddress> toNextHopToDst;
-            m_routingTable.LookupRoute(toDst.GetNextHop(), metric.GetMetricType(), toNextHopToDst);
-            toNextHopToDst.InsertPrecursor(toOrigin.GetNextHop());
-            m_routingTable.Update(toNextHopToDst);
+            std::vector<LocalRoute<IpAddress>> routes;
+            if (m_routingTable.LookupRoutes(toDst.GetNextHop(), routes))
+            {
+                for (LocalRoute<IpAddress>& toNextHopToDst : routes)
+                {
+                    toNextHopToDst.InsertPrecursor(toOrigin.GetNextHop());
+                    m_routingTable.Update(toNextHopToDst);
+                }
+            }
 
             toOrigin.InsertPrecursor(toDst.GetNextHop());
             m_routingTable.Update(toOrigin);
 
-            LocalRoute<IpAddress> toNextHopToOrigin;
-            m_routingTable.LookupRoute(toOrigin.GetNextHop(),
-                                       metric.GetMetricType(),
-                                       toNextHopToOrigin);
-            toNextHopToOrigin.InsertPrecursor(toDst.GetNextHop());
-            m_routingTable.Update(toNextHopToOrigin);
+            if (m_routingTable.LookupRoutes(toOrigin.GetNextHop(), routes))
+            {
+                for (LocalRoute<IpAddress>& toNextHopToOrigin : routes)
+                {
+                    toNextHopToOrigin.InsertPrecursor(toDst.GetNextHop());
+                    m_routingTable.Update(toNextHopToOrigin);
+                }
+            }
         }
 
         if (rrepHeader.HasRrepAck())
@@ -2223,7 +2248,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         return;
     }
 
-    LocalRoute<IpAddress> validRoute = routes[0];
     for (LocalRoute<IpAddress>& toNextHop : routes)
     {
         toNextHop.SetState(INVALID);
@@ -2261,7 +2285,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
-    unreachable.insert(std::make_pair(nextHop, validRoute.GetSeqNo()));
+    unreachable.insert(std::make_pair(nextHop, routes[0].GetSeqNo()));
     m_routingTable.InvalidateRoutesWithDst(unreachable);
 }
 

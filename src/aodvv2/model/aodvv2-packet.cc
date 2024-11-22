@@ -29,19 +29,13 @@ RreqHeader<T>::RreqHeader(T origIp,
                           T targIp,
                           uint16_t targMask,
                           uint16_t seqNo,
-                          uint8_t hopLimit,
-                          uint8_t metricType,
-                          uint8_t* origMetric,
-                          uint8_t origMetricSize)
+                          uint8_t hopLimit)
     : m_origIp(origIp),
       m_origMask(origMask),
       m_origSeqNo(1),
       m_targIp(targIp),
       m_targMask(targMask),
       m_targSeqNo(1),
-      m_metricType(metricType),
-      m_origMetric(origMetric),
-      m_origMetricSize(origMetricSize),
       m_seqNo(seqNo),
       m_hopLimit(hopLimit)
 {
@@ -95,94 +89,101 @@ RreqHeader<T>::CreateTlvHeader() const
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIp> msg1 = GetPbbMessage();
-
-    // Add msg to tlv header
-    m_tlvHeader->MessagePushBack(msg1);
+    for (MetricPacket m : m_metrics)
+    {
+        Ptr<PbbMessageIp> msg1 = GetPbbMessage(m);
+        // Add msg to tlv header
+        m_tlvHeader->MessagePushBack(msg1);
+    }
 }
 
 template <typename T>
 void
 RreqHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
-    Ptr<PbbMessage> msg1 = tlvHeader.MessageFront();
-    this->SetSeqNo(tlvHeader.GetSequenceNumber());
-    if (msg1->HasHopLimit())
+    for (auto m = tlvHeader.MessageBegin(); m != tlvHeader.MessageEnd(); ++m)
     {
-        this->SetHopLimit(msg1->GetHopLimit());
-    }
+        Ptr<PbbMessage> msg = *m;
 
-    for (auto i = msg1->AddressBlockBegin(); i != msg1->AddressBlockEnd(); i++)
-    {
-        bool hasAddrType = false;
-        bool hasSeqNum = false;
-        bool hasMetric = false;
-        uint8_t addrType = 0;
-        uint8_t seqNum = 0;
-        uint8_t* metric = 0;
-        uint8_t metricSize = 0;
-        uint8_t metricType = 0;
-
-        Ptr<PbbAddressBlock> addressBlock = *i;
-        for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
+        if (msg->GetType() == AODVV2_TYPE_RREQ)
         {
-            Ptr<PbbAddressTlv> tlv = *j;
+            this->SetSeqNo(tlvHeader.GetSequenceNumber());
+            if (msg->HasHopLimit())
+            {
+                this->SetHopLimit(msg->GetHopLimit());
+            }
 
-            if (tlv->GetType() == AODVV2_ADDRESS_TYPE)
+            for (auto i = msg->AddressBlockBegin(); i != msg->AddressBlockEnd(); i++)
             {
-                addrType = tlv->GetValue().Begin().ReadU8();
-                hasAddrType = true;
-            }
-            else if (tlv->GetType() == AODVV2_SEQ_NUM)
-            {
-                seqNum = tlv->GetValue().Begin().ReadU8();
-                hasSeqNum = true;
-            }
-            else if (tlv->GetType() == AODVV2_PATH_METRIC)
-            {
-                metricSize = tlv->GetValue().GetSize();
-                metric = new uint8_t[metricSize];
-                tlv->GetValue().CopyData(metric, metricSize);
-                metricType = tlv->GetTypeExt();
-                hasMetric = true;
+                bool hasAddrType = false;
+                bool hasSeqNum = false;
+                bool hasMetric = false;
+                uint8_t addrType = 0;
+                uint8_t seqNum = 0;
+                uint8_t* metricValue = 0;
+                uint8_t metricSize = 0;
+                uint8_t metricType = 0;
+
+                Ptr<PbbAddressBlock> addressBlock = *i;
+                for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
+                {
+                    Ptr<PbbAddressTlv> tlv = *j;
+
+                    if (tlv->GetType() == AODVV2_ADDRESS_TYPE)
+                    {
+                        addrType = tlv->GetValue().Begin().ReadU8();
+                        hasAddrType = true;
+                    }
+                    else if (tlv->GetType() == AODVV2_SEQ_NUM)
+                    {
+                        seqNum = tlv->GetValue().Begin().ReadU8();
+                        hasSeqNum = true;
+                    }
+                    else if (tlv->GetType() == AODVV2_PATH_METRIC)
+                    {
+                        metricSize = tlv->GetValue().GetSize();
+                        metricValue = new uint8_t[metricSize];
+                        tlv->GetValue().CopyData(metricValue, metricSize);
+                        metricType = tlv->GetTypeExt();
+                        hasMetric = true;
+                    }
+                }
+
+                if (hasAddrType)
+                {
+                    switch (addrType)
+                    {
+                    case AODVV2_ORIGPREFIX:
+                        this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
+                        this->SetOrigMask(addressBlock->PrefixFront());
+                        if (hasSeqNum)
+                        {
+                            this->SetOrigSeqNo(seqNum);
+                        }
+                        if (hasMetric)
+                        {
+                            this->AddMetric(metricType, metricValue, metricSize);
+                        }
+                        break;
+                    case AODVV2_TARGPREFIX:
+                        this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
+                        this->SetTargMask(addressBlock->PrefixFront());
+                        if (hasSeqNum)
+                        {
+                            this->SetTargSeqNo(seqNum);
+                        }
+                        break;
+                    }
+                }
             }
         }
-
-        if (hasAddrType)
-        {
-            switch (addrType)
-            {
-            case AODVV2_ORIGPREFIX:
-                this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
-                this->SetOrigMask(addressBlock->PrefixFront());
-                if (hasSeqNum)
-                {
-                    this->SetOrigSeqNo(seqNum);
-                }
-                if (hasMetric)
-                {
-                    this->SetOrigMetric(metric, metricSize);
-                    this->SetMetricType(metricType);
-                }
-                break;
-            case AODVV2_TARGPREFIX:
-                this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
-                this->SetTargMask(addressBlock->PrefixFront());
-                if (hasSeqNum)
-                {
-                    this->SetTargSeqNo(seqNum);
-                }
-                break;
-            }
-        }
     }
-
     CreateTlvHeader();
 }
 
 template <typename T>
 Ptr<typename RreqHeader<T>::PbbMessageIp>
-RreqHeader<T>::GetPbbMessage() const
+RreqHeader<T>::GetPbbMessage(MetricPacket metric) const
 {
     Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREQ);
@@ -209,8 +210,8 @@ RreqHeader<T>::GetPbbMessage() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a1tlv3 = Create<PbbAddressTlv>();
     msg1a1tlv3->SetType(AODVV2_PATH_METRIC);
-    msg1a1tlv3->SetTypeExt(this->m_metricType);
-    msg1a1tlv3->SetValue(this->m_origMetric, this->m_origMetricSize);
+    msg1a1tlv3->SetTypeExt(metric.m_metricType);
+    msg1a1tlv3->SetValue(metric.m_metricValue, metric.m_metricSize);
     msg1a1->TlvPushBack(msg1a1tlv3);
 
     msg1->AddressBlockPushBack(msg1a1);
@@ -305,19 +306,13 @@ RrepHeader<T>::RrepHeader(T origIp,
                           T targIp,
                           uint16_t targMask,
                           uint16_t seqNo,
-                          uint8_t hopLimit,
-                          uint8_t metricType,
-                          uint8_t* targMetric,
-                          uint8_t targMetricSize)
+                          uint8_t hopLimit)
     : m_origIp(origIp),
       m_origMask(origMask),
       m_targIp(targIp),
       m_targMask(targMask),
       m_seqNo(seqNo),
-      m_hopLimit(hopLimit),
-      m_metricType(metricType),
-      m_targMetric(targMetric),
-      m_targMetricSize(targMetricSize)
+      m_hopLimit(hopLimit)
 {
 }
 
@@ -369,100 +364,104 @@ RrepHeader<T>::CreateTlvHeader() const
     m_tlvHeader = Create<PbbPacket>();
     m_tlvHeader->SetSequenceNumber(this->m_seqNo);
 
-    Ptr<PbbMessageIp> msg1 = GetPbbMessage();
+    for (MetricPacket m : m_metrics)
+    {
+        Ptr<PbbMessageIp> msg1 = GetPbbMessage(m);
+
+        // Add msg to tlv header
+        m_tlvHeader->MessagePushBack(msg1);
+    }
 
     if (m_hasRrepAck)
     {
         RrepAckHeader<T> rrepAckHeader;
         m_tlvHeader->MessagePushBack(rrepAckHeader.GetPbbMessage());
     }
-
-    // Add msg to tlv header
-    m_tlvHeader->MessagePushBack(msg1);
 }
 
 template <typename T>
 void
 RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 {
-    Ptr<PbbMessage> rrepMsg;
-    Ptr<PbbMessage> ackMsg;
+    std::vector<Ptr<PbbMessage>> rrepMsgs;
     m_hasRrepAck = false;
 
     for (auto i = tlvHeader.MessageBegin(); i != tlvHeader.MessageEnd(); ++i)
     {
-        auto tlvMessage = *i;
+        Ptr<PbbMessage> tlvMessage = *i;
         if (tlvMessage->GetType() == AODVV2_TYPE_RREP_ACK)
         {
-            ackMsg = *i;
             m_hasRrepAck = true;
         }
         else if (tlvMessage->GetType() == AODVV2_TYPE_RREP)
         {
-            rrepMsg = *i;
+            rrepMsgs.push_back(tlvMessage);
         }
     }
 
-    this->SetSeqNo(tlvHeader.GetSequenceNumber());
-    this->SetHopLimit(rrepMsg->GetHopLimit());
-
-    for (auto i = rrepMsg->AddressBlockBegin(); i != rrepMsg->AddressBlockEnd(); i++)
+    for (auto i = rrepMsgs.begin(); i != rrepMsgs.end(); ++i)
     {
-        bool hasAddrType = false;
-        bool hasSeqNum = false;
-        bool hasMetric = false;
-        uint8_t addrType = 0;
-        uint8_t seqNum = 0;
-        uint8_t* metric = 0;
-        uint8_t metricSize = 0;
-        uint8_t metricType = 0;
+        Ptr<PbbMessage> rrepMsg = *i;
+        this->SetSeqNo(tlvHeader.GetSequenceNumber());
+        this->SetHopLimit(rrepMsg->GetHopLimit());
 
-        Ptr<PbbAddressBlock> addressBlock = *i;
-        for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
+        for (auto i = rrepMsg->AddressBlockBegin(); i != rrepMsg->AddressBlockEnd(); i++)
         {
-            Ptr<PbbAddressTlv> tlv = *j;
+            bool hasAddrType = false;
+            bool hasSeqNum = false;
+            bool hasMetric = false;
+            uint8_t addrType = 0;
+            uint8_t seqNum = 0;
+            uint8_t* metricValue = 0;
+            uint8_t metricSize = 0;
+            uint8_t metricType = 0;
 
-            if (tlv->GetType() == AODVV2_ADDRESS_TYPE)
+            Ptr<PbbAddressBlock> addressBlock = *i;
+            for (auto j = addressBlock->TlvBegin(); j != addressBlock->TlvEnd(); j++)
             {
-                addrType = tlv->GetValue().Begin().ReadU8();
-                hasAddrType = true;
-            }
-            else if (tlv->GetType() == AODVV2_SEQ_NUM)
-            {
-                seqNum = tlv->GetValue().Begin().ReadU8();
-                hasSeqNum = true;
-            }
-            else if (tlv->GetType() == AODVV2_PATH_METRIC)
-            {
-                metricSize = tlv->GetValue().GetSize();
-                metric = new uint8_t[metricSize];
-                tlv->GetValue().CopyData(metric, metricSize);
-                metricType = tlv->GetTypeExt();
-                hasMetric = true;
-            }
-        }
+                Ptr<PbbAddressTlv> tlv = *j;
 
-        if (hasAddrType)
-        {
-            switch (addrType)
+                if (tlv->GetType() == AODVV2_ADDRESS_TYPE)
+                {
+                    addrType = tlv->GetValue().Begin().ReadU8();
+                    hasAddrType = true;
+                }
+                else if (tlv->GetType() == AODVV2_SEQ_NUM)
+                {
+                    seqNum = tlv->GetValue().Begin().ReadU8();
+                    hasSeqNum = true;
+                }
+                else if (tlv->GetType() == AODVV2_PATH_METRIC)
+                {
+                    metricSize = tlv->GetValue().GetSize();
+                    metricValue = new uint8_t[metricSize];
+                    tlv->GetValue().CopyData(metricValue, metricSize);
+                    metricType = tlv->GetTypeExt();
+                    hasMetric = true;
+                }
+            }
+
+            if (hasAddrType)
             {
-            case AODVV2_ORIGPREFIX:
-                this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
-                this->SetOrigMask(addressBlock->PrefixFront());
-                break;
-            case AODVV2_TARGPREFIX:
-                this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
-                this->SetTargMask(addressBlock->PrefixFront());
-                if (hasSeqNum)
+                switch (addrType)
                 {
-                    this->SetTargSeqNo(seqNum);
+                case AODVV2_ORIGPREFIX:
+                    this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
+                    this->SetOrigMask(addressBlock->PrefixFront());
+                    break;
+                case AODVV2_TARGPREFIX:
+                    this->SetTargIp(T::ConvertFrom(addressBlock->AddressFront()));
+                    this->SetTargMask(addressBlock->PrefixFront());
+                    if (hasSeqNum)
+                    {
+                        this->SetTargSeqNo(seqNum);
+                    }
+                    if (hasMetric)
+                    {
+                        this->AddMetric(metricType, metricValue, metricSize);
+                    }
+                    break;
                 }
-                if (hasMetric)
-                {
-                    this->SetTargMetric(metric, metricSize);
-                    this->SetMetricType(metricType);
-                }
-                break;
             }
         }
     }
@@ -472,7 +471,7 @@ RrepHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
 
 template <typename T>
 Ptr<typename RrepHeader<T>::PbbMessageIp>
-RrepHeader<T>::GetPbbMessage() const
+RrepHeader<T>::GetPbbMessage(MetricPacket metric) const
 {
     Ptr<PbbMessageIp> msg1 = Create<PbbMessageIp>();
     msg1->SetType(AODVV2_TYPE_RREP);
@@ -514,8 +513,8 @@ RrepHeader<T>::GetPbbMessage() const
     // Add PATH_METRIC TLV
     Ptr<PbbAddressTlv> msg1a2tlv3 = Create<PbbAddressTlv>();
     msg1a2tlv3->SetType(AODVV2_PATH_METRIC);
-    msg1a2tlv3->SetTypeExt(this->m_metricType);
-    msg1a2tlv3->SetValue(this->m_targMetric, this->m_targMetricSize);
+    msg1a2tlv3->SetTypeExt(metric.m_metricType);
+    msg1a2tlv3->SetValue(metric.m_metricValue, metric.m_metricSize);
     msg1a2->TlvPushBack(msg1a2tlv3);
 
     msg1->AddressBlockPushBack(msg1a2);

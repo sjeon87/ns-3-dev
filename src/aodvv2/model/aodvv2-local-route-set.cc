@@ -368,7 +368,8 @@ LocalRouteSet<T>::Update(LocalRoute<T>& rt)
     NS_LOG_FUNCTION(this);
     for (auto& route : m_ipAddressEntry)
     {
-        if (route.GetDestination() == rt.GetDestination())
+        if (route.GetDestination() == rt.GetDestination() &&
+            route.GetMetricType() == rt.GetMetricType())
         {
             route.SetSeqNo(std::max(rt.GetSeqNo(), route.GetSeqNo()));
             route = rt;
