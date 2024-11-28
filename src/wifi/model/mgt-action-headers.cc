@@ -739,6 +739,9 @@ MgtAddBaRequestHeader::GetInstanceTypeId() const
 void
 MgtAddBaRequestHeader::Print(std::ostream& os) const
 {
+    os << "A-MSDU support=" << m_amsduSupport << " Policy=" << +m_policy << " TID=" << +m_tid
+       << " Buffer size=" << m_bufferSize << " Timeout=" << m_timeoutValue
+       << " Starting seq=" << m_startingSeq;
 }
 
 uint32_t
@@ -869,7 +872,7 @@ MgtAddBaRequestHeader::GetBufferSize() const
 bool
 MgtAddBaRequestHeader::IsAmsduSupported() const
 {
-    return m_amsduSupport == 1;
+    return m_amsduSupport;
 }
 
 uint16_t
@@ -887,8 +890,7 @@ MgtAddBaRequestHeader::GetStartingSequenceControl() const
 uint16_t
 MgtAddBaRequestHeader::GetParameterSet() const
 {
-    uint16_t res = 0;
-    res |= m_amsduSupport;
+    uint16_t res = m_amsduSupport ? 1 : 0;
     res |= m_policy << 1;
     res |= m_tid << 2;
     res |= (m_bufferSize % 1024) << 6;
@@ -898,7 +900,7 @@ MgtAddBaRequestHeader::GetParameterSet() const
 void
 MgtAddBaRequestHeader::SetParameterSet(uint16_t params)
 {
-    m_amsduSupport = params & 0x01;
+    m_amsduSupport = ((params & 0x01) == 1);
     m_policy = (params >> 1) & 0x01;
     m_tid = (params >> 2) & 0x0f;
     m_bufferSize = (params >> 6) & 0x03ff;
@@ -929,7 +931,8 @@ MgtAddBaResponseHeader::GetInstanceTypeId() const
 void
 MgtAddBaResponseHeader::Print(std::ostream& os) const
 {
-    os << "status code=" << m_code;
+    os << "Status code=" << m_code << "A-MSDU support=" << m_amsduSupport << " Policy=" << +m_policy
+       << " TID=" << +m_tid << " Buffer size=" << m_bufferSize << " Timeout=" << m_timeoutValue;
 }
 
 uint32_t
@@ -1060,14 +1063,13 @@ MgtAddBaResponseHeader::GetBufferSize() const
 bool
 MgtAddBaResponseHeader::IsAmsduSupported() const
 {
-    return m_amsduSupport == 1;
+    return m_amsduSupport;
 }
 
 uint16_t
 MgtAddBaResponseHeader::GetParameterSet() const
 {
-    uint16_t res = 0;
-    res |= m_amsduSupport;
+    uint16_t res = m_amsduSupport ? 1 : 0;
     res |= m_policy << 1;
     res |= m_tid << 2;
     res |= (m_bufferSize % 1024) << 6;
@@ -1077,7 +1079,7 @@ MgtAddBaResponseHeader::GetParameterSet() const
 void
 MgtAddBaResponseHeader::SetParameterSet(uint16_t params)
 {
-    m_amsduSupport = params & 0x01;
+    m_amsduSupport = ((params & 0x01) == 1);
     m_policy = (params >> 1) & 0x01;
     m_tid = (params >> 2) & 0x0f;
     m_bufferSize = (params >> 6) & 0x03ff;
@@ -1108,6 +1110,7 @@ MgtDelBaHeader::GetInstanceTypeId() const
 void
 MgtDelBaHeader::Print(std::ostream& os) const
 {
+    os << "Initiator=" << m_initiator << " TID=" << +m_tid;
 }
 
 uint32_t
