@@ -51,7 +51,7 @@ enum MessageTlvType
  * @ingroup aodvv2
  * @brief Address Block TLV Type
  */
-enum AddressTlvType
+enum AddressBlockTlvType
 {
     AODVV2_PATH_METRIC = 129,
     AODVV2_SEQ_NUM = 130,
@@ -60,24 +60,24 @@ enum AddressTlvType
 
 /**
  * @ingroup aodvv2
- * @brief Address Block TLV Value
+ * @brief Address Block TLV Metric Type
  */
-enum AddressTlvValue
+enum MetricType
+{
+    AODVV2_METRIC_UNASSIGNED = 0,
+    AODVV2_METRIC_HOP = 1,
+};
+
+/**
+ * @ingroup aodvv2
+ * @brief Address Type TLV
+ */
+enum AddressTypeTlvValue
 {
     AODVV2_ORIGPREFIX = 0,
     AODVV2_TARGPREFIX = 1,
     AODVV2_UNREACHABLE = 2,
     AODVV2_PKTSOURCE = 3,
-};
-
-/**
- * @ingroup aodvv2
- * @brief Address Block TLV Metric Type
- */
-enum AddressTlvMetricType
-{
-    AODVV2_METRIC_UNASSIGNED = 0,
-    AODVV2_METRIC_HOP = 1,
 };
 
 /// Unreachable destination structure
