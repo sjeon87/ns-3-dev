@@ -59,17 +59,18 @@ Aodvv2Helper<T>::Create(Ptr<Node> node) const
 }
 
 template <typename T>
-void
+bool
 Aodvv2Helper<T>::AddMetric(const aodvv2::Metric<IpAddress>& metric)
 {
     for (auto& m : m_metrics)
     {
         if (m.GetMetricType() == metric.GetMetricType())
         {
-            return;
+            return false;
         }
     }
     m_metrics.push_back(metric);
+    return true;
 }
 
 template <typename T>

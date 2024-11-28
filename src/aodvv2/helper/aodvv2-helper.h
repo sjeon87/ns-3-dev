@@ -61,10 +61,11 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
     Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
      * @param metric the metric to add
+     * @returns true if the metric was added successfully
      *
      * This method adds a metric to the list of metrics used by the AODVv2 routing protocol.
      */
-    void AddMetric(const aodvv2::Metric<IpAddress>& metric);
+    bool AddMetric(const aodvv2::Metric<IpAddress>& metric);
     /**
      * @param name the name of the attribute to set
      * @param value the value of the attribute to set.
