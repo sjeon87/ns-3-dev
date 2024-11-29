@@ -244,7 +244,6 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
     }
 
     *os << std::setw(16) << expire.str();
-    *os << std::setw(16) << m_hops;
     *os << metric.str() << std::endl;
     // Restore the previous ostream state
     (*os).copyfmt(oldState);
@@ -576,7 +575,6 @@ LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Ti
     *os << std::setw(16) << "Interface";
     *os << std::setw(16) << "State";
     *os << std::setw(16) << "Expire";
-    *os << std::setw(16) << "Hops";
     *os << "Metrics" << std::endl;
     for (const auto& route : table)
     {
