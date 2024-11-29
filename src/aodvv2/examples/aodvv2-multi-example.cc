@@ -279,17 +279,32 @@ void
 Aodvv2MultiExample::InstallInternetStack()
 {
     Aodvv2Helper<Ipv4RoutingHelper> aodvv2;
-    /* EXAMPLE: add custom metric
+    /*
     aodvv2.AddMetric(ns3::aodvv2::Metric<Ipv4Address>(
         2,
-        1,
-        [](const ns3::aodvv2::MetricNode&) { return new uint8_t[1]{1}; },
+        3,
+        [](const ns3::aodvv2::MetricNode&) {
+            uint8_t* cost = new uint8_t[3];
+            cost[0] = 1;
+            uint16_t combinedCost = 100; // TODO: set as sum of trust and battery
+            cost[1] = static_cast<uint8_t>((combinedCost >> 8) & 0xFF);
+            cost[2] = static_cast<uint8_t>(combinedCost & 0xFF);
+            return cost;
+        },
         [](const uint8_t* routeCost, const ns3::aodvv2::MetricNode& currentNode) {
-            uint8_t* newCost = new uint8_t[1];
+            uint8_t* newCost = new uint8_t[3];
             newCost[0] = static_cast<uint8_t>(routeCost[0] + 1);
+            uint16_t combinedCost = (routeCost[1] << 8) | routeCost[2];
+            combinedCost += 100; // TODO: set as sum of trust and battery
+            newCost[1] = static_cast<uint8_t>((combinedCost >> 8) & 0xFF);
+            newCost[2] = static_cast<uint8_t>(combinedCost & 0xFF);
             return newCost;
         },
-        [](const uint8_t* r1, const uint8_t* r2) { return r1 <= r2; }));
+        [](const uint8_t* r1, const uint8_t* r2) {
+            uint16_t combinedCost1 = (r1[1] << 8) | r1[2];
+            uint16_t combinedCost2 = (r2[1] << 8) | r2[2];
+            return combinedCost1 <= combinedCost2;
+        }));
     */
     // you can configure AODVv2 attributes here using aodvv2.Set(name, value)
     InternetStackHelper stack;
