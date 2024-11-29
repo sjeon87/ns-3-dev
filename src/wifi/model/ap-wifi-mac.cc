@@ -2170,12 +2170,15 @@ ApWifiMac::ReceiveAssocRequest(const AssocReqRefVariant& assoc,
         if (GetHtSupported(linkId))
         {
             const auto& htCapabilities = frame.template Get<HtCapabilities>();
-            if (htCapabilities.has_value() && htCapabilities->IsSupportedMcs(0))
+            if (htCapabilities.has_value())
             {
                 remoteStationManager->AddStationHtCapabilities(from, *htCapabilities);
             }
-            // const ExtendedCapabilities& extendedCapabilities = frame.GetExtendedCapabilities();
-            // TODO: to be completed
+            const auto& extendedCapabilities = frame.template Get<ExtendedCapabilities>();
+            if (extendedCapabilities.has_value())
+            {
+                remoteStationManager->AddStationExtendedCapabilities(from, *extendedCapabilities);
+            }
         }
         if (GetVhtSupported(linkId))
         {

@@ -93,14 +93,6 @@ HeFrameExchangeManager::Reset()
 }
 
 void
-HeFrameExchangeManager::SetWifiMac(const Ptr<WifiMac> mac)
-{
-    m_apMac = DynamicCast<ApWifiMac>(mac);
-    m_staMac = DynamicCast<StaWifiMac>(mac);
-    VhtFrameExchangeManager::SetWifiMac(mac);
-}
-
-void
 HeFrameExchangeManager::RxStartIndication(WifiTxVector txVector, Time psduDuration)
 {
     NS_LOG_FUNCTION(this << txVector << psduDuration.As(Time::MS));
@@ -113,7 +105,6 @@ void
 HeFrameExchangeManager::DoDispose()
 {
     NS_LOG_FUNCTION(this);
-    m_apMac = nullptr;
     m_staMac = nullptr;
     m_psduMap.clear();
     m_txParams.Clear();
@@ -1740,7 +1731,7 @@ HeFrameExchangeManager::SendMultiStaBlockAck(const WifiTxParameters& txParams, T
 
             auto agreement = m_mac->GetBaAgreementEstablishedAsRecipient(receiver, tid);
             NS_ASSERT(agreement);
-            agreement->get().FillBlockAckBitmap(&blockAck, index);
+            agreement->get().FillBlockAckBitmap(blockAck, index);
             NS_LOG_DEBUG("Multi-STA Block Ack: Sending Block Ack with seq="
                          << blockAck.GetStartingSequence(index) << " to=" << receiver
                          << " tid=" << +tid);
