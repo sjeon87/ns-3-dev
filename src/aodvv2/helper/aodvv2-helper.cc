@@ -52,6 +52,10 @@ Aodvv2Helper<T>::Create(Ptr<Node> node) const
         {
             agent->AddMetric(m);
         }
+        for (auto& [node, metricNode] : m_metricNodes)
+        {
+            agent->AddMetricNode(node, metricNode);
+        }
         node->AggregateObject(agent);
         return agent;
     }
@@ -71,6 +75,14 @@ Aodvv2Helper<T>::AddMetric(const aodvv2::Metric<IpAddress>& metric)
     }
     m_metrics.push_back(metric);
     return true;
+}
+
+template <typename T>
+bool
+Aodvv2Helper<T>::AddMetricNode(Ptr<Node> node, const aodvv2::MetricNode& metricNode)
+{
+    auto result = m_metricNodes.insert(std::make_pair(node, metricNode));
+    return result.second;
 }
 
 template <typename T>

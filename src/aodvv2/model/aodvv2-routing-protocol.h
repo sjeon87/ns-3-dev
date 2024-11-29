@@ -350,18 +350,47 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /**
      * @brief Add a metric to the metrics list
      * @param metric The metric to add
+     * @returns true if the metric is added
      */
-    void AddMetric(const Metric<IpAddress>& metric)
+    bool AddMetric(const Metric<IpAddress>& metric)
     {
         // add if the metricType attribute is not already in the list
         for (auto& m : m_metrics)
         {
             if (m.GetMetricType() == metric.GetMetricType())
             {
-                return;
+                return false;
             }
         }
         m_metrics.push_back(metric);
+        return true;
+    }
+
+    /**
+     * @brief Add a metric node to the metric nodes list
+     * @param node The node to add
+     * @param metricNode The metric node to add
+     * @returns true if the pair is added
+     */
+    bool AddMetricNode(Ptr<Node> node, const MetricNode& metricNode)
+    {
+        auto result = m_metricNodes.insert(std::make_pair(node, metricNode));
+        return result.second;
+    }
+
+    /**
+     * @brief Get the metricNode given a node
+     * @param node The node
+     * @returns the metricNode
+     */
+    MetricNode GetMetricNode(Ptr<Node> node) const
+    {
+        auto it = m_metricNodes.find(node);
+        if (it != m_metricNodes.end())
+        {
+            return it->second;
+        }
+        return MetricNode(node);
     }
 
     /**
@@ -504,6 +533,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     std::vector<Metric<IpAddress>> m_metrics;
     /// Use default metric
     bool m_useDefaultMetric;
+    /// Map of nodes and their corresponding MetricNode
+    std::map<Ptr<Node>, MetricNode> m_metricNodes;
 
   private:
     /// Start protocol operation

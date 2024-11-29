@@ -715,7 +715,7 @@ Aodvv2RoutingProtocol<T>::SetIpv4(Ptr<Ipv4> ipv4)
                  Simulator::GetMaximumSimulationTime(),
                  m_maxIdleTime,
                  metric,
-                 metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
+                 metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
              m_routingTable.AddRoute(rt);
          } */
         Simulator::ScheduleNow(&Aodvv2RoutingProtocol<T>::Start, this);
@@ -1087,7 +1087,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
-                    metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
+                    metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
 
                 newEntry.SetState(UNCONFIRMED);
                 rreqHeader.AddMetric(newEntry.GetMetricType(),
@@ -1383,7 +1383,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metric=*/metric,
                 /*metricValue=*/
-                metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
+                metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
             m_routingTable.AddRoute(newEntry);
         }
     }
@@ -1414,7 +1414,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
-                    metric.linkCost(MetricNode(m_ip->template GetObject<Node>())));
+                    metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
                 m_routingTable.Update(newEntry);
             }
         }
@@ -1558,7 +1558,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
 
         rreqHeader.AddMetric(metric.GetMetricType(),
                              metric.routeCost(rreqHeader.GetMetricValue(metric.GetMetricType()),
-                                              MetricNode(m_ip->template GetObject<Node>())),
+                                              GetMetricNode(m_ip->template GetObject<Node>())),
                              metric.GetMaxMetric());
     }
 
@@ -1723,7 +1723,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         Metric<IpAddress> metric = GetMetric(type);
 
         rrepHeader.AddMetric(metric.GetMetricType(),
-                             metric.linkCost(MetricNode(m_ip->template GetObject<Node>())),
+                             metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())),
                              metric.GetMaxMetric());
     }
 
@@ -1891,7 +1891,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
 
         rrepHeader.AddMetric(metric.GetMetricType(),
                              metric.routeCost(rrepHeader.GetMetricValue(metric.GetMetricType()),
-                                              MetricNode(m_ip->template GetObject<Node>())),
+                                              GetMetricNode(m_ip->template GetObject<Node>())),
                              metric.GetMaxMetric());
 
         if (m_routingTable.LookupRoute(dst, metric.GetMetricType(), toDst))

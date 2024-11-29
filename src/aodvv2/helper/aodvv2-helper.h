@@ -98,11 +98,22 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
                            Ptr<OutputStreamWrapper> stream,
                            Time::Unit unit = Time::S);
 
+    /**
+     * @param node the node to add
+     * @param metricNode the MetricNode to associate with the node
+     * @returns true if the node and MetricNode were added successfully
+     *
+     * This method adds a node and its corresponding MetricNode to the map.
+     */
+    bool AddMetricNode(Ptr<Node> node, const aodvv2::MetricNode& metricNode);
+
   private:
     /** the factory to create AODVv2 routing object */
     ObjectFactory m_agentFactory;
     /// List of metrics
     std::vector<aodvv2::Metric<IpAddress>> m_metrics;
+    /// Map of nodes and their corresponding MetricNode
+    std::map<Ptr<Node>, aodvv2::MetricNode> m_metricNodes;
 
     /**
      * @brief prints the routing table.
