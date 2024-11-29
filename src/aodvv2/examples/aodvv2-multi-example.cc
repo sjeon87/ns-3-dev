@@ -82,6 +82,10 @@ class Aodvv2MultiExample
     bool printRoutes;
     /// Type of network topology
     std::string topologyType;
+    /// File containing the network topology
+    std::string topologyFile;
+    /// Print node positions to file if true
+    bool printPositions;
 
     // network
     /// nodes used in the example
@@ -92,6 +96,8 @@ class Aodvv2MultiExample
     Ipv4InterfaceContainer interfaces;
     /// Adjacency matrix
     std::vector<std::vector<int>> adjacencyMatrix;
+    /// Map of nodes and their corresponding MetricNode
+    std::map<Ptr<Node>, aodvv2::MetricNode> m_metricNodes;
 
   private:
     /// Create the nodes
@@ -106,10 +112,16 @@ class Aodvv2MultiExample
     void CreateAdjacencyMatrix();
     /// Print nodes positions
     void PrintNodes();
+    /// Add a metric node to the map
+    bool AddMetricNode(Ptr<Node> node, const aodvv2::MetricNode& metricNode);
     /// Get if there is a route between two nodes
     bool HasRoute(uint32_t src, uint32_t dst);
     /// Get if there is a route between two nodes using DFS
     bool HasRouteDFS(uint32_t src, uint32_t dst, std::vector<bool>& visited);
+    /// Print node positions to CSV file
+    void PrintNodePositionsToCsv(const std::string& filename);
+    /// Read topology from file
+    void ReadTopologyFromFile(const std::string& filename);
 };
 
 int
@@ -152,7 +164,8 @@ Aodvv2MultiExample::Configure(int argc, char** argv)
     cmd.AddValue("time", "Simulation time, s.", totalTime);
     cmd.AddValue("step", "Grid step, m", step);
     cmd.AddValue("topologyType", "Type of network topology (random, custom, circle)", topologyType);
-
+    cmd.AddValue("topologyFile", "File containing the network topology.", topologyFile);
+    cmd.AddValue("printPositions", "Print node positions to file.", printPositions);
     cmd.Parse(argc, argv);
     return true;
 }
@@ -168,11 +181,24 @@ Aodvv2MultiExample::Run()
 
     //  Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", UintegerValue (1)); //
     //  enable rts cts all the time.
-    CreateNodes();
+    if (topologyFile.empty())
+    {
+        CreateNodes();
+    }
+    else
+    {
+        ReadTopologyFromFile(topologyFile);
+    }
+
     CreateDevices();
     CreateAdjacencyMatrix();
     InstallInternetStack();
     InstallApplications();
+
+    if (printPositions)
+    {
+        PrintNodePositionsToCsv("node_positions.csv");
+    }
 
     // PrintNodes();
 
@@ -191,6 +217,7 @@ Aodvv2MultiExample::Report(std::ostream&)
 void
 Aodvv2MultiExample::CreateNodes()
 {
+    Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
     std::cout << "Creating " << (unsigned)size << " nodes with topology type '" << topologyType
               << "' and step " << step << " m apart.\n";
     nodes.Create(size);
@@ -200,6 +227,8 @@ Aodvv2MultiExample::CreateNodes()
         std::ostringstream os;
         os << "node-" << i;
         Names::Add(os.str(), nodes.Get(i));
+
+        AddMetricNode(nodes.Get(i), aodvv2::MetricNode(nodes.Get(i), rand->GetInteger(0, 100)));
     }
 
     // Create positions based on topology
@@ -306,6 +335,12 @@ Aodvv2MultiExample::InstallInternetStack()
             return combinedCost1 <= combinedCost2;
         }));
     */
+
+    for (auto& [node, metricNode] : m_metricNodes)
+    {
+        aodvv2.AddMetricNode(node, metricNode);
+    }
+
     // you can configure AODVv2 attributes here using aodvv2.Set(name, value)
     InternetStackHelper stack;
     stack.SetRoutingHelper(aodvv2); // has effect on the next Install ()
@@ -457,6 +492,13 @@ Aodvv2MultiExample::PrintNodes()
 }
 
 bool
+Aodvv2MultiExample::AddMetricNode(Ptr<Node> node, const aodvv2::MetricNode& metricNode)
+{
+    auto result = m_metricNodes.insert(std::make_pair(node, metricNode));
+    return result.second;
+}
+
+bool
 Aodvv2MultiExample::HasRoute(uint32_t src, uint32_t dst)
 {
     std::vector<bool> visited(size, false);
@@ -483,4 +525,75 @@ Aodvv2MultiExample::HasRouteDFS(uint32_t src, uint32_t dst, std::vector<bool>& v
     }
 
     return false;
+}
+
+void
+Aodvv2MultiExample::PrintNodePositionsToCsv(const std::string& filename)
+{
+    Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
+    std::ofstream file(filename);
+    file << "x,y,z,battery,trust\n";
+
+    for (uint32_t i = 0; i < nodes.GetN(); ++i)
+    {
+        Ptr<MobilityModel> mobility = nodes.Get(i)->GetObject<MobilityModel>();
+        Vector pos = mobility->GetPosition();
+        file << pos.x << "," << pos.y << "," << pos.z << "," << rand->GetInteger(5, 100) << ","
+             << rand->GetInteger(0, 100) << "\n";
+    }
+
+    file.close();
+}
+
+void
+Aodvv2MultiExample::ReadTopologyFromFile(const std::string& filename)
+{
+    std::ifstream file(filename);
+    if (!file.is_open())
+    {
+        NS_FATAL_ERROR("Unable to open topology file: " << filename);
+    }
+
+    std::string line;
+    // Skip the first line (header)
+    std::getline(file, line);
+    size = 0;
+
+    while (std::getline(file, line))
+    {
+        size++;
+        std::istringstream iss(line);
+        std::vector<std::string> tokens;
+        std::string token;
+
+        while (std::getline(iss, token, ','))
+        {
+            tokens.push_back(token);
+        }
+
+        if (tokens.size() < 5)
+        {
+            NS_FATAL_ERROR("Invalid line in topology file: " << line);
+        }
+
+        double x = std::stod(tokens[0]);
+        double y = std::stod(tokens[1]);
+        double z = std::stod(tokens[2]);
+        // double battery = std::stod(tokens[3]);
+        double trust = std::stod(tokens[4]);
+
+        Ptr<Node> node = CreateObject<Node>();
+        nodes.Add(node);
+        AddMetricNode(node, aodvv2::MetricNode(node, trust));
+
+        std::ostringstream os;
+        os << "node-" << nodes.GetN() - 1;
+        Names::Add(os.str(), node);
+
+        Ptr<ConstantPositionMobilityModel> mobility = CreateObject<ConstantPositionMobilityModel>();
+        mobility->SetPosition(Vector(x, y, z));
+        node->AggregateObject(mobility);
+    }
+
+    file.close();
 }
