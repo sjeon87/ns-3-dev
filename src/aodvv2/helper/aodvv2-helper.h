@@ -60,6 +60,10 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
      */
     Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
+     * @param useDefaultMetric the use of the default metric
+     */
+    void SetUseDefaultMetric(bool useDefaultMetric);
+    /**
      * @param metric the metric to add
      * @returns true if the metric was added successfully
      *
@@ -110,6 +114,8 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
   private:
     /** the factory to create AODVv2 routing object */
     ObjectFactory m_agentFactory;
+    /// Use default metric
+    bool m_useDefaultMetric = true;
     /// List of metrics
     std::vector<aodvv2::Metric<IpAddress>> m_metrics;
     /// Map of nodes and their corresponding MetricNode

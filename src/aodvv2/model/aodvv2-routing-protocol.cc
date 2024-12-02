@@ -384,10 +384,10 @@ Aodvv2RoutingProtocol<T>::RouteOutput(Ptr<Packet> p,
     sockerr = Socket::ERROR_NOTERROR;
     Ptr<IpRoute> route;
     IpAddress dst = header.GetDestination();
-    std::vector<LocalRoute<IpAddress>> routes;
-    if (m_routingTable.LookupValidRoutes(dst, routes))
+    LocalRoute<IpAddress> rt;
+    if (m_routingTable.LookupBestRoute(dst, rt))
     {
-        route = routes[0].GetRoute();
+        route = rt.GetRoute();
         NS_ASSERT(route);
         NS_LOG_DEBUG("Exist route to " << route->GetDestination() << " from interface "
                                        << route->GetSource());

@@ -328,6 +328,29 @@ LocalRouteSet<T>::LookupValidRoutes(T id, std::vector<LocalRoute<T>>& routes)
 
 template <typename T>
 bool
+LocalRouteSet<T>::LookupBestRoute(T id, LocalRoute<T>& route)
+{
+    NS_LOG_FUNCTION(this << id);
+    std::vector<LocalRoute<T>> routes;
+    if (!LookupValidRoutes(id, routes))
+    {
+        NS_LOG_LOGIC("Route to " << id << " not found");
+        return false;
+    }
+
+    route =
+        *std::max_element(routes.begin(),
+                          routes.end(),
+                          [](const LocalRoute<T>& a, const LocalRoute<T>& b) {
+                              return a.GetMetric().LoopFree(b.GetMetricValue(), b.GetMetricValue());
+                          });
+
+    NS_LOG_LOGIC("Route to " << id << " found");
+    return true;
+}
+
+template <typename T>
+bool
 LocalRouteSet<T>::DeleteRoute(T dst)
 {
     NS_LOG_FUNCTION(this << dst);

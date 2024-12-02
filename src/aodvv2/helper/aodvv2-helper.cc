@@ -48,6 +48,8 @@ Aodvv2Helper<T>::Create(Ptr<Node> node) const
     {
         Ptr<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>> agent =
             m_agentFactory.Create<aodvv2::Aodvv2RoutingProtocol<IpRoutingProtocol>>();
+
+        agent->SetUseDefaultMetric(m_useDefaultMetric);
         for (auto& m : m_metrics)
         {
             agent->AddMetric(m);
@@ -60,6 +62,13 @@ Aodvv2Helper<T>::Create(Ptr<Node> node) const
         return agent;
     }
     return nullptr;
+}
+
+template <typename T>
+void
+Aodvv2Helper<T>::SetUseDefaultMetric(bool useDefaultMetric)
+{
+    m_useDefaultMetric = useDefaultMetric;
 }
 
 template <typename T>

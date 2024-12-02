@@ -327,6 +327,15 @@ class LocalRoute
     }
 
     /**
+     * Get the metric
+     * @returns the metric
+     */
+    Metric<T> GetMetric() const
+    {
+        return m_metric;
+    }
+
+    /**
      * Get the metric type
      * @returns the metric type
      */
@@ -553,6 +562,13 @@ class LocalRouteSet
      * @return true on success
      */
     bool LookupValidRoutes(T dst, std::vector<LocalRoute<T>>& routes);
+    /**
+     * Lookup best route based on metrics
+     * @param dst destination address
+     * @param route entry with destination address dst, if exists
+     * @return true on success
+     */
+    bool LookupBestRoute(T dst, LocalRoute<T>& route);
     /**
      * Update local route
      * @param rt entry with destination address dst, if exists
