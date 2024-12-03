@@ -150,7 +150,6 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_requestId(0),
       m_seqNo(0),
       m_mms(m_maxSeqnumLifetime),
-      m_dpd(m_pathDiscoveryTime),
       m_nb(m_maxBlacklistTime),
       m_rerrSet(),
       m_rreqCount(0),
@@ -510,15 +509,6 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
             {
                 if (dst == iface.GetBroadcast() || dst.IsBroadcast())
                 {
-                    for (uint8_t m : GetRouteMetricTypes(dst))
-                    {
-                        if (m_dpd.IsDuplicate(p, header, m))
-                        {
-                            NS_LOG_DEBUG("Duplicated packet " << p->GetUid() << " from " << origin
-                                                              << ". Drop.");
-                            return true;
-                        }
-                    }
                     UpdateRouteLifeTime(origin, m_activeInterval);
                     Ptr<Packet> packet = p->Copy();
                     if (!lcb.IsNull())
@@ -1028,7 +1018,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 {
     NS_LOG_FUNCTION(this << dst);
     // A node SHOULD NOT originate more than RREQ_RATELIMIT RREQ messages per second.
-    if (m_rreqCount == m_rreqRateLimit)
+    if (m_rreqCount >= m_rreqRateLimit)
     {
         Simulator::Schedule(m_rreqRateLimitTimer.GetDelayLeft() + MicroSeconds(100),
                             &Aodvv2RoutingProtocol<T>::SendRequest,
@@ -1116,7 +1106,15 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 
         for (uint8_t type : rreqHeader.GetMetricTypes())
         {
-            m_mms.IsDuplicate(iface.GetAddress(), 32, dst, type);
+            m_mms.IsDuplicate(
+                iface.GetAddress(),
+                32,
+                dst,
+                m_ip->GetAddress(m_ip->GetInterfaceForAddress(iface.GetAddress()), 0).GetAddress(),
+                m_seqNo,
+                iface,
+                GetMetric(type),
+                GetMetric(type).linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
         }
 
         Ptr<Packet> packet = Create<Packet>();
@@ -1448,14 +1446,21 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     IpAddress origin = rreqHeader.GetOrigIp();
 
     /*
-     *  Node checks to determine whether it has received a RREQ with the same Originator IP
-     * Address and RREQ ID. If such a RREQ has been received, the node silently discards the
-     * newly received RREQ.
+     *  Node checks to determine whether it has received a RREQ with the same Originator IP Address,
+     * Mask, Target IP Address and SeqNoRtr. If such a RREQ has been received, the node silently
+     * discards the newly received RREQ.
      */
 
     for (uint8_t type : rreqHeader.GetMetricTypes())
     {
-        if (m_mms.IsDuplicate(origin, rreqHeader.GetOrigMask(), rreqHeader.GetTargIp(), type))
+        if (m_mms.IsDuplicate(origin,
+                              rreqHeader.GetOrigMask(),
+                              rreqHeader.GetTargIp(),
+                              src,
+                              rreqHeader.GetSeqNo(),
+                              m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                              GetMetric(type),
+                              rreqHeader.GetMetricValue(type)))
         {
             NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
             return;
@@ -2112,7 +2117,7 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
 
     if (toDst.GetState() == UNCONFIRMED)
     {
-        NS_LOG_LOGIC("Resend RREQ to " << dst << " previous diameter " << toDst.GetHop());
+        NS_LOG_LOGIC("Resend RREQ to " << dst);
         SendRequest(dst);
     }
     else

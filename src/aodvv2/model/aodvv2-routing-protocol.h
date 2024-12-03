@@ -12,9 +12,9 @@
 #ifndef AODVV2_ROUTING_PROTOCOL_H
 #define AODVV2_ROUTING_PROTOCOL_H
 
-#include "aodvv2-dpd.h"
 #include "aodvv2-local-route-set.h"
 #include "aodvv2-metric.h"
+#include "aodvv2-multi-msg-set.h"
 #include "aodvv2-neighbor-set.h"
 #include "aodvv2-packet.h"
 #include "aodvv2-rerr-set.h"
@@ -514,9 +514,7 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Request sequence number
     uint16_t m_seqNo;
     /// Handle duplicated RREQ
-    IdCache<IpAddress> m_mms;
-    /// Handle duplicated broadcast/multicast packets
-    DuplicatePacketDetection<IpHeader> m_dpd;
+    MultiMsgSet<IpAddress> m_mms;
     /// Handle neighbors
     NeighborSet<IpAddress> m_nb;
     /// Handle route clients

@@ -2,8 +2,7 @@ build_lib(
   LIBNAME aodvv2
   SOURCE_FILES
     helper/aodvv2-helper.cc
-    model/aodvv2-dpd.cc
-    model/aodvv2-id-cache.cc
+    model/aodvv2-multi-msg-set.cc
     model/aodvv2-neighbor-set.cc
     model/aodvv2-packet.cc
     model/aodvv2-routing-protocol.cc
@@ -14,8 +13,7 @@ build_lib(
     model/aodvv2-metric.cc
   HEADER_FILES
     helper/aodvv2-helper.h
-    model/aodvv2-dpd.h
-    model/aodvv2-id-cache.h
+    model/aodvv2-multi-msg-set.h
     model/aodvv2-neighbor-set.h
     model/aodvv2-packet.h
     model/aodvv2-routing-protocol.h
