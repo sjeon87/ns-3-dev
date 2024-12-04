@@ -34,12 +34,10 @@ struct MetricNode
 {
     /// Metric node address
     Ptr<Node> m_node;
-    uint8_t m_trust;
 
     // Constructor
-    MetricNode(Ptr<Node> node, uint8_t trust = 0)
-        : m_node(node),
-          m_trust(trust)
+    MetricNode(Ptr<Node> node)
+        : m_node(node)
     {
     }
 };
