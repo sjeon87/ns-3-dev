@@ -206,7 +206,7 @@ class RreqHeader : public Header
      */
     T GetRtrIp() const
     {
-        return m_rtrIp;
+        return m_rtrIp.IsInitialized() ? m_rtrIp : m_origIp;
     }
 
     /**

@@ -33,8 +33,7 @@ MultiMsgSet<T>::IsDuplicate(T origIp,
     for (auto i = m_msgCache.begin(); i != m_msgCache.end(); ++i)
     {
         if (i->m_origIp == origIp && i->m_origMask == origMask && i->m_targIp == targIp &&
-            /* i->m_seqNoRtr == seqNoRtr &&  */ i->m_metric.GetMetricType() ==
-                metric.GetMetricType())
+            i->m_seqNoRtr == seqNoRtr && i->m_metric.GetMetricType() == metric.GetMetricType())
         {
             i->m_timestamp = Simulator::Now();
             i->m_removalTime = m_maxSeqnoLifetime + Simulator::Now();

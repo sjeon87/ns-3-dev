@@ -566,9 +566,11 @@ Aodvv2RoutingProtocol<T>::RouteInput(Ptr<const Packet> p,
                     std::vector<LocalRoute<IpAddress>> routes;
                     if (m_routingTable.LookupValidRoutes(origin, routes))
                     {
-                        LocalRoute<IpAddress> toOrigin = routes[0];
-                        UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeInterval);
-                        m_nb.AddNeighbor(toOrigin.GetNextHop(), iface);
+                        for (LocalRoute<IpAddress>& toOrigin : routes)
+                        {
+                            UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeInterval);
+                            m_nb.AddNeighbor(toOrigin.GetNextHop(), iface);
+                        }
                     }
                     if (!lcb.IsNull())
                     {
@@ -643,18 +645,20 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
              */
             std::vector<LocalRoute<IpAddress>> routes;
             m_routingTable.LookupRoutes(origin, routes);
-            LocalRoute<IpAddress> toOrigin = routes[0];
-            UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeInterval);
+            for (LocalRoute<IpAddress>& toOrigin : routes)
+            {
+                UpdateRouteLifeTime(toOrigin.GetNextHop(), m_activeInterval);
 
-            m_nb.AddNeighbor(route->GetGateway(), toDst.GetInterface());
-            m_nb.AddNeighbor(toOrigin.GetNextHop(), toDst.GetInterface());
-            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
-            {
-                ucb(route, p, header);
-            }
-            else
-            {
-                // TODO Ipv6
+                m_nb.AddNeighbor(route->GetGateway(), toDst.GetInterface());
+                m_nb.AddNeighbor(toOrigin.GetNextHop(), toDst.GetInterface());
+                if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+                {
+                    ucb(route, p, header);
+                }
+                else
+                {
+                    // TODO Ipv6
+                }
             }
             return true;
         }
@@ -1364,6 +1368,7 @@ void
 Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress receiver)
 {
     NS_LOG_FUNCTION(this << "sender " << sender << " receiver " << receiver);
+    m_nb.AddNeighbor(sender, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
     std::vector<LocalRoute<IpAddress>> routes;
     if (!m_routingTable.LookupRoutes(sender, routes))
     {
@@ -1456,7 +1461,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         if (m_mms.IsDuplicate(origin,
                               rreqHeader.GetOrigMask(),
                               rreqHeader.GetTargIp(),
-                              src,
+                              rreqHeader.GetRtrIp(),
                               rreqHeader.GetSeqNo(),
                               m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                               GetMetric(type),
