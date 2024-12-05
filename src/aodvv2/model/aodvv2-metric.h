@@ -58,7 +58,8 @@ class Metric
     Metric()
     {
         m_metricType = AODVV2_METRIC_HOP;
-        m_maxMetric = 1;
+        m_metricSize = 1;
+        m_maxMetric = 255;
         m_linkCost = [](const MetricNode&) { return new uint8_t[1]{1}; };
         m_routeCost = [](const uint8_t* routeCost, const MetricNode& currentNode) {
             uint8_t* newCost = new uint8_t[1];
@@ -71,16 +72,19 @@ class Metric
     /**
      * constructor
      * @param metricType The type of metric to use.
+     * @param metricSize The size of the metric type.
      * @param maxMetric The maximum value for the metric type.
      * @param linkCost Function to determine the cost of an incoming link.
      * @param routeCost Function to determine the cost of a route.
      */
     Metric(uint8_t metricType,
-           uint8_t maxMetric,
+           uint8_t metricSize,
+           uint32_t maxMetric,
            std::function<uint8_t*(const MetricNode&)> linkCost,
            std::function<uint8_t*(const uint8_t*, const MetricNode&)> routeCost,
            std::function<bool(const uint8_t*, const uint8_t*)> loopFree)
         : m_metricType(metricType),
+          m_metricSize(metricSize),
           m_maxMetric(maxMetric),
           m_linkCost(linkCost),
           m_routeCost(routeCost),
@@ -107,10 +111,19 @@ class Metric
     }
 
     /**
+     * Get the metric size.
+     * @return Metric size.
+     */
+    uint8_t GetMetricSize() const
+    {
+        return m_metricSize;
+    }
+
+    /**
      * Get the maximum metric value allowed.
      * @return Maximum metric value.
      */
-    uint8_t GetMaxMetric() const
+    uint32_t GetMaxMetric() const
     {
         return m_maxMetric;
     }
@@ -149,7 +162,8 @@ class Metric
 
   private:
     uint8_t m_metricType;
-    uint8_t m_maxMetric;
+    uint8_t m_metricSize;
+    uint32_t m_maxMetric;
     std::function<uint8_t*(const MetricNode&)> m_linkCost;
     std::function<uint8_t*(const uint8_t*, const MetricNode&)> m_routeCost;
     std::function<bool(const uint8_t*, const uint8_t*)> m_loopFree;

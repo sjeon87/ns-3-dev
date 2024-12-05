@@ -1569,7 +1569,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         rreqHeader.AddMetric(metric.GetMetricType(),
                              metric.routeCost(rreqHeader.GetMetricValue(metric.GetMetricType()),
                                               GetMetricNode(m_ip->template GetObject<Node>())),
-                             metric.GetMaxMetric());
+                             metric.GetMetricSize());
     }
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
@@ -1734,7 +1734,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
 
         rrepHeader.AddMetric(metric.GetMetricType(),
                              metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())),
-                             metric.GetMaxMetric());
+                             metric.GetMetricSize());
     }
 
     Ptr<Packet> packet = Create<Packet>();
@@ -1902,7 +1902,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         rrepHeader.AddMetric(metric.GetMetricType(),
                              metric.routeCost(rrepHeader.GetMetricValue(metric.GetMetricType()),
                                               GetMetricNode(m_ip->template GetObject<Node>())),
-                             metric.GetMaxMetric());
+                             metric.GetMetricSize());
 
         if (m_routingTable.LookupRoute(dst, metric.GetMetricType(), toDst))
         {

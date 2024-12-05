@@ -119,7 +119,7 @@ MultiMsgSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time
         *os << std::setw(16) << i->m_seqNoRtr;
         *os << std::setw(16) << i->m_origSeqNum;
         *os << std::setw(16) << static_cast<uint16_t>(i->m_metric.GetMetricType()) << ": ";
-        for (uint8_t j = 0; j < i->m_metric.GetMaxMetric(); j++)
+        for (uint8_t j = 0; j < i->m_metric.GetMetricSize(); j++)
         {
             *os << static_cast<uint16_t>(i->m_metricValue[j]) << " ";
         }
