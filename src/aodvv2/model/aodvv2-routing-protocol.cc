@@ -1494,46 +1494,50 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
          * where MinimalLifetime = current time + 2*NetTraversalTime -
          * 2*HopCount*NodeTraversalTime
          */
-        LocalRoute<IpAddress> toOrigin;
-        if (!m_routingTable.LookupRoute(origin, metricType, toOrigin))
+        if (origin != receiver)
         {
-            Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
-            LocalRoute<IpAddress> newEntry(
-                /*dev=*/dev,
-                /*dst=*/origin,
-                /*seqNo=*/rreqHeader.GetSeqNo(),
-                /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
-                /*hops=*/m_maxHopLimit - hop,
-                /*nextHop=*/src,
-                /*lastUsed=*/
-                Time(2 * m_netTraversalTime - 2 * (m_maxHopLimit - hop) * m_nodeTraversalTime),
-                /*maxIdleTime=*/m_maxIdleTime,
-                /*metric=*/metric,
-                /*metricValue=*/rreqHeader.GetMetricValue(metric.GetMetricType()));
-            m_routingTable.AddRoute(newEntry);
-        }
-        else
-        {
-            if (toOrigin.GetValidSeqNo())
+            LocalRoute<IpAddress> toOrigin;
+            if (!m_routingTable.LookupRoute(origin, metricType, toOrigin))
             {
-                if (uint16_t(rreqHeader.GetOrigSeqNo()) - uint16_t(toOrigin.GetSeqNo()) > 0)
-                {
-                    toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
-                }
+                Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver));
+                LocalRoute<IpAddress> newEntry(
+                    /*dev=*/dev,
+                    /*dst=*/origin,
+                    /*seqNo=*/rreqHeader.GetSeqNo(),
+                    /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
+                    /*hops=*/m_maxHopLimit - hop,
+                    /*nextHop=*/src,
+                    /*lastUsed=*/
+                    Time(2 * m_netTraversalTime - 2 * (m_maxHopLimit - hop) * m_nodeTraversalTime),
+                    /*maxIdleTime=*/m_maxIdleTime,
+                    /*metric=*/metric,
+                    /*metricValue=*/rreqHeader.GetMetricValue(metric.GetMetricType()));
+                m_routingTable.AddRoute(newEntry);
             }
             else
             {
-                rreqHeader.SetSendTargSeqNum(true);
-                toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
+                if (toOrigin.GetValidSeqNo())
+                {
+                    if (uint16_t(rreqHeader.GetOrigSeqNo()) - uint16_t(toOrigin.GetSeqNo()) > 0)
+                    {
+                        toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
+                    }
+                }
+                else
+                {
+                    rreqHeader.SetSendTargSeqNum(true);
+                    toOrigin.SetSeqNo(rreqHeader.GetOrigSeqNo());
+                }
+                toOrigin.SetNextHop(src);
+                toOrigin.SetOutputDevice(
+                    m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
+                toOrigin.SetInterface(m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
+                toOrigin.SetHop(hop);
+                toOrigin.SetLastUsed(
+                    std::max(Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
+                             toOrigin.GetLastUsed()));
+                m_routingTable.Update(toOrigin);
             }
-            toOrigin.SetNextHop(src);
-            toOrigin.SetOutputDevice(m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
-            toOrigin.SetInterface(m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
-            toOrigin.SetHop(hop);
-            toOrigin.SetLastUsed(
-                std::max(Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
-                         toOrigin.GetLastUsed()));
-            m_routingTable.Update(toOrigin);
         }
 
         LocalRoute<IpAddress> toNeighbor;
