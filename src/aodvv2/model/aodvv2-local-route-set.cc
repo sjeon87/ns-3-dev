@@ -317,7 +317,8 @@ LocalRouteSet<T>::LookupValidRoutes(T id, std::vector<LocalRoute<T>>& routes)
     }
     for (const auto& route : tmpRoutes)
     {
-        if (route.GetState() == ACTIVE || route.GetState() == UNCONFIRMED)
+        if (route.GetNextHop().IsInitialized() &&
+            (route.GetState() == ACTIVE || route.GetState() == UNCONFIRMED))
         {
             routes.push_back(route);
             NS_LOG_LOGIC("Route to " << id << " is valid");

@@ -2105,13 +2105,15 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
     {
         for (LocalRoute<IpAddress>& toDst : routes)
         {
-            if (toDst.GetNextHop().IsInitialized())
-            {
-                SendPacketFromQueue(dst, toDst.GetRoute());
-                NS_LOG_LOGIC("route to " << dst << " found");
-                return;
-            }
+            SendPacketFromQueue(dst, toDst.GetRoute());
+            NS_LOG_LOGIC("route to " << dst << " found");
+            return;
         }
+    }
+    else
+    {
+        NS_LOG_LOGIC("route to " << dst << " not found");
+        return;
     }
     /*
      *  If a route discovery has been attempted RreqRetries times without receiving any
