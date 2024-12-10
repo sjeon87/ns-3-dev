@@ -827,12 +827,6 @@ macro(process_options)
     endif()
   endif()
 
-  # Process config-store-config
-  configure_file(
-    ${PROJECT_SOURCE_DIR}/build-support/config-store-config-template.h
-    ${CMAKE_HEADER_OUTPUT_DIRECTORY}/config-store-config.h
-  )
-
   set(ENABLE_MPI FALSE)
   if(${NS3_MPI})
     find_package(MPI QUIET)
@@ -840,8 +834,7 @@ macro(process_options)
       message(FATAL_ERROR "MPI was not found.")
     else()
       message(STATUS "MPI was found.")
-      add_definitions(-DNS3_MPI)
-      include_directories(${MPI_CXX_INCLUDE_DIRS})
+      target_compile_definitions(MPI::MPI_CXX INTERFACE NS3_MPI)
       set(ENABLE_MPI TRUE)
     endif()
   endif()
