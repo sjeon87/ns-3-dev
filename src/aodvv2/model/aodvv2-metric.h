@@ -66,7 +66,11 @@ class Metric
             newCost[0] = static_cast<uint8_t>(routeCost[0] + 1);
             return newCost;
         };
-        m_loopFree = [](const uint8_t* r1, const uint8_t* r2) { return r1 <= r2; };
+        m_loopFree = [](const uint8_t* r1, const uint8_t* r2) {
+            double cost1 = static_cast<double>(r1[0]);
+            double cost2 = static_cast<double>(r2[0]);
+            return cost1 <= cost2;
+        };
     }
 
     /**
