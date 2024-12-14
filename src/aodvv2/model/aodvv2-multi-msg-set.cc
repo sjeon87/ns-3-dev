@@ -38,7 +38,7 @@ MultiMsgSet<T>::IsDuplicate(T origIp,
             i->m_timestamp = Simulator::Now();
             i->m_removalTime = m_maxSeqnoLifetime + Simulator::Now();
 
-            if (origSeqNum < i->m_origSeqNum)
+            if (origSeqNum <= i->m_origSeqNum)
             {
                 return true;
             }
