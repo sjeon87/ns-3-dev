@@ -18,7 +18,7 @@
  */
 
 /*
- * This example program allows one to run ns-3 DSDV, AODV, or OLSR under
+ * This example program allows one to run ns-3 DSDV, AODV, AODVv2, or OLSR under
  * a typical random waypoint mobility model.
  *
  * By default, the simulation runs for 200 simulated seconds, of which
@@ -54,6 +54,7 @@
  */
 
 #include "ns3/aodv-module.h"
+#include "ns3/aodvv2-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
 #include "ns3/dsdv-module.h"
@@ -194,11 +195,11 @@ RoutingExperiment::CommandSetup(int argc, char** argv)
     CommandLine cmd(__FILE__);
     cmd.AddValue("CSVfileName", "The name of the CSV output file name", m_CSVfileName);
     cmd.AddValue("traceMobility", "Enable mobility tracing", m_traceMobility);
-    cmd.AddValue("protocol", "Routing protocol (OLSR, AODV, DSDV, DSR)", m_protocolName);
+    cmd.AddValue("protocol", "Routing protocol (OLSR, AODV, AODVV2, DSDV, DSR)", m_protocolName);
     cmd.AddValue("flowMonitor", "enable FlowMonitor", m_flowMonitor);
     cmd.Parse(argc, argv);
 
-    std::vector<std::string> allowedProtocols{"OLSR", "AODV", "DSDV", "DSR"};
+    std::vector<std::string> allowedProtocols{"OLSR", "AODV", "AODVV2", "DSDV", "DSR"};
 
     if (std::find(std::begin(allowedProtocols), std::end(allowedProtocols), m_protocolName) ==
         std::end(allowedProtocols))
@@ -301,6 +302,7 @@ RoutingExperiment::Run()
     streamIndex += mobilityAdhoc.AssignStreams(adhocNodes, streamIndex);
 
     AodvHelper aodv;
+    Aodvv2Helper<Ipv4RoutingHelper> aodvv2;
     OlsrHelper olsr;
     DsdvHelper dsdv;
     DsrHelper dsr;
@@ -317,6 +319,12 @@ RoutingExperiment::Run()
     else if (m_protocolName == "AODV")
     {
         list.Add(aodv, 100);
+        internet.SetRoutingHelper(list);
+        internet.Install(adhocNodes);
+    }
+    else if (m_protocolName == "AODVV2")
+    {
+        list.Add(aodvv2, 100);
         internet.SetRoutingHelper(list);
         internet.Install(adhocNodes);
     }

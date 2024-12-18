@@ -84,6 +84,7 @@ build_example(
     ${libdsr}
     ${libdsdv}
     ${libaodv}
+    ${libaodvv2}
     ${libolsr}
     ${libinternet}
     ${libapplications}
