@@ -124,7 +124,15 @@ EmlsrManager::GetTypeId()
                           BooleanValue(false),
                           MakeBooleanAccessor(&EmlsrManager::SetCamStateReset,
                                               &EmlsrManager::GetCamStateReset),
-                          MakeBooleanChecker());
+                          MakeBooleanChecker())
+            .AddTraceSource("MainPhySwitch",
+                            "This trace source is fired when the main PHY switches channel to "
+                            "operate on another link. Information associated with the main PHY "
+                            "switch is provided through a struct that is inherited from struct "
+                            "EmlsrMainPhySwitchTrace (use the GetName() method to get the type "
+                            "of the provided object).",
+                            MakeTraceSourceAccessor(&EmlsrManager::m_mainPhySwitchTrace),
+                            "ns3::EmlsrManager::MainPhySwitchCallback");
     return tid;
 }
 
@@ -443,7 +451,8 @@ EmlsrManager::NotifyIcfReceived(uint8_t linkId)
         SwitchMainPhy(linkId,
                       true, // channel switch should occur instantaneously
                       RESET_BACKOFF,
-                      DONT_REQUEST_ACCESS);
+                      DONT_REQUEST_ACCESS,
+                      EmlsrDlTxopIcfReceivedByAuxPhyTrace{});
 
         // aux PHY received the ICF but main PHY will send the response
         auto uid = auxPhy->GetPreviouslyRxPpduUid();
@@ -668,9 +677,11 @@ void
 EmlsrManager::SwitchMainPhy(uint8_t linkId,
                             bool noSwitchDelay,
                             bool resetBackoff,
-                            bool requestAccess)
+                            bool requestAccess,
+                            EmlsrMainPhySwitchTrace&& traceInfo)
 {
-    NS_LOG_FUNCTION(this << linkId << noSwitchDelay << resetBackoff << requestAccess);
+    NS_LOG_FUNCTION(this << linkId << noSwitchDelay << resetBackoff << requestAccess
+                         << traceInfo.GetName());
 
     auto mainPhy = m_staMac->GetDevice()->GetPhy(m_mainPhyId);
 
@@ -679,6 +690,9 @@ EmlsrManager::SwitchMainPhy(uint8_t linkId,
 
     // find the link on which the main PHY is operating
     auto currMainPhyLinkId = m_staMac->GetLinkForPhy(mainPhy);
+    traceInfo.fromLinkId = currMainPhyLinkId;
+    traceInfo.toLinkId = linkId;
+    m_mainPhySwitchTrace(traceInfo);
 
     NS_ASSERT_MSG(currMainPhyLinkId.has_value() || mainPhy->IsStateSwitching(),
                   "If the main PHY is not operating on a link, it must be switching");
@@ -699,6 +713,9 @@ EmlsrManager::SwitchMainPhy(uint8_t linkId,
     // this assert also ensures that the actual channel switch is not delayed
     NS_ASSERT_MSG(!mainPhy->GetState()->IsStateTx(),
                   "We should not ask the main PHY to switch channel while transmitting");
+
+    // record the aux PHY operating on the link the main PHY is switching to
+    auto auxPhy = GetStaMac()->GetWifiPhy(linkId);
 
     // request the main PHY to switch channel
     const auto delay = mainPhy->GetChannelSwitchDelay();
@@ -755,7 +772,7 @@ EmlsrManager::SwitchMainPhy(uint8_t linkId,
     }
 
     SetCcaEdThresholdOnLinkSwitch(mainPhy, linkId);
-    NotifyMainPhySwitch(currMainPhyLinkId, linkId, timeToSwitchEnd);
+    NotifyMainPhySwitch(currMainPhyLinkId, linkId, auxPhy, timeToSwitchEnd);
 }
 
 void

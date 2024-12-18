@@ -21,7 +21,20 @@
 #include "ns3/wifi-ppdu.h"
 #include "ns3/wifi-psdu.h"
 
+#include <list>
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <vector>
+
 using namespace ns3;
+
+// forward declaration
+namespace ns3
+{
+struct EmlsrMainPhySwitchTrace;
+}
 
 /**
  * @ingroup wifi-test
@@ -146,6 +159,31 @@ class EmlsrOperationsTestBase : public TestCase
      */
     void CheckAuxPhysSleepMode(Ptr<StaWifiMac> staMac, bool sleep);
 
+    /**
+     * Callback connected to the EMLSR Manager MainPhySwitch trace source.
+     *
+     * @param index the index of the EMLSR client whose main PHY switch event is logged
+     * @param info the information associated with the main PHY switch event
+     */
+    void MainPhySwitchInfoCallback(std::size_t index, const EmlsrMainPhySwitchTrace& info);
+
+    /**
+     * Check information provided by the EMLSR Manager MainPhySwitch trace.
+     *
+     * @param index the ID of the EMLSR client this check refers to
+     * @param reason the reason for main PHY to switch
+     * @param fromLinkId the ID of the link the main PHY is moving from (if any)
+     * @param toLinkId the ID of the link the main PHY is moving to
+     * @param checkFromLinkId whether to check the given fromLinkId value
+     * @param checkToLinkId whether to check the given toLinkId value
+     */
+    void CheckMainPhyTraceInfo(std::size_t index,
+                               std::string_view reason,
+                               const std::optional<uint8_t>& fromLinkId,
+                               uint8_t toLinkId,
+                               bool checkFromLinkId = true,
+                               bool checkToLinkId = true);
+
     void DoSetup() override;
 
     /// Information about transmitted frames
@@ -181,6 +219,8 @@ class EmlsrOperationsTestBase : public TestCase
     std::vector<PacketSocketAddress> m_ulSockets; ///< packet socket address for UL traffic
     uint16_t m_lastAid{0};                        ///< AID of last associated station
     Time m_duration{0};                           ///< simulation duration
+    std::map<std::size_t, std::shared_ptr<EmlsrMainPhySwitchTrace>>
+        m_traceInfo; ///< EMLSR client ID-indexed map of trace info from last main PHY switch
 
   private:
     /**
@@ -576,6 +616,8 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
         uint8_t nSlotsLeftAlert;        //!< value to set the ChannelAccessManager NSlotsLeft
                                         //!< attribute to
         bool putAuxPhyToSleep;          //!< whether aux PHYs are put to sleep during DL/UL TXOPs
+        bool switchMainPhyBackDelayTimeout; //!< whether a SwitchMainPhyBackDelay timer expires
+                                            //!< after that the main PHY moved to an aux PHY link
     };
 
     /**
@@ -681,6 +723,8 @@ class EmlsrUlTxopTest : public EmlsrOperationsTestBase
     bool m_useAuxPhyCca;                  //!< whether CCA info from aux PHY is used when
                                           //!< aux PHY is not TX capable
     uint8_t m_nSlotsLeftAlert;            //!< value for ChannelAccessManager NSlotsLeft attribute
+    bool m_switchMainPhyBackDelayTimeout; //!< whether a SwitchMainPhyBackDelay timer expires
+                                          //!< after that the main PHY moved to an aux PHY link
     std::optional<bool> m_corruptCts;     //!< whether the transmitted CTS must be corrupted
     Time m_5thQosFrameTxTime;             //!< start transmission time of the 5th QoS data frame
 };

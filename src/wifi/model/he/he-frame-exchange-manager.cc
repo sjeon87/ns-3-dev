@@ -927,9 +927,12 @@ HeFrameExchangeManager::SendPsduMap()
         auto hePhy = StaticCast<HePhy>(m_phy->GetPhyEntity(responseTxVector->GetModulationClass()));
         hePhy->SetTrigVector(m_trigVector, m_txTimer.GetDelayLeft());
     }
-    else if (timerType == WifiTxTimer::NOT_RUNNING && m_txParams.m_txVector.IsUlMu())
+    else if (timerType == WifiTxTimer::NOT_RUNNING &&
+             (m_txParams.m_txVector.IsUlMu() ||
+              m_txParams.m_acknowledgment->method == WifiAcknowledgment::DL_MU_BAR_BA_SEQUENCE))
     {
-        // clear m_psduMap after sending QoS Null frames following a BSRP Trigger Frame
+        // clear m_psduMap after sending QoS Null frames following a BSRP Trigger Frame or after
+        // sending a DL MU PPDU with BAR-BA ack sequence and no immediate response is expected
         Simulator::Schedule(txDuration, &WifiPsduMap::clear, &m_psduMap);
     }
 
@@ -2246,6 +2249,8 @@ HeFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
                                     const WifiTxVector& txVector,
                                     bool inAmpdu)
 {
+    NS_LOG_FUNCTION(this << *mpdu << rxSignalInfo << txVector << inAmpdu);
+
     // The received MPDU is either broadcast or addressed to this station
     NS_ASSERT(mpdu->GetHeader().GetAddr1().IsGroup() || mpdu->GetHeader().GetAddr1() == m_self);
 
@@ -2635,12 +2640,12 @@ HeFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
                 // - The UL MU CS condition indicates that the medium is idle
                 // (Sec. 26.2.6.3 of 802.11ax-2021)
                 NS_LOG_DEBUG("Schedule CTS");
-                Simulator::Schedule(m_phy->GetSifs(),
-                                    &HeFrameExchangeManager::SendCtsAfterMuRts,
-                                    this,
-                                    hdr,
-                                    trigger,
-                                    rxSignalInfo.snr);
+                m_sendCtsEvent = Simulator::Schedule(m_phy->GetSifs(),
+                                                     &HeFrameExchangeManager::SendCtsAfterMuRts,
+                                                     this,
+                                                     hdr,
+                                                     trigger,
+                                                     rxSignalInfo.snr);
             }
             else if (trigger.IsMuBar())
             {

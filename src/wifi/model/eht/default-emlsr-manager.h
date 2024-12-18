@@ -70,8 +70,10 @@ class DefaultEmlsrManager : public EmlsrManager
      * main PHY.
      *
      * @param linkId the ID of the link that the main PHY is leaving
+     * @param traceInfo information to pass to the main PHY switch traced callback (the fromLinkId
+     *                  and toLinkId fields are set by SwitchMainPhy)
      */
-    void SwitchMainPhyBackToPreferredLink(uint8_t linkId);
+    void SwitchMainPhyBackToPreferredLink(uint8_t linkId, EmlsrMainPhySwitchTrace&& traceInfo);
 
     /// Store information about a main PHY switch.
     struct MainPhySwitchInfo
@@ -96,6 +98,7 @@ class DefaultEmlsrManager : public EmlsrManager
     void DoNotifyMgtFrameReceived(Ptr<const WifiMpdu> mpdu, uint8_t linkId) override;
     void NotifyMainPhySwitch(std::optional<uint8_t> currLinkId,
                              uint8_t nextLinkId,
+                             Ptr<WifiPhy> auxPhy,
                              Time duration) override;
     void DoNotifyIcfReceived(uint8_t linkId) override;
     void DoNotifyUlTxopStart(uint8_t linkId) override;

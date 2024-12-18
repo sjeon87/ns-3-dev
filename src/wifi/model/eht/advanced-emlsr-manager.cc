@@ -305,17 +305,27 @@ AdvancedEmlsrManager::DoNotifyTxopEnd(uint8_t linkId)
             !m_switchAuxPhy || m_mainPhySwitchInfo.end >= Simulator::Now(),
             "Aux PHY next link ID should have a value when interrupting a main PHY switch");
         uint8_t nextLinkId = m_switchAuxPhy ? m_mainPhySwitchInfo.from : GetMainPhyId();
-        SwitchMainPhy(nextLinkId, false, DONT_RESET_BACKOFF, REQUEST_ACCESS);
+        const auto delay = mainPhy->IsStateSwitching() ? mainPhy->GetDelayUntilIdle() : Time{0};
+        SwitchMainPhy(nextLinkId,
+                      false,
+                      DONT_RESET_BACKOFF,
+                      REQUEST_ACCESS,
+                      EmlsrTxopEndedTrace(delay));
     }
     else
     {
         // delay link switch until current channel switching is completed
-        Simulator::Schedule(mainPhy->GetDelayUntilIdle(), [=, this]() {
+        const auto delay = mainPhy->GetDelayUntilIdle();
+        Simulator::Schedule(delay, [=, this]() {
             // request the main PHY to switch back to the preferred link only if in the meantime
             // no TXOP started on another link (which will require the main PHY to switch link)
             if (!GetEhtFem(linkId)->UsingOtherEmlsrLink())
             {
-                SwitchMainPhy(GetMainPhyId(), false, DONT_RESET_BACKOFF, REQUEST_ACCESS);
+                SwitchMainPhy(GetMainPhyId(),
+                              false,
+                              DONT_RESET_BACKOFF,
+                              REQUEST_ACCESS,
+                              EmlsrTxopEndedTrace(delay));
             }
         });
     }
@@ -385,7 +395,7 @@ AdvancedEmlsrManager::CheckNavAndCcaLastPifs(Ptr<WifiPhy> phy, uint8_t linkId, P
             else if (!m_switchAuxPhy)
             {
                 // switch main PHY back to preferred link if SwitchAuxPhy is false
-                SwitchMainPhyBackToPreferredLink(linkId);
+                SwitchMainPhyBackToPreferredLink(linkId, EmlsrSwitchMainPhyBackTrace(true));
             }
         });
     }
@@ -405,7 +415,7 @@ AdvancedEmlsrManager::CheckNavAndCcaLastPifs(Ptr<WifiPhy> phy, uint8_t linkId, P
         m_switchMainPhyBackEvent = Simulator::Schedule(m_switchMainPhyBackDelay, [this, linkId]() {
             if (!m_switchAuxPhy)
             {
-                SwitchMainPhyBackToPreferredLink(linkId);
+                SwitchMainPhyBackToPreferredLink(linkId, EmlsrSwitchMainPhyBackTrace(false));
             }
         });
     }
@@ -450,45 +460,11 @@ AdvancedEmlsrManager::RequestMainPhyToSwitch(uint8_t linkId, AcIndex aci, const 
         return false;
     }
 
-    switch (mainPhy->GetState()->GetState())
+    // DoGetDelayUntilAccessRequest has already checked if the main PHY is receiving an ICF
+    if (const auto state = mainPhy->GetState()->GetState();
+        state != WifiPhyState::IDLE && state != WifiPhyState::CCA_BUSY && state != WifiPhyState::RX)
     {
-    case WifiPhyState::IDLE:
-        // proceed to try requesting main PHY to switch
-        break;
-    case WifiPhyState::CCA_BUSY:
-        // if the main PHY is receiving the PHY header of a PPDU, we decide to proceed or give up
-        // based on the AllowUlTxopInRx attribute
-        if (mainPhy->IsReceivingPhyHeader() && !m_allowUlTxopInRx)
-        {
-            NS_LOG_DEBUG("Main PHY receiving PHY header and AllowUlTxopInRx is false");
-            return false;
-        }
-        break;
-    case WifiPhyState::RX:
-        if (auto macHdr = GetEhtFem(*mainPhyLinkId)->GetReceivedMacHdr())
-        {
-            // information on the MAC header of the PSDU being received is available; if we cannot
-            // use it or the main PHY is receiving an ICF, give up requesting main PHY to switch
-            if (const auto& hdr = macHdr->get();
-                !m_useNotifiedMacHdr ||
-                (hdr.IsTrigger() && (hdr.GetAddr1().IsBroadcast() ||
-                                     hdr.GetAddr1() == GetEhtFem(*mainPhyLinkId)->GetAddress())))
-            {
-                NS_LOG_DEBUG("Receiving an ICF or cannot use MAC header information");
-                return false;
-            }
-        }
-        // information on the MAC header of the PSDU being received is not available, we decide to
-        // proceed or give up based on the AllowUlTxopInRx attribute
-        else if (!m_allowUlTxopInRx)
-        {
-            NS_LOG_DEBUG("Receiving PSDU, no MAC header information, AllowUlTxopInRx is false");
-            return false;
-        }
-        break;
-    default:
-        NS_LOG_DEBUG("Cannot request main PHY to switch when in state "
-                     << mainPhy->GetState()->GetState());
+        NS_LOG_DEBUG("Cannot request main PHY to switch when in state " << state);
         return false;
     }
 
@@ -578,7 +554,18 @@ AdvancedEmlsrManager::SwitchMainPhyIfTxopGainedByAuxPhy(uint8_t linkId, AcIndex 
         }
 
         // switch main PHY
-        SwitchMainPhy(linkId, false, RESET_BACKOFF, DONT_REQUEST_ACCESS);
+        Time remNav{0};
+        if (const auto mainPhyLinkId = GetStaMac()->GetLinkForPhy(mainPhy))
+        {
+            auto mainPhyNavEnd = GetStaMac()->GetChannelAccessManager(*mainPhyLinkId)->GetNavEnd();
+            remNav = Max(remNav, mainPhyNavEnd - Simulator::Now());
+        }
+
+        SwitchMainPhy(linkId,
+                      false,
+                      RESET_BACKOFF,
+                      DONT_REQUEST_ACCESS,
+                      EmlsrUlTxopAuxPhyNotTxCapableTrace(aci, Time{0}, remNav));
         return;
     }
 
@@ -651,6 +638,18 @@ AdvancedEmlsrManager::SwitchMainPhyIfTxopToBeGainedByAuxPhy(uint8_t linkId,
         return;
     }
 
+    if (GetEhtFem(linkId)->UsingOtherEmlsrLink())
+    {
+        NS_LOG_DEBUG("Do nothing because another EMLSR link is being used");
+        return;
+    }
+
+    if (!DoGetDelayUntilAccessRequest(linkId).first)
+    {
+        NS_LOG_DEBUG("Do nothing because a frame is being received on another EMLSR link");
+        return;
+    }
+
     auto mainPhy = GetStaMac()->GetDevice()->GetPhy(m_mainPhyId);
     auto phy = GetStaMac()->GetWifiPhy(linkId);
 
@@ -678,7 +677,18 @@ AdvancedEmlsrManager::SwitchMainPhyIfTxopToBeGainedByAuxPhy(uint8_t linkId,
     }
 
     // switch main PHY
-    SwitchMainPhy(linkId, false, RESET_BACKOFF, DONT_REQUEST_ACCESS);
+    Time remNav{0};
+    if (const auto mainPhyLinkId = GetStaMac()->GetLinkForPhy(mainPhy))
+    {
+        auto mainPhyNavEnd = GetStaMac()->GetChannelAccessManager(*mainPhyLinkId)->GetNavEnd();
+        remNav = Max(remNav, mainPhyNavEnd - Simulator::Now());
+    }
+
+    SwitchMainPhy(linkId,
+                  false,
+                  RESET_BACKOFF,
+                  DONT_REQUEST_ACCESS,
+                  EmlsrUlTxopAuxPhyNotTxCapableTrace(aci, delay, remNav));
 
     // if the remaining backoff time is shorter than PIFS when the main PHY completes the switch,
     // we need to schedule a CCA check a PIFS after the end of the main PHY switch
@@ -710,7 +720,7 @@ AdvancedEmlsrManager::SwitchMainPhyIfTxopToBeGainedByAuxPhy(uint8_t linkId,
         Simulator::Schedule(minDelay + m_switchMainPhyBackDelay, [this, linkId]() {
             if (!m_switchAuxPhy)
             {
-                SwitchMainPhyBackToPreferredLink(linkId);
+                SwitchMainPhyBackToPreferredLink(linkId, EmlsrSwitchMainPhyBackTrace(false));
             }
         });
 }

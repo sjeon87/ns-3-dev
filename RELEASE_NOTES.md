@@ -42,10 +42,14 @@ The required Doxygen version for documentation generation is version 1.11.
 - (wifi) Added the `IncrementRetryCountUnderBa` attribute to the  `WifiRemoteStationManager` to choose whether or not to increase the retry count of frames that are part of a block ack agreement; this attribute defaults to false to match the standard specifications.
 - (wifi) Added a new `BaEstablished` trace source to `QosTxop` to notify that a block ack agreement has been established with a given recipient for a given TID.
 - (zigbee) Added Zigbee module support.
+- (energy) Added new information and reformatted energy module documentation.
+- (wifi) Added a new `MainPhySwitch` trace source to EmlsrManager, which is fired when the main PHY switches channel to operate on another link and provides information about the reason for starting the switch.
 
 ### Bugs fixed
 
 - (wifi) Retransmit procedures have been aligned with the standard specifications.
+- (wifi) Clear PSDU map if no immediate response expected with BAR-BA ack sequence
+- (wifi) Fix S-MPDU TX duration computation with BlockAck ack policy
 
 ## Release 3.43
 

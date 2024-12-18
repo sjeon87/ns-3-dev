@@ -1406,17 +1406,13 @@ EhtFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
                                      const WifiTxVector& txVector,
                                      bool inAmpdu)
 {
+    NS_LOG_FUNCTION(this << *mpdu << rxSignalInfo << txVector << inAmpdu);
+
     // The received MPDU is either broadcast or addressed to this station
     NS_ASSERT(mpdu->GetHeader().GetAddr1().IsGroup() || mpdu->GetHeader().GetAddr1() == m_self);
 
     const auto& hdr = mpdu->GetHeader();
-
-    if (m_apMac)
-    {
-        // if the AP MLD received an MPDU from an EMLSR client that is starting an UL TXOP,
-        // block transmissions to the EMLSR client on other links
-        CheckEmlsrClientStartingTxop(hdr, txVector);
-    }
+    const auto sender = hdr.GetAddr2();
 
     if (hdr.IsTrigger())
     {
@@ -1430,7 +1426,7 @@ EhtFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
 
         if (hdr.GetAddr1() != m_self &&
             (!hdr.GetAddr1().IsBroadcast() || !m_staMac->IsAssociated() ||
-             hdr.GetAddr2() != m_bssid // not sent by the AP this STA is associated with
+             sender != m_bssid // not sent by the AP this STA is associated with
              || trigger.FindUserInfoWithAid(m_staMac->GetAssociationId()) == trigger.end()))
         {
             return; // not addressed to us
@@ -1457,16 +1453,31 @@ EhtFrameExchangeManager::ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
             m_ongoingTxopEnd = Simulator::Schedule(m_phy->GetSifs() + NanoSeconds(1),
                                                    &EhtFrameExchangeManager::TxopEnd,
                                                    this,
-                                                   hdr.GetAddr2());
+                                                   sender);
         }
     }
 
     if (!m_icfReceived && ShallDropReceivedMpdu(mpdu))
     {
+        NS_LOG_DEBUG("Drop received MPDU: " << *mpdu);
         return;
     }
 
     HeFrameExchangeManager::ReceiveMpdu(mpdu, rxSignalInfo, txVector, inAmpdu);
+
+    if (m_apMac && GetWifiRemoteStationManager()->GetEmlsrEnabled(sender))
+    {
+        if (hdr.IsRts() && !m_sendCtsEvent.IsPending())
+        {
+            // received RTS but did not send CTS (e.g., NAV busy), start transition delay
+            EmlsrSwitchToListening(sender, Time{0});
+            return;
+        }
+
+        // if the AP MLD received an MPDU from an EMLSR client that is starting an UL TXOP,
+        // block transmissions to the EMLSR client on other links
+        CheckEmlsrClientStartingTxop(hdr, txVector);
+    }
 }
 
 void
