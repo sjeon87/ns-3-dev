@@ -60,6 +60,10 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
      */
     Ptr<IpRoutingProtocol> Create(Ptr<Node> node) const override;
     /**
+     * @param maxBattery the max battery value
+     */
+    void SetMaxBattery(double maxBattery);
+    /**
      * @param useDefaultMetric the use of the default metric
      */
     void SetUseDefaultMetric(bool useDefaultMetric);
@@ -114,6 +118,8 @@ class Aodvv2Helper : public std::enable_if_t<std::is_same_v<Ipv4RoutingHelper, T
   private:
     /** the factory to create AODVv2 routing object */
     ObjectFactory m_agentFactory;
+    /// Max battery value
+    double m_maxBattery = 2268.0;
     /// Use default metric
     bool m_useDefaultMetric = true;
     /// List of metrics

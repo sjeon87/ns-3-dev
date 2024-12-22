@@ -66,6 +66,13 @@ Aodvv2Helper<T>::Create(Ptr<Node> node) const
 
 template <typename T>
 void
+Aodvv2Helper<T>::SetMaxBattery(double maxBattery)
+{
+    m_maxBattery = maxBattery;
+}
+
+template <typename T>
+void
 Aodvv2Helper<T>::SetUseDefaultMetric(bool useDefaultMetric)
 {
     m_useDefaultMetric = useDefaultMetric;
