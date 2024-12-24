@@ -85,6 +85,12 @@ struct UnreachableDst
 {
     uint16_t m_seqNo;
     uint8_t m_metricType;
+
+    UnreachableDst(uint16_t seqNo = 0, uint8_t metricType = 0)
+        : m_seqNo(seqNo),
+          m_metricType(metricType)
+    {
+    }
 };
 
 /// Metric struct for packet description

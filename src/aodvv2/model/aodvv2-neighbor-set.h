@@ -53,6 +53,8 @@ class NeighborSet
     /// Alias for Ipv4InterfaceAddress and Ipv6InterfaceAddress classes
     using IpInterfaceAddress =
         typename std::conditional_t<IsIpv4, Ipv4InterfaceAddress, Ipv6InterfaceAddress>;
+    /// Alias for Ipv4Address and Ipv6Address classes
+    using IpAddress = typename std::conditional_t<IsIpv4, Ipv4Address, Ipv6Address>;
 
   public:
     /**
@@ -125,11 +127,33 @@ class NeighborSet
      * @param timeout the timeout for the address
      */
     void UpdateState(T addr, IpInterfaceAddress iface, Time timeout);
+    /// Remove all expired entries
+    void Purge();
+    /// Schedule m_ntimer.
+    void ScheduleTimer();
 
     /// Remove all entries
     void Clear()
     {
         m_nb.clear();
+    }
+
+    /**
+     * Set link failure callback
+     * @param cb the callback function
+     */
+    void SetCallback(Callback<void, IpAddress> cb)
+    {
+        m_handleLinkFailure = cb;
+    }
+
+    /**
+     * Get link failure callback
+     * @returns the link failure callback
+     */
+    Callback<void, IpAddress> GetCallback() const
+    {
+        return m_handleLinkFailure;
     }
 
     /**
@@ -140,6 +164,10 @@ class NeighborSet
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 
   private:
+    /// link failure callback
+    Callback<void, IpAddress> m_handleLinkFailure;
+    /// Timer for neighbor's list. Schedule Purge().
+    Timer m_ntimer;
     /// vector of entries
     std::vector<Neighbor> m_nb;
     /// max blacklist time

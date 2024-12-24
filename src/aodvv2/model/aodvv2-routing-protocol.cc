@@ -161,6 +161,8 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0))
 {
+    m_nb.SetCallback(
+        MakeCallback(&Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop, this));
 }
 
 template <typename T>
@@ -350,6 +352,8 @@ void
 Aodvv2RoutingProtocol<T>::Start()
 {
     NS_LOG_FUNCTION(this);
+    m_nb.ScheduleTimer();
+
     m_rreqRateLimitTimer.SetFunction(&Aodvv2RoutingProtocol<T>::RreqRateLimitTimerExpire, this);
     m_rreqRateLimitTimer.Schedule(Seconds(1));
 
@@ -2306,7 +2310,8 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
-    unreachable.insert(std::make_pair(nextHop, routes[0].GetSeqNo()));
+    unreachable.insert(
+        std::make_pair(nextHop, UnreachableDst(routes[0].GetSeqNo(), routes[0].GetMetricType())));
     m_routingTable.InvalidateRoutesWithDst(unreachable);
 }
 
