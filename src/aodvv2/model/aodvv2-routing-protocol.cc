@@ -2297,8 +2297,8 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
                 toDst.SetState(INVALID);
                 m_routingTable.Update(toDst);
                 toDst.GetPrecursors(precursors);
-                ++i;
             }
+            ++i;
         }
     }
     if (rerrHeader.GetDestCount() != 0)
