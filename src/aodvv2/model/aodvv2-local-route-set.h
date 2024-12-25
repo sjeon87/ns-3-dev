@@ -72,7 +72,6 @@ class LocalRoute
      * @param iface the interface
      * @param hops the number of hops
      * @param nextHop the IP address of the next hop
-     * @param lastUsed the lastUsed time of the entry
      * @param metric the metric
      * @param metricValue the metric value
      * @param state the route state
@@ -83,7 +82,6 @@ class LocalRoute
                IpInterfaceAddress iface = IpInterfaceAddress(),
                uint32_t hops = 0,
                T nextHop = T(),
-               Time lastUsed = Simulator::Now(),
                Time maxIdleTime = Seconds(200),
                Metric<T> metric = Metric<T>(),
                uint8_t* metricValue = new uint8_t[1]{1},
@@ -283,11 +281,10 @@ class LocalRoute
 
     /**
      * Set the lastUsed
-     * @param lu The lastUsed
      */
-    void SetLastUsed(Time lu)
+    void SetLastUsed()
     {
-        m_lastUsed = lu + Simulator::Now();
+        m_lastUsed = Simulator::Now();
     }
 
     /**
@@ -522,10 +519,11 @@ class LocalRouteSet
   public:
     /**
      * constructor
+     * @param activeIntervalTime the local route entry active interval time
      * @param badlinkTime the local route entry badlink time
      * @param unconfirmedTime the local route entry unconfirmed time
      */
-    LocalRouteSet(Time badlinkTime, Time unconfirmedTime);
+    LocalRouteSet(Time activeIntervalTime, Time badlinkTime, Time unconfirmedTime);
 
     //\}
     /**
@@ -600,7 +598,6 @@ class LocalRouteSet
      * 1. The destination sequence number of this routing entry, if it
      *    exists and is valid, is incremented.
      * 2. The entry is invalidated by marking the route entry as invalid
-     * 3. The lastUsed time field is updated to current time plus DELETE_PERIOD.
      * @param unreachable routes to invalidate
      */
     void InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unreachable);
@@ -618,6 +615,27 @@ class LocalRouteSet
 
     /// Delete all outdated entries and invalidate valid entry if lastUsed time is expired
     void Purge();
+    //// Schedule m_ntimer.
+    void ScheduleTimer();
+
+    /**
+     * Set link failure callback
+     * @param cb the callback function
+     */
+    void SetCallback(Callback<void, T> cb)
+    {
+        m_handleLinkFailure = cb;
+    }
+
+    /**
+     * Get link failure callback
+     * @returns the link failure callback
+     */
+    Callback<void, T> GetCallback() const
+    {
+        return m_handleLinkFailure;
+    }
+
     /** Mark entry as unidirectional (e.g. add this neighbor to "blacklist" for blacklistTimeout
      * period)
      * @param neighbor neighbor address link to which assumed to be unidirectional
@@ -633,8 +651,14 @@ class LocalRouteSet
     void Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
 
   private:
+    /// link failure callback
+    Callback<void, T> m_handleLinkFailure;
+    /// Timer for neighbor's list. Schedule Purge().
+    Timer m_ntimer;
     /// The local route set
     std::vector<LocalRoute<T>> m_ipAddressEntry;
+    /// Active interval time for valid routes
+    Time m_activeIntervalTime;
     /// Deletion time for invalid routes
     Time m_badLinkLifetime;
     /// Invalidation time for unconfirmed routes

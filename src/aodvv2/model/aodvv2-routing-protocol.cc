@@ -145,7 +145,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_maxQueueTime(Seconds(30)),
       m_rtemsgEntryTime(Seconds(12)),
       m_destinationOnly(false),
-      m_routingTable(m_maxBlacklistTime, m_maxSeqnumLifetime),
+      m_routingTable(m_activeInterval, m_maxBlacklistTime, m_maxSeqnumLifetime),
       m_queue(m_maxQueueLen, m_maxQueueTime),
       m_requestId(0),
       m_seqNo(0),
@@ -161,6 +161,13 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0))
 {
+    m_routingTable.SetCallback(
+        MakeCallback(&Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop, this));
+
+    std::ofstream file;
+    file.open("output-packets.csv");
+    file << "type,size\n";
+    file.close();
 }
 
 template <typename T>
@@ -350,6 +357,7 @@ void
 Aodvv2RoutingProtocol<T>::Start()
 {
     NS_LOG_FUNCTION(this);
+    m_routingTable.ScheduleTimer();
 
     m_rreqRateLimitTimer.SetFunction(&Aodvv2RoutingProtocol<T>::RreqRateLimitTimerExpire, this);
     m_rreqRateLimitTimer.Schedule(Seconds(1));
@@ -1062,7 +1070,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
             rt.IncrementRreqCnt();
             rt.SetHop(hops);
             rt.SetState(UNCONFIRMED);
-            rt.SetLastUsed(m_pathDiscoveryTime);
+            rt.SetLastUsed();
             rreqHeader.AddMetric(rt.GetMetricType(), rt.GetMetricValue(), rt.GetMetricSize());
             m_routingTable.Update(rt);
         }
@@ -1078,7 +1086,6 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                     /*iface=*/IpInterfaceAddress(),
                     /*hops=*/hops,
                     /*nextHop=*/IpAddress(),
-                    /*lastUsed=*/m_pathDiscoveryTime,
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
@@ -1356,7 +1363,6 @@ Aodvv2RoutingProtocol<T>::UpdateRouteLifeTime(IpAddress addr, Time lifetime)
                 NS_LOG_DEBUG("Updating ACTIVE route");
                 rt.SetRreqCnt(0);
                 rt.SetRrepCnt(0);
-                rt.SetLastUsed(std::max(lifetime, rt.GetLastUsed()));
                 m_routingTable.Update(rt);
             }
         }
@@ -1383,7 +1389,6 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                 /*hops=*/1,
                 /*nextHop=*/sender,
-                /*lastUsed=*/m_activeInterval,
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metric=*/metric,
                 /*metricValue=*/
@@ -1400,7 +1405,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
         {
             for (LocalRoute<IpAddress>& rt : routes)
             {
-                rt.SetLastUsed(std::max(m_activeInterval, rt.GetLastUsed()));
+                rt.SetLastUsed();
             }
         }
         else
@@ -1414,7 +1419,6 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                     /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                     /*hops=*/1,
                     /*nextHop=*/sender,
-                    /*lastUsed=*/std::max(m_activeInterval, toNeighbor.GetLastUsed()),
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
@@ -1508,8 +1512,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                     /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                     /*hops=*/m_maxHopLimit - hop,
                     /*nextHop=*/src,
-                    /*lastUsed=*/
-                    Time(2 * m_netTraversalTime - 2 * (m_maxHopLimit - hop) * m_nodeTraversalTime),
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/rreqHeader.GetMetricValue(metric.GetMetricType()));
@@ -1534,9 +1536,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                     m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
                 toOrigin.SetInterface(m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
                 toOrigin.SetHop(hop);
-                toOrigin.SetLastUsed(
-                    std::max(Time(2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime),
-                             toOrigin.GetLastUsed()));
+                toOrigin.SetLastUsed();
                 m_routingTable.Update(toOrigin);
             }
         }
@@ -1553,7 +1553,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                 m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                 1,
                 src,
-                m_activeInterval,
                 m_maxIdleTime,
                 metric,
                 rreqHeader.GetMetricValue(metric.GetMetricType()));
@@ -1561,7 +1560,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         }
         else
         {
-            toNeighbor.SetLastUsed(m_activeInterval);
+            toNeighbor.SetLastUsed();
             toNeighbor.SetSeqNo(rreqHeader.GetOrigSeqNo());
             // toNeighbor.SetState(ACTIVE);
             toNeighbor.SetOutputDevice(m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
@@ -1642,7 +1641,6 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                 m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
                 m_maxHopLimit - rreqHeader.GetHopLimit(),
                 dst,
-                m_activeInterval,
                 m_maxIdleTime,
                 metric,
                 rreqHeader.GetMetricValue(metric.GetMetricType()));
@@ -1878,7 +1876,6 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
             /*iface=*/m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0),
             /*hops=*/hop,
             /*nextHop=*/sender,
-            /*lastUsed=*/m_netTraversalTime,
             /*maxIdleTime=*/m_maxIdleTime,
             /*metric=*/metric,
             /*metricValue=*/rrepHeader.GetMetricValue(metric.GetMetricType()),
@@ -1968,7 +1965,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     }
     for (LocalRoute<IpAddress>& toOrigin : routes)
     {
-        toOrigin.SetLastUsed(std::max(m_activeInterval, toOrigin.GetLastUsed()));
+        toOrigin.SetLastUsed();
         toOrigin.SetState(ACTIVE);
         m_routingTable.Update(toOrigin);
 
@@ -2259,10 +2256,17 @@ template <typename T>
 void
 Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
 {
+    std::cout << "SendRerrWhenBreaksLinkToNextHop" << std::endl;
     NS_LOG_FUNCTION(this << nextHop);
     RerrHeader<IpAddress> rerrHeader;
     std::vector<IpAddress> precursors;
     std::map<IpAddress, UnreachableDst> unreachable;
+
+    // if nextHop is initialized
+    if (!nextHop.IsInitialized())
+    {
+        return;
+    }
 
     std::vector<LocalRoute<IpAddress>> routes;
     if (!m_routingTable.LookupRoutes(nextHop, routes))
@@ -2343,7 +2347,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
         NS_LOG_LOGIC("Unicast RERR to the source of the data transmission");
         socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
     }
-    else
+    /* else
     {
         for (auto i = m_socketAddresses.begin(); i != m_socketAddresses.end(); ++i)
         {
@@ -2370,7 +2374,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
             }
             socket->SendTo(packet->Copy(), 0, InetVxSocketAddress(destination, AODVV2_PORT));
         }
-    }
+    } */
 }
 
 template <typename T>

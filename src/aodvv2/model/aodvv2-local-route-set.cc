@@ -39,7 +39,6 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
                           IpInterfaceAddress iface,
                           uint32_t hops,
                           T nextHop,
-                          Time lastUsed,
                           Time maxIdleTime,
                           Metric<T> metric,
                           uint8_t* metricValue,
@@ -47,7 +46,6 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
     : m_ackTimer(Timer::CANCEL_ON_DESTROY),
       m_seqNo(seqNo),
       m_nextHopIface(iface),
-      m_lastUsed(lastUsed + Simulator::Now()),
       m_metric(metric),
       m_metricValue(metricValue),
       m_metricSize(metric.GetMetricSize()),
@@ -191,7 +189,6 @@ LocalRoute<T>::Invalidate(Time badLinkLifetime)
     }
     m_state = INVALID;
     m_reqCount = 0;
-    m_lastUsed = badLinkLifetime + Simulator::Now();
 }
 
 template <typename T>
@@ -256,10 +253,14 @@ template class LocalRoute<Ipv6Address>;
  The Local Route
  */
 template <typename T>
-LocalRouteSet<T>::LocalRouteSet(Time badlinkTime, Time unconfirmedTime)
-    : m_badLinkLifetime(badlinkTime),
+LocalRouteSet<T>::LocalRouteSet(Time activeIntervalTime, Time badlinkTime, Time unconfirmedTime)
+    : m_ntimer(Timer::CANCEL_ON_DESTROY),
+      m_activeIntervalTime(activeIntervalTime),
+      m_badLinkLifetime(badlinkTime),
       m_unconfirmedTime(unconfirmedTime)
 {
+    m_ntimer.SetDelay(unconfirmedTime);
+    m_ntimer.SetFunction(&LocalRouteSet<T>::Purge, this);
 }
 
 template <typename T>
@@ -286,7 +287,6 @@ bool
 LocalRouteSet<T>::LookupRoutes(T dst, std::vector<LocalRoute<T>>& routes)
 {
     NS_LOG_FUNCTION(this << dst);
-    Purge();
     bool found = false;
     for (auto& route : m_ipAddressEntry)
     {
@@ -433,7 +433,6 @@ LocalRouteSet<T>::GetListOfDestinationWithNextHop(T nextHop,
                                                   std::map<T, UnreachableDst>& unreachable)
 {
     NS_LOG_FUNCTION(this);
-    Purge();
     unreachable.clear();
     for (const auto& route : m_ipAddressEntry)
     {
@@ -453,7 +452,6 @@ void
 LocalRouteSet<T>::ActivateRouteWithNextHop(T nextHop)
 {
     NS_LOG_FUNCTION(this);
-    Purge();
     for (auto& route : m_ipAddressEntry)
     {
         if (route.GetNextHop() == nextHop)
@@ -469,7 +467,6 @@ void
 LocalRouteSet<T>::InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unreachable)
 {
     NS_LOG_FUNCTION(this);
-    Purge();
     for (auto& route : m_ipAddressEntry)
     {
         for (const auto& un : unreachable)
@@ -504,32 +501,42 @@ void
 LocalRouteSet<T>::Purge()
 {
     NS_LOG_FUNCTION(this);
-    auto it = std::remove_if(
-        m_ipAddressEntry.begin(),
-        m_ipAddressEntry.end(),
-        [this](LocalRoute<T>& route) {
-            if (route.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
-            {
-                route.SetSeqNo(0);
-                if (route.GetState() == UNCONFIRMED)
-                {
-                    return true;
-                }
-                else if (route.GetState() == ACTIVE)
-                {
-                    NS_LOG_LOGIC("Invalidate route with destination address "
-                                 << route.GetDestination());
-                    route.Invalidate(m_badLinkLifetime);
-                }
-            }
-            else if (route.GetState() == IDLE &&
-                     route.GetLastSeqNumUpdate() < Simulator::Now() + route.GetMaxIdleTime())
-            {
-                route.SetState(INVALID);
-            }
-            return false;
-        });
+    auto it =
+        std::remove_if(m_ipAddressEntry.begin(),
+                       m_ipAddressEntry.end(),
+                       [this](LocalRoute<T>& route) {
+                           if (route.GetLastUsed() + m_activeIntervalTime < Simulator::Now())
+                           {
+                               if (!m_handleLinkFailure.IsNull())
+                               {
+                                   NS_LOG_LOGIC("Close link to " << route.GetNextHop());
+                                   m_handleLinkFailure(route.GetNextHop());
+                               }
+                           }
+                           if (route.GetLastUsed() + m_unconfirmedTime < Simulator::Now())
+                           {
+                               route.SetSeqNo(0);
+                               if (route.GetState() == UNCONFIRMED)
+                               {
+                                   return true;
+                               }
+                               else if (route.GetState() == ACTIVE)
+                               {
+                                   NS_LOG_LOGIC("Invalidate route with destination address "
+                                                << route.GetDestination());
+                                   route.Invalidate(m_badLinkLifetime);
+                               }
+                           }
+                           else if (route.GetState() == IDLE &&
+                                    route.GetLastUsed() + route.GetMaxIdleTime() < Simulator::Now())
+                           {
+                               route.SetState(INVALID);
+                           }
+                           return false;
+                       });
     m_ipAddressEntry.erase(it, m_ipAddressEntry.end());
+    m_ntimer.Cancel();
+    m_ntimer.Schedule();
 }
 
 template <typename T>
@@ -538,7 +545,7 @@ LocalRouteSet<T>::PurgeTable(std::vector<LocalRoute<T>>& table) const
 {
     NS_LOG_FUNCTION(this);
     auto it = std::remove_if(table.begin(), table.end(), [this](LocalRoute<T>& route) {
-        if (route.GetLastSeqNumUpdate() + m_unconfirmedTime < Simulator::Now())
+        if (route.GetLastUsed() + m_unconfirmedTime < Simulator::Now())
         {
             if (route.GetState() == UNCONFIRMED)
             {
@@ -552,13 +559,21 @@ LocalRouteSet<T>::PurgeTable(std::vector<LocalRoute<T>>& table) const
             }
         }
         else if (route.GetState() == IDLE &&
-                 route.GetLastSeqNumUpdate() < Simulator::Now() + route.GetMaxIdleTime())
+                 route.GetLastUsed() + route.GetMaxIdleTime() < Simulator::Now())
         {
             route.SetState(INVALID);
         }
         return false;
     });
     table.erase(it, table.end());
+}
+
+template <typename T>
+void
+LocalRouteSet<T>::ScheduleTimer()
+{
+    m_ntimer.Cancel();
+    m_ntimer.Schedule();
 }
 
 template <typename T>
@@ -571,7 +586,6 @@ LocalRouteSet<T>::MarkLinkAsUnidirectional(T neighbor, Time blacklistTimeout)
         if (route.GetDestination() == neighbor)
         {
             route.SetState(INVALID);
-            route.SetLastUsed(blacklistTimeout);
             route.SetRreqCnt(0);
             NS_LOG_LOGIC("Set link to " << neighbor << " to unidirectional");
             return true;
