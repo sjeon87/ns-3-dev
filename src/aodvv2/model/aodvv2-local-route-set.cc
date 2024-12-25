@@ -534,7 +534,7 @@ LocalRouteSet<T>::Purge()
 
 template <typename T>
 void
-LocalRouteSet<T>::Purge(std::vector<LocalRoute<T>>& table) const
+LocalRouteSet<T>::PurgeTable(std::vector<LocalRoute<T>>& table) const
 {
     NS_LOG_FUNCTION(this);
     auto it = std::remove_if(table.begin(), table.end(), [this](LocalRoute<T>& route) {
@@ -586,7 +586,7 @@ void
 LocalRouteSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
     std::vector<LocalRoute<T>> table = m_ipAddressEntry;
-    Purge(table);
+    PurgeTable(table);
     std::ostream* os = stream->GetStream();
     // Copy the current ostream state
     std::ios oldState(nullptr);

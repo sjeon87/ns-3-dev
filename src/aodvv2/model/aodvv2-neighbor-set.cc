@@ -26,18 +26,14 @@ namespace aodvv2
 {
 template <typename T>
 NeighborSet<T>::NeighborSet(Time maxBlacklistTime)
-    : m_ntimer(Timer::CANCEL_ON_DESTROY),
-      m_maxBlacklistTime(maxBlacklistTime)
+    : m_maxBlacklistTime(maxBlacklistTime)
 {
-    m_ntimer.SetDelay(maxBlacklistTime);
-    m_ntimer.SetFunction(&NeighborSet<T>::Purge, this);
 }
 
 template <typename T>
 bool
 NeighborSet<T>::IsNeighbor(T addr)
 {
-    Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
         if (i->m_neighborAddress == addr)
@@ -52,7 +48,6 @@ template <typename T>
 Time
 NeighborSet<T>::GetTimeout(T addr)
 {
-    Purge();
     for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
     {
         if (i->m_neighborAddress == addr)
@@ -60,7 +55,7 @@ NeighborSet<T>::GetTimeout(T addr)
             return (i->m_timeout - Simulator::Now());
         }
     }
-    return Seconds(0);
+    return Time(0);
 }
 
 template <typename T>
@@ -92,7 +87,6 @@ NeighborSet<T>::AddNeighbor(T addr, IpInterfaceAddress iface)
     NS_LOG_LOGIC("Open link to " << addr);
     Neighbor neighbor(addr, iface);
     m_nb.push_back(neighbor);
-    Purge();
 }
 
 template <typename T>
@@ -131,58 +125,6 @@ NeighborSet<T>::UpdateState(T addr, IpInterfaceAddress iface, Time timeout)
         }
     }
     AddNeighbor(addr, iface);
-}
-
-/**
- * @brief CloseNeighbor structure
- */
-template <typename T>
-struct CloseNeighbor
-{
-    /**
-     * Check if the entry is expired
-     *
-     * @param nb NeighborSet<T>::Neighbor entry
-     * @return true if expired, false otherwise
-     */
-    bool operator()(const typename NeighborSet<T>::Neighbor& nb) const
-    {
-        return ((nb.m_timeout < Simulator::Now()));
-    }
-};
-
-template <typename T>
-void
-NeighborSet<T>::Purge()
-{
-    if (m_nb.empty())
-    {
-        return;
-    }
-
-    CloseNeighbor<T> pred;
-    if (!m_handleLinkFailure.IsNull())
-    {
-        for (auto j = m_nb.begin(); j != m_nb.end(); ++j)
-        {
-            if (pred(*j))
-            {
-                NS_LOG_LOGIC("Close link to " << j->m_neighborAddress);
-                m_handleLinkFailure(j->m_neighborAddress);
-            }
-        }
-    }
-    m_nb.erase(std::remove_if(m_nb.begin(), m_nb.end(), pred), m_nb.end());
-    m_ntimer.Cancel();
-    m_ntimer.Schedule();
-}
-
-template <typename T>
-void
-NeighborSet<T>::ScheduleTimer()
-{
-    m_ntimer.Cancel();
-    m_ntimer.Schedule();
 }
 
 template <typename T>

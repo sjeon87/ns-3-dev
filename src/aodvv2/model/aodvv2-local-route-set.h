@@ -643,7 +643,7 @@ class LocalRouteSet
      * const version of Purge, for use by Print() method
      * @param table the local route set to purge
      */
-    void Purge(std::vector<LocalRoute<T>>& table) const;
+    void PurgeTable(std::vector<LocalRoute<T>>& table) const;
 };
 
 } // namespace aodvv2
