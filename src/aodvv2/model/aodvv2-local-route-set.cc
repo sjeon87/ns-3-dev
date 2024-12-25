@@ -505,14 +505,6 @@ LocalRouteSet<T>::Purge()
         std::remove_if(m_ipAddressEntry.begin(),
                        m_ipAddressEntry.end(),
                        [this](LocalRoute<T>& route) {
-                           if (route.GetLastUsed() + m_activeIntervalTime < Simulator::Now())
-                           {
-                               if (!m_handleLinkFailure.IsNull())
-                               {
-                                   NS_LOG_LOGIC("Close link to " << route.GetNextHop());
-                                   m_handleLinkFailure(route.GetNextHop());
-                               }
-                           }
                            if (route.GetLastUsed() + m_unconfirmedTime < Simulator::Now())
                            {
                                route.SetSeqNo(0);
