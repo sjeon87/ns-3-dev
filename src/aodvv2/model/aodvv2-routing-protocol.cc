@@ -163,11 +163,6 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
 {
     m_routingTable.SetCallback(
         MakeCallback(&Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop, this));
-
-    std::ofstream file;
-    file.open("output-packets.csv");
-    file << "type,size\n";
-    file.close();
 }
 
 template <typename T>
