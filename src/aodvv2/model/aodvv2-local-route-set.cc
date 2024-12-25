@@ -505,18 +505,27 @@ LocalRouteSet<T>::Purge()
         std::remove_if(m_ipAddressEntry.begin(),
                        m_ipAddressEntry.end(),
                        [this](LocalRoute<T>& route) {
-                           if (route.GetLastUsed() + m_unconfirmedTime < Simulator::Now())
+                           if (route.GetLastUsed() + m_activeIntervalTime < Simulator::Now())
+                           {
+                               if (route.GetState() == ACTIVE)
+                               {
+                                   NS_LOG_LOGIC("Invalidate route with destination address "
+                                                << route.GetDestination());
+                                   route.Invalidate(m_badLinkLifetime);
+
+                                   if (!m_handleLinkFailure.IsNull())
+                                   {
+                                       NS_LOG_LOGIC("Close link to " << route.GetNextHop());
+                                       m_handleLinkFailure(route.GetNextHop());
+                                   }
+                               }
+                           }
+                           else if (route.GetLastUsed() + m_unconfirmedTime < Simulator::Now())
                            {
                                route.SetSeqNo(0);
                                if (route.GetState() == UNCONFIRMED)
                                {
                                    return true;
-                               }
-                               else if (route.GetState() == ACTIVE)
-                               {
-                                   NS_LOG_LOGIC("Invalidate route with destination address "
-                                                << route.GetDestination());
-                                   route.Invalidate(m_badLinkLifetime);
                                }
                            }
                            else if (route.GetState() == IDLE &&

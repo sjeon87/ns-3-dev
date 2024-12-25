@@ -1573,7 +1573,8 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
                           << static_cast<uint32_t>(rreqHeader.GetHopLimit()) << " SeqNo "
-                          << rreqHeader.GetSeqNo() << " to destination " << rreqHeader.GetTargIp());
+                          << rreqHeader.GetSeqNo() << " to destination " << rreqHeader.GetTargIp()
+                          << " from " << src);
 
     LocalRoute<IpAddress> toOrigin;
     //  A node generates a RREP if either:
@@ -1581,7 +1582,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
     if (IsMyOwnAddress(rreqHeader.GetTargIp()))
     {
         m_routingTable.LookupRoute(origin, rreqHeader.GetMetricTypes()[0], toOrigin);
-        NS_LOG_DEBUG("Send reply since I am the destination");
+        NS_LOG_DEBUG("Send reply since I am the destination " << toOrigin.GetDestination());
         SendReply(rreqHeader, toOrigin, rreqHeader.GetHopLimit() - 1);
         return;
     }
@@ -2251,7 +2252,6 @@ template <typename T>
 void
 Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
 {
-    std::cout << "SendRerrWhenBreaksLinkToNextHop" << std::endl;
     NS_LOG_FUNCTION(this << nextHop);
     RerrHeader<IpAddress> rerrHeader;
     std::vector<IpAddress> precursors;
