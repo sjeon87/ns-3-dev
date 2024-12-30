@@ -112,9 +112,9 @@ main(int argc, char** argv)
 
 //-----------------------------------------------------------------------------
 Aodvv2Example::Aodvv2Example()
-    : size(4),
+    : size(10),
       step(50),
-      totalTime(10),
+      totalTime(100),
       pcap(true),
       printRoutes(true)
 {

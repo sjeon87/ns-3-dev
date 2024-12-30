@@ -1349,6 +1349,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteLifeTime(IpAddress addr, Time lifetime)
 {
     NS_LOG_FUNCTION(this << addr << lifetime);
     std::vector<LocalRoute<IpAddress>> routes;
+    bool result = false;
     if (m_routingTable.LookupRoutes(addr, routes))
     {
         for (LocalRoute<IpAddress>& rt : routes)
@@ -1358,11 +1359,13 @@ Aodvv2RoutingProtocol<T>::UpdateRouteLifeTime(IpAddress addr, Time lifetime)
                 NS_LOG_DEBUG("Updating ACTIVE route");
                 rt.SetRreqCnt(0);
                 rt.SetRrepCnt(0);
+                rt.SetLastUsed();
                 m_routingTable.Update(rt);
+                result = true;
             }
         }
     }
-    return false;
+    return result;
 }
 
 template <typename T>
