@@ -38,6 +38,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 
 - (wifi) Add support for Power Save mode.
 - (wifi) Add initial support for IEEE 802.11bn.
+- (wifi) Extend Ideal rate manager to support UHR rates
 
 ### Bugs fixed
 
