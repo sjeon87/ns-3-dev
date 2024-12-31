@@ -1891,7 +1891,6 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         }
         if (m_nb.GetState(sender) == BLACKLISTED) // drop
         {
-            newEntry.SetState(INVALID);
             return;
         }
 
@@ -2070,17 +2069,17 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
         }
         else
         {
-            std::vector<LocalRoute<IpAddress>> routes;
-            if (m_routingTable.LookupRoutes(i->first, routes))
+            std::vector<LocalRoute<IpAddress>> toDstRoutes;
+            if (m_routingTable.LookupRoutes(i->first, toDstRoutes))
             {
-                for (LocalRoute<IpAddress>& toDst : routes)
+                for (LocalRoute<IpAddress>& toDst : toDstRoutes)
                 {
                     toDst.SetState(INVALID);
                     m_routingTable.Update(toDst);
                     toDst.GetPrecursors(precursors);
-                    ++i;
                 }
             }
+            ++i;
         }
     }
     if (rerrHeader.GetDestCount() != 0)
@@ -2277,6 +2276,8 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         toNextHop.SetState(INVALID);
         m_routingTable.Update(toNextHop);
         toNextHop.GetPrecursors(precursors);
+        rerrHeader.SetOrigIp(toNextHop.GetInterface().GetAddress());
+        rerrHeader.SetOrigMask(32); // TODO me: update if needed
         rerrHeader.AddUnDestination(nextHop, toNextHop.GetSeqNo());
     }
 
@@ -2293,12 +2294,15 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         }
         else
         {
-            m_routingTable.LookupRoutes(i->first, routes);
-            for (LocalRoute<IpAddress>& toDst : routes)
+            std::vector<LocalRoute<IpAddress>> toDstRoutes;
+            if (m_routingTable.LookupRoutes(i->first, toDstRoutes))
             {
-                toDst.SetState(INVALID);
-                m_routingTable.Update(toDst);
-                toDst.GetPrecursors(precursors);
+                for (LocalRoute<IpAddress>& toDst : toDstRoutes)
+                {
+                    toDst.SetState(INVALID);
+                    m_routingTable.Update(toDst);
+                    toDst.GetPrecursors(precursors);
+                }
             }
             ++i;
         }
@@ -2335,22 +2339,27 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
     RerrHeader<IpAddress> rerrHeader;
     rerrHeader.AddUnDestination(dst, dstSeqNo);
     Ptr<Packet> packet = Create<Packet>();
-    packet->AddHeader(rerrHeader);
     std::vector<LocalRoute<IpAddress>> routes;
     if (m_routingTable.LookupValidRoutes(origin, routes) && routes.size() > 0)
     {
         LocalRoute<IpAddress> toOrigin = routes[0];
         Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
+        rerrHeader.SetOrigIp(toOrigin.GetInterface().GetAddress());
+        rerrHeader.SetOrigMask(32); // TODO me: update if needed
+        packet->AddHeader(rerrHeader);
         NS_ASSERT(socket);
         NS_LOG_LOGIC("Unicast RERR to the source of the data transmission");
         socket->SendTo(packet, 0, InetVxSocketAddress(toOrigin.GetNextHop(), AODVV2_PORT));
     }
-    /* else
+    else
     {
         for (auto i = m_socketAddresses.begin(); i != m_socketAddresses.end(); ++i)
         {
             Ptr<Socket> socket = i->first;
             IpInterfaceAddress iface = i->second;
+            rerrHeader.SetOrigIp(iface.GetAddress());
+            rerrHeader.SetOrigMask(32); // TODO me: update if needed
+            packet->AddHeader(rerrHeader);
             NS_ASSERT(socket);
             NS_LOG_LOGIC("Broadcast RERR message from interface " << iface.GetAddress());
             // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
@@ -2372,7 +2381,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenNoRouteToForward(IpAddress dst,
             }
             socket->SendTo(packet->Copy(), 0, InetVxSocketAddress(destination, AODVV2_PORT));
         }
-    } */
+    }
 }
 
 template <typename T>

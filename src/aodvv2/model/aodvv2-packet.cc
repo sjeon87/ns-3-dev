@@ -782,7 +782,7 @@ RerrHeader<T>::SetTlvHeader(PbbPacket tlvHeader)
                 this->SetOrigIp(T::ConvertFrom(addressBlock->AddressFront()));
                 this->SetOrigMask(addressBlock->PrefixFront());
                 break;
-            case AODVV2_TARGPREFIX:
+            case AODVV2_UNREACHABLE:
                 if (hasMetric)
                 {
                     this->AddUnDestination(T::ConvertFrom(addressBlock->AddressFront()),
