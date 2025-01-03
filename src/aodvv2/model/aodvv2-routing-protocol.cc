@@ -159,7 +159,8 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rreqRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_rrepRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
-      m_lastBcastTime(Seconds(0))
+      m_lastBcastTime(Seconds(0)),
+      m_bidirectionalLinks(false)
 {
     m_routingTable.SetCallback(
         MakeCallback(&Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop, this));
@@ -1318,7 +1319,7 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
     }
     else if (rrepAckMessages > 0)
     {
-        RecvReplyAck(sender, tlvHeader);
+        RecvReplyAck(sender);
     }
     else if (rerrMessages > 0)
     {
@@ -1719,6 +1720,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         for (LocalRoute<IpAddress>& rt : routes)
         {
             rt.IncrementRrepCnt();
+            m_routingTable.Update(rt);
         }
     }
 
@@ -1744,7 +1746,14 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
     if (m_routingTable.LookupRoutes(toOrigin.GetNextHop(), routes) &&
         routes[0].GetState() == UNCONFIRMED)
     {
-        rrepHeader.SetHasRrepAck(true);
+        if (m_bidirectionalLinks)
+        {
+            RecvReplyAck(toOrigin.GetNextHop());
+        }
+        else
+        {
+            rrepHeader.SetHasRrepAck(true);
+        }
     }
 
     packet->AddHeader(rrepHeader);
@@ -1948,9 +1957,16 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
     if (IsMyOwnAddress(rrepHeader.GetOrigIp()))
     {
         m_routingTable.LookupRoute(dst, metric.GetMetricType(), toDst);
-        if (rrepHeader.HasRrepAck())
+        if (m_bidirectionalLinks)
         {
-            SendReplyAck(sender, rrepHeader);
+            RecvReplyAck(sender);
+        }
+        else
+        {
+            if (rrepHeader.HasRrepAck())
+            {
+                SendReplyAck(sender, rrepHeader);
+            }
         }
         SendPacketFromQueue(dst, toDst.GetRoute());
         return;
@@ -1995,10 +2011,16 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
                 }
             }
         }
-
-        if (rrepHeader.HasRrepAck())
+        if (m_bidirectionalLinks)
         {
-            SendReplyAck(sender, rrepHeader);
+            RecvReplyAck(sender);
+        }
+        else
+        {
+            if (rrepHeader.HasRrepAck())
+            {
+                SendReplyAck(sender, rrepHeader);
+            }
         }
 
         Ptr<Packet> packet = Create<Packet>();
@@ -2011,7 +2033,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
 
 template <typename T>
 void
-Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader)
+Aodvv2RoutingProtocol<T>::RecvReplyAck(IpAddress neighbor)
 {
     NS_LOG_FUNCTION(this);
 

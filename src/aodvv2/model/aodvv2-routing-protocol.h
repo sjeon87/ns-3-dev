@@ -654,9 +654,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /**
      * Receive RREP_ACK
      * @param neighbor neighbor address
-     * @param tlvHeader TLV header
      */
-    void RecvReplyAck(IpAddress neighbor, PbbPacket tlvHeader);
+    void RecvReplyAck(IpAddress neighbor);
     /**
      * Receive RERR
      * @param p packet
@@ -782,6 +781,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     Ptr<UniformRandomVariable> m_uniformRandomVariable;
     /// Keep track of the last bcast time
     Time m_lastBcastTime;
+    /// Set all links as bidirectional (avoid rrep_acks)
+    bool m_bidirectionalLinks;
 };
 
 typedef Aodvv2RoutingProtocol<Ipv4RoutingProtocol> Ipv4Aodvv2RoutingProtocol;
