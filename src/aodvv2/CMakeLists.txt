@@ -22,6 +22,8 @@ build_lib(
     model/aodvv2-rerr-set.h
     model/aodvv2-route-client-set.h
     model/aodvv2-metric.h
-  LIBRARIES_TO_LINK ${libinternet}
+  LIBRARIES_TO_LINK 
+    ${libinternet}
+    ${libwifi}
   TEST_SOURCES test/aodvv2-test.cc
 )

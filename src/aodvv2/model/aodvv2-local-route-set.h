@@ -15,6 +15,7 @@
 #include "aodvv2-metric.h"
 #include "aodvv2-packet.h"
 
+#include "ns3/arp-cache.h"
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/ipv4.h"
@@ -30,6 +31,9 @@
 
 namespace ns3
 {
+
+class WifiMacHeader;
+
 namespace aodvv2
 {
 
@@ -613,10 +617,30 @@ class LocalRouteSet
         m_ipAddressEntry.clear();
     }
 
+    /**
+     * Add ARP cache to be used to allow layer 2 notifications processing
+     * @param a pointer to the ARP cache to add
+     */
+    void AddArpCache(Ptr<ArpCache> a);
+    /**
+     * Don't use given ARP cache any more (interface is down)
+     * @param a pointer to the ARP cache to delete
+     */
+    void DelArpCache(Ptr<ArpCache> a);
+
     /// Delete all outdated entries and invalidate valid entry if lastUsed time is expired
     void Purge();
     //// Schedule m_ntimer.
     void ScheduleTimer();
+
+    /**
+     * Get callback to ProcessTxError
+     * @returns the callback function
+     */
+    Callback<void, const WifiMacHeader&> GetTxErrorCallback() const
+    {
+        return m_txErrorCallback;
+    }
 
     /**
      * Set link failure callback
@@ -653,6 +677,8 @@ class LocalRouteSet
   private:
     /// link failure callback
     Callback<void, T> m_handleLinkFailure;
+    /// TX error callback
+    Callback<void, const WifiMacHeader&> m_txErrorCallback;
     /// Timer for neighbor's list. Schedule Purge().
     Timer m_ntimer;
     /// The local route set
@@ -663,11 +689,27 @@ class LocalRouteSet
     Time m_badLinkLifetime;
     /// Invalidation time for unconfirmed routes
     Time m_unconfirmedTime;
+    /// list of ARP cached to be used for layer 2 notifications processing
+    std::vector<Ptr<ArpCache>> m_arp;
+
     /**
      * const version of Purge, for use by Print() method
      * @param table the local route set to purge
      */
     void PurgeTable(std::vector<LocalRoute<T>>& table) const;
+
+    /**
+     * Find MAC address by IP using list of ARP caches
+     *
+     * @param addr the IP address to lookup
+     * @returns the MAC address for the IP address
+     */
+    Mac48Address LookupMacAddress(T addr);
+    /**
+     * Process layer 2 TX error notification
+     * @param hdr header of the packet
+     */
+    void ProcessTxError(const WifiMacHeader& hdr);
 };
 
 } // namespace aodvv2

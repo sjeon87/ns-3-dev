@@ -12,6 +12,7 @@
 
 #include "aodvv2-routing-protocol.h"
 
+#include "ns3/adhoc-wifi-mac.h"
 #include "ns3/boolean.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/log.h"
@@ -23,6 +24,8 @@
 #include "ns3/udp-header.h"
 #include "ns3/udp-l4-protocol.h"
 #include "ns3/udp-socket-factory.h"
+#include "ns3/wifi-mpdu.h"
+#include "ns3/wifi-net-device.h"
 
 #include <algorithm>
 #include <limits>
@@ -773,12 +776,40 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceUp(uint32_t i)
     if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
     {
         socket->Bind(InetVxSocketAddress(iface.GetBroadcast(), AODVV2_PORT));
+        if (l3->GetInterface(i)->GetArpCache())
+        {
+            m_routingTable.AddArpCache(l3->GetInterface(i)->GetArpCache());
+        }
     }
     else
     {
         // TODO Ipv6
     }
     m_socketSubnetBroadcastAddresses.insert(std::make_pair(socket, iface));
+
+    Ptr<NetDevice> dev = m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(iface.GetAddress()));
+
+    // Allow neighbor manager use this interface for layer 2 feedback if possible
+    Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice>();
+    if (!wifi)
+    {
+        return;
+    }
+    Ptr<WifiMac> mac = wifi->GetMac();
+    if (!mac)
+    {
+        return;
+    }
+
+    mac->TraceConnectWithoutContext("DroppedMpdu",
+                                    MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError, this));
+}
+
+template <typename T>
+void
+Aodvv2RoutingProtocol<T>::NotifyTxError(WifiMacDropReason reason, Ptr<const WifiMpdu> mpdu)
+{
+    m_routingTable.GetTxErrorCallback()(mpdu->GetHeader());
 }
 
 template <typename T>
@@ -790,6 +821,25 @@ Aodvv2RoutingProtocol<T>::NotifyInterfaceDown(uint32_t i)
     // Disable layer 2 link state monitoring (if possible)
     Ptr<IpL3Protocol> l3 = m_ip->template GetObject<IpL3Protocol>();
     Ptr<NetDevice> dev = l3->GetNetDevice(i);
+    Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice>();
+    if (wifi)
+    {
+        Ptr<WifiMac> mac = wifi->GetMac()->GetObject<AdhocWifiMac>();
+        if (mac)
+        {
+            mac->TraceDisconnectWithoutContext(
+                "DroppedMpdu",
+                MakeCallback(&Aodvv2RoutingProtocol<T>::NotifyTxError, this));
+            if constexpr (std::is_same<T, Ipv4RoutingProtocol>::value)
+            {
+                m_routingTable.DelArpCache(l3->GetInterface(i)->GetArpCache());
+            }
+            else
+            {
+                // TODO Ipv6
+            }
+        }
+    }
 
     // Close socket
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(m_ip->GetAddress(i, 0));
@@ -1574,6 +1624,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                                               GetMetricNode(m_ip->template GetObject<Node>())),
                              metric.GetMetricSize());
     }
+    m_nb.AddNeighbor(src, m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
 
     NS_LOG_LOGIC(receiver << " receive RREQ with hop count "
                           << static_cast<uint32_t>(rreqHeader.GetHopLimit()) << " SeqNo "

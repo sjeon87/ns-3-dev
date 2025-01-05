@@ -17,6 +17,7 @@
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
+#include "ns3/wifi-mac-header.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -261,6 +262,7 @@ LocalRouteSet<T>::LocalRouteSet(Time activeIntervalTime, Time badlinkTime, Time 
 {
     m_ntimer.SetDelay(unconfirmedTime);
     m_ntimer.SetFunction(&LocalRouteSet<T>::Purge, this);
+    m_txErrorCallback = MakeCallback(&LocalRouteSet<T>::ProcessTxError, this);
 }
 
 template <typename T>
@@ -571,10 +573,65 @@ LocalRouteSet<T>::PurgeTable(std::vector<LocalRoute<T>>& table) const
 
 template <typename T>
 void
+LocalRouteSet<T>::ProcessTxError(const WifiMacHeader& hdr)
+{
+    Mac48Address addr = hdr.GetAddr1();
+
+    for (auto& route : m_ipAddressEntry)
+    {
+        if (LookupMacAddress(route.GetNextHop()) == addr)
+        {
+            route.Invalidate(m_badLinkLifetime);
+        }
+    }
+    Purge();
+}
+
+template <typename T>
+void
 LocalRouteSet<T>::ScheduleTimer()
 {
     m_ntimer.Cancel();
     m_ntimer.Schedule();
+}
+
+template <typename T>
+void
+LocalRouteSet<T>::AddArpCache(Ptr<ArpCache> a)
+{
+    m_arp.push_back(a);
+}
+
+template <typename T>
+void
+LocalRouteSet<T>::DelArpCache(Ptr<ArpCache> a)
+{
+    m_arp.erase(std::remove(m_arp.begin(), m_arp.end(), a), m_arp.end());
+}
+
+template <typename T>
+Mac48Address
+LocalRouteSet<T>::LookupMacAddress(T addr)
+{
+    Mac48Address hwaddr;
+    for (auto i = m_arp.begin(); i != m_arp.end(); ++i)
+    {
+        if constexpr (std::is_same<T, Ipv4Address>::value)
+        {
+            ArpCache::Entry* entry = (*i)->Lookup(addr);
+            if (entry != nullptr && (entry->IsAlive() || entry->IsPermanent()) &&
+                !entry->IsExpired())
+            {
+                hwaddr = Mac48Address::ConvertFrom(entry->GetMacAddress());
+                break;
+            }
+        }
+        else
+        {
+            // TODO Ipv6
+        }
+    }
+    return hwaddr;
 }
 
 template <typename T>

@@ -38,6 +38,9 @@
 namespace ns3
 {
 
+class WifiMpdu;
+enum WifiMacDropReason : uint8_t; // opaque enum declaration
+
 namespace aodvv2
 {
 /**
@@ -452,6 +455,14 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     void DoInitialize();
 
   private:
+    /**
+     * Notify that an MPDU was dropped.
+     *
+     * @param reason the reason why the MPDU was dropped
+     * @param mpdu the dropped MPDU
+     */
+    void NotifyTxError(WifiMacDropReason reason, Ptr<const WifiMpdu> mpdu);
+
     // Protocol parameters.
     uint32_t m_discoveryAttemptsMax; ///< Maximum number of retransmissions of RREQ
     uint32_t m_rrepRetries;          ///< Maximum number of retransmissions of RREP
