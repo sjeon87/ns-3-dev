@@ -38,22 +38,21 @@ MultiMsgSet<T>::IsDuplicate(T origIp,
             i->m_timestamp = Simulator::Now();
             i->m_removalTime = m_maxSeqnoLifetime + Simulator::Now();
 
-            if (origSeqNum < i->m_origSeqNum)
+            int16_t seqNumDiff = static_cast<int16_t>(origSeqNum - i->m_origSeqNum);
+
+            if (seqNumDiff < 0)
             {
                 return true;
             }
+            else if (seqNumDiff > 0 || !metric.LoopFree(i->m_metricValue, metricValue))
+            {
+                i->m_origSeqNum = origSeqNum;
+                i->m_metricValue = metricValue;
+                return false;
+            }
             else
             {
-                if (metric.LoopFree(i->m_metricValue, metricValue))
-                {
-                    return true;
-                }
-                else
-                {
-                    i->m_origSeqNum = origSeqNum;
-                    i->m_metricValue = metricValue;
-                    return false;
-                }
+                return true;
             }
         }
     }

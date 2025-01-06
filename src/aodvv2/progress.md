@@ -48,7 +48,9 @@ AODVv2 has not been designed to be interoperable with AODV. However, it would be
 
 - Implementation of the AODVv2 Ipv6 code (you can find the todo parts looking for `TODO Ipv6` comments)
 
-- Management of external packets (ch. 9)
+- Verify the update arp cache with rreq and rrep info
+
+- Test the management of external packets (ch. 9)
 
 ### Tests
 
