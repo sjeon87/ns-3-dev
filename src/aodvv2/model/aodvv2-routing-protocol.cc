@@ -1584,7 +1584,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
                 toOrigin.SetOutputDevice(
                     m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
                 toOrigin.SetInterface(m_ip->GetAddress(m_ip->GetInterfaceForAddress(receiver), 0));
-                toOrigin.SetHop(hop);
+                toOrigin.SetHop(m_maxHopLimit - hop);
                 toOrigin.SetLastUsed();
                 m_routingTable.Update(toOrigin);
             }
