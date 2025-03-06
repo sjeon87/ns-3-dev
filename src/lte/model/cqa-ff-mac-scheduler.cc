@@ -17,13 +17,13 @@
 #include "lte-amc.h"
 #include "lte-vendor-specific-parameters.h"
 
-#include <ns3/boolean.h>
-#include <ns3/integer.h>
-#include <ns3/log.h>
-#include <ns3/math.h>
-#include <ns3/pointer.h>
-#include <ns3/simulator.h>
-#include <ns3/string.h>
+#include "ns3/boolean.h"
+#include "ns3/integer.h"
+#include "ns3/log.h"
+#include "ns3/math.h"
+#include "ns3/pointer.h"
+#include "ns3/simulator.h"
+#include "ns3/string.h"
 
 #include <cfloat>
 #include <set>
@@ -1495,7 +1495,8 @@ CqaFfMacScheduler::DoSchedDlTriggerReq(
             }
 
             qos_rb_and_CQI_assigned_to_lc s;
-            s.cqi_value_for_lc = UeToCQIValue.find(userWithMaximumMetric)->second;
+            const auto ueToCqiIt = UeToCQIValue.find(userWithMaximumMetric);
+            s.cqi_value_for_lc = ueToCqiIt != UeToCQIValue.end() ? ueToCqiIt->second : 1;
             s.resource_block_index = currentRB;
 
             auto itMap = allocationMapPerRntiPerLCId.find(userWithMaximumMetric.m_rnti);

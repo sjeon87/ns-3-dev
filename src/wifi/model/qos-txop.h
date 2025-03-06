@@ -87,29 +87,33 @@ class QosTxop : public Txop
      */
     Ptr<BlockAckManager> GetBaManager();
     /**
-     * @param address recipient address of the peer station
+     * @param address recipient address of the peer station or the group address for GCR.
      * @param tid traffic ID.
+     * @param isGcr flag to indicate whether this function is called for GCR.
      *
      * @return the negotiated buffer size during ADDBA handshake.
      *
      * Returns the negotiated buffer size during ADDBA handshake with station addressed by
      * <i>recipient</i> for TID <i>tid</i>.
      */
-    uint16_t GetBaBufferSize(Mac48Address address, uint8_t tid) const;
+    uint16_t GetBaBufferSize(Mac48Address address, uint8_t tid, bool isGcr = false) const;
     /**
-     * @param address recipient address of the peer station
+     * @param address recipient address of the peer station or the group address for GCR.
      * @param tid traffic ID.
+     * @param isGcr flag to indicate whether this function is called for GCR.
      *
-     * @return the starting sequence number of the originator transmit window.
+     * @return the starting sequence number of the  transmit window.
      *
      * Returns the current starting sequence number of the transmit window on the
      * originator (WinStartO) of the block ack agreement established with the given
      * recipient for the given TID.
      */
-    uint16_t GetBaStartingSequence(Mac48Address address, uint8_t tid) const;
+    uint16_t GetBaStartingSequence(Mac48Address address, uint8_t tid, bool isGcr = false) const;
     /**
      * @param recipient Address of recipient.
      * @param tid traffic ID.
+     * @param gcrGroupAddr the GCR Group Address (only if the Block Ack Request is being used for
+     * the GCR service).
      * @return the BlockAckRequest header and the MAC header for the BlockAckReq
      *
      * Prepare a BlockAckRequest to be sent to <i>recipient</i> for Traffic ID
@@ -117,8 +121,10 @@ class QosTxop : public Txop
      * corresponding to the given TID. A block ack agreement with the given recipient
      * for the given TID must have been established by such QosTxop.
      */
-    std::pair<CtrlBAckRequestHeader, WifiMacHeader> PrepareBlockAckRequest(Mac48Address recipient,
-                                                                           uint8_t tid) const;
+    std::pair<CtrlBAckRequestHeader, WifiMacHeader> PrepareBlockAckRequest(
+        Mac48Address recipient,
+        uint8_t tid,
+        std::optional<Mac48Address> gcrGroupAddr = std::nullopt) const;
 
     /* Event handlers */
     /**
@@ -141,22 +147,29 @@ class QosTxop : public Txop
      *
      * @param recipient the intended recipient of the ADDBA_REQUEST frame
      * @param tid the TID
+     * @param gcrGroupAddr the GCR Group Address (only if it a GCR Block Ack agreement)
      */
-    void NotifyOriginatorAgreementNoReply(const Mac48Address& recipient, uint8_t tid);
+    void NotifyOriginatorAgreementNoReply(const Mac48Address& recipient,
+                                          uint8_t tid,
+                                          std::optional<Mac48Address> gcrGroupAddr);
     /**
      * Callback when ADDBA response is not received after timeout.
      *
      * @param recipient MAC address of recipient
      * @param tid traffic ID
+     * @param gcrGroupAddr the GCR Group Address (only if it a GCR Block Ack agreement)
      */
-    void AddBaResponseTimeout(Mac48Address recipient, uint8_t tid);
+    void AddBaResponseTimeout(Mac48Address recipient,
+                              uint8_t tid,
+                              std::optional<Mac48Address> gcrGroupAddr);
     /**
      * Reset BA agreement after BA negotiation failed.
      *
      * @param recipient MAC address of recipient
      * @param tid traffic ID
+     * @param gcrGroupAddr the GCR Group Address (only if it a GCR Block Ack agreement)
      */
-    void ResetBa(Mac48Address recipient, uint8_t tid);
+    void ResetBa(Mac48Address recipient, uint8_t tid, std::optional<Mac48Address> gcrGroupAddr);
 
     /**
      * Set threshold for block ack mechanism. If number of packets in the
@@ -464,11 +477,15 @@ class QosTxop : public Txop
      *
      * @param recipient the MAC address of the recipient
      * @param tid the TID for which block ack agreement is established
+     * @param gcrGroup the GCR group address (if any)
      */
-    typedef void (*BaEstablishedCallback)(Mac48Address recipient, uint8_t tid);
+    typedef void (*BaEstablishedCallback)(Mac48Address recipient,
+                                          uint8_t tid,
+                                          std::optional<Mac48Address> gcrGroup);
 
     /// TracedCallback for block ack agreement established events typedef
-    using BaEstablishedTracedCallback = TracedCallback<Mac48Address, uint8_t>;
+    using BaEstablishedTracedCallback =
+        TracedCallback<Mac48Address, uint8_t, std::optional<Mac48Address>>;
 
     BaEstablishedTracedCallback
         m_baEstablishedCallback; //!< traced callback for block ack agreement established events

@@ -10,9 +10,9 @@
 
 #include "zigbee-nwk-tables.h"
 
-#include <ns3/log.h>
-#include <ns3/pointer.h>
-#include <ns3/simulator.h>
+#include "ns3/log.h"
+#include "ns3/pointer.h"
+#include "ns3/simulator.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -77,14 +77,7 @@ RreqRetryTableEntry::Print(Ptr<OutputStreamWrapper> stream) const
     *os << std::resetiosflags(std::ios::adjustfield) << std::setiosflags(std::ios::left);
     *os << std::setw(9) << static_cast<uint32_t>(m_rreqId);
     *os << std::setw(12) << static_cast<uint32_t>(m_rreqRetryCount);
-    if (m_rreqRetryEventId.IsPending())
-    {
-        *os << std::setw(9) << "TRUE";
-    }
-    else
-    {
-        *os << std::setw(9) << "FALSE";
-    }
+    *os << std::setw(9) << (m_rreqRetryEventId.IsPending() ? "TRUE" : "FALSE");
     *os << std::endl;
     (*os).copyfmt(oldState);
 }
@@ -290,44 +283,11 @@ RoutingTableEntry::Print(Ptr<OutputStreamWrapper> stream) const
         break;
     }
 
-    if (m_noRouteCache)
-    {
-        *os << std::setw(16) << "TRUE";
-    }
-    else
-    {
-        *os << std::setw(16) << "FALSE";
-    }
-
-    if (m_manyToOne)
-    {
-        *os << std::setw(16) << "TRUE";
-    }
-    else
-    {
-        *os << std::setw(16) << "FALSE";
-    }
-
-    if (m_routeRecordReq)
-    {
-        *os << std::setw(16) << "TRUE";
-    }
-    else
-    {
-        *os << std::setw(16) << "FALSE";
-    }
-
-    if (m_groupId)
-    {
-        *os << std::setw(16) << "TRUE";
-    }
-    else
-    {
-        *os << std::setw(16) << "FALSE";
-    }
-
+    *os << std::setw(16) << (m_noRouteCache ? "TRUE" : "FALSE");
+    *os << std::setw(16) << (m_manyToOne ? "TRUE" : "FALSE");
+    *os << std::setw(16) << (m_routeRecordReq ? "TRUE" : "FALSE");
+    *os << std::setw(16) << (m_groupId ? "TRUE" : "FALSE");
     *os << std::endl;
-
     (*os).copyfmt(oldState);
 }
 
@@ -1022,11 +982,12 @@ NeighborTableEntry::Print(Ptr<OutputStreamWrapper> stream) const
         break;
     }
 
-    *os << std::setw(14) << static_cast<uint32_t>(m_txFailure);
-    *os << std::setw(5) << static_cast<uint32_t>(m_lqi);
-    *os << std::setw(16) << static_cast<uint32_t>(m_outgoingCost);
-    *os << std::setw(8) << static_cast<uint32_t>(m_age);
-    *os << "0x" << std::hex << m_extPanId << std::dec;
+    *os << std::setw(14) << static_cast<uint16_t>(m_txFailure);
+    *os << std::setw(5) << static_cast<uint16_t>(m_lqi);
+    *os << std::setw(16) << static_cast<uint16_t>(m_outgoingCost);
+    *os << std::setw(8) << static_cast<uint16_t>(m_age);
+    *os << std::setw(19) << std::hex << m_extPanId << std::dec;
+    *os << std::setw(11) << (m_potentialParent ? "TRUE" : "FALSE");
     *os << std::endl;
     (*os).copyfmt(oldState);
 }
@@ -1172,7 +1133,8 @@ NeighborTable::Print(Ptr<OutputStreamWrapper> stream) const
     *os << std::setw(5) << "LQI";
     *os << std::setw(16) << "Outgoing Cost";
     *os << std::setw(8) << "Age";
-    *os << std::setw(10) << "Ext PAN ID";
+    *os << std::setw(19) << "Ext PAN ID";
+    *os << std::setw(11) << "Pot. Parent";
     *os << std::endl;
 
     for (const auto& entry : m_neighborTable)

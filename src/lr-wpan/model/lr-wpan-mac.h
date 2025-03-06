@@ -18,10 +18,10 @@
 #include "lr-wpan-mac-base.h"
 #include "lr-wpan-phy.h"
 
-#include <ns3/event-id.h>
-#include <ns3/sequence-number.h>
-#include <ns3/traced-callback.h>
-#include <ns3/traced-value.h>
+#include "ns3/event-id.h"
+#include "ns3/sequence-number.h"
+#include "ns3/traced-callback.h"
+#include "ns3/traced-value.h"
 
 #include <deque>
 #include <memory>
@@ -491,7 +491,7 @@ class LrWpanMac : public LrWpanMacBase
     uint16_t m_macPanId;
 
     /**
-     * Temporally stores the value of the current m_macPanId when a MLME-SCAN.request is performed.
+     * Temporarily stores the value of the current m_macPanId when a MLME-SCAN.request is performed.
      * See IEEE 802.15.4-2011, section 5.1.2.1.2.
      */
     uint16_t m_macPanIdScan;
@@ -1260,6 +1260,14 @@ class LrWpanMac : public LrWpanMacBase
      * Keep track of the last received frame Link Quality Indicator
      */
     uint8_t m_lastRxFrameLqi;
+
+    /**
+     * This flag informs the MAC that an association response command was received
+     * before the acknowledgment (ACK) for the data request command that
+     * should precede it. This situation typically occurs due to network saturation.
+     */
+
+    bool m_ignoreDataCmdAck;
 
     /**
      * Scheduler event for the ACK timeout of the currently transmitted data

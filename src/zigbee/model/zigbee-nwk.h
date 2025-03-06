@@ -17,18 +17,19 @@
 #include "zigbee-nwk-payload-header.h"
 #include "zigbee-nwk-tables.h"
 
-#include <ns3/event-id.h>
-#include <ns3/lr-wpan-mac-base.h>
-#include <ns3/mac16-address.h>
-#include <ns3/mac64-address.h>
-#include <ns3/object.h>
-#include <ns3/random-variable-stream.h>
-#include <ns3/sequence-number.h>
-#include <ns3/traced-callback.h>
-#include <ns3/traced-value.h>
+#include "ns3/event-id.h"
+#include "ns3/lr-wpan-mac-base.h"
+#include "ns3/mac16-address.h"
+#include "ns3/mac64-address.h"
+#include "ns3/object.h"
+#include "ns3/random-variable-stream.h"
+#include "ns3/sequence-number.h"
+#include "ns3/traced-callback.h"
+#include "ns3/traced-value.h"
 
 #include <cstdint>
 #include <iomanip>
+#include <iterator>
 
 namespace ns3
 {
@@ -161,25 +162,26 @@ enum NwkStatus : std::uint8_t
     CHANNEL_ACCESS_FAILURE = 0xe1,  //!< A Tx could not take place due to activity in the CH.
     DENIED = 0xe2,                  //!< The GTS request has been denied by the PAN coordinator.
     DISABLE_TRX_FAILURE = 0xe3,     //!< The attempt to disable the transceier has failed.
-    SECURITY_ERROR = 0xe4,   //!< Cryptographic process of the frame failed(FAILED_SECURITY_CHECK).
-    FRAME_TOO_LONG = 0xe5,   //!< Frame more than aMaxPHYPacketSize or too large for CAP or GTS.
-    INVALID_GTS = 0xe6,      //!< Missing GTS transmit or undefined direction.
-    INVALID_HANDLE = 0xe7,   //!< When purging from TX queue handle was not found.
-    NO_ACK = 0xe9,           //!< No acknowledgment was received after macMaxFrameRetries.
-    NO_BEACON = 0xea,        //!< A scan operation failed to find any network beacons.
-    NO_DATA = 0xeb,          //!<  No response data were available following a request.
-    NO_SHORT_ADDRESS = 0xec, //!< Failure due to unallocated 16-bit short address.
-    OUT_OF_CAP = 0xed,       //!< (Deprecated) See IEEE 802.15.4-2003
-    PAN_ID_CONFLICT = 0xee,  //!<  PAN id conflict detected and informed to the coordinator.
-    REALIGMENT = 0xef,       //!< A coordinator realigment command has been received.
-    TRANSACTION_EXPIRED = 0xf0,  //!< The transaction expired and its information discarded.
-    TRANSACTION_OVERFLOW = 0xf1, //!< There is no capacity to store the transaction.
-    TX_ACTIVE = 0xf2,            //!< The transceiver was already enabled.
-    UNAVAILABLE_KEY = 0xf3,      //!< Unavailable key, unknown or blacklisted.
-    INVALID_ADDRESS = 0xf5,      //!< Invalid source or destination address.
-    ON_TIME_TOO_LONG = 0xf6,     //!< RX enable request fail due to syms. longer than Bcn. interval
-    PAST_TIME = 0xf7,            //!< Rx enable request fail due to lack of time in superframe.
-    TRACKING_OFF = 0xf8,         //!< This device is currently not tracking beacons.
+    SECURITY_ERROR = 0xe4, //!< Cryptographic process of the frame failed(FAILED_SECURITY_CHECK).
+    FRAME_TOO_LONG = 0xe5, //!< Frame more than aMaxPHYPacketSize or too large for CAP or GTS.
+    INVALID_GTS = 0xe6,    //!< Missing GTS transmit or undefined direction.
+    INVALID_HANDLE = 0xe7, //!< When purging from TX queue handle was not found.
+    INVALID_PARAMETER_MAC = 0xe8, //!< Invalid parameter in response to a request passed to the MAC.
+    NO_ACK = 0xe9,                //!< No acknowledgment was received after macMaxFrameRetries.
+    NO_BEACON = 0xea,             //!< A scan operation failed to find any network beacons.
+    NO_DATA = 0xeb,               //!<  No response data were available following a request.
+    NO_SHORT_ADDRESS = 0xec,      //!< Failure due to unallocated 16-bit short address.
+    OUT_OF_CAP = 0xed,            //!< (Deprecated) See IEEE 802.15.4-2003
+    PAN_ID_CONFLICT = 0xee,       //!<  PAN id conflict detected and informed to the coordinator.
+    REALIGMENT = 0xef,            //!< A coordinator realigment command has been received.
+    TRANSACTION_EXPIRED = 0xf0,   //!< The transaction expired and its information discarded.
+    TRANSACTION_OVERFLOW = 0xf1,  //!< There is no capacity to store the transaction.
+    TX_ACTIVE = 0xf2,             //!< The transceiver was already enabled.
+    UNAVAILABLE_KEY = 0xf3,       //!< Unavailable key, unknown or blacklisted.
+    INVALID_ADDRESS = 0xf5,       //!< Invalid source or destination address.
+    ON_TIME_TOO_LONG = 0xf6,      //!< RX enable request fail due to syms. longer than Bcn. interval
+    PAST_TIME = 0xf7,             //!< Rx enable request fail due to lack of time in superframe.
+    TRACKING_OFF = 0xf8,          //!< This device is currently not tracking beacons.
     INVALID_INDEX = 0xf9,      //!< A MAC PIB write failed because specified index is out of range.
     READ_ONLY = 0xfb,          //!< SET/GET request issued for a read only attribute.
     SUPERFRAME_OVERLAP = 0xfd, //!< Coordinator sperframe and this device superframe tx overlap.
@@ -205,6 +207,32 @@ enum NwkStatus : std::uint8_t
     LIMIT_REACHED = 0xd6,          //!< Limit reached during network scan (IEEE 802.15.4-2011)
     SCAN_IN_PROGRESS = 0xd7        //!< The dev was scanning during this call (IEEE 802.5.4)
 };
+
+/**
+ *  Overloaded operator to print the value of a NwkStatus.
+ *
+ *  @param os The output stream
+ *  @param state The text value of the NWK state
+ *  @return The output stream with text value of the NWK state
+ */
+std::ostream& operator<<(std::ostream& os, const NwkStatus& state);
+
+/**
+ * Overloaded operator to print uint8_t vectors
+ *
+ * @param os The output stream
+ * @param vec The uint8_t vector to print
+ * @return The output stream with the text value of the uint8_t vector members
+ */
+std::ostream& operator<<(std::ostream& os, const std::vector<uint8_t>& vec);
+
+/**
+ *
+ * @param os The output stream
+ * @param num The uint8_t number to print
+ * @return The output stream with the text value of the uint8_t number
+ */
+std::ostream& operator<<(std::ostream& os, const uint8_t& num);
 
 /**
  * @ingroup zigbee
@@ -548,17 +576,6 @@ struct NlmeJoinIndicationParams
     JoiningMethod m_rejoinNetwork;  //!< This parameter indicates the method used to
                                     //!< join the network.
     bool m_secureRejoin{false};     //!< True if the rejoin was performed in a secure manner.
-};
-
-/**
- * @ingroup zigbee
- *
- * Structure to store parameters used during associate process.
- */
-struct AssociateParams
-{
-    Mac64Address extAddress; //!< The extended address of the device to which the request is send.
-    uint16_t panId; //!< The PAN id used by the device to which the association request is send.
 };
 
 /**
@@ -1182,7 +1199,7 @@ class ZigbeeNwk : public Object
     NlmeNetworkFormationRequestParams m_netFormParams;
 
     /**
-     *  The values temporally stored as a result of  the initial steps of a
+     *  The values temporarily stored as a result of  the initial steps of a
      *  NLME-NETWORK-FORMATION.request (i.e. after the first energy scan)
      *  Page, Channel, PanId.
      */
@@ -1196,21 +1213,35 @@ class ZigbeeNwk : public Object
     NlmeJoinRequestParams m_joinParams;
 
     /**
-     * Temporally store the NLME-JOIN.indication parameters while the
+     * Temporarily store the NLME-JOIN.indication parameters while the
      * join operations (asocciation) conclude in the coordinator or router.
      */
     NlmeJoinIndicationParams m_joinIndParams;
 
     /**
-     * Temporally store parameters during the associate process that take
-     * place during a NLME-JOIN.request.
+     * Temporarily store the NLME-START-ROUTER.request parameters during
+     * the router initialization process.
      */
-    AssociateParams m_associateParams;
+    NlmeStartRouterRequestParams m_startRouterParams;
 
     /**
-     *  The maximum acceptable energy level used in an energy scan
+     * Temporarily store MLME-ASSOCIATE.request parameters
+     * during a NLME-JOIN.request.
+     */
+    lrwpan::MlmeAssociateRequestParams m_associateParams;
+
+    /**
+     *  The maximum acceptable energy level used in an energy scan taking place
+     *  during a NLME-NETWORK-FORMATION.request.
      */
     uint8_t m_scanEnergyThreshold;
+
+    /**
+     *  Contains the list of channels with acceptable energy levels in a bitmap form.
+     *  This is the result of an Energy Detection (ED) scan during
+     *  a NLME-NETWORK-FORMATION.request
+     */
+    uint32_t m_filteredChannelMask;
 
     /**
      *  Indicates the current primitive in use in the NWK layer.

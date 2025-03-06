@@ -15,13 +15,13 @@
 #include "wifi-remote-station-info.h"
 #include "wifi-utils.h"
 
+#include "ns3/common-info-basic-mle.h"
 #include "ns3/data-rate.h"
 #include "ns3/eht-capabilities.h"
 #include "ns3/he-6ghz-band-capabilities.h"
 #include "ns3/he-capabilities.h"
 #include "ns3/ht-capabilities.h"
 #include "ns3/mac48-address.h"
-#include "ns3/multi-link-element.h"
 #include "ns3/object.h"
 #include "ns3/traced-callback.h"
 #include "ns3/vht-capabilities.h"
@@ -698,6 +698,15 @@ class WifiRemoteStationManager : public Object
     WifiMode GetNonUnicastMode() const;
 
     /**
+     * Return the TXVECTOR to use for a groupcast packet.
+     *
+     * @param header the MAC header of the groupcast packet
+     * @param allowedWidth the allowed width in MHz to send this packet
+     * @return the TXVECTOR to use to send the groupcast packet
+     */
+    WifiTxVector GetGroupcastTxVector(const WifiMacHeader& header, MHz_u allowedWidth);
+
+    /**
      * Invoked in a STA or AP to store the set of
      * modes supported by a destination which is
      * also supported locally.
@@ -1013,12 +1022,12 @@ class WifiRemoteStationManager : public Object
     /**
      * Return if we need to do CTS-to-self before sending a DATA.
      *
-     * @param txVector the TXVECTOR of the packet to be sent
-     *
+     * @param txVector the TXVECTOR of the DATA
+     * @param header the MAC header of the DATA
      * @return true if CTS-to-self is needed,
      *         false otherwise
      */
-    bool NeedCtsToSelf(const WifiTxVector& txVector);
+    bool NeedCtsToSelf(const WifiTxVector& txVector, const WifiMacHeader& header);
 
     /**
      * @param mpdu the MPDU to send

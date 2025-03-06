@@ -13,9 +13,9 @@
 
 #include "zigbee-nwk-tables.h"
 
-#include <ns3/log.h>
-#include <ns3/packet.h>
-#include <ns3/simulator.h>
+#include "ns3/log.h"
+#include "ns3/packet.h"
+#include "ns3/simulator.h"
 
 using namespace ns3::lrwpan;
 
@@ -209,8 +209,6 @@ void
 ZigbeeNwk::SetMac(Ptr<LrWpanMacBase> mac)
 {
     m_mac = mac;
-    // Update IEEE Nwk Address
-    m_mac->MlmeGetRequest(MacPibAttributeIdentifier::macExtendedAddress);
 }
 
 Ptr<LrWpanMacBase>
@@ -656,7 +654,10 @@ ZigbeeNwk::ReceiveRREP(Mac16Address macSrcAddr,
                     mcpsDataparams.m_dstAddr = routeEntry->GetNextHopAddr();
                     m_macHandle++;
 
-                    m_mac->McpsDataRequest(mcpsDataparams, pendingTxPkt->txPkt);
+                    Simulator::ScheduleNow(&LrWpanMacBase::McpsDataRequest,
+                                           m_mac,
+                                           mcpsDataparams,
+                                           pendingTxPkt->txPkt);
                 }
             }
             else
@@ -990,7 +991,7 @@ ZigbeeNwk::SendDataUcst(Ptr<Packet> packet, uint8_t nwkHandle)
         mcpsDataparams.m_dstAddrMode = SHORT_ADDR;
         mcpsDataparams.m_dstAddr = nextHop;
         m_macHandle++;
-        m_mac->McpsDataRequest(mcpsDataparams, packet);
+        Simulator::ScheduleNow(&LrWpanMacBase::McpsDataRequest, m_mac, mcpsDataparams, packet);
     }
     else if (nextHopStatus == ROUTE_NOT_FOUND)
     {
@@ -1027,7 +1028,7 @@ ZigbeeNwk::SendDataBcst(Ptr<Packet> packet, uint8_t nwkHandle)
     mcpsDataparams.m_dstAddrMode = SHORT_ADDR;
     mcpsDataparams.m_dstAddr = Mac16Address("FF:FF");
     m_macHandle++;
-    m_mac->McpsDataRequest(mcpsDataparams, packet);
+    Simulator::ScheduleNow(&LrWpanMacBase::McpsDataRequest, m_mac, mcpsDataparams, packet);
 }
 
 void
@@ -1077,41 +1078,48 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
             m_netFormParams = {};
             m_netFormParamsGen = nullptr;
 
+            // See Zigbee specification r22.1.0, Section 3.2.2.5.3, (6.b.i)
             if (!m_nlmeNetworkFormationConfirmCallback.IsNull())
             {
                 NlmeNetworkFormationConfirmParams confirmParams;
-                confirmParams.m_status = NwkStatus::STARTUP_FAILURE;
+                confirmParams.m_status = GetNwkStatus(params.m_status);
                 m_nlmeNetworkFormationConfirmCallback(confirmParams);
             }
         }
         else
         {
-            // TODO: continue energy scan in other interfaces if supported.
+            // TODO: Continue energy detection (ED) scan in other interfaces if supported.
 
-            // Filter the channels with unacceptable energy level (channel, energy)
+            // See Zigbee specification r22.1.0, Section 3.2.2.5.3, (6.b.ii)
+            // Pick the list of acceptable channels on which to continue doing an ACTIVE scan
             std::vector<uint8_t> energyList = params.m_energyDetList;
             uint32_t channelMask = m_netFormParams.m_scanChannelList.channelsField[0];
-            uint32_t channelMaskFiltered = 0;
-            uint32_t countAcceptableChannels = 0;
 
-            for (uint32_t i = 11; i <= 26; i++)
+            NS_LOG_DEBUG("[NLME-NETWORK-FORMATION.request]: \n              "
+                         << "EnergyThreshold: " << m_scanEnergyThreshold << " | ChannelMask: 0x"
+                         << std::hex << channelMask << std::dec << " | EnergyList: " << energyList);
+
+            m_filteredChannelMask = 0;
+            uint32_t countAcceptableChannels = 0;
+            uint8_t energyListPos = 0;
+            for (uint32_t i = 0; i < 32; i++)
             {
-                if ((channelMask >> i) & 1)
+                // check if the i position exist in the ChannelMask
+                if (channelMask & (1 << i))
                 {
-                    // Channel found in mask, check energy channel and mark it if acceptable
-                    if (energyList[0] <= m_scanEnergyThreshold)
+                    if (energyList[energyListPos] <= m_scanEnergyThreshold)
                     {
-                        // energy is acceptable, register to filtered list
-                        channelMaskFiltered |= (1 << i);
-                        energyList.erase(energyList.begin());
+                        m_filteredChannelMask |= (1 << i);
                         countAcceptableChannels++;
                     }
+                    energyListPos++;
                 }
             }
 
-            NS_LOG_DEBUG("[NLME-NETWORK-FORMATION.request]: Energy scan complete, "
-                         << countAcceptableChannels << " acceptable channels found : 0x" << std::hex
-                         << channelMaskFiltered << std::dec);
+            NS_LOG_DEBUG("[NLME-NETWORK-FORMATION.request]:\n              "
+                         << "Energy scan complete, " << countAcceptableChannels
+                         << " acceptable channels found : 0x" << std::hex << m_filteredChannelMask
+                         << std::dec);
 
             if (countAcceptableChannels == 0)
             {
@@ -1128,70 +1136,72 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
             }
             else
             {
+                // See Zigbee specification r22.1.0, Section 3.2.2.5.3, (6.c)
                 MlmeScanRequestParams mlmeParams;
-                mlmeParams.m_chPage = (channelMaskFiltered >> 27) & (0x01F);
-                mlmeParams.m_scanChannels = channelMaskFiltered;
+                mlmeParams.m_chPage = (m_filteredChannelMask >> 27) & (0x01F);
+                mlmeParams.m_scanChannels = m_filteredChannelMask;
                 mlmeParams.m_scanDuration = m_netFormParams.m_scanDuration;
                 mlmeParams.m_scanType = MLMESCAN_ACTIVE;
-                m_mac->MlmeScanRequest(mlmeParams);
+                Simulator::ScheduleNow(&LrWpanMacBase::MlmeScanRequest, m_mac, mlmeParams);
             }
         }
     }
     else if (m_pendPrimitiveNwk == NLME_NETWORK_FORMATION && params.m_scanType == MLMESCAN_ACTIVE)
     {
-        // See Zigbee specification r22.1.0, Section 3.2.2.5.3,
         if (params.m_status == MacStatus::NO_BEACON || params.m_status == MacStatus::SUCCESS)
         {
-            uint8_t channel = 0;
-            uint8_t page = 0;
-            uint16_t panId = 0;
-
-            // TODO: We should scan channels on each interface
+            // TODO: We should ACTIVE scan channels on each interface
             // (only possible when more interfaces (nwkMacInterfaceTable) are supported)
             // for now, only a single interface is considered.
 
-            if (params.m_status == MacStatus::NO_BEACON)
-            {
-                // All channels provided in the active scan were acceptable
-                // (No coordinators found). Take the first channel in the list and
-                // generate a random panid.
-                for (uint8_t j = 11; j <= 26; j++)
-                {
-                    if ((m_netFormParams.m_scanChannelList.channelsField[0] & (1 << j)) != 0)
-                    {
-                        channel = j;
-                        page = (m_netFormParams.m_scanChannelList.channelsField[0] >> 27) & (0x01F);
-                        break;
-                    }
-                }
-                //
-                // Choose a random PAN ID  (3.2.2.5.3 , d.ii.)
-                panId = m_uniformRandomVariable->GetInteger(1, 0xFFF7);
-            }
-            else
-            {
-                // At least 1 coordinator was found in X channel
+            // See Zigbee specification r22.1.0, (3.2.2.5.3, 6.d.ii)
+            // Check results of an ACTIVE scan an select a different PAN ID and channel:
+            // Choose a random PAN ID
+            // Page is always 0 until more interfaces supported
+            uint8_t channel = 0;
+            uint8_t page = 0;
+            uint16_t panId = m_uniformRandomVariable->GetInteger(1, 0xFFF7);
 
-                // TODO: Choose the channel with the lowest energy within the threshold.
-                // If no channel is acceptable, return a NLME-NETWORK-FORMATION.confirm with
-                // START_UP_FAILURE status (3.2.2.5.3 , d and e)
-                NS_FATAL_ERROR("A coordinator found in active scan, but no channel judgment is "
-                               "supported, cannot complete network formation");
-                /* uint32_t channelMask = m_netFormParams.m_scanChannelList.channelsField[0];
-                 for (uint32_t i=11; i<=26; i++)
-                 {
-                     if ((channelMask >> i) & 1)
-                     {
-                         // Channel found in mask, check energy channel and mark it if acceptable
-                         if (energyList[0] <= m_scanEnergyThreshold)
-                         {
-                             // energy is acceptable, register to filtered list
-                             channelMaskFiltered |= (1 << i) & (1 << i);
-                             energyList.erase(energyList.begin());
-                             countAcceptableChannels++;
-                         }
-                     }
-                 }*/
+            std::vector<uint8_t> pansPerChannel(27);
+            uint32_t secondFilteredChannelMask = m_filteredChannelMask;
+            for (const auto& panDescriptor : params.m_panDescList)
+            {
+                // Clear all the bit positions of channels with active PAN networks
+                // (The channels with PAN descriptors received)
+                secondFilteredChannelMask &= ~(1 << panDescriptor.m_logCh);
+                // Add to the number of PAN detected in this channel
+                pansPerChannel[panDescriptor.m_logCh] += 1;
+            }
+
+            for (uint32_t i = 0; i < 32; i++)
+            {
+                // Pick the first channel in the list that does not contain
+                // any PAN network
+                if (secondFilteredChannelMask & (1 << i))
+                {
+                    channel = i;
+                    break;
+                }
+            }
+
+            if (channel < 11 || channel > 26)
+            {
+                // Extreme case: All the channels in the previous step contained PAN networks
+                // therefore choose the channel with the least PAN networks.
+                uint8_t channelIndex = 0;
+                uint8_t lowestPanNum = 99;
+                for (const auto& numPans : pansPerChannel)
+                {
+                    if (numPans != 0 && numPans <= lowestPanNum)
+                    {
+                        channel = channelIndex;
+                        lowestPanNum = numPans;
+                    }
+                    channelIndex++;
+                }
+
+                NS_ASSERT_MSG(channel < 11 || channel > 26,
+                              "Invalid channel in PAN descriptor list during ACTIVE scan");
             }
 
             // store the chosen page, channel and pan Id.
@@ -1200,10 +1210,10 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
             m_netFormParamsGen->channel = channel;
             m_netFormParamsGen->panId = panId;
 
-            NS_LOG_DEBUG("[NLME-NETWORK-FORMATION.request]: Active scan complete, page "
-                         << std::dec << static_cast<uint32_t>(page) << ", channel " << std::dec
-                         << static_cast<uint32_t>(channel) << " and PAN ID 0x" << std::hex << panId
-                         << std::dec << " chosen.");
+            NS_LOG_DEBUG("[NLME-NETWORK-FORMATION.request]:\n              "
+                         << "Active scan complete, page " << std::dec << page << ", channel "
+                         << std::dec << channel << " and PAN ID 0x" << std::hex << panId << std::dec
+                         << " chosen.");
 
             // Set the device short address (3.2.2.5.3 , 6.f)
             Ptr<MacPibAttributes> pibAttr = Create<MacPibAttributes>();
@@ -1218,7 +1228,10 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
                 m_nwkNetworkAddress = Mac16Address("00:00");
             }
             // Set Short Address and continue with beacon payload afterwards.
-            m_mac->MlmeSetRequest(MacPibAttributeIdentifier::macShortAddress, pibAttr);
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeSetRequest,
+                                   m_mac,
+                                   MacPibAttributeIdentifier::macShortAddress,
+                                   pibAttr);
         }
         else
         {
@@ -1235,8 +1248,6 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
                 confirmParams.m_status = GetNwkStatus(params.m_status);
                 m_nlmeNetworkFormationConfirmCallback(confirmParams);
             }
-
-            NS_LOG_ERROR("Unknown error found during network formation");
         }
     }
     else if (m_pendPrimitiveNwk == NLME_NET_DISCV && params.m_scanType == MLMESCAN_ACTIVE)
@@ -1246,8 +1257,9 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
 
         if (params.m_status == MacStatus::SUCCESS)
         {
-            NS_LOG_DEBUG("[NLME-NETWORK-DISCOVERY.request]: Active scan, "
-                         << m_networkDescriptorList.size() << " PARENT capable device(s) found");
+            NS_LOG_DEBUG("[NLME-NETWORK-DISCOVERY.request]:\n              "
+                         << "Active scan, " << m_networkDescriptorList.size()
+                         << " PARENT capable device(s) found");
 
             netDiscConfirmParams.m_netDescList = m_networkDescriptorList;
             netDiscConfirmParams.m_networkCount = m_networkDescriptorList.size();
@@ -1258,7 +1270,7 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
         {
             NS_LOG_DEBUG("[NLME-NETWORK-DISCOVERY.request]: Active scan failed with"
                          " status: "
-                         << static_cast<uint32_t>(GetNwkStatus(params.m_status)));
+                         << GetNwkStatus(params.m_status));
             netDiscConfirmParams.m_status = GetNwkStatus(params.m_status);
         }
 
@@ -1279,7 +1291,9 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
             // and finally the join confirmation
             m_nwkExtendedPanId = m_joinParams.m_extendedPanId;
             m_nwkCapabilityInformation = m_joinParams.m_capabilityInfo;
-            m_mac->MlmeGetRequest(MacPibAttributeIdentifier::macShortAddress);
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeGetRequest,
+                                   m_mac,
+                                   MacPibAttributeIdentifier::macShortAddress);
         }
         else
         {
@@ -1291,6 +1305,7 @@ ZigbeeNwk::MlmeScanConfirm(MlmeScanConfirmParams params)
             {
                 NlmeJoinConfirmParams joinConfirmParams;
                 joinConfirmParams.m_status = NwkStatus::NO_NETWORKS;
+                m_nlmeJoinConfirmCallback(joinConfirmParams);
             }
         }
     }
@@ -1319,50 +1334,77 @@ ZigbeeNwk::MlmeAssociateConfirm(MlmeAssociateConfirmParams params)
             // Update NWK NIB values
             m_nwkNetworkAddress = params.m_assocShortAddr;
             m_nwkExtendedPanId = m_joinParams.m_extendedPanId;
-            m_nwkPanId = m_associateParams.panId;
+            m_nwkPanId = m_associateParams.m_coordPanId;
 
             // Update relationship
-            if (m_nwkNeighborTable.LookUpEntry(m_associateParams.extAddress, entry))
+            if (m_associateParams.m_coordAddrMode == lrwpan::AddressMode::EXT_ADDR)
             {
-                entry->SetRelationship(NBR_PARENT);
-                // m_nwkNeighborTable.Update(m_associateParams.extAddress, entry);
-                NS_LOG_DEBUG("Associated SUCCESSFULLY to PAN ID and Ext PAN ID: "
-                             << "(0x" << std::hex << m_nwkPanId << " | 0x" << m_nwkExtendedPanId
-                             << ")" << std::dec);
+                if (m_nwkNeighborTable.LookUpEntry(m_associateParams.m_coordExtAddr, entry))
+                {
+                    entry->SetRelationship(NBR_PARENT);
+
+                    NS_LOG_DEBUG("[NLME-JOIN.request]:\n              "
+                                 << "Status: " << joinConfirmParams.m_status << " | PAN ID: 0x"
+                                 << std::hex << m_nwkPanId << " | Extended PAN ID: 0x"
+                                 << m_nwkExtendedPanId << std::dec);
+                }
+                else
+                {
+                    NS_LOG_ERROR("Entry not found while updating relationship");
+                }
             }
             else
             {
-                NS_LOG_ERROR("Entry not found while updating relationship");
+                if (m_nwkNeighborTable.LookUpEntry(m_associateParams.m_coordShortAddr, entry))
+                {
+                    entry->SetRelationship(NBR_PARENT);
+
+                    NS_LOG_DEBUG("[NLME-JOIN.request]:\n              "
+                                 << "Status: " << joinConfirmParams.m_status << " | PAN ID: 0x"
+                                 << std::hex << m_nwkPanId << " | Extended PAN ID: 0x"
+                                 << m_nwkExtendedPanId << std::dec);
+                }
+                else
+                {
+                    NS_LOG_ERROR("Entry not found while updating relationship");
+                }
             }
+
             // TODO:m_nwkUpdateId
         }
         else
         {
-            switch (params.m_status)
+            if (params.m_status == MacStatus::FULL_CAPACITY)
             {
-            case MacStatus::ACCESS_DENIED:
-            case MacStatus::FULL_CAPACITY:
                 // Discard neighbor as potential parent
-                if (m_nwkNeighborTable.LookUpEntry(m_associateParams.extAddress, entry))
+                if (m_associateParams.m_coordAddrMode == lrwpan::AddressMode::EXT_ADDR)
                 {
-                    entry->SetPotentialParent(false);
-                    // m_nwkNeighborTable.Update(m_associateParams.extAddress, entry);
+                    if (m_nwkNeighborTable.LookUpEntry(m_associateParams.m_coordExtAddr, entry))
+                    {
+                        entry->SetPotentialParent(false);
+                    }
+                    else
+                    {
+                        NS_LOG_ERROR("Neighbor not found when discarding as potential parent");
+                    }
                 }
                 else
                 {
-                    NS_LOG_ERROR("Neighbor not found when discarding as potential parent");
+                    if (m_nwkNeighborTable.LookUpEntry(m_associateParams.m_coordShortAddr, entry))
+                    {
+                        entry->SetPotentialParent(false);
+                    }
+                    else
+                    {
+                        NS_LOG_ERROR("Neighbor not found when discarding as potential parent");
+                    }
                 }
-                joinConfirmParams.m_status = NwkStatus::NOT_PERMITED;
-                break;
-            case MacStatus::NO_ACK:
-                joinConfirmParams.m_status = NwkStatus::NO_ACK;
-                break;
-            case MacStatus::CHANNEL_ACCESS_FAILURE:
-                joinConfirmParams.m_status = NwkStatus::CHANNEL_ACCESS_FAILURE;
-                break;
-            default:
-                joinConfirmParams.m_status = NwkStatus::INVALID_REQUEST;
-                break;
+
+                joinConfirmParams.m_status = NwkStatus::NEIGHBOR_TABLE_FULL;
+            }
+            else
+            {
+                joinConfirmParams.m_status = GetNwkStatus(params.m_status);
             }
         }
 
@@ -1383,55 +1425,20 @@ ZigbeeNwk::MlmeStartConfirm(MlmeStartConfirmParams params)
     NS_LOG_FUNCTION(this);
 
     NwkStatus nwkConfirmStatus;
+    nwkConfirmStatus = GetNwkStatus(params.m_status);
 
-    switch (params.m_status)
+    if (nwkConfirmStatus != NwkStatus::SUCCESS)
     {
-    case MacStatus::SUCCESS:
-        nwkConfirmStatus = NwkStatus::SUCCESS;
-        break;
-    case MacStatus::NO_SHORT_ADDRESS:
-        nwkConfirmStatus = NwkStatus::NO_SHORT_ADDRESS;
-        break;
-    case MacStatus::SUPERFRAME_OVERLAP:
-        nwkConfirmStatus = NwkStatus::SUPERFRAME_OVERLAP;
-        break;
-    case MacStatus::TRACKING_OFF:
-        nwkConfirmStatus = NwkStatus::TRACKING_OFF;
-        break;
-    case MacStatus::INVALID_PARAMETER:
-        nwkConfirmStatus = NwkStatus::INVALID_PARAMETER;
-        break;
-    case MacStatus::COUNTER_ERROR:
-        nwkConfirmStatus = NwkStatus::COUNTER_ERROR;
-        break;
-    case MacStatus::UNAVAILABLE_KEY:
-        nwkConfirmStatus = NwkStatus::UNAVAILABLE_KEY;
-        break;
-    case MacStatus::UNSUPPORTED_SECURITY:
-        nwkConfirmStatus = NwkStatus::UNSUPPORTED_SECURITY;
-        break;
-    case MacStatus::CHANNEL_ACCESS_FAILURE:
-        nwkConfirmStatus = NwkStatus::CHANNEL_ACCESS_FAILURE;
-        break;
-    case MacStatus::FRAME_TOO_LONG:
-        nwkConfirmStatus = NwkStatus::FRAME_TOO_LONG;
-        break;
-    default:
-        nwkConfirmStatus = NwkStatus::STARTUP_FAILURE;
-        m_pendPrimitiveNwk = NLDE_NLME_NONE;
-        m_netFormParams = {};
-        m_netFormParamsGen = nullptr;
         m_nwkExtendedPanId = 0xffffffffffffffed;
         m_nwkNetworkAddress = Mac16Address("ff:ff");
         m_nwkPanId = 0xffff;
-        break;
     }
 
     if (m_pendPrimitiveNwk == NLME_NETWORK_FORMATION)
     {
-        NS_LOG_DEBUG("[NLME-NETWORK-FORMATION.request]: Complete, Status "
-                     << nwkConfirmStatus << " | Pan Id and ExtPanId: (0x" << std::hex << m_nwkPanId
-                     << " | 0x" << m_nwkExtendedPanId << ")" << std::dec);
+        NS_LOG_DEBUG("[NLME-NETWORK-FORMATION.request]:\n              "
+                     << "Status: " << nwkConfirmStatus << " | PAN ID:" << std::hex << m_nwkPanId
+                     << " | Extended PAN ID: 0x" << m_nwkExtendedPanId << std::dec);
 
         m_pendPrimitiveNwk = NLDE_NLME_NONE;
         m_netFormParams = {};
@@ -1446,13 +1453,14 @@ ZigbeeNwk::MlmeStartConfirm(MlmeStartConfirmParams params)
     }
     else if (m_pendPrimitiveNwk == NLME_START_ROUTER)
     {
-        NS_LOG_DEBUG("[NLME-START-ROUTER.request]: Complete, Status "
-                     << nwkConfirmStatus << " | Pan Id and ExtPanId: (0x" << std::hex << m_nwkPanId
-                     << " | 0x" << m_nwkExtendedPanId << ")" << std::dec);
+        NS_LOG_DEBUG("[NLME-START-ROUTER.request]:\n              "
+                     << "Status: " << nwkConfirmStatus << " | PAN ID: 0x" << std::hex << m_nwkPanId
+                     << " | Extended PAN ID: 0x" << m_nwkExtendedPanId << std::dec);
 
         if (nwkConfirmStatus != NwkStatus::SUCCESS)
         {
             m_pendPrimitiveNwk = NLDE_NLME_NONE;
+            m_startRouterParams = {};
             if (!m_nlmeStartRouterConfirmCallback.IsNull())
             {
                 NlmeStartRouterConfirmParams confirmParams;
@@ -1479,7 +1487,9 @@ ZigbeeNwk::MlmeSetConfirm(MlmeSetConfirmParams params)
         {
             // Section (3.2.2.5.3 , 6.g)
             // Getting this device MAC extended address using MLME-GET
-            m_mac->MlmeGetRequest(MacPibAttributeIdentifier::macExtendedAddress);
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeGetRequest,
+                                   m_mac,
+                                   MacPibAttributeIdentifier::macExtendedAddress);
         }
         else if (params.m_status == MacStatus::SUCCESS &&
                  params.id == MacPibAttributeIdentifier::macBeaconPayload)
@@ -1494,7 +1504,7 @@ ZigbeeNwk::MlmeSetConfirm(MlmeSetConfirmParams params)
             startParams.m_battLifeExt = m_netFormParams.m_batteryLifeExtension;
             startParams.m_coorRealgn = false;
             startParams.m_panCoor = true;
-            m_mac->MlmeStartRequest(startParams);
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeStartRequest, m_mac, startParams);
         }
         else if (params.m_status == MacStatus::SUCCESS &&
                  params.id == MacPibAttributeIdentifier::macBeaconPayloadLength)
@@ -1546,6 +1556,7 @@ ZigbeeNwk::MlmeSetConfirm(MlmeSetConfirmParams params)
                  params.id == MacPibAttributeIdentifier::macBeaconPayload)
         {
             m_pendPrimitiveNwk = NLDE_NLME_NONE;
+            m_startRouterParams = {};
             if (!m_nlmeStartRouterConfirmCallback.IsNull())
             {
                 NlmeStartRouterConfirmParams confirmParams;
@@ -1565,13 +1576,35 @@ ZigbeeNwk::MlmeGetConfirm(MacStatus status,
                           MacPibAttributeIdentifier id,
                           Ptr<MacPibAttributes> attribute)
 {
+    NS_LOG_FUNCTION(this);
+
+    // Update the values of attributes in the network layer
+    if (status == MacStatus::SUCCESS)
+    {
+        if (id == MacPibAttributeIdentifier::macExtendedAddress)
+        {
+            m_nwkIeeeAddress = attribute->macExtendedAddress;
+        }
+        else if (id == MacPibAttributeIdentifier::macShortAddress)
+        {
+            m_nwkNetworkAddress = attribute->macShortAddress;
+        }
+        else if (id == MacPibAttributeIdentifier::macPanId)
+        {
+            m_nwkPanId = attribute->macPanId;
+        }
+        else if (id == MacPibAttributeIdentifier::pCurrentChannel)
+        {
+            m_currentChannel = attribute->pCurrentChannel;
+        }
+    }
+
     if (m_pendPrimitiveNwk == PendingPrimitiveNwk::NLME_NETWORK_FORMATION)
     {
         if (id == MacPibAttributeIdentifier::macExtendedAddress && status == MacStatus::SUCCESS)
         {
             // Section (3.2.2.5.3 , 6.g)
             // Set nwkExtendedPanId and m_nwkIeeeAddress and nwkPanId
-            m_nwkIeeeAddress = attribute->macExtendedAddress;
             m_nwkExtendedPanId = m_nwkIeeeAddress.ConvertToInt();
             m_nwkPanId = m_netFormParamsGen->panId;
 
@@ -1604,13 +1637,12 @@ ZigbeeNwk::MlmeGetConfirm(MacStatus status,
     {
         if (id == MacPibAttributeIdentifier::macShortAddress)
         {
-            m_nwkNetworkAddress = attribute->macShortAddress;
-            m_mac->MlmeGetRequest(MacPibAttributeIdentifier::macPanId);
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeGetRequest,
+                                   m_mac,
+                                   MacPibAttributeIdentifier::macPanId);
         }
         else if (id == MacPibAttributeIdentifier::macPanId)
         {
-            m_nwkPanId = attribute->macPanId;
-
             NlmeJoinConfirmParams joinConfirmParams;
             joinConfirmParams.m_channelList = m_joinParams.m_scanChannelList;
             joinConfirmParams.m_status = NwkStatus::SUCCESS;
@@ -1627,23 +1659,25 @@ ZigbeeNwk::MlmeGetConfirm(MacStatus status,
             }
         }
     }
-    else if (status == MacStatus::SUCCESS)
+    else if (m_pendPrimitiveNwk == PendingPrimitiveNwk::NLME_START_ROUTER &&
+             status == MacStatus::SUCCESS)
     {
-        if (id == MacPibAttributeIdentifier::macExtendedAddress)
+        if (id == MacPibAttributeIdentifier::pCurrentChannel)
         {
-            m_nwkIeeeAddress = attribute->macExtendedAddress;
-        }
-        else if (id == MacPibAttributeIdentifier::macShortAddress)
-        {
-            m_nwkNetworkAddress = attribute->macShortAddress;
-        }
-        else if (id == MacPibAttributeIdentifier::macPanId)
-        {
-            m_nwkPanId = attribute->macPanId;
-        }
-        else if (id == MacPibAttributeIdentifier::pCurrentChannel)
-        {
-            m_currentChannel = attribute->pCurrentChannel;
+            // TODO: MLME-START.request should be issue sequentially to all the interfaces in the
+            // nwkMacInterfaceTable (currently not supported), for the moment only a single
+            // interface is supported.
+            MlmeStartRequestParams startParams;
+            startParams.m_logCh = m_currentChannel;
+            startParams.m_logChPage = 0; // In zigbee, only page 0 is supported.
+            startParams.m_PanId = m_nwkPanId;
+            startParams.m_bcnOrd = m_startRouterParams.m_beaconOrder;
+            startParams.m_sfrmOrd = m_startRouterParams.m_superframeOrder;
+            startParams.m_battLifeExt = m_startRouterParams.m_batteryLifeExt;
+            startParams.m_coorRealgn = false;
+            startParams.m_panCoor = false;
+
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeStartRequest, m_mac, startParams);
         }
     }
 }
@@ -1651,6 +1685,8 @@ ZigbeeNwk::MlmeGetConfirm(MacStatus status,
 void
 ZigbeeNwk::MlmeOrphanIndication(MlmeOrphanIndicationParams params)
 {
+    NS_LOG_FUNCTION(this);
+
     Ptr<NeighborTableEntry> entry;
     MlmeOrphanResponseParams respParams;
 
@@ -1660,7 +1696,7 @@ ZigbeeNwk::MlmeOrphanIndication(MlmeOrphanIndicationParams params)
         respParams.m_orphanAddr = params.m_orphanAddr;
         respParams.m_shortAddr = entry->GetNwkAddr();
 
-        // Temporally store the NLME-JOIN.indications parameters that will be
+        // Temporarily store the NLME-JOIN.indications parameters that will be
         // returned after the DIRECT_JOIN process concludes.
         // (after MLME-COMM-STATUS.indication is received)
         CapabilityInformation capability;
@@ -1683,13 +1719,15 @@ ZigbeeNwk::MlmeOrphanIndication(MlmeOrphanIndicationParams params)
                      << params.m_orphanAddr << " | " << entry->GetNwkAddr()
                      << "] found in neighbor table, responding to orphaned device");
 
-        m_mac->MlmeOrphanResponse(respParams);
+        Simulator::ScheduleNow(&LrWpanMacBase::MlmeOrphanResponse, m_mac, respParams);
     }
 }
 
 void
 ZigbeeNwk::MlmeCommStatusIndication(MlmeCommStatusIndicationParams params)
 {
+    NS_LOG_FUNCTION(this);
+
     // Return the results to the next layer of the router or coordinator
     // only after a SUCCESSFUL join to the network.
     if (params.m_status == MacStatus::SUCCESS)
@@ -1711,11 +1749,10 @@ ZigbeeNwk::MlmeCommStatusIndication(MlmeCommStatusIndicationParams params)
             m_pendPrimitiveNwk = NLME_JOIN_INDICATION;
             UpdateBeaconPayloadLength();
         }
-        else
-        {
-            NS_FATAL_ERROR("MLME-COMM-Status.Indication: params do not match");
-        }
     }
+
+    // TODO: Handle other situations for MlmeCommStatusIndication according
+    // to the status and primitive in use.
 }
 
 void
@@ -1851,7 +1888,7 @@ ZigbeeNwk::MlmeAssociateIndication(MlmeAssociateIndicationParams params)
             responseParams.m_status = MacStatus::SUCCESS;
             responseParams.m_assocShortAddr = entry->GetNwkAddr();
             responseParams.m_extDevAddr = entry->GetExtAddr();
-            m_mac->MlmeAssociateResponse(responseParams);
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeAssociateResponse, m_mac, responseParams);
         }
         else
         {
@@ -1904,7 +1941,7 @@ ZigbeeNwk::MlmeAssociateIndication(MlmeAssociateIndicationParams params)
             responseParams.m_status = MacStatus::SUCCESS;
             responseParams.m_assocShortAddr = allocatedAddr;
 
-            // Temporally store the NLME-JOIN.indications parameters that will be
+            // Temporarily store the NLME-JOIN.indications parameters that will be
             // returned after the association process concludes.
             // (after MLME-COMM-STATUS.indication received and beacon payload updated)
             m_joinIndParams.m_capabilityInfo = receivedCapability.GetCapability();
@@ -1918,11 +1955,11 @@ ZigbeeNwk::MlmeAssociateIndication(MlmeAssociateIndicationParams params)
             responseParams.m_assocShortAddr = Mac16Address("FF:FF");
         }
 
-        NS_LOG_DEBUG("Storing an Associate response command with the allocated"
-                     " address "
-                     << responseParams.m_assocShortAddr);
+        NS_LOG_DEBUG("\n              "
+                     << "Storing an Associate response command with the allocated address "
+                     << "[" << responseParams.m_assocShortAddr << "]");
 
-        m_mac->MlmeAssociateResponse(responseParams);
+        Simulator::ScheduleNow(&LrWpanMacBase::MlmeAssociateResponse, m_mac, responseParams);
     }
 }
 
@@ -2046,7 +2083,7 @@ ZigbeeNwk::NldeDataRequest(NldeDataRequestParams params, Ptr<Packet> packet)
             mcpsDataparams.m_dstAddrMode = SHORT_ADDR;
             mcpsDataparams.m_dstAddr = entry->GetNwkAddr();
             m_macHandle++;
-            m_mac->McpsDataRequest(mcpsDataparams, packet);
+            Simulator::ScheduleNow(&LrWpanMacBase::McpsDataRequest, m_mac, mcpsDataparams, packet);
         }
         else
         {
@@ -2151,7 +2188,7 @@ ZigbeeNwk::NlmeNetworkFormationRequest(NlmeNetworkFormationRequestParams params)
         mlmeParams.m_scanChannels = params.m_scanChannelList.channelsField[0];
         mlmeParams.m_scanDuration = params.m_scanDuration;
         mlmeParams.m_scanType = MLMESCAN_ACTIVE;
-        m_mac->MlmeScanRequest(mlmeParams);
+        Simulator::ScheduleNow(&LrWpanMacBase::MlmeScanRequest, m_mac, mlmeParams);
     }
     else if (channelsCount > 1)
     {
@@ -2160,7 +2197,7 @@ ZigbeeNwk::NlmeNetworkFormationRequest(NlmeNetworkFormationRequestParams params)
         mlmeParams.m_scanChannels = params.m_scanChannelList.channelsField[0];
         mlmeParams.m_scanDuration = params.m_scanDuration;
         mlmeParams.m_scanType = MLMESCAN_ED;
-        m_mac->MlmeScanRequest(mlmeParams);
+        Simulator::ScheduleNow(&LrWpanMacBase::MlmeScanRequest, m_mac, mlmeParams);
     }
 }
 
@@ -2342,9 +2379,10 @@ ZigbeeNwk::NlmeNetworkDiscoveryRequest(NlmeNetworkDiscoveryRequestParams params)
     scanParams.m_scanType = MLMESCAN_ACTIVE;
 
     NS_LOG_DEBUG("Active scanning started, "
-                 << " on page " << static_cast<uint32_t>(page) << " and channels 0x" << std::hex
+                 << " on page " << page << " and channels 0x" << std::hex
                  << params.m_scanChannelList.channelsField[0] << std::dec);
-    m_mac->MlmeScanRequest(scanParams);
+
+    Simulator::ScheduleNow(&LrWpanMacBase::MlmeScanRequest, m_mac, scanParams);
 }
 
 void
@@ -2488,9 +2526,10 @@ ZigbeeNwk::NlmeJoinRequest(NlmeJoinRequestParams params)
         //       (i.e. It does not use the scanDuration parameter)
         scanParams.m_scanType = MLMESCAN_ORPHAN;
         NS_LOG_DEBUG("Orphan scanning started, "
-                     << "sending orphan notifications on page " << static_cast<uint32_t>(page)
-                     << " and channels " << std::hex << params.m_scanChannelList.channelsField[0]);
-        m_mac->MlmeScanRequest(scanParams);
+                     << "sending orphan notifications on page " << page << " and channels "
+                     << std::hex << params.m_scanChannelList.channelsField[0]);
+
+        Simulator::ScheduleNow(&LrWpanMacBase::MlmeScanRequest, m_mac, scanParams);
     }
     else if (params.m_rejoinNetwork == ASSOCIATION)
     {
@@ -2521,10 +2560,10 @@ ZigbeeNwk::NlmeJoinRequest(NlmeJoinRequestParams params)
             {
                 assocParams.m_coordAddrMode = lrwpan::AddressMode::SHORT_ADDR;
                 assocParams.m_coordShortAddr = bestParentEntry->GetNwkAddr();
-                NS_LOG_DEBUG("Send Assoc. Req. to [" << bestParentEntry->GetNwkAddr()
-                                                     << "] in PAN id and Ext PAN id: " << std::hex
-                                                     << "(0x" << panId << " | 0x"
-                                                     << params.m_extendedPanId << ")" << std::dec);
+                NS_LOG_DEBUG("\n              "
+                             << "Send Association Request [" << bestParentEntry->GetNwkAddr()
+                             << "] | PAN ID: " << std::hex << "0x" << panId
+                             << " | Extended PAN ID: 0x" << params.m_extendedPanId << std::dec);
             }
             else
             {
@@ -2539,11 +2578,10 @@ ZigbeeNwk::NlmeJoinRequest(NlmeJoinRequestParams params)
             m_nwkParentInformation = 0;
             m_nwkCapabilityInformation = params.m_capabilityInfo;
 
-            // Temporally store some associate values until the process concludes
-            m_associateParams.panId = panId;
-            m_associateParams.extAddress = bestParentEntry->GetExtAddr();
+            // Temporarily store MLME-ASSOCIATE.request parameters until the JOIN process concludes
+            m_associateParams = assocParams;
 
-            m_mac->MlmeAssociateRequest(assocParams);
+            Simulator::ScheduleNow(&LrWpanMacBase::MlmeAssociateRequest, m_mac, assocParams);
         }
         else
         {
@@ -2580,6 +2618,8 @@ ZigbeeNwk::NlmeStartRouterRequest(NlmeStartRouterRequestParams params)
 
     if (capability.GetDeviceType() != MacDeviceType::ROUTER)
     {
+        m_pendPrimitiveNwk = NLDE_NLME_NONE;
+        m_startRouterParams = {};
         if (!m_nlmeStartRouterConfirmCallback.IsNull())
         {
             NlmeStartRouterConfirmParams confirmParams;
@@ -2591,23 +2631,12 @@ ZigbeeNwk::NlmeStartRouterRequest(NlmeStartRouterRequestParams params)
     else
     {
         m_pendPrimitiveNwk = NLME_START_ROUTER;
-
+        // store the NLME-START-ROUTER.request params while request the current channel
+        m_startRouterParams = params;
         // request an update of the current channel in use in the PHY
-        m_mac->MlmeGetRequest(MacPibAttributeIdentifier::pCurrentChannel);
-
-        // TODO: MLME-START.request should be issue to all the interfaces in the
-        // nwkMacInterfaceTable (currently not supported), for the moment only a single
-        // interface is supported.
-        MlmeStartRequestParams startParams;
-        startParams.m_logCh = m_currentChannel;
-        startParams.m_logChPage = 0; // In zigbee, only page 0 is supported.
-        startParams.m_PanId = m_nwkPanId;
-        startParams.m_bcnOrd = params.m_beaconOrder;
-        startParams.m_sfrmOrd = params.m_superframeOrder;
-        startParams.m_battLifeExt = params.m_batteryLifeExt;
-        startParams.m_coorRealgn = false;
-        startParams.m_panCoor = false;
-        m_mac->MlmeStartRequest(startParams);
+        Simulator::ScheduleNow(&LrWpanMacBase::MlmeGetRequest,
+                               m_mac,
+                               MacPibAttributeIdentifier::pCurrentChannel);
     }
 }
 
@@ -2769,55 +2798,14 @@ ZigbeeNwk::DisposeTxPktBuffer()
 NwkStatus
 ZigbeeNwk::GetNwkStatus(MacStatus macStatus) const
 {
-    switch (macStatus)
-    {
-    case MacStatus::SUCCESS:
-        return NwkStatus::SUCCESS;
-        break;
-    case MacStatus::NO_SHORT_ADDRESS:
-        return NwkStatus::NO_SHORT_ADDRESS;
-        break;
-    case MacStatus::SUPERFRAME_OVERLAP:
-        return NwkStatus::SUPERFRAME_OVERLAP;
-        break;
-    case MacStatus::TRACKING_OFF:
-        return NwkStatus::TRACKING_OFF;
-        break;
-    case MacStatus::LIMIT_REACHED:
-        return NwkStatus::LIMIT_REACHED;
-        break;
-    case MacStatus::NO_BEACON:
-        return NwkStatus::NO_NETWORKS;
-        break;
-    case MacStatus::SCAN_IN_PROGRESS:
-        return NwkStatus::SCAN_IN_PROGRESS;
-        break;
-    case MacStatus::COUNTER_ERROR:
-        return NwkStatus::COUNTER_ERROR;
-        break;
-    case MacStatus::FRAME_TOO_LONG:
-        return NwkStatus::FRAME_TOO_LONG;
-        break;
-    case MacStatus::UNAVAILABLE_KEY:
-        return NwkStatus::UNAVAILABLE_KEY;
-        break;
-    case MacStatus::UNSUPPORTED_SECURITY:
-        return NwkStatus::UNSUPPORTED_SECURITY;
-        break;
-    case MacStatus::CHANNEL_ACCESS_FAILURE:
-        return NwkStatus::CHANNEL_ACCESS_FAILURE;
-        break;
-    case MacStatus::INVALID_PARAMETER:
-        return NwkStatus::INVALID_PARAMETER;
-        break;
-    default:
-        return NwkStatus::INVALID_PARAMETER;
-    }
+    return static_cast<NwkStatus>(macStatus);
 }
 
 Mac16Address
 ZigbeeNwk::AllocateNetworkAddress()
 {
+    NS_LOG_FUNCTION(this);
+
     if (m_nwkAddrAlloc == DISTRIBUTED_ALLOC)
     {
         NS_FATAL_ERROR("Distributed allocation not supported");
@@ -2892,6 +2880,8 @@ ZigbeeNwk::GetLQINonLinearValue(uint8_t lqi) const
 uint8_t
 ZigbeeNwk::GetLinkCost(uint8_t lqi) const
 {
+    NS_LOG_FUNCTION(this);
+
     if (m_nwkReportConstantCost)
     {
         // Hop count based. Report constant value
@@ -2929,9 +2919,9 @@ ZigbeeNwk::SendRREQ(ZigbeeNwkHeader nwkHeader,
         {
             if (rreqRetryTableEntry->GetRreqRetryCount() >= rreqRetries)
             {
-                NS_LOG_DEBUG("Maximum RREQ retries reached for dst ["
-                             << payload.GetDstAddr() << "] and rreq ID "
-                             << static_cast<uint32_t>(payload.GetRouteReqId()));
+                NS_LOG_DEBUG("Maximum RREQ retries reached for dst [" << payload.GetDstAddr()
+                                                                      << "] and rreq ID "
+                                                                      << payload.GetRouteReqId());
                 // Note: The value of the maximum number of retries (rreqRetries) is either
                 // nwkcInitialRREQRetries or nwkcRREQRetries depending on where the RREQ is
                 // transmitted. See Zigbee specification r22.1.0, Section 3.6.3.5.1 This trace here
@@ -2983,7 +2973,7 @@ ZigbeeNwk::SendRREQ(ZigbeeNwkHeader nwkHeader,
         params.m_dstAddr = Mac16Address::GetBroadcast();
         params.m_msduHandle = m_macHandle.GetValue();
         m_macHandle++;
-        m_mac->McpsDataRequest(params, nsdu);
+        Simulator::ScheduleNow(&LrWpanMacBase::McpsDataRequest, m_mac, params, nsdu);
     }
     else
     {
@@ -3035,7 +3025,7 @@ ZigbeeNwk::SendRREP(Mac16Address nextHop,
     nsdu->AddHeader(payloadType);
     nsdu->AddHeader(nwkHeader);
 
-    m_mac->McpsDataRequest(params, nsdu);
+    Simulator::ScheduleNow(&LrWpanMacBase::McpsDataRequest, m_mac, params, nsdu);
 }
 
 int64_t
@@ -3066,7 +3056,10 @@ ZigbeeNwk::UpdateBeaconPayloadLength()
     m_beaconPayload->AddHeader(beaconPayloadHeader);
     Ptr<MacPibAttributes> pibAttr = Create<MacPibAttributes>();
     pibAttr->macBeaconPayloadLength = m_beaconPayload->GetSize();
-    m_mac->MlmeSetRequest(MacPibAttributeIdentifier::macBeaconPayloadLength, pibAttr);
+    Simulator::ScheduleNow(&LrWpanMacBase::MlmeSetRequest,
+                           m_mac,
+                           MacPibAttributeIdentifier::macBeaconPayloadLength,
+                           pibAttr);
 }
 
 void
@@ -3080,7 +3073,198 @@ ZigbeeNwk::UpdateBeaconPayload()
     pibAttr->macBeaconPayload.resize(m_beaconPayload->GetSize());
     m_beaconPayload->CopyData(pibAttr->macBeaconPayload.data(), m_beaconPayload->GetSize());
     m_beaconPayload = nullptr;
-    m_mac->MlmeSetRequest(MacPibAttributeIdentifier::macBeaconPayload, pibAttr);
+    Simulator::ScheduleNow(&LrWpanMacBase::MlmeSetRequest,
+                           m_mac,
+                           MacPibAttributeIdentifier::macBeaconPayload,
+                           pibAttr);
+}
+
+std::ostream&
+operator<<(std::ostream& os, const NwkStatus& state)
+{
+    switch (state)
+    {
+    case NwkStatus::SUCCESS:
+        os << "SUCCESS";
+        break;
+    case NwkStatus::FULL_CAPACITY:
+        os << "FULL CAPACITY";
+        break;
+    case NwkStatus::ACCESS_DENIED:
+        os << "ACCESS DENIED";
+        break;
+    case NwkStatus::COUNTER_ERROR:
+        os << "COUNTER ERROR";
+        break;
+    case NwkStatus::IMPROPER_KEY_TYPE:
+        os << "IMPROPER KEY TYPE";
+        break;
+    case NwkStatus::IMPROPER_SECURITY_LEVEL:
+        os << "IMPROPER SECURITY LEVEL";
+        break;
+    case NwkStatus::UNSUPPORTED_LEGACY:
+        os << "UNSUPPORTED LEGACY";
+        break;
+    case NwkStatus::UNSUPPORTED_SECURITY:
+        os << "UNSUPPORTED SECURITY";
+        break;
+    case NwkStatus::BEACON_LOSS:
+        os << "BEACON LOSS";
+        break;
+    case NwkStatus::CHANNEL_ACCESS_FAILURE:
+        os << "CHANNEL ACCESS FAILURE";
+        break;
+    case NwkStatus::DENIED:
+        os << "DENIED";
+        break;
+    case NwkStatus::DISABLE_TRX_FAILURE:
+        os << "DISABLE TRX FAILURE";
+        break;
+    case NwkStatus::SECURITY_ERROR:
+        os << "SECURITY ERROR";
+        break;
+    case NwkStatus::FRAME_TOO_LONG:
+        os << "FRAME TOO LONG";
+        break;
+    case NwkStatus::INVALID_GTS:
+        os << "INVALID GTS";
+        break;
+    case NwkStatus::INVALID_HANDLE:
+        os << "INVALID HANDLE";
+        break;
+    case NwkStatus::INVALID_PARAMETER_MAC:
+        os << "INVALID PARAMETER MAC";
+        break;
+    case NwkStatus::NO_ACK:
+        os << "NO ACKNOLEDGMENT";
+        break;
+    case NwkStatus::NO_BEACON:
+        os << "NO BEACON";
+        break;
+    case NwkStatus::NO_DATA:
+        os << "NO DATA";
+        break;
+    case NwkStatus::NO_SHORT_ADDRESS:
+        os << "NO SHORT ADDRESS";
+        break;
+    case NwkStatus::OUT_OF_CAP:
+        os << "OUT OF CAP";
+        break;
+    case NwkStatus::PAN_ID_CONFLICT:
+        os << "PAN ID CONFLICT";
+        break;
+    case NwkStatus::REALIGMENT:
+        os << "REALIGMENT";
+        break;
+    case NwkStatus::TRANSACTION_EXPIRED:
+        os << "TRANSACTION EXPIRED";
+        break;
+    case NwkStatus::TRANSACTION_OVERFLOW:
+        os << "TRANSACTION OVERFLOW";
+        break;
+    case NwkStatus::TX_ACTIVE:
+        os << "TX ACTIVE";
+        break;
+    case NwkStatus::UNAVAILABLE_KEY:
+        os << "UNAVAILABLE KEY";
+        break;
+    case NwkStatus::INVALID_ADDRESS:
+        os << "INVALID ADDRESS";
+        break;
+    case NwkStatus::ON_TIME_TOO_LONG:
+        os << "ON TIME TOO LONG";
+        break;
+    case NwkStatus::PAST_TIME:
+        os << "PAST TIME";
+        break;
+    case NwkStatus::TRACKING_OFF:
+        os << "TRACKING OFF";
+        break;
+    case NwkStatus::INVALID_INDEX:
+        os << "INVALID INDEX";
+        break;
+    case NwkStatus::READ_ONLY:
+        os << "READ ONLY";
+        break;
+    case NwkStatus::SUPERFRAME_OVERLAP:
+        os << "SUPERFRAME OVERLAP";
+        break;
+    case NwkStatus::INVALID_PARAMETER:
+        os << "INVALID PARAMETER";
+        break;
+    case NwkStatus::INVALID_REQUEST:
+        os << "INVALID REQUEST";
+        break;
+    case NwkStatus::NOT_PERMITED:
+        os << "NO PERMITED";
+        break;
+    case NwkStatus::STARTUP_FAILURE:
+        os << "STARTUP FAILURE";
+        break;
+    case NwkStatus::ALREADY_PRESENT:
+        os << "ALREADY PRESENT";
+        break;
+    case NwkStatus::SYNC_FAILURE:
+        os << "SYNC FAILURE";
+        break;
+    case NwkStatus::NEIGHBOR_TABLE_FULL:
+        os << "NEIGHBOR TABLE FULL";
+        break;
+    case NwkStatus::UNKNOWN_DEVICE:
+        os << "UNKNOWN DEVICE";
+        break;
+    case NwkStatus::UNSUPPORTED_ATTRIBUTE:
+        os << "UNSUPPORTED ATTRIBUTE";
+        break;
+    case NwkStatus::NO_NETWORKS:
+        os << "NO NETWORKS";
+        break;
+    case NwkStatus::MAX_FRM_COUNTER:
+        os << "MAX FRAME COUNTER";
+        break;
+    case NwkStatus::NO_KEY:
+        os << "NO KEY";
+        break;
+    case NwkStatus::BAD_CCM_OUTPUT:
+        os << "BAD CCM OUTPUT";
+        break;
+    case NwkStatus::ROUTE_DISCOVERY_FAILED:
+        os << "ROUTE DISCOVERY FAILED";
+        break;
+    case NwkStatus::ROUTE_ERROR:
+        os << "ROUTE ERROR";
+        break;
+    case NwkStatus::BT_TABLE_FULL:
+        os << "BT TABLE FULL";
+        break;
+    case NwkStatus::FRAME_NOT_BUFFERED:
+        os << "FRAME NOT BUFFERED";
+        break;
+    case NwkStatus::INVALID_INTERFACE:
+        os << "INVALID INTERFACE";
+        break;
+    case NwkStatus::LIMIT_REACHED:
+        os << "LIMIT REACHED";
+        break;
+    case NwkStatus::SCAN_IN_PROGRESS:
+        os << "SCAN IN PROGRESS";
+        break;
+    }
+    return os;
+}
+
+std::ostream&
+operator<<(std::ostream& os, const std::vector<uint8_t>& vec)
+{
+    std::copy(vec.begin(), vec.end(), std::ostream_iterator<uint16_t>(os, " "));
+    return os;
+}
+
+std::ostream&
+operator<<(std::ostream& os, const uint8_t& num)
+{
+    os << static_cast<uint16_t>(num);
+    return os;
 }
 
 } // namespace zigbee

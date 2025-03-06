@@ -290,6 +290,13 @@ WifiMac::GetTypeId()
                 UintegerValue(0),
                 MakeUintegerAccessor(&WifiMac::SetBkBlockAckInactivityTimeout),
                 MakeUintegerChecker<uint16_t>())
+            .AddAttribute("RobustAVStreamingSupported",
+                          "Whether or not Robust Audio Video Streaming is supported (only allowed "
+                          "for AP STAs or non-AP that are HT capable).",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&WifiMac::SetRobustAVStreamingSupported,
+                                              &WifiMac::GetRobustAVStreamingSupported),
+                          MakeBooleanChecker())
             .AddTraceSource(
                 "MacTx",
                 "A packet has been received by the WifiNetDevice and is about to be enqueued; "
@@ -1895,12 +1902,15 @@ WifiMac::DoGetLocalAddress(const Mac48Address& remoteAddr [[maybe_unused]]) cons
 }
 
 WifiMac::OriginatorAgreementOptConstRef
-WifiMac::GetBaAgreementEstablishedAsOriginator(Mac48Address recipient, uint8_t tid) const
+WifiMac::GetBaAgreementEstablishedAsOriginator(Mac48Address recipient,
+                                               uint8_t tid,
+                                               std::optional<Mac48Address> gcrGroupAddr) const
 {
     // BA agreements are indexed by the MLD address if ML setup was performed
     recipient = GetMldAddress(recipient).value_or(recipient);
 
-    auto agreement = GetQosTxop(tid)->GetBaManager()->GetAgreementAsOriginator(recipient, tid);
+    auto agreement =
+        GetQosTxop(tid)->GetBaManager()->GetAgreementAsOriginator(recipient, tid, gcrGroupAddr);
     if (!agreement || !agreement->get().IsEstablished())
     {
         return std::nullopt;
@@ -1909,11 +1919,13 @@ WifiMac::GetBaAgreementEstablishedAsOriginator(Mac48Address recipient, uint8_t t
 }
 
 WifiMac::RecipientAgreementOptConstRef
-WifiMac::GetBaAgreementEstablishedAsRecipient(Mac48Address originator, uint8_t tid) const
+WifiMac::GetBaAgreementEstablishedAsRecipient(Mac48Address originator,
+                                              uint8_t tid,
+                                              std::optional<Mac48Address> gcrGroupAddr) const
 {
     // BA agreements are indexed by the MLD address if ML setup was performed
     originator = GetMldAddress(originator).value_or(originator);
-    return GetQosTxop(tid)->GetBaManager()->GetAgreementAsRecipient(originator, tid);
+    return GetQosTxop(tid)->GetBaManager()->GetAgreementAsRecipient(originator, tid, gcrGroupAddr);
 }
 
 BlockAckType
@@ -2182,6 +2194,7 @@ ExtendedCapabilities
 WifiMac::GetExtendedCapabilities() const
 {
     ExtendedCapabilities capabilities;
+    capabilities.m_robustAvStreaming = GetRobustAVStreamingSupported();
     return capabilities;
 }
 
@@ -2555,6 +2568,21 @@ WifiMac::GetMaxAmsduSize(AcIndex ac) const
         return 0;
     }
     return maxSize;
+}
+
+void
+WifiMac::SetRobustAVStreamingSupported(bool enable)
+{
+    NS_LOG_FUNCTION(this << enable);
+    m_robustAVStreamingSupported = enable;
+}
+
+bool
+WifiMac::GetRobustAVStreamingSupported() const
+{
+    NS_ASSERT_MSG(!m_robustAVStreamingSupported || GetDevice()->GetHtConfiguration(),
+                  "Robust AV Streaming requires STA to be HT-capable");
+    return m_robustAVStreamingSupported;
 }
 
 } // namespace ns3

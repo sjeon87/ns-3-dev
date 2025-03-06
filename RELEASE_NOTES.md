@@ -45,12 +45,24 @@ The required Doxygen version for documentation generation is version 1.11.
 - (energy) Added new information and reformatted energy module documentation.
 - (wifi) Added a new `MainPhySwitch` trace source to EmlsrManager, which is fired when the main PHY switches channel to operate on another link and provides information about the reason for starting the switch.
 - (build) Scan for contrib modules in `ns-3-external-contrib` directory, at the same level of the ns-3 directory (e.g. `./ns-3-dev/../ns-3-external-contrib/`).
+- (wifi) Add support for exchanging 802.11be Multi-Link Probe Request frames. Currently, the default association manager does not instruct the MAC to transmit a Multi-Link Probe Request frame, though.
+- (wifi) 2004! - Add Wi-Fi channel occupancy statistics helper
+- (wifi) 2009! - Added WifiTxStatsHelper for Wi-Fi MAC-level tracing.
+- (wifi) - Added support for 802.11aa groupcast with retries (GCR). Both unsolicited retries (GCR-UR) and Block Ack (GCR-BA) mechanisms are implemented.
 
 ### Bugs fixed
 
+- (lr-wpan) !2334 - Fix the MAC reaction to an association issue in which association response commands might be received before data request command acks.
+- (propagation) Scale the NTN LOS probabilities from percentages [0, 100] to probabilities [0, 1]
+- (spectrum) Calculate PSD by combining received power on ports, even when no precoding matrix is set
+- (spectrum) Scale the CDS parameter of V2V models to nanoseconds
+- (spectrum) Add missing K-factor fields (uk, sigK) for NTN NLOS 3GPP channel model
 - (wifi) Retransmit procedures have been aligned with the standard specifications.
 - (wifi) Clear PSDU map if no immediate response expected with BAR-BA ack sequence
 - (wifi) Fix S-MPDU TX duration computation with BlockAck ack policy
+- (wifi) Fix missing DSSS Param Set in Probe Request sent over 2.4 GHz links
+- (spectrum) Trigger 3GPP channel updates after changes to antenna attributes
+- (wifi) #1104 - Fix wrong calculation of start sequence number
 
 ## Release 3.43
 

@@ -20,21 +20,27 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (wifi) Changes have been made to the `WifiRemoteStationManager` interface for what concerns the update of the frame retry count of the MPDUs and the decision of dropping MPDUs (possibly based on the max retry limit). The `NeedRetransmission` method has been replaced by the `GetMpdusToDropOnTxFailure` method and the `DoNeedRetransmission` method has been replaced by the `DoGetMpdusToDropOnTxFailure` method. Also, the `DoIncrementRetryCountOnTxFailure` method has been added to implement custom policies for the update of the frame retry count of MPDUs upon transmission failure.
 * (applications) Added an `OnOffState` trace source to `OnOffApplication`, to track whether the application is transmitting or not.
 * (zigbee) Added Zigbee module support. The module includes a NWK layer with joining and routing capabilities. No APS layer included.
+* (antenna) Add `SymmetricAdjacencyMatrix` utility class, used to track the necessity of channel state between every `PhasedArrayModel` pair.
+* (wifi) Added a new **RobustAVStreamingSupported** attribute to `WifiMac` to enable 802.11aa features (GCR).
 
 ### Changes to existing API
 
 * (applications) Deprecated attributes `RemoteAddress` and `RemotePort` in UdpClient, UdpTraceClient and UdpEchoClient. They have been combined into a single `Remote` attribute.
 * (applications) Deprecated attributes `ThreeGppHttpClient::RemoteServerAddress` and `ThreeGppHttpClient::RemoteServerPort`. They have been combined into a single `ThreeGppHttpClient::Remote` attribute.
+* (core) Deprecated `SUPPORTED`, `DEPRECATED` and `OBSOLETE` in `TypeId` class. They have been replaced by `SupportLevel::{SUPPORTED,DEPRECATED,OBSOLETE}`, respectively.
 * (lr-wpan) ``LrWpanMac`` is now also aggregated to ``LrWpanNetDevice``.
 * (stats) Deprecated ns3::NaN and ns3::isNaN to use std::nan and std::isnan in their place
 * (tap-bridge) Deprecated "Gateway" attribute.
 * (tap-bridge) Removed unused gateway option from tap-creator.
 * (wifi) Added a new **ProtectedIfResponded** attribute to `FrameExchangeManager` to disable RTS/CTS protection for stations that have already responded to a frame requiring acknowledgment in the same TXOP, even if such frame had not been protected by RTS/CTS. The default value is true, even though it represents a change with respect to the previous behavior, because it is likely a more realistic choice.
 * (wifi) Deprecated setters/getters of the {Ht,Vht,He}Configuration classes that trivially set/get member variables, which have been made public and hence accessible to users.
+* (wifi) Trace source `QosTxop::BaEstablished` is extended to support GCR block ack agreements.
 
 ### Changes to build system
 
 ### Changed behavior
+
+* (lr-wpan) Association: Fix the handling of situations where the association response commands arrives before the data request command acknowledgment that is supposed to precede it.
 
 ## Changes from ns-3.42 to ns-3.43
 
@@ -47,6 +53,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (wifi) Added a new trace source to `WifiPhy`: **PhyRxMacHeaderEnd**, which is fired when the reception of the MAC header of an MPDU is completed and provides the MAC header and the remaining PSDU duration. The trace source is actually fired when the new **NotifyMacHdrRxEnd** attribute of `WifiPhy` is set to true (it is set to false by default).
 * (wifi) WifiHelper::SetStandard() method now accepts selected string values in addition to enum argument.
 * (wifi) Added a new method **SetPcapCaptureType** to `WifiPhyHelper` to control how PCAPs are generated for MLD devices.
+* (wifi) New trace helper `WifiTxStatsHelper` for providing Wi-Fi MAC-level transmission statistics.
 
 ### Changes to existing API
 

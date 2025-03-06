@@ -393,7 +393,7 @@ HeFrameExchangeManager::SendMuRts(const WifiTxParameters& txParams)
                                                 protection->muRtsTxVector,
                                                 m_phy->GetPhyBand()) +
                    m_phy->GetSifs() + m_phy->GetSlot() +
-                   m_phy->CalculatePhyPreambleAndHeaderDuration(ctsTxVector);
+                   WifiPhy::CalculatePhyPreambleAndHeaderDuration(ctsTxVector);
 
     NS_ASSERT(!m_txTimer.IsRunning());
     m_txTimer.Set(WifiTxTimer::WAIT_CTS_AFTER_MU_RTS,
@@ -412,15 +412,6 @@ void
 HeFrameExchangeManager::CtsAfterMuRtsTimeout(Ptr<WifiMpdu> muRts, const WifiTxVector& txVector)
 {
     NS_LOG_FUNCTION(this << *muRts << txVector);
-    DoCtsAfterMuRtsTimeout(muRts, txVector, true);
-}
-
-void
-HeFrameExchangeManager::DoCtsAfterMuRtsTimeout(Ptr<WifiMpdu> muRts,
-                                               const WifiTxVector& txVector,
-                                               bool updateFailedCw)
-{
-    NS_LOG_FUNCTION(this << *muRts << txVector << updateFailedCw);
 
     if (m_psduMap.empty())
     {
@@ -430,8 +421,20 @@ HeFrameExchangeManager::DoCtsAfterMuRtsTimeout(Ptr<WifiMpdu> muRts,
         return;
     }
 
+    DoCtsAfterMuRtsTimeout(m_psduMap);
+    m_psduMap.clear();
+}
+
+void
+HeFrameExchangeManager::DoCtsAfterMuRtsTimeout(const WifiPsduMap& psduMap)
+{
+    NS_LOG_FUNCTION(this);
+
+    // GetUpdateCwOnCtsTimeout() needs to be called before resetting m_sentRtsTo
+    const auto updateCw = GetUpdateCwOnCtsTimeout();
+
     m_sentRtsTo.clear();
-    for (const auto& psdu : m_psduMap)
+    for (const auto& psdu : psduMap)
     {
         for (const auto& mpdu : *PeekPointer(psdu.second))
         {
@@ -442,12 +445,12 @@ HeFrameExchangeManager::DoCtsAfterMuRtsTimeout(Ptr<WifiMpdu> muRts,
         }
     }
 
-    if (const auto& hdr = m_psduMap.cbegin()->second->GetHeader(0); !hdr.GetAddr1().IsGroup())
+    if (const auto& hdr = psduMap.cbegin()->second->GetHeader(0); !hdr.GetAddr1().IsGroup())
     {
         GetWifiRemoteStationManager()->ReportRtsFailed(hdr);
     }
 
-    for (const auto& [staId, psdu] : m_psduMap)
+    for (const auto& [staId, psdu] : psduMap)
     {
         if (psdu->GetAddr1().IsGroup())
         {
@@ -464,8 +467,7 @@ HeFrameExchangeManager::DoCtsAfterMuRtsTimeout(Ptr<WifiMpdu> muRts,
         ReleaseSequenceNumbers(psdu);
     }
 
-    m_psduMap.clear();
-    TransmissionFailed(!updateFailedCw);
+    TransmissionFailed(!updateCw);
 }
 
 Ptr<WifiPsdu>
@@ -662,7 +664,7 @@ HeFrameExchangeManager::SendPsduMap()
             responseTxVector =
                 &acknowledgment->stationsReplyingWithBlockAck.begin()->second.blockAckTxVector;
             Time timeout = txDuration + m_phy->GetSifs() + m_phy->GetSlot() +
-                           m_phy->CalculatePhyPreambleAndHeaderDuration(*responseTxVector);
+                           WifiPhy::CalculatePhyPreambleAndHeaderDuration(*responseTxVector);
 
             m_txTimer.Set(WifiTxTimer::WAIT_BLOCK_ACKS_IN_TB_PPDU,
                           timeout,
@@ -856,7 +858,7 @@ HeFrameExchangeManager::SendPsduMap()
     else
     {
         Time timeout = txDuration + m_phy->GetSifs() + m_phy->GetSlot() +
-                       m_phy->CalculatePhyPreambleAndHeaderDuration(*responseTxVector);
+                       WifiPhy::CalculatePhyPreambleAndHeaderDuration(*responseTxVector);
         m_channelAccessManager->NotifyAckTimeoutStartNow(timeout);
 
         // start timer
@@ -2131,7 +2133,7 @@ HeFrameExchangeManager::UpdateNav(Ptr<const WifiPsdu> psdu, const WifiTxVector& 
             auto navResetDelay =
                 2 * m_phy->GetSifs() +
                 WifiPhy::CalculateTxDuration(GetCtsSize(), ctsTxVector, m_phy->GetPhyBand()) +
-                m_phy->CalculatePhyPreambleAndHeaderDuration(ctsTxVector) + 2 * m_phy->GetSlot();
+                WifiPhy::CalculatePhyPreambleAndHeaderDuration(ctsTxVector) + 2 * m_phy->GetSlot();
             m_intraBssNavResetEvent =
                 Simulator::Schedule(navResetDelay,
                                     &HeFrameExchangeManager::IntraBssNavResetTimeout,

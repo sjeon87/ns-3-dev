@@ -7,13 +7,13 @@
  *         Nicola Baldo <nbaldo@cttc.es>
  */
 
-#include <ns3/constant-position-mobility-model.h>
-#include <ns3/double.h>
-#include <ns3/enum.h>
-#include <ns3/log.h>
-#include <ns3/okumura-hata-propagation-loss-model.h>
-#include <ns3/string.h>
-#include <ns3/test.h>
+#include "ns3/constant-position-mobility-model.h"
+#include "ns3/double.h"
+#include "ns3/enum.h"
+#include "ns3/log.h"
+#include "ns3/okumura-hata-propagation-loss-model.h"
+#include "ns3/string.h"
+#include "ns3/test.h"
 
 using namespace ns3;
 
@@ -174,7 +174,7 @@ OkumuraHataPropagationLossModelTestSuite::OkumuraHataPropagationLossModelTestSui
                                                             1,
                                                             OpenAreasEnvironment,
                                                             LargeCity,
-                                                            110.21,
+                                                            109.66,
                                                             "original OH OpenAreas"),
                 TestCase::Duration::QUICK);
 

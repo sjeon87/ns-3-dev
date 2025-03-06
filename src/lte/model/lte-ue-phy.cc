@@ -21,13 +21,13 @@
 #include "lte-ue-net-device.h"
 #include "lte-ue-power-control.h"
 
-#include <ns3/boolean.h>
-#include <ns3/double.h>
-#include <ns3/log.h>
-#include <ns3/node.h>
-#include <ns3/object-factory.h>
-#include <ns3/pointer.h>
-#include <ns3/simulator.h>
+#include "ns3/boolean.h"
+#include "ns3/double.h"
+#include "ns3/log.h"
+#include "ns3/node.h"
+#include "ns3/object-factory.h"
+#include "ns3/pointer.h"
+#include "ns3/simulator.h"
 
 #include <cfloat>
 #include <cmath>
@@ -1307,6 +1307,7 @@ LteUePhy::SendSrs()
     NS_ASSERT(m_cellId > 0);
     // set the current tx power spectral density (full bandwidth)
     std::vector<int> dlRb;
+    dlRb.reserve(m_ulBandwidth);
     for (uint16_t i = 0; i < m_ulBandwidth; i++)
     {
         dlRb.push_back(i);

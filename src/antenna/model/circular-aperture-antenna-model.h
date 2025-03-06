@@ -11,7 +11,7 @@
 
 #include "antenna-model.h"
 
-#include <ns3/object.h>
+#include "ns3/object.h"
 
 /**
  * @file
@@ -122,6 +122,7 @@ class CircularApertureAntennaModel : public AntennaModel
     double m_operatingFrequencyHz; //!< antenna operating frequency in Hz
     double m_maxGain;              //!< antenna gain in dB towards the main orientation
     double m_minGain;              //!< antenna min gain in dB
+    bool m_forceGainBounds;        //!< enforce maximum and minimum gains (disabled for testing)
 };
 
 } // namespace ns3

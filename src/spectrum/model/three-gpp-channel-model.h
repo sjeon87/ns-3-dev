@@ -13,9 +13,9 @@
 #include "matrix-based-channel-model.h"
 
 #include "ns3/angles.h"
+#include "ns3/boolean.h"
+#include "ns3/channel-condition-model.h"
 #include "ns3/deprecated.h"
-#include <ns3/boolean.h>
-#include <ns3/channel-condition-model.h>
 
 #include <complex.h>
 #include <unordered_map>
@@ -142,13 +142,6 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
      * @return the wrapped (azimuth, inclination) angle pair in radians
      */
     static std::pair<double, double> WrapAngles(double azimuthRad, double inclinationRad);
-
-    /**
-     * @brief Shuffle the elements of a simple sequence container of type double
-     * @param first Pointer to the first element among the elements to be shuffled
-     * @param last Pointer to the last element among the elements to be shuffled
-     */
-    void Shuffle(double* first, double* last) const;
 
     /**
      * Extends the struct ChannelParams by including information that is used

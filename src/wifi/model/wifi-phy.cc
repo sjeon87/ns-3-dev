@@ -351,7 +351,7 @@ WifiPhy::GetTypeId()
                             "Trace source indicating a packet "
                             "has been dropped by the device during reception",
                             MakeTraceSourceAccessor(&WifiPhy::m_phyRxDropTrace),
-                            "ns3::Packet::TracedCallback")
+                            "ns3::WifiPhy::PhyRxDropTracedCallback")
             .AddTraceSource("PhyRxPpduDrop",
                             "Trace source indicating a ppdu "
                             "has been dropped by the device during reception",
@@ -1797,6 +1797,19 @@ WifiPhy::NotifyMonitorSniffTx(Ptr<const WifiPsdu> psdu,
     }
 }
 
+std::optional<Time>
+WifiPhy::GetTimeToMacHdrEnd(uint16_t staId) const
+{
+    for (auto& [modClass, phyEntity] : m_phyEntities)
+    {
+        if (auto remTime = phyEntity->GetTimeToMacHdrEnd(staId))
+        {
+            return remTime;
+        }
+    }
+    return std::nullopt;
+}
+
 WifiConstPsduMap
 WifiPhy::GetWifiConstPsduMap(Ptr<const WifiPsdu> psdu, const WifiTxVector& txVector)
 {
@@ -1997,10 +2010,15 @@ WifiPhy::StartReceivePreamble(Ptr<const WifiPpdu> ppdu,
     }
 }
 
-bool
-WifiPhy::IsReceivingPhyHeader() const
+std::optional<std::reference_wrapper<const WifiTxVector>>
+WifiPhy::GetInfoIfRxingPhyHeader() const
 {
-    return m_endPhyRxEvent.IsPending();
+    if (m_endPhyRxEvent.IsPending())
+    {
+        NS_ASSERT_MSG(m_currentEvent, "No current event while receiving PHY header");
+        return std::cref(m_currentEvent->GetPpdu()->GetTxVector());
+    }
+    return std::nullopt;
 }
 
 void

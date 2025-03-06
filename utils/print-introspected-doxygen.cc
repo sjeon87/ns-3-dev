@@ -453,7 +453,7 @@ StaticInformation::DoGather(TypeId tid)
 
             // See if this is a pointer to an Object.
             Ptr<Object> object = CreateObject<Object>();
-            TypeId objectTypeId = object->GetTypeId();
+            TypeId objectTypeId = Object::GetTypeId();
             if (objectTypeId == pointee)
             {
                 // Stop the recursion at this attribute if it is a
@@ -565,8 +565,8 @@ GetTypicalAggregations()
     info.RecordAggregationInfo("ns3::Node", "ns3::dsdv::RoutingProtocol");
     info.RecordAggregationInfo("ns3::Node", "ns3::dsr::DsrRouting");
     info.RecordAggregationInfo("ns3::Node", "ns3::olsr::RoutingProtocol");
-    info.RecordAggregationInfo("ns3::Node", "ns3::EnergyHarvesterContainer");
-    info.RecordAggregationInfo("ns3::Node", "ns3::EnergySourceContainer");
+    info.RecordAggregationInfo("ns3::Node", "ns3::energy::EnergyHarvesterContainer");
+    info.RecordAggregationInfo("ns3::Node", "ns3::energy::EnergySourceContainer");
 
     // Create a channel object so that channels appear in the namespace
     // paths that will be generated here.
@@ -694,22 +694,8 @@ void
 PrintSupportLevel(std::ostream& os, TypeId::SupportLevel supportLevel, std::string supportMsg)
 {
     os << "    " << listLineStart << "Support level: ";
-    os << flagSpanStart;
-    switch (supportLevel)
-    {
-    case TypeId::SUPPORTED:
-        os << "SUPPORTED";
-        break;
-    case TypeId::DEPRECATED:
-        os << "DEPRECATED";
-        break;
-    case TypeId::OBSOLETE:
-        os << "OBSOLETE";
-        break;
-    default:
-        os << "UNKNOWN";
-    }
-    os << flagSpanStop;
+    os << flagSpanStart << supportLevel << flagSpanStop;
+
     if (!supportMsg.empty())
     {
         os << ": " << supportMsg;

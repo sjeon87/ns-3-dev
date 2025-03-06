@@ -696,6 +696,11 @@ class FrameExchangeManager : public Object
     void DoCtsTimeout(Ptr<WifiPsdu> psdu);
 
     /**
+     * @return whether CW shall be updated on CTS timeout
+     */
+    virtual bool GetUpdateCwOnCtsTimeout() const;
+
+    /**
      * Reset this frame exchange manager.
      */
     virtual void Reset();
@@ -722,6 +727,13 @@ class FrameExchangeManager : public Object
     virtual void ReceivedMacHdr(const WifiMacHeader& macHdr,
                                 const WifiTxVector& txVector,
                                 Time psduDuration);
+
+    /**
+     * Notify the last (re)transmission of a groupcast MPDU using the GCR-UR service.
+     *
+     * @param mpdu the groupcast MPDU
+     */
+    virtual void NotifyLastGcrUrTx(Ptr<const WifiMpdu> mpdu);
 
   private:
     /**

@@ -9,6 +9,7 @@
 #ifndef WIFI_MAC_H
 #define WIFI_MAC_H
 
+#include "mgt-headers.h"
 #include "qos-utils.h"
 #include "ssid.h"
 #include "wifi-mac-queue-scheduler.h"
@@ -649,6 +650,19 @@ class WifiMac : public Object
     bool GetEhtSupported(const Mac48Address& address) const;
 
     /**
+     * Enable or disable Robust AV Streaming support for the device.
+     *
+     * @param enable whether Robust AV Streaming is supported
+     */
+    void SetRobustAVStreamingSupported(bool enable);
+    /**
+     * Return whether the device supports Robust AV Streaming.
+     *
+     * @return true if Robust AV Streaming is supported, false otherwise
+     */
+    bool GetRobustAVStreamingSupported() const;
+
+    /**
      * Return the maximum A-MPDU size of the given Access Category.
      *
      * @param ac Access Category index
@@ -672,26 +686,32 @@ class WifiMac : public Object
 
     /**
      * @param recipient (link or device) MAC address of the recipient
-     * @param tid traffic ID.
+     * @param tid traffic ID
+     * @param gcrGroupAddr the GCR Group Address (only if it is a GCR Block Ack agreement)
      *
      * @return the originator block ack agreement, if one has been established
      *
      * Checks if an originator block ack agreement is established with station addressed by
      * <i>recipient</i> for TID <i>tid</i>.
      */
-    OriginatorAgreementOptConstRef GetBaAgreementEstablishedAsOriginator(Mac48Address recipient,
-                                                                         uint8_t tid) const;
+    OriginatorAgreementOptConstRef GetBaAgreementEstablishedAsOriginator(
+        Mac48Address recipient,
+        uint8_t tid,
+        std::optional<Mac48Address> gcrGroupAddr = std::nullopt) const;
     /**
      * @param originator (link or device) MAC address of the originator
-     * @param tid traffic ID.
+     * @param tid traffic ID
+     * @param gcrGroupAddr the GCR Group Address (only if it is a GCR Block Ack agreement)
      *
      * @return the recipient block ack agreement, if one has been established
      *
      * Checks if a recipient block ack agreement is established with station addressed by
      * <i>originator</i> for TID <i>tid</i>.
      */
-    RecipientAgreementOptConstRef GetBaAgreementEstablishedAsRecipient(Mac48Address originator,
-                                                                       uint8_t tid) const;
+    RecipientAgreementOptConstRef GetBaAgreementEstablishedAsRecipient(
+        Mac48Address originator,
+        uint8_t tid,
+        std::optional<Mac48Address> gcrGroupAddr = std::nullopt) const;
 
     /**
      * @param recipient MAC address
@@ -1225,6 +1245,8 @@ class WifiMac : public Object
     uint32_t m_frameRetryLimit; //!< the frame retry limit
 
     UniformRandomBitGenerator m_shuffleLinkIdsGen; //!< random number generator to shuffle link IDs
+
+    bool m_robustAVStreamingSupported; ///< flag whether robust AV streaming is supported
 
     /// @brief DL TID-to-Link Mapping negotiated with an MLD (identified by its MLD address)
     std::unordered_map<Mac48Address, WifiTidLinkMapping, WifiAddressHash> m_dlTidLinkMappings;

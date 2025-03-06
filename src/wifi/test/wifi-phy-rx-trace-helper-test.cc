@@ -24,6 +24,7 @@
 #include "ns3/packet-socket-helper.h"
 #include "ns3/packet-socket-server.h"
 #include "ns3/pointer.h"
+#include "ns3/propagation-loss-model.h"
 #include "ns3/rng-seed-manager.h"
 #include "ns3/simple-frame-capture-model.h"
 #include "ns3/single-model-spectrum-channel.h"
@@ -43,7 +44,6 @@
 #include "ns3/wifi-utils.h"
 #include "ns3/yans-wifi-channel.h"
 #include "ns3/yans-wifi-phy.h"
-#include <ns3/propagation-loss-model.h>
 
 #include <optional>
 
@@ -1916,12 +1916,12 @@ TestWifiPhyRxTraceHelperYans::SendPpduWithTwoMpdus(dBm_u rxPower,
     mpduList.emplace_back(Create<WifiMpdu>(p2, hdr2));
 
     auto psdu = Create<WifiPsdu>(mpduList);
-    auto ppdu =
-        Create<HePpdu>(psdu,
-                       txVector,
-                       tx_phy->GetOperatingChannel(),
-                       tx_phy->CalculateTxDuration(psdu->GetSize(), txVector, tx_phy->GetPhyBand()),
-                       m_uid);
+    auto ppdu = Create<HePpdu>(
+        psdu,
+        txVector,
+        tx_phy->GetOperatingChannel(),
+        YansWifiPhy::CalculateTxDuration(psdu->GetSize(), txVector, tx_phy->GetPhyBand()),
+        m_uid);
 
     m_uid++;
 
@@ -1955,12 +1955,12 @@ TestWifiPhyRxTraceHelperYans::SendPpduWithOneMpdu(dBm_u rxPower,
     mpduList.emplace_back(Create<WifiMpdu>(p1, hdr1));
 
     auto psdu = Create<WifiPsdu>(mpduList);
-    auto ppdu =
-        Create<HePpdu>(psdu,
-                       txVector,
-                       tx_phy->GetOperatingChannel(),
-                       tx_phy->CalculateTxDuration(psdu->GetSize(), txVector, tx_phy->GetPhyBand()),
-                       m_uid);
+    auto ppdu = Create<HePpdu>(
+        psdu,
+        txVector,
+        tx_phy->GetOperatingChannel(),
+        YansWifiPhy::CalculateTxDuration(psdu->GetSize(), txVector, tx_phy->GetPhyBand()),
+        m_uid);
 
     m_uid++;
 

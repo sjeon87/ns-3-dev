@@ -7,17 +7,17 @@
  *  Alberto Gallegos Ramonet <alramonet@is.tokushima-u.ac.jp>
  */
 
-#include <ns3/constant-position-mobility-model.h>
-#include <ns3/core-module.h>
-#include <ns3/log.h>
-#include <ns3/lr-wpan-module.h>
-#include <ns3/packet.h>
-#include <ns3/propagation-delay-model.h>
-#include <ns3/propagation-loss-model.h>
-#include <ns3/rng-seed-manager.h>
-#include <ns3/simulator.h>
-#include <ns3/single-model-spectrum-channel.h>
-#include <ns3/zigbee-module.h>
+#include "ns3/constant-position-mobility-model.h"
+#include "ns3/core-module.h"
+#include "ns3/log.h"
+#include "ns3/lr-wpan-module.h"
+#include "ns3/packet.h"
+#include "ns3/propagation-delay-model.h"
+#include "ns3/propagation-loss-model.h"
+#include "ns3/rng-seed-manager.h"
+#include "ns3/simulator.h"
+#include "ns3/single-model-spectrum-channel.h"
+#include "ns3/zigbee-module.h"
 
 #include <iomanip>
 #include <iostream>
@@ -134,8 +134,7 @@ ZigbeeRreqRetryTestCase::NwkNetworkDiscoveryConfirm(ZigbeeRreqRetryTestCase* tes
     }
     else
     {
-        NS_ABORT_MSG(
-            "Unable to discover networks | status: " << static_cast<uint32_t>(params.m_status));
+        NS_ABORT_MSG("Unable to discover networks | status: " << params.m_status);
     }
 }
 
@@ -294,7 +293,7 @@ ZigbeeRreqRetryTestCase::DoRun()
     netFormParams.m_beaconOrder = 15;
 
     Simulator::ScheduleWithContext(zstack0->GetNode()->GetId(),
-                                   Seconds(1.0),
+                                   Seconds(1),
                                    &ZigbeeNwk::NlmeNetworkFormationRequest,
                                    zstack0->GetNwk(),
                                    netFormParams);
@@ -308,7 +307,7 @@ ZigbeeRreqRetryTestCase::DoRun()
     netDiscParams.m_scanChannelList.channelsField[0] = 0x00007800; // 0x00000800;
     netDiscParams.m_scanDuration = 2;
     Simulator::ScheduleWithContext(zstack1->GetNode()->GetId(),
-                                   Seconds(3.0),
+                                   Seconds(3),
                                    &ZigbeeNwk::NlmeNetworkDiscoveryRequest,
                                    zstack1->GetNwk(),
                                    netDiscParams);
@@ -318,7 +317,7 @@ ZigbeeRreqRetryTestCase::DoRun()
     netDiscParams2.m_scanChannelList.channelsField[0] = 0x00007800; // 0x00000800;
     netDiscParams2.m_scanDuration = 2;
     Simulator::ScheduleWithContext(zstack2->GetNode()->GetId(),
-                                   Seconds(4.0),
+                                   Seconds(4),
                                    &ZigbeeNwk::NlmeNetworkDiscoveryRequest,
                                    zstack2->GetNwk(),
                                    netDiscParams2);

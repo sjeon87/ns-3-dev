@@ -6,25 +6,25 @@
  * Author: Nicola Baldo <nbaldo@cttc.es>
  */
 
-#include <ns3/adhoc-aloha-noack-ideal-phy-helper.h>
-#include <ns3/applications-module.h>
-#include <ns3/core-module.h>
-#include <ns3/friis-spectrum-propagation-loss.h>
-#include <ns3/ism-spectrum-value-helper.h>
-#include <ns3/log.h>
-#include <ns3/microwave-oven-spectrum-value-helper.h>
-#include <ns3/mobility-module.h>
-#include <ns3/multi-model-spectrum-channel.h>
-#include <ns3/network-module.h>
-#include <ns3/non-communicating-net-device.h>
-#include <ns3/propagation-delay-model.h>
-#include <ns3/spectrum-analyzer-helper.h>
-#include <ns3/spectrum-analyzer.h>
-#include <ns3/spectrum-helper.h>
-#include <ns3/spectrum-model-300kHz-300GHz-log.h>
-#include <ns3/spectrum-model-ism2400MHz-res1MHz.h>
-#include <ns3/waveform-generator-helper.h>
-#include <ns3/waveform-generator.h>
+#include "ns3/adhoc-aloha-noack-ideal-phy-helper.h"
+#include "ns3/applications-module.h"
+#include "ns3/core-module.h"
+#include "ns3/friis-spectrum-propagation-loss.h"
+#include "ns3/ism-spectrum-value-helper.h"
+#include "ns3/log.h"
+#include "ns3/microwave-oven-spectrum-value-helper.h"
+#include "ns3/mobility-module.h"
+#include "ns3/multi-model-spectrum-channel.h"
+#include "ns3/network-module.h"
+#include "ns3/non-communicating-net-device.h"
+#include "ns3/propagation-delay-model.h"
+#include "ns3/spectrum-analyzer-helper.h"
+#include "ns3/spectrum-analyzer.h"
+#include "ns3/spectrum-helper.h"
+#include "ns3/spectrum-model-300kHz-300GHz-log.h"
+#include "ns3/spectrum-model-ism2400MHz-res1MHz.h"
+#include "ns3/waveform-generator-helper.h"
+#include "ns3/waveform-generator.h"
 
 #include <iostream>
 #include <string>
@@ -255,7 +255,7 @@ main(int argc, char** argv)
 
     SpectrumAnalyzerHelper spectrumAnalyzerHelper;
     spectrumAnalyzerHelper.SetChannel(channel);
-    spectrumAnalyzerHelper.SetRxSpectrumModel(SpectrumModelIsm2400MhzRes1Mhz);
+    spectrumAnalyzerHelper.SetRxSpectrumModel(SpectrumModelIsm2400MhzRes1Mhz());
     spectrumAnalyzerHelper.SetPhyAttribute("Resolution", TimeValue(MilliSeconds(2)));
     spectrumAnalyzerHelper.SetPhyAttribute("NoisePowerSpectralDensity",
                                            DoubleValue(1e-15)); // -120 dBm/Hz

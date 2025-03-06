@@ -6,6 +6,7 @@
  * Author: Sébastien Deronne <sebastien.deronne@gmail.com>
  */
 
+#include "ns3/attribute-container.h"
 #include "ns3/config.h"
 #include "ns3/eht-configuration.h"
 #include "ns3/fcfs-wifi-queue-scheduler.h"
@@ -36,7 +37,6 @@
 #include "ns3/wifi-psdu.h"
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/yans-wifi-phy.h"
-#include <ns3/attribute-container.h>
 
 #include <algorithm>
 #include <iterator>
@@ -225,6 +225,7 @@ AmpduAggregationTest::DoSetup()
     m_device->SetMac(m_mac);
     m_mac->SetWifiPhys(m_phys);
     std::vector<Ptr<ChannelAccessManager>> caManagers;
+    caManagers.reserve(m_params.nLinks);
     for (uint8_t i = 0; i < m_params.nLinks; i++)
     {
         caManagers.emplace_back(CreateObject<ChannelAccessManager>());
