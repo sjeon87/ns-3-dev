@@ -67,9 +67,7 @@ class Metric
             return newCost;
         };
         m_loopFree = [](const uint8_t* r1, const uint8_t* r2) {
-            double cost1 = static_cast<double>(r1[0]);
-            double cost2 = static_cast<double>(r2[0]);
-            return cost1 <= cost2;
+            return r1[0] <= r2[0];
         };
     }
 
@@ -78,21 +76,22 @@ class Metric
      * @param metricType The type of metric to use.
      * @param metricSize The size of the metric type.
      * @param maxMetric The maximum value for the metric type.
-     * @param linkCost Function to determine the cost of an incoming link.
-     * @param routeCost Function to determine the cost of a route.
+     * @param LinkCost Function to determine the cost of an incoming link.
+     * @param RouteCost Function to determine the cost of a route.
+     * @param LoopFree Function to determine the loop free.
      */
     Metric(uint8_t metricType,
            uint8_t metricSize,
            uint32_t maxMetric,
-           std::function<uint8_t*(const MetricNode&)> linkCost,
-           std::function<uint8_t*(const uint8_t*, const MetricNode&)> routeCost,
-           std::function<bool(const uint8_t*, const uint8_t*)> loopFree)
+           std::function<uint8_t*(const MetricNode&)> LinkCost,
+           std::function<uint8_t*(const uint8_t*, const MetricNode&)> RouteCost,
+           std::function<bool(const uint8_t*, const uint8_t*)> LoopFree)
         : m_metricType(metricType),
           m_metricSize(metricSize),
           m_maxMetric(maxMetric),
-          m_linkCost(linkCost),
-          m_routeCost(routeCost),
-          m_loopFree(loopFree)
+          m_linkCost(LinkCost),
+          m_routeCost(RouteCost),
+          m_loopFree(LoopFree)
     {
     }
 
@@ -137,7 +136,7 @@ class Metric
      * @param currentNode The current node.
      * @return The cost of the incoming link.
      */
-    uint8_t* linkCost(const MetricNode currentNode) const
+    uint8_t* LinkCost(const MetricNode currentNode) const
     {
         return m_linkCost(currentNode);
     }
@@ -148,7 +147,7 @@ class Metric
      * @param currentNode The current node.
      * @return The cost of the route.
      */
-    uint8_t* routeCost(const uint8_t* routeCost, const MetricNode& currentNode) const
+    uint8_t* RouteCost(const uint8_t* routeCost, const MetricNode& currentNode) const
     {
         return m_routeCost(routeCost, currentNode);
     }

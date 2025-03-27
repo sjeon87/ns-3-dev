@@ -717,7 +717,7 @@ Aodvv2RoutingProtocol<T>::SetIpv4(Ptr<Ipv4> ipv4)
                  Simulator::GetMaximumSimulationTime(),
                  m_maxIdleTime,
                  metric,
-                 metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
+                 metric.LinkCost(GetMetricNode(m_ip->template GetObject<Node>())));
              m_routingTable.AddRoute(rt);
          } */
         Simulator::ScheduleNow(&Aodvv2RoutingProtocol<T>::Start, this);
@@ -1117,7 +1117,9 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
             rt.SetHop(hops);
             rt.SetState(UNCONFIRMED);
             rt.SetLastUsed();
-            rreqHeader.AddMetric(rt.GetMetricType(), rt.GetMetricValue(), rt.GetMetricSize());
+            rreqHeader.AddMetric(metric.GetMetricType(),
+                                 metric.LinkCost(GetMetricNode(m_ip->template GetObject<Node>())),
+                                 metric.GetMetricSize());
             m_routingTable.Update(rt);
         }
         else
@@ -1135,7 +1137,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
-                    metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
+                    metric.LinkCost(GetMetricNode(m_ip->template GetObject<Node>())));
 
                 newEntry.SetState(UNCONFIRMED);
                 rreqHeader.AddMetric(newEntry.GetMetricType(),
@@ -1172,7 +1174,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
                 m_seqNo,
                 iface,
                 GetMetric(type),
-                GetMetric(type).linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
+                GetMetric(type).LinkCost(GetMetricNode(m_ip->template GetObject<Node>())));
         }
 
         Ptr<Packet> packet = Create<Packet>();
@@ -1441,7 +1443,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                 /*maxIdleTime=*/m_maxIdleTime,
                 /*metric=*/metric,
                 /*metricValue=*/
-                metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
+                metric.LinkCost(GetMetricNode(m_ip->template GetObject<Node>())));
             m_routingTable.AddRoute(newEntry);
         }
     }
@@ -1471,7 +1473,7 @@ Aodvv2RoutingProtocol<T>::UpdateRouteToNeighbor(IpAddress sender, IpAddress rece
                     /*maxIdleTime=*/m_maxIdleTime,
                     /*metric=*/metric,
                     /*metricValue=*/
-                    metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())));
+                    metric.LinkCost(GetMetricNode(m_ip->template GetObject<Node>())));
                 m_routingTable.Update(newEntry);
             }
         }
@@ -1620,7 +1622,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         }
 
         rreqHeader.AddMetric(metric.GetMetricType(),
-                             metric.routeCost(rreqHeader.GetMetricValue(metric.GetMetricType()),
+                             metric.RouteCost(rreqHeader.GetMetricValue(metric.GetMetricType()),
                                               GetMetricNode(m_ip->template GetObject<Node>())),
                              metric.GetMetricSize());
     }
@@ -1788,7 +1790,7 @@ Aodvv2RoutingProtocol<T>::SendReply(const RreqHeader<IpAddress>& rreqHeader,
         Metric<IpAddress> metric = GetMetric(type);
 
         rrepHeader.AddMetric(metric.GetMetricType(),
-                             metric.linkCost(GetMetricNode(m_ip->template GetObject<Node>())),
+                             metric.LinkCost(GetMetricNode(m_ip->template GetObject<Node>())),
                              metric.GetMetricSize());
     }
 
@@ -1960,7 +1962,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         }
 
         rrepHeader.AddMetric(metric.GetMetricType(),
-                             metric.routeCost(rrepHeader.GetMetricValue(metric.GetMetricType()),
+                             metric.RouteCost(rrepHeader.GetMetricValue(metric.GetMetricType()),
                                               GetMetricNode(m_ip->template GetObject<Node>())),
                              metric.GetMetricSize());
 
