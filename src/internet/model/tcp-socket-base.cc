@@ -289,12 +289,6 @@ TcpSocketBase::GetTypeId()
     return tid;
 }
 
-TypeId
-TcpSocketBase::GetInstanceTypeId() const
-{
-    return TcpSocketBase::GetTypeId();
-}
-
 TcpSocketBase::TcpSocketBase()
     : TcpSocket()
 {
@@ -2255,9 +2249,9 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
 
                 m_tcb->m_cWndInfl = m_tcb->m_cWnd;
 
-                NS_LOG_LOGIC("Congestion control called: "
-                             << " cWnd: " << m_tcb->m_cWnd << " ssTh: " << m_tcb->m_ssThresh
-                             << " segsAcked: " << segsAcked);
+                NS_LOG_LOGIC("Congestion control called: cWnd: " << m_tcb->m_cWnd
+                                                                 << " ssTh: " << m_tcb->m_ssThresh
+                                                                 << " segsAcked: " << segsAcked);
 
                 NewAck(ackNumber, true);
             }

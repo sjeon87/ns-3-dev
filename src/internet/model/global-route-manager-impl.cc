@@ -129,11 +129,9 @@ SPFVertex::~SPFVertex()
         uint32_t orgCount = (*piter)->m_children.size();
         (*piter)->m_children.remove(this);
         uint32_t newCount = (*piter)->m_children.size();
-        if (orgCount > newCount)
-        {
-            NS_ASSERT_MSG(orgCount > newCount,
-                          "Unable to find the current vertex from its parents --- impossible!");
-        }
+
+        NS_ASSERT_MSG(orgCount > newCount,
+                      "Unable to find the current vertex from its parents --- impossible!");
     }
 
     // delete children
@@ -749,6 +747,7 @@ GlobalRouteManagerImpl::SPFNext(SPFVertex* v, CandidateQueue& candidate)
         numRecordsInVertex = v->GetLSA()->GetNAttachedRouters();
     }
 
+    // Loop over the links in V's LSA
     for (uint32_t i = 0; i < numRecordsInVertex; i++)
     {
         // Get w_lsa:  In case of V is Router-LSA
@@ -864,9 +863,7 @@ GlobalRouteManagerImpl::SPFNext(SPFVertex* v, CandidateQueue& candidate)
             }
             else
             {
-                NS_ASSERT_MSG(0,
-                              "SPFNexthopCalculation never "
-                                  << "return false, but it does now!");
+                NS_ASSERT_MSG(0, "SPFNexthopCalculation never return false, but it does now!");
             }
         }
         else if (w_lsa->GetStatus() == GlobalRoutingLSA::LSA_SPF_CANDIDATE)
@@ -943,9 +940,9 @@ GlobalRouteManagerImpl::SPFNext(SPFVertex* v, CandidateQueue& candidate)
                     //
                     candidate.Reorder();
                 }
-            } // new lower cost path found
-        }     // end W is already on the candidate list
-    }         // end loop over the links in V's LSA
+            }
+        }
+    }
 }
 
 //
@@ -1051,7 +1048,7 @@ GlobalRouteManagerImpl::SPFNexthopCalculation(SPFVertex* v,
                                           << " goes through next hop " << nextHop
                                           << " via outgoing interface " << outIf
                                           << " with distance " << distance);
-        } // end W is a router vertes
+        }
         else
         {
             NS_ASSERT(w->GetVertexType() == SPFVertex::VertexNetwork);
@@ -1071,7 +1068,7 @@ GlobalRouteManagerImpl::SPFNexthopCalculation(SPFVertex* v,
                                           << " with distance " << distance);
             return 1;
         }
-    } // end v is the root
+    }
     else if (v->GetVertexType() == SPFVertex::VertexNetwork)
     {
         // See if any of v's parents are the root
@@ -1457,8 +1454,7 @@ GlobalRouteManagerImpl::SPFCalculate(Ipv4Address root)
         //
         // Iterate the algorithm by returning to Step 2 until there are no more
         // candidate vertices.
-
-    } // end for loop
+    }
 
     // Second stage of SPF calculation procedure
     SPFProcessStubs(m_spfroot);
@@ -1631,7 +1627,7 @@ GlobalRouteManagerImpl::SPFAddASExternal(GlobalRoutingLSA* extlsa, SPFVertex* v)
             }
         }
         return;
-    } // for
+    }
 }
 
 // Processing logic from RFC 2328, page 166 and quagga ospf_spf_process_stubs ()
@@ -1794,8 +1790,8 @@ GlobalRouteManagerImpl::SPFIntraAddStub(GlobalRoutingLinkRecord* l, SPFVertex* v
                 }
             }
             return;
-        } // if
-    }     // for
+        }
+    }
 }
 
 //
@@ -2023,7 +2019,7 @@ GlobalRouteManagerImpl::SPFIntraAddRouter(SPFVertex* v)
                                            << " using next hop " << nextHop
                                            << " since outgoing interface id is negative " << outIf);
                 }
-            } // for all routes from the root the vertex 'v'
+            }
         }
         //
         // Done adding the routes for the selected node.
