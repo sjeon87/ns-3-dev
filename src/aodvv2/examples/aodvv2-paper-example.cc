@@ -13,13 +13,11 @@
  #include "ns3/aodvv2-metric.h"
  #include "ns3/aodvv2-module.h"
  #include "ns3/core-module.h"
- #include "ns3/energy-module.h"
  #include "ns3/internet-module.h"
  #include "ns3/mobility-module.h"
  #include "ns3/network-module.h"
  #include "ns3/ping-helper.h"
  #include "ns3/point-to-point-module.h"
- #include "ns3/wifi-radio-energy-model-helper.h"
  #include "ns3/yans-wifi-helper.h"
  
  #include <cmath>
@@ -27,7 +25,6 @@
  #include <iostream>
  
  using namespace ns3;
- using namespace ns3::energy;
  
  /**
   * @defgroup aodvv2-examples AODVv2 Examples
@@ -104,10 +101,6 @@
      NetDeviceContainer devices;
      /// interfaces used in the example
      Ipv4InterfaceContainer interfaces;
-     /// Energy models
-     DeviceEnergyModelContainer energyModels;
-     /// Energy sources
-     EnergySourceContainer energySources;
      /// Adjacency matrix
      std::vector<std::vector<int>> adjacencyMatrix;
      /// Map of nodes and their corresponding MetricNode
@@ -326,11 +319,7 @@
                                   "RtsCtsThreshold",
                                   UintegerValue(0));
      devices = wifi.Install(wifiPhy, wifiMac, nodes);
- 
-     WifiRadioEnergyModelHelper radioEnergyHelper;
-     radioEnergyHelper.Set("TxCurrentA", DoubleValue(0.0174));
-     energyModels = radioEnergyHelper.Install(devices, energySources);
- 
+
      if (pcap)
      {
          wifiPhy.EnablePcapAll(std::string(routingProtocol + "-e2"));
