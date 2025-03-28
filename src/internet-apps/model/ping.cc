@@ -22,6 +22,7 @@
 #include "ns3/icmpv6-header.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/ipv4-address.h"
+#include "ns3/ipv4.h"
 #include "ns3/ipv6-extension-header.h"
 #include "ns3/ipv6-header.h"
 #include "ns3/ipv6-l3-protocol.h"
@@ -120,6 +121,10 @@ Ping::GetTypeId()
 Ping::Ping()
 {
     NS_LOG_FUNCTION(this);
+    std::ofstream file;
+    file.open("output-ping.csv");
+    file << "source,destination,rtt\n";
+    file.close();
 }
 
 Ping::~Ping()
@@ -237,6 +242,14 @@ Ping::Receive(Ptr<Socket> socket)
                         {
                             std::cout << " (DUP!)";
                         }
+
+                        std::ofstream file;
+                        file.open("output-ping.csv", std::ios_base::app);
+                        file << GetNode()->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal() << ","
+                             << realFrom.GetIpv4() << "," << delta.GetMicroSeconds() / 1000.0
+                             << "\n";
+                        file.close();
+
                         std::cout << "\n";
                     }
                 }

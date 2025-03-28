@@ -50,3 +50,7 @@ vcpkg/
 
 # Ignore local cache used by e.g. clangd
 .cache/
+
+src/aodvv2/uml
+_networks/
+output-*

@@ -170,6 +170,11 @@ RoutingProtocol::RoutingProtocol()
       m_lastBcastTime()
 {
     m_nb.SetCallback(MakeCallback(&RoutingProtocol::SendRerrWhenBreaksLinkToNextHop, this));
+
+    std::ofstream file;
+    file.open("output-packets.csv");
+    file << "type,size\n";
+    file.close();
 }
 
 TypeId
@@ -1316,6 +1321,8 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
     RreqHeader rreqHeader;
     p->RemoveHeader(rreqHeader);
 
+    SavePacketData("RREQ", rreqHeader.GetSerializedSize() + 1);
+
     // A node ignores all RREQs received from any node in its blacklist
     RoutingTableEntry toPrev;
     if (m_routingTable.LookupRoute(src, toPrev))
@@ -1635,6 +1642,7 @@ RoutingProtocol::RecvReply(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address send
     NS_LOG_FUNCTION(this << " src " << sender);
     RrepHeader rrepHeader;
     p->RemoveHeader(rrepHeader);
+    SavePacketData("RREP", rrepHeader.GetSerializedSize() + 1);
     Ipv4Address dst = rrepHeader.GetDst();
     NS_LOG_LOGIC("RREP destination " << dst << " RREP origin " << rrepHeader.GetOrigin());
 
@@ -1774,6 +1782,7 @@ RoutingProtocol::RecvReplyAck(Ipv4Address neighbor)
 {
     NS_LOG_FUNCTION(this);
     RoutingTableEntry rt;
+    SavePacketData("RREP_ACK", 1 + 1);
     if (m_routingTable.LookupRoute(neighbor, rt))
     {
         rt.m_ackTimer.Cancel();
@@ -1831,6 +1840,7 @@ RoutingProtocol::RecvError(Ptr<Packet> p, Ipv4Address src)
     NS_LOG_FUNCTION(this << " from " << src);
     RerrHeader rerrHeader;
     p->RemoveHeader(rerrHeader);
+    SavePacketData("RERR", rerrHeader.GetSerializedSize() + 1);
     std::map<Ipv4Address, uint32_t> dstWithNextHopSrc;
     std::map<Ipv4Address, uint32_t> unreachable;
     m_routingTable.GetListOfDestinationWithNextHop(src, dstWithNextHopSrc);
@@ -1881,6 +1891,15 @@ RoutingProtocol::RecvError(Ptr<Packet> p, Ipv4Address src)
         SendRerrMessage(packet, precursors);
     }
     m_routingTable.InvalidateRoutesWithDst(unreachable);
+}
+
+void
+RoutingProtocol::SavePacketData(std::string type, uint32_t size)
+{
+    std::ofstream file;
+    file.open("output-packets.csv", std::ios_base::app);
+    file << type << "," << size << std::endl;
+    file.close();
 }
 
 void
