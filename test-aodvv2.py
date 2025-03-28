@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 folder_path = "_networks/"
-protocols = ["aodv", "aodvv2", "aodvv2-multi"]
+protocols = ["aodv", "aodvv2"]
 packet_types = ["RREQ", "RREP", "RERR", "RREP_ACK"]
 colors = [
     "#e60049",
@@ -122,6 +122,16 @@ def run_networks():
     if not [f for f in os.listdir(folder_path) if f.endswith(".csv")]:
         print("No networks to run!")
         return
+    
+    if not os.path.exists(input_route_path):
+        with open(input_route_path, "w") as file:
+            pass
+    if not os.path.exists(input_ping_path):
+        with open(input_ping_path, "w") as file:
+            pass
+    if not os.path.exists(input_packets_path):
+        with open(input_packets_path, "w") as file:
+            pass
 
     for protocol in protocols:
         if os.path.exists(output_path.replace("{protocol}", protocol)):
