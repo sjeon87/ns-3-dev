@@ -1,3 +1,15 @@
+""" README
+This script provides utilities for testing and comparing AODV and AODVv2 routing protocols in NS-3.
+It includes some utilities for creating networks, running simulations and generating statistics.
+It also includes functions for plotting results and saving them to CSV files, as shown in the paper.
+
+To obtain the same results as in the paper, run the packet rate comparison:
+- once as it is
+- once disabling mac->TraceConnectWithoutContext("DroppedMpdu")... inside aodv/aodvv2-routing-protocol.cc
+
+To obtain the same results as in the paper, run the RTT comparison and wait.
+"""
+
 import os
 import sys
 import termios
@@ -61,8 +73,7 @@ def menu():
         "1": create_networks,
         "2": run_networks,
         "3": get_output_stats,
-        "4": save_first_rtt,
-        "q": save_aodvv2_uml,
+        "q": save_first_rtt,
         "w": plot_rtt_comparison,
         "e": save_throughput_comparison,
         "0": clean_folder,
@@ -74,12 +85,9 @@ def menu():
         print("1: Create networks")
         print("2: Run networks")
         print("3: Get output stats")
-        print("------------------------------------")
-        print("4: Run RTT comparison")
 
         print("\n\033[1mGRAPHS\033[0m")
-        print("q: Save aodvv2 uml")
-        print("------------------------------------")
+        print("q: Run RTT comparison")
         print("w: Save RTT comparison")
         print("e: Save packet rate comparison")
 
@@ -645,17 +653,6 @@ def plot_remaining_nodes(initial_nodes=None):
     plt.grid(True)
     plt.savefig(f"output-remaining_nodes.pdf")
     plt.close()
-
-
-def save_aodvv2_uml():
-    if not os.path.exists("src/aodvv2/uml"):
-        os.makedirs("src/aodvv2/uml")
-
-    for file in os.listdir("src/aodvv2/model"):
-        if file.endswith(".h"):
-            os.system(
-                f"hpp2plantuml -i src/aodvv2/model/{file} -o src/aodvv2/uml/{file.replace('.h','.puml')}"
-            )
 
 
 def save_stats(protocol):
