@@ -68,8 +68,6 @@ def menu():
         "q": save_aodvv2_uml,
         "w": plot_rtt_comparison,
         "e": save_throughput_comparison,
-        "r": save_battery_comparison,
-        "t": save_network_lifetime_comparison,
         "0": clean_folder,
     }
 
@@ -87,8 +85,6 @@ def menu():
         print("------------------------------------")
         print("w: Save RTT comparison")
         print("e: Save packet rate comparison")
-        print("r: Save battery comparison")
-        print("t: Save network lifetime comparison")
 
         print("\n0: Clean folder")
         print("ESC: Exit")
@@ -162,7 +158,7 @@ def run_networks():
 
         for protocol in protocols:
             os.system(
-                "./ns3 run src/aodvv2/examples/aodvv2-multi-example.cc -- --pcap='false' --topologyFile="
+                "./ns3 run src/aodvv2/examples/aodvv2-paper-example.cc -- --pcap='false' --topologyFile="
                 + file_path
                 + " --resultFile="
                 + output_path.replace("{protocol}", protocol)
@@ -487,6 +483,10 @@ def save_first_rtt():
     n_networks = 50
     n_nodes = [5, 10, 20, 30, 40, 50]
 
+    if not os.path.exists("output-run.csv"):
+        with open("output-run.csv", "w") as file:
+            pass
+
     with open("output-run.csv", "w") as csvfile:
         csvfile.write(
             "n_node,protocol,first_rtt,min_rtt,max_rtt,avg_rtt,var_frtt_low,var_frtt_high,var_rtt_low,var_rtt_high\n"
@@ -511,119 +511,6 @@ def save_first_rtt():
                 )
 
 
-def save_battery_comparison():
-    size = 4
-    remaining_nodes_map = {x: {} for x in range(size)}
-
-    for i, protocol in enumerate(protocols):
-        os.system(
-            "./ns3 run src/aodvv2/examples/aodvv2-battery-example.cc -- --pcap='false' --routingProtocol="
-            + protocol
-            + " --size="
-            + str(size)
-            + " --time=1000"
-        )
-
-        index = 0
-        with open(input_rem_nodes_path, "r") as file:
-            lines = file.readlines()[1:]
-            for i, line in enumerate(lines):
-                if line == "-,-\n":
-                    index = 0
-                else:
-                    current_battery, throughput = line.strip().split(",")
-                    if protocol not in remaining_nodes_map[index]:
-                        remaining_nodes_map[index][protocol] = {}
-                    if "current_battery" not in remaining_nodes_map[index][protocol]:
-                        remaining_nodes_map[index][protocol]["current_battery"] = []
-                        remaining_nodes_map[index][protocol]["throughput"] = []
-                    remaining_nodes_map[index][protocol]["current_battery"].append(
-                        float(current_battery)
-                    )
-                    remaining_nodes_map[index][protocol]["throughput"].append(
-                        float(throughput) / 1000
-                    )
-                    index += 1
-
-    num_nodes = len(remaining_nodes_map)
-    n_rows = 2
-    fig, axs = plt.subplots(n_rows, num_nodes, figsize=(num_nodes * 6, n_rows * 6))
-
-    min_last_battery = min(
-        [
-            remaining_nodes_map[n][protocol]["current_battery"][-1]
-            for n in remaining_nodes_map
-            for protocol in protocols
-        ]
-    )
-    for i, node in enumerate(remaining_nodes_map):
-        ax = axs[0, i]
-        for j, protocol in enumerate(protocols):
-            if protocol in remaining_nodes_map[node]:
-                ax.plot(
-                    range(len(remaining_nodes_map[node][protocol]["current_battery"])),
-                    remaining_nodes_map[node][protocol]["current_battery"],
-                    label=protocol,
-                    color=colors[j],
-                )
-        ax.set_title(f"Node {node} - Remaining battery", weight="bold")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Battery Level (J)")
-        ax.set_ylim(min_last_battery - 1, 204.5)
-        ax.legend()
-        ax.grid(True)
-
-        ax = axs[1, i]
-
-        for j, protocol in enumerate(protocols):
-            if protocol in remaining_nodes_map[node]:
-                nonzero_x = [
-                    x
-                    for x, thr in enumerate(remaining_nodes_map[node][protocol]["throughput"])
-                    if thr != 0
-                ]
-                nonzero_data = [
-                    thr for thr in remaining_nodes_map[node][protocol]["throughput"] if thr != 0
-                ]
-                ax.scatter(
-                    nonzero_x,
-                    nonzero_data,
-                    label=protocol,
-                    color=colors[j],
-                )
-                ax.plot(
-                    nonzero_x,
-                    nonzero_data,
-                    color=colors[j],
-                )
-
-        ax.set_title(f"Node {node} - Throughput", weight="bold")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Throughput (Kbps)")
-        ax.set_ylim(0, 0.9)
-        ax.legend()
-        ax.grid(True)
-
-    plt.tight_layout()
-    plt.savefig(f"output-remaining_battery.pdf")
-    plt.close()
-
-
-def save_network_lifetime_comparison():
-    size = 4
-
-    for i, protocol in enumerate(protocols):
-        os.system(
-            "./ns3 run src/aodvv2/examples/aodvv2-lifetime-example.cc -- --pcap='false' --routingProtocol="
-            + protocol
-            + " --size="
-            + str(size)
-            + " --time=5000"
-        )
-
-    plot_remaining_nodes(4)
-
-
 def save_throughput_comparison():
     for protocol in protocols:
         os.system(
@@ -636,6 +523,11 @@ def save_throughput_comparison():
 
 def plot_rtt_comparison():
     results = {}
+
+    if not os.path.exists("output-run.csv"):
+        with open("output-run.csv", "w") as file:
+            pass
+
     with open("output-run.csv", "r") as file:
         lines = file.readlines()[1:]
         for line in lines:
