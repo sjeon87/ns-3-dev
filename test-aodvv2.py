@@ -1,4 +1,4 @@
-""" README
+"""README
 This script provides utilities for testing and comparing AODV and AODVv2 routing protocols in NS-3.
 It includes some utilities for creating networks, running simulations and generating statistics.
 It also includes functions for plotting results and saving them to CSV files, as shown in the paper.
@@ -123,7 +123,7 @@ def run_networks():
     if not [f for f in os.listdir(folder_path) if f.endswith(".csv")]:
         print("No networks to run!")
         return
-    
+
     if not os.path.exists(input_route_path):
         with open(input_route_path, "w") as file:
             pass
