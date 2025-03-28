@@ -101,6 +101,10 @@ class NeighborSet
      */
     Time GetTimeout(T addr);
     /**
+     * Set state for neighbor node with address addr.
+     */
+    void SetState(T addr, NeighborStates state);
+    /**
      * Return state for neighbor node with address addr.
      * @param addr the IP address of the neighbor node
      * @returns the state for the neighbor node

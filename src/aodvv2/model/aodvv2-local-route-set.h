@@ -238,6 +238,14 @@ class LocalRoute
     }
 
     /**
+     * Set the invalid sequence number
+     */
+    void SetInvalidSeqNo()
+    {
+        m_seqNo = 0;
+    }
+
+    /**
      * Get the valid sequence number
      * @returns the valid sequence number
      */
@@ -686,7 +694,7 @@ class LocalRouteSet
     /// Active interval time for valid routes
     Time m_activeIntervalTime;
     /// Deletion time for invalid routes
-    Time m_badLinkLifetime;
+    Time m_invalidTime;
     /// Invalidation time for unconfirmed routes
     Time m_unconfirmedTime;
     /// list of ARP cached to be used for layer 2 notifications processing

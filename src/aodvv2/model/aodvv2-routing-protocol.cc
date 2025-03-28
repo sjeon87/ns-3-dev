@@ -123,7 +123,7 @@ NS_OBJECT_ENSURE_REGISTERED(DeferredRouteOutputTag);
 //-----------------------------------------------------------------------------
 template <typename T>
 Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
-    : m_discoveryAttemptsMax(3),
+    : m_discoveryAttemptsMax(10),
       m_rrepRetries(2),
       m_maxHopLimit(20),
       m_timeoutBuffer(2),
@@ -134,15 +134,13 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_activeInterval(Seconds(5)),
       m_nodeTraversalTime(MilliSeconds(40)),
       m_netTraversalTime(Seconds(2)),
-      m_pathDiscoveryTime(Time(m_discoveryAttemptsMax * m_netTraversalTime)),
-      m_myRouteTimeout(Time(2 * std::max(m_pathDiscoveryTime, m_activeInterval))),
       m_nextHopWait(m_nodeTraversalTime + MilliSeconds(10)),
       m_rreqWaitTime(Seconds(2)),
       m_rreqHolddownTime(Seconds(10)),
       m_rrepAckSentTimeout(Seconds(1)),
       m_rerrTimeout(Seconds(3)),
-      m_maxIdleTime(Seconds(200)),
-      m_maxBlacklistTime(Seconds(200)),
+      m_maxIdleTime(Seconds(3)),
+      m_maxBlacklistTime(Seconds(5)),
       m_maxSeqnumLifetime(Seconds(300)),
       m_maxQueueLen(64),
       m_maxQueueTime(Seconds(30)),
@@ -163,10 +161,30 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_rrepRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
       m_lastBcastTime(Seconds(0)),
-      m_bidirectionalLinks(false)
+      m_bidirectionalLinks(false),
+      m_resetPeriodically(false)
 {
     m_routingTable.SetCallback(
         MakeCallback(&Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop, this));
+
+    Simulator::Schedule(Seconds(50), &Aodvv2RoutingProtocol<T>::ResetProtocol, this);
+
+    std::ofstream file;
+    file.open("output-packets.csv");
+    file << "type,size\n";
+    file.close();
+}
+
+template <typename T>
+void
+Aodvv2RoutingProtocol<T>::ResetProtocol()
+{
+    if (GetResetPeriodically())
+    {
+        m_routingTable.Clear();
+        m_nb.Clear();
+        Simulator::Schedule(Seconds(50), &Aodvv2RoutingProtocol<T>::ResetProtocol, this);
+    }
 }
 
 template <typename T>
@@ -195,7 +213,7 @@ Aodvv2RoutingProtocol<T>::GetTypeId()
                           MakeUintegerChecker<uint16_t>())
             .AddAttribute("RreqRetries",
                           "Maximum number of retransmissions of RREQ to discover a route",
-                          UintegerValue(2),
+                          UintegerValue(10),
                           MakeUintegerAccessor(&Aodvv2RoutingProtocol<T>::m_discoveryAttemptsMax),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("RreqRateLimit",
@@ -221,39 +239,12 @@ Aodvv2RoutingProtocol<T>::GetTypeId()
                 TimeValue(MilliSeconds(50)),
                 MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_nextHopWait),
                 MakeTimeChecker())
-            .AddAttribute("ActiveRouteTimeout",
-                          "Period of time during which the route is considered to be valid",
-                          TimeValue(Seconds(3)),
-                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_activeInterval),
-                          MakeTimeChecker())
-            .AddAttribute("MyRouteTimeout",
-                          "Value of lifetime field in RREP generating by this node = 2 * "
-                          "max(ActiveRouteTimeout, PathDiscoveryTime)",
-                          TimeValue(Seconds(11.2)),
-                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_myRouteTimeout),
-                          MakeTimeChecker())
-            .AddAttribute("MaxIdleTime",
-                          "Time for which the node is put into the blacklist",
-                          TimeValue(Seconds(5.6)),
-                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_maxIdleTime),
-                          MakeTimeChecker())
-            .AddAttribute("MaxBlacklistTime",
-                          "Time for which the node is removed from the blacklist",
-                          TimeValue(Seconds(15)),
-                          MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_maxBlacklistTime),
-                          MakeTimeChecker())
             .AddAttribute("NetTraversalTime",
                           "Estimate of the average net traversal time = 2 * NodeTraversalTime * "
                           "m_maxHopLimit",
-                          TimeValue(Seconds(2.8)),
+                          TimeValue(Seconds(2)),
                           MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_netTraversalTime),
                           MakeTimeChecker())
-            .AddAttribute(
-                "PathDiscoveryTime",
-                "Estimate of maximum time needed to find route in network = 2 * NetTraversalTime",
-                TimeValue(Seconds(5.6)),
-                MakeTimeAccessor(&Aodvv2RoutingProtocol<T>::m_pathDiscoveryTime),
-                MakeTimeChecker())
             .AddAttribute("MaxQueueLen",
                           "Maximum number of packets that we allow a routing protocol to buffer.",
                           UintegerValue(64),
@@ -331,11 +322,15 @@ template <typename T>
 void
 Aodvv2RoutingProtocol<T>::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 {
-    *stream->GetStream() << "Node: " << m_ip->template GetObject<Node>()->GetId()
-                         << "; IP: " << m_ip->GetAddress(1, 0).GetAddress()
-                         << "; Time: " << Now().As(unit) << ", Local time: "
-                         << m_ip->template GetObject<Node>()->GetLocalTime().As(unit)
-                         << ", AODVv2 Routing table" << std::endl;
+    *stream->GetStream()
+        << "Node: " << m_ip->template GetObject<Node>()->GetId()
+        << "; IP: " << m_ip->GetAddress(1, 0).GetAddress() << "; Time: " << Now().As(unit)
+        << ", Local time: " << m_ip->template GetObject<Node>()->GetLocalTime().As(unit)
+        << ", Battery: "
+        << static_cast<uint16_t>(GetMetricNode(m_ip->template GetObject<Node>()).m_battery)
+        << ", Trust: "
+        << static_cast<uint16_t>(GetMetricNode(m_ip->template GetObject<Node>()).m_trust)
+        << ", AODVv2 Routing table" << std::endl;
 
     m_routingTable.Print(stream, unit);
     m_nb.Print(stream, unit);
@@ -445,8 +440,9 @@ Aodvv2RoutingProtocol<T>::DeferredRouteOutput(Ptr<const Packet> p,
             {
                 if (route.GetState() != UNCONFIRMED)
                 {
-                    NS_LOG_LOGIC("Send packet from queue to " << route.GetNextHop());
-                    SendPacketFromQueue(header.GetDestination(), route.GetRoute());
+                    NS_LOG_LOGIC("Send new RREQ for outbound packet to "
+                                 << header.GetDestination());
+                    SendRequest(header.GetDestination());
                     return;
                 }
             }
@@ -630,8 +626,6 @@ Aodvv2RoutingProtocol<T>::Forwarding(Ptr<const Packet> p,
         LocalRoute<IpAddress> toDst = routes[0];
         if (toDst.IsValid())
         {
-            toDst.SetState(ACTIVE);
-            m_routingTable.Update(toDst);
             Ptr<IpRoute> route = toDst.GetRoute();
             NS_LOG_LOGIC(route->GetSource() << " forwarding to " << dst << " from " << origin
                                             << " packet " << p->GetUid());
@@ -1077,7 +1071,7 @@ Aodvv2RoutingProtocol<T>::SendRequest(IpAddress dst)
 {
     NS_LOG_FUNCTION(this << dst);
     // A node SHOULD NOT originate more than RREQ_RATELIMIT RREQ messages per second.
-    if (m_rreqCount >= m_rreqRateLimit)
+    if (m_rreqCount == m_rreqRateLimit)
     {
         Simulator::Schedule(m_rreqRateLimitTimer.GetDelayLeft() + MicroSeconds(100),
                             &Aodvv2RoutingProtocol<T>::SendRequest,
@@ -1269,21 +1263,24 @@ Aodvv2RoutingProtocol<T>::ScheduleRrepRetry(const RreqHeader<IpAddress>& rreqHea
 
     Time retry;
     std::vector<LocalRoute<IpAddress>> routes;
-    m_routingTable.LookupRoutes(dst, routes);
-    LocalRoute<IpAddress> rt = routes[0];
-    if (rt.GetHop() < m_maxHopLimit)
+    if (m_routingTable.LookupRoutes(dst, routes))
     {
-        retry = m_rrepAckSentTimeout + 2 * m_nodeTraversalTime * (rt.GetHop() + m_timeoutBuffer);
+        LocalRoute<IpAddress> rt = routes[0];
+        if (rt.GetHop() < m_maxHopLimit)
+        {
+            retry =
+                m_rrepAckSentTimeout + 2 * m_nodeTraversalTime * (rt.GetHop() + m_timeoutBuffer);
+        }
+        else
+        {
+            NS_ABORT_MSG_UNLESS(rt.GetRrepCnt() > 0, "Unexpected value for GetRrepCount ()");
+            uint16_t backoffFactor = rt.GetRrepCnt() - 1;
+            NS_LOG_LOGIC("Applying binary exponential backoff factor " << backoffFactor);
+            retry = m_netTraversalTime * (1 << backoffFactor);
+        }
+        m_addressRepTimer[dst].Schedule(retry);
+        NS_LOG_LOGIC("Scheduled RREP retry in " << retry.As(Time::S));
     }
-    else
-    {
-        NS_ABORT_MSG_UNLESS(rt.GetRrepCnt() > 0, "Unexpected value for GetRrepCount ()");
-        uint16_t backoffFactor = rt.GetRrepCnt() - 1;
-        NS_LOG_LOGIC("Applying binary exponential backoff factor " << backoffFactor);
-        retry = m_netTraversalTime * (1 << backoffFactor);
-    }
-    m_addressRepTimer[dst].Schedule(retry);
-    NS_LOG_LOGIC("Scheduled RREP retry in " << retry.As(Time::S));
 }
 
 template <typename T>
@@ -1364,18 +1361,22 @@ Aodvv2RoutingProtocol<T>::RecvAodvv2(Ptr<Socket> socket)
     if (rreqMessages > 0)
     {
         RecvRequest(packet, receiver, sender, tlvHeader);
+        SavePacketData("RREQ", packet->GetSize() + tlvHeader.GetSerializedSize());
     }
     else if (rrepMessages > 0 || (rrepMessages > 0 && rrepAckMessages > 0))
     {
         RecvReply(packet, receiver, sender, tlvHeader);
+        SavePacketData("RREP", packet->GetSize() + tlvHeader.GetSerializedSize());
     }
     else if (rrepAckMessages > 0)
     {
         RecvReplyAck(sender);
+        SavePacketData("RREP_ACK", packet->GetSize() + tlvHeader.GetSerializedSize());
     }
     else if (rerrMessages > 0)
     {
         RecvError(packet, sender, tlvHeader);
+        SavePacketData("RERR", packet->GetSize() + tlvHeader.GetSerializedSize());
     }
 }
 
@@ -1612,6 +1613,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         else
         {
             toNeighbor.SetLastUsed();
+            toNeighbor.SetInvalidSeqNo();
             toNeighbor.SetSeqNo(rreqHeader.GetOrigSeqNo());
             // toNeighbor.SetState(ACTIVE);
             toNeighbor.SetOutputDevice(m_ip->GetNetDevice(m_ip->GetInterfaceForAddress(receiver)));
@@ -1672,7 +1674,7 @@ Aodvv2RoutingProtocol<T>::RecvRequest(Ptr<Packet> p,
         if (((uint16_t(toDst.GetSeqNo()) - uint16_t(rreqHeader.GetSeqNo()) >= 0)) &&
             toDst.GetValidSeqNo())
         {
-            if (toDst.GetState() == ACTIVE)
+            if (toDst.GetState() == ACTIVE && toOrigin.GetNextHop().IsInitialized())
             {
                 m_routingTable.LookupRoute(origin, metric.GetMetricType(), toOrigin);
                 SendReplyByIntermediateNode(toDst, toOrigin);
@@ -1956,10 +1958,7 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
             return;
         }
 
-        if (metric.GetMetricType() == AODVV2_METRIC_HOP)
-        {
-            newEntry.SetHop(rrepHeader.GetMetricValue(metric.GetMetricType())[0]);
-        }
+        newEntry.SetHop(rrepHeader.GetMetricValue(metric.GetMetricType())[0]);
 
         rrepHeader.AddMetric(metric.GetMetricType(),
                              metric.RouteCost(rrepHeader.GetMetricValue(metric.GetMetricType()),
@@ -2039,7 +2038,10 @@ Aodvv2RoutingProtocol<T>::RecvReply(Ptr<Packet> p,
         // Update information about precursors
         if (m_routingTable.LookupRoute(rrepHeader.GetTargIp(), metric.GetMetricType(), toDst))
         {
+            toDst.SetNextHop(sender);
             toDst.InsertPrecursor(toOrigin.GetNextHop());
+            toDst.SetLastUsed();
+            toDst.SetState(ACTIVE);
             m_routingTable.Update(toDst);
 
             std::vector<LocalRoute<IpAddress>> routes;
@@ -2156,6 +2158,7 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
             }
             ++i;
         }
+        m_nb.SetState(i->first, HEARD);
     }
     if (rerrHeader.GetDestCount() != 0)
     {
@@ -2168,6 +2171,16 @@ Aodvv2RoutingProtocol<T>::RecvError(Ptr<Packet> p, IpAddress src, PbbPacket tlvH
 
 template <typename T>
 void
+Aodvv2RoutingProtocol<T>::SavePacketData(std::string type, uint32_t size)
+{
+    std::ofstream file;
+    file.open("output-packets.csv", std::ios_base::app);
+    file << type << "," << size << std::endl;
+    file.close();
+}
+
+template <typename T>
+void
 Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
 {
     NS_LOG_LOGIC(this);
@@ -2176,9 +2189,16 @@ Aodvv2RoutingProtocol<T>::RouteRequestTimerExpire(IpAddress dst)
     {
         for (LocalRoute<IpAddress>& toDst : routes)
         {
-            SendPacketFromQueue(dst, toDst.GetRoute());
-            NS_LOG_LOGIC("route to " << dst << " found");
-            return;
+            if (toDst.GetState() == UNCONFIRMED)
+            {
+                break;
+            }
+            else
+            {
+                SendPacketFromQueue(dst, toDst.GetRoute());
+                NS_LOG_LOGIC("route to " << dst << " found");
+                return;
+            }
         }
     }
     else
@@ -2334,7 +2354,6 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
     std::vector<IpAddress> precursors;
     std::map<IpAddress, UnreachableDst> unreachable;
 
-    // if nextHop is initialized
     if (!nextHop.IsInitialized())
     {
         return;
@@ -2346,6 +2365,7 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         return;
     }
 
+    m_nb.SetState(nextHop, HEARD);
     for (LocalRoute<IpAddress>& toNextHop : routes)
     {
         toNextHop.SetState(INVALID);
@@ -2388,8 +2408,11 @@ Aodvv2RoutingProtocol<T>::SendRerrWhenBreaksLinkToNextHop(IpAddress nextHop)
         packet->AddHeader(rerrHeader);
         SendRerrMessage(packet, precursors);
     }
-    unreachable.insert(
-        std::make_pair(nextHop, UnreachableDst(routes[0].GetSeqNo(), routes[0].GetMetricType())));
+    for (LocalRoute<IpAddress>& route : routes)
+    {
+        unreachable.insert(
+            std::make_pair(nextHop, UnreachableDst(route.GetSeqNo(), route.GetMetricType())));
+    }
     m_routingTable.InvalidateRoutesWithDst(unreachable);
 }
 
@@ -2521,7 +2544,7 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
     std::vector<LocalRoute<IpAddress>> routes;
     for (auto i = precursors.begin(); i != precursors.end(); ++i)
     {
-        if (m_routingTable.LookupValidRoutes(*i, routes))
+        if (m_routingTable.LookupRoutes(*i, routes))
         {
             LocalRoute<IpAddress> toPrecursor = routes[0];
             if (std::find(ifaces.begin(), ifaces.end(), toPrecursor.GetInterface()) == ifaces.end())

@@ -59,6 +59,20 @@ NeighborSet<T>::GetTimeout(T addr)
 }
 
 template <typename T>
+void
+NeighborSet<T>::SetState(T addr, NeighborStates state)
+{
+    for (auto i = m_nb.begin(); i != m_nb.end(); ++i)
+    {
+        if (i->m_neighborAddress == addr)
+        {
+            i->m_state = state;
+            return;
+        }
+    }
+}
+
+template <typename T>
 NeighborStates
 NeighborSet<T>::GetState(T addr)
 {

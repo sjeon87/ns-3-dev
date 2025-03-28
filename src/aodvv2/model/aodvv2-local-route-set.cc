@@ -60,6 +60,7 @@ LocalRoute<T>::LocalRoute(Ptr<NetDevice> dev,
     m_ipRoute->SetGateway(nextHop);
     m_ipRoute->SetSource(m_nextHopIface.GetAddress());
     m_ipRoute->SetOutputDevice(dev);
+    m_lastUsed = Simulator::Now();
     m_prefixLength = 32; // TODO me: update if needed
 }
 
@@ -243,6 +244,13 @@ LocalRoute<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time:
 
     *os << std::setw(16) << expire.str();
     *os << metric.str() << std::endl;
+
+    std::ofstream file;
+    file.open("output-route.csv", std::ios_base::app);
+    file << m_nextHopIface.GetAddress() << "," << m_ipRoute->GetDestination() << "," << m_hops
+         << "\n";
+    file.close();
+
     // Restore the previous ostream state
     (*os).copyfmt(oldState);
 }
@@ -254,13 +262,13 @@ template class LocalRoute<Ipv6Address>;
  The Local Route
  */
 template <typename T>
-LocalRouteSet<T>::LocalRouteSet(Time activeIntervalTime, Time badlinkTime, Time unconfirmedTime)
+LocalRouteSet<T>::LocalRouteSet(Time activeIntervalTime, Time invalidTime, Time unconfirmedTime)
     : m_ntimer(Timer::CANCEL_ON_DESTROY),
       m_activeIntervalTime(activeIntervalTime),
-      m_badLinkLifetime(badlinkTime),
+      m_invalidTime(invalidTime),
       m_unconfirmedTime(unconfirmedTime)
 {
-    m_ntimer.SetDelay(unconfirmedTime);
+    m_ntimer.SetDelay(Seconds(1));
     m_ntimer.SetFunction(&LocalRouteSet<T>::Purge, this);
     m_txErrorCallback = MakeCallback(&LocalRouteSet<T>::ProcessTxError, this);
 }
@@ -396,7 +404,8 @@ LocalRouteSet<T>::Update(LocalRoute<T>& rt)
         if (route.GetDestination() == rt.GetDestination() &&
             route.GetMetricType() == rt.GetMetricType())
         {
-            route.SetSeqNo(std::max(rt.GetSeqNo(), route.GetSeqNo()));
+            rt.SetSeqNo(std::max(rt.GetSeqNo(), route.GetSeqNo()));
+            rt.SetLastUsed();
             route = rt;
             if (route.GetState() != UNCONFIRMED)
             {
@@ -477,7 +486,7 @@ LocalRouteSet<T>::InvalidateRoutesWithDst(const std::map<T, UnreachableDst>& unr
             {
                 NS_LOG_LOGIC("Invalidate route with destination address "
                              << route.GetDestination());
-                route.Invalidate(m_badLinkLifetime);
+                route.Invalidate(m_invalidTime);
             }
         }
     }
@@ -503,41 +512,43 @@ void
 LocalRouteSet<T>::Purge()
 {
     NS_LOG_FUNCTION(this);
-    auto it =
-        std::remove_if(m_ipAddressEntry.begin(),
-                       m_ipAddressEntry.end(),
-                       [this](LocalRoute<T>& route) {
-                           if (route.GetLastUsed() + m_activeIntervalTime < Simulator::Now())
-                           {
-                               if (route.GetState() == ACTIVE)
-                               {
-                                   NS_LOG_LOGIC("Invalidate route with destination address "
-                                                << route.GetDestination());
-                                   route.Invalidate(m_badLinkLifetime);
+    if (m_ipAddressEntry.empty())
+    {
+        return;
+    }
+    auto it = m_ipAddressEntry.begin();
+    while (it != m_ipAddressEntry.end())
+    {
+        if (it->GetLastUsed() + m_activeIntervalTime < Simulator::Now() && it->GetState() == ACTIVE)
+        {
+            it->SetState(IDLE);
+            ++it;
+        }
+        else if (it->GetLastUsed() + it->GetMaxIdleTime() < Simulator::Now() &&
+                 it->GetState() == IDLE)
+        {
+            NS_LOG_LOGIC("Invalidate route with destination address " << it->GetDestination());
+            it->Invalidate(m_invalidTime);
 
-                                   if (!m_handleLinkFailure.IsNull())
-                                   {
-                                       NS_LOG_LOGIC("Close link to " << route.GetNextHop());
-                                       m_handleLinkFailure(route.GetNextHop());
-                                   }
-                               }
-                           }
-                           else if (route.GetLastUsed() + m_unconfirmedTime < Simulator::Now())
-                           {
-                               route.SetSeqNo(0);
-                               if (route.GetState() == UNCONFIRMED)
-                               {
-                                   return true;
-                               }
-                           }
-                           else if (route.GetState() == IDLE &&
-                                    route.GetLastUsed() + route.GetMaxIdleTime() < Simulator::Now())
-                           {
-                               route.SetState(INVALID);
-                           }
-                           return false;
-                       });
-    m_ipAddressEntry.erase(it, m_ipAddressEntry.end());
+            if (!m_handleLinkFailure.IsNull())
+            {
+                NS_LOG_LOGIC("Close link to " << it->GetNextHop());
+                m_handleLinkFailure(it->GetNextHop());
+            }
+            ++it;
+        }
+        else if ((it->GetLastUsed() + m_unconfirmedTime < Simulator::Now() &&
+                  it->GetState() == UNCONFIRMED) ||
+                 (it->GetLastUsed() + m_invalidTime < Simulator::Now() &&
+                  it->GetState() == INVALID))
+        {
+            it = m_ipAddressEntry.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
     m_ntimer.Cancel();
     m_ntimer.Schedule();
 }
@@ -558,7 +569,7 @@ LocalRouteSet<T>::PurgeTable(std::vector<LocalRoute<T>>& table) const
             {
                 NS_LOG_LOGIC("Invalidate route with destination address "
                              << route.GetDestination());
-                route.Invalidate(m_badLinkLifetime);
+                route.Invalidate(m_invalidTime);
             }
         }
         else if (route.GetState() == IDLE &&
@@ -577,12 +588,14 @@ LocalRouteSet<T>::ProcessTxError(const WifiMacHeader& hdr)
 {
     Mac48Address addr = hdr.GetAddr1();
 
-    for (auto& route : m_ipAddressEntry)
+    auto it = m_ipAddressEntry.begin();
+    while (it != m_ipAddressEntry.end())
     {
-        if (LookupMacAddress(route.GetNextHop()) == addr)
+        if (LookupMacAddress(it->GetNextHop()) == addr)
         {
-            route.Invalidate(m_badLinkLifetime);
+            it->Invalidate(m_invalidTime);
         }
+        ++it;
     }
     Purge();
 }

@@ -276,6 +276,27 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
 
     // Handle protocol parameters
     /**
+     * Get m_resetPeriodically flag
+     */
+    bool GetResetPeriodically() const
+    {
+        return m_resetPeriodically;
+    }
+
+    /**
+     * Set reset periodically flag
+     */
+    void SetResetPeriodically(bool resetPeriodically)
+    {
+        m_resetPeriodically = resetPeriodically;
+    }
+
+    /**
+     * Reset protocol
+     */
+    void ResetProtocol();
+
+    /**
      * Get maximum queue time
      * @returns the maximum queue time
      */
@@ -678,6 +699,13 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /** @} */
 
     /**
+     * Save packet data when received
+     * @param type packet type
+     * @param size packet size
+     */
+    void SavePacketData(std::string type, uint32_t size);
+
+    /**
      * @name Send
      * @{
      */
@@ -794,6 +822,8 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     Time m_lastBcastTime;
     /// Set all links as bidirectional (avoid rrep_acks)
     bool m_bidirectionalLinks;
+    /// Reset periodically
+    bool m_resetPeriodically;
 };
 
 typedef Aodvv2RoutingProtocol<Ipv4RoutingProtocol> Ipv4Aodvv2RoutingProtocol;
