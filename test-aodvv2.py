@@ -23,9 +23,6 @@ colors = [
     "#00bfa0",
 ]
 
-output_path = "output-{protocol}.csv"
-output_header = "initial battery,final battery,energy consumed\n"
-
 input_ping_path = "output-ping.csv"
 output_ping_path = "output-{protocol}-ping.csv"
 output_ping_header = "src_ip,dst_ip,hops,first_rtt,min_rtt,max_rtt,avg_rtt\n"
@@ -130,11 +127,6 @@ def run_networks():
             pass
 
     for protocol in protocols:
-        if os.path.exists(output_path.replace("{protocol}", protocol)):
-            os.remove(output_path.replace("{protocol}", protocol))
-        with open(output_path.replace("{protocol}", protocol), "w") as file:
-            file.write(output_header)
-
         if os.path.exists(output_ping_path.replace("{protocol}", protocol)):
             os.remove(output_ping_path.replace("{protocol}", protocol))
         with open(output_ping_path.replace("{protocol}", protocol), "w") as file:
@@ -160,8 +152,6 @@ def run_networks():
             os.system(
                 "./ns3 run src/aodvv2/examples/aodvv2-paper-example.cc -- --pcap='false' --topologyFile="
                 + file_path
-                + " --resultFile="
-                + output_path.replace("{protocol}", protocol)
                 + " --routingProtocol="
                 + protocol
                 + " --pingPairs="
@@ -170,13 +160,6 @@ def run_networks():
             )
 
             save_stats(protocol)
-
-            with open(output_path.replace("{protocol}", protocol), "r") as file:
-                lines = file.readlines()
-                if len(lines) - 1 < (index + 1) * n_nodes:
-                    with open(output_path.replace("{protocol}", protocol), "a") as file:
-                        for i in range(((index + 1) * n_nodes) - len(lines) + 1):
-                            file.write("0,0,0\n")
 
     print("\nResults obtained!")
 
@@ -213,29 +196,13 @@ def get_output_stats():
             for protocol in protocols:
                 file_contents[i][protocol + "-ping_pairs"] = get_real_pairs(protocol, i)
 
-                with open(output_path.replace("{protocol}", protocol), "r") as file:
-                    file_contents[i][protocol] = [
-                        line.strip().split(",") for line in file.readlines()[1:]
-                    ]
-
                 with open(output_packets_path.replace("{protocol}", protocol), "r") as file:
                     file_contents[i][protocol + "-packets"] = [
                         line.strip().split(",") for line in file.readlines()[1:]
                     ]
 
-    for i in range(len(file_contents)):
-        n_nodes = len(file_contents[i]["nodes"])
-        for j in range(int(i * n_nodes), int((i + 1) * n_nodes)):
-            if float(file_contents[i][protocol][j][0]) == 0:
-                file_contents[i] = {}
-                break
-
     results = {
         protocol: {
-            "initial_battery": [],
-            "final_battery": [],
-            "variance_final_battery": [],
-            "energy_consumed": [],
             "hops": [],
             "first_rtt": [],
             "min_rtt": [],
@@ -272,9 +239,6 @@ def get_output_stats():
 
         for protocol in protocols:
             n_pairs = len(file_contents[i][protocol + "-ping_pairs"])
-            initial_battery = []
-            final_battery = []
-            energy_consumed = []
             hops = 0
             first_rtt = 0
             min_rtt = []
@@ -282,57 +246,38 @@ def get_output_stats():
             avg_rtt = []
             avg_packets = {}
 
-            for j in range(int(i * n_nodes), int((i + 1) * n_nodes)):
-                line = file_contents[i][protocol][j]
-                initial_battery.append(float(line[0]))
-                final_battery.append(float(line[1]))
-                energy_consumed.append(float(line[2]))
+            for j in range(n_pairs):
+                line = file_contents[i][protocol + "-ping_pairs"][j].split(",")
+                hops += int(line[2])
+                first_rtt += float(line[3])
+                min_rtt.append(float(line[4]))
+                max_rtt.append(float(line[5]))
+                avg_rtt.append(float(line[6]))
 
-            if len(initial_battery) > 0:
-                for j in range(n_pairs):
-                    line = file_contents[i][protocol + "-ping_pairs"][j].split(",")
-                    hops += int(line[2])
-                    first_rtt += float(line[3])
-                    min_rtt.append(float(line[4]))
-                    max_rtt.append(float(line[5]))
-                    avg_rtt.append(float(line[6]))
-
-                for j in range(
-                    int(protocols_index[protocol] * n_packets),
-                    int((protocols_index[protocol] + 1) * n_packets),
+            for j in range(
+                int(protocols_index[protocol] * n_packets),
+                int((protocols_index[protocol] + 1) * n_packets),
+            ):
+                line = file_contents[protocols_index[protocol]][protocol + "-packets"][j]
+                if not line[0] in avg_packets:
+                    avg_packets[line[0]] = {
+                        "count": [],
+                        "avg": [],
+                        "min": [],
+                        "max": [],
+                    }
+                if (
+                    int(line[1]) == 1
+                    and float(line[2]) == 0
+                    and int(line[3]) == 0
+                    and int(line[4]) == 0
                 ):
-                    line = file_contents[protocols_index[protocol]][protocol + "-packets"][j]
-                    if not line[0] in avg_packets:
-                        avg_packets[line[0]] = {
-                            "count": [],
-                            "avg": [],
-                            "min": [],
-                            "max": [],
-                        }
-                    if (
-                        int(line[1]) == 1
-                        and float(line[2]) == 0
-                        and int(line[3]) == 0
-                        and int(line[4]) == 0
-                    ):
-                        continue
-                    avg_packets[line[0]]["count"].append(int(line[1]))
-                    avg_packets[line[0]]["avg"].append(float(line[2]))
-                    avg_packets[line[0]]["min"].append(float(line[3]))
-                    avg_packets[line[0]]["max"].append(float(line[4]))
+                    continue
+                avg_packets[line[0]]["count"].append(int(line[1]))
+                avg_packets[line[0]]["avg"].append(float(line[2]))
+                avg_packets[line[0]]["min"].append(float(line[3]))
+                avg_packets[line[0]]["max"].append(float(line[4]))
 
-            results[protocol]["initial_battery"] = (
-                results[protocol].get("initial_battery", []) + initial_battery
-            )
-            results[protocol]["final_battery"] = (
-                results[protocol].get("final_battery", []) + final_battery
-            )
-            results[protocol]["variance_final_battery"].append(
-                round(max(final_battery) - min(final_battery), 3)
-            )
-            results[protocol]["energy_consumed"] = (
-                results[protocol].get("energy_consumed", []) + energy_consumed
-            )
             results[protocol]["hops"].append(round(hops / n_pairs, 3))
             results[protocol]["first_rtt"].append(round(first_rtt / n_pairs, 3))
             results[protocol]["min_rtt"].append(round(min(min_rtt), 3))
@@ -368,8 +313,7 @@ def get_output_stats():
                 for key in avg_packets
             }
 
-            if len(initial_battery) > 0:
-                protocols_index[protocol] += 1
+            protocols_index[protocol] += 1
 
     output = {}
     valid_networks = len([fc for fc in file_contents.values() if fc != {}])
@@ -378,22 +322,6 @@ def get_output_stats():
         print(f"\n\033[1m{protocol.upper()}\033[0m")
         print(f"{'Metric':<20} | {'Value':<20} | {'Range (min, max)':<20}")
         print("-" * 65)
-        print(
-            f"{'Initial battery':<20} | {round(sum(results[protocol]['initial_battery']) / len(results[protocol]['initial_battery']), 3):<20} |"
-            + f" ({min(results[protocol]['initial_battery'])}, {max(results[protocol]['initial_battery'])})"
-        )
-        print(
-            f"{'Final battery':<20} | {round(sum(results[protocol]['final_battery']) / len(results[protocol]['final_battery']), 3):<20} |"
-            + f" ({min(results[protocol]['final_battery'])}, {max(results[protocol]['final_battery'])})"
-        )
-        print(
-            f"{'Battery variance':<20} | {round(sum(results[protocol]['variance_final_battery']) / len(results[protocol]['variance_final_battery']), 3):<20} |"
-            + f" ({min(results[protocol]['variance_final_battery'])}, {max(results[protocol]['variance_final_battery'])})"
-        )
-        print(
-            f"{'Energy consumed':<20} | {round(sum(results[protocol]['energy_consumed']) / len(results[protocol]['energy_consumed']), 3):<20} |"
-            + f" ({min(results[protocol]['energy_consumed'])}, {max(results[protocol]['energy_consumed'])})"
-        )
         print(
             f"{'First RTT':<20} | {round(sum(results[protocol]['first_rtt']) / len(results[protocol]['first_rtt']), 3):<20} |"
             + f" ({min(results[protocol]['first_rtt'])}, {max(results[protocol]['first_rtt'])})"
