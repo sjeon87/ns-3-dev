@@ -326,10 +326,6 @@ Aodvv2RoutingProtocol<T>::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Tim
         << "Node: " << m_ip->template GetObject<Node>()->GetId()
         << "; IP: " << m_ip->GetAddress(1, 0).GetAddress() << "; Time: " << Now().As(unit)
         << ", Local time: " << m_ip->template GetObject<Node>()->GetLocalTime().As(unit)
-        << ", Battery: "
-        << static_cast<uint16_t>(GetMetricNode(m_ip->template GetObject<Node>()).m_battery)
-        << ", Trust: "
-        << static_cast<uint16_t>(GetMetricNode(m_ip->template GetObject<Node>()).m_trust)
         << ", AODVv2 Routing table" << std::endl;
 
     m_routingTable.Print(stream, unit);
