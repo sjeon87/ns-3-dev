@@ -205,7 +205,7 @@ RoutingTableEntry::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = T
 
     *os << std::setw(16) << expire.str();
     *os << m_hops << std::endl;
-    
+
     std::ofstream file;
     file.open("output-route.csv", std::ios_base::app);
     file << m_iface.GetLocal() << "," << m_ipv4Route->GetDestination() << "," << m_hops << "\n";
