@@ -118,7 +118,7 @@ class RoutingExperiment
     uint32_t packetsReceived{0}; //!< Total received packets.
 
     std::string m_CSVfileName{"manet-routing.output.csv"}; //!< CSV filename.
-    int m_nSinks{1};                                      //!< Number of sink nodes.
+    int m_nSinks{1};                                       //!< Number of sink nodes.
     std::string m_protocolName{"AODV"};                    //!< Protocol name.
     double m_txp{7.5};                                     //!< Tx power.
     bool m_traceMobility{false};                           //!< Enable mobility tracing.
