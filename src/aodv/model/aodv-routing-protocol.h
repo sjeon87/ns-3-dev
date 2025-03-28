@@ -407,7 +407,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
      * @param type packet type
      * @param size packet size
      */
-     void SavePacketData(std::string type, uint32_t size);
+    void SavePacketData(std::string type, uint32_t size);
 
     /**
      * @name Send
