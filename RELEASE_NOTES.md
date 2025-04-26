@@ -37,6 +37,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 ### New user-visible features
 
 - (wifi) Add support for Power Save mode.
+- (wifi) Add initial support for IEEE 802.11bn.
 
 ### Bugs fixed
 
