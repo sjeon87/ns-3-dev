@@ -41,6 +41,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 - (wifi) Extend Ideal rate manager to support UHR rates
 - (wifi) Extend MinstrelHT rate manager to support UHR rates
 - (wifi) Extend Thompson Sampling rate manager to support EHT rates
+- (wifi) Extend Thompson Sampling rate manager to support UHR rates
 
 ### Bugs fixed
 
