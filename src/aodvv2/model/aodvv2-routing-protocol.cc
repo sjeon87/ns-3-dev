@@ -152,7 +152,7 @@ Aodvv2RoutingProtocol<T>::Aodvv2RoutingProtocol()
       m_seqNo(0),
       m_mms(m_maxSeqnumLifetime),
       m_nb(m_maxBlacklistTime),
-      m_rerrSet(),
+      m_RouteErrorSet(),
       m_rreqCount(0),
       m_rrepCount(0),
       m_rerrCount(0),
@@ -2507,14 +2507,14 @@ Aodvv2RoutingProtocol<T>::SendRerrMessage(Ptr<Packet> packet, std::vector<IpAddr
         if (m_routingTable.LookupValidRoutes(precursors.front(), routes))
         {
             LocalRoute<IpAddress> toPrecursor = routes[0];
-            if (m_rerrSet.HasRerr(toPrecursor.GetDestination(),
+            if (m_RouteErrorSet.HasRerr(toPrecursor.GetDestination(),
                                   toPrecursor.GetInterface().GetAddress()))
             {
                 return;
             }
             else
             {
-                m_rerrSet.Add(toPrecursor.GetDestination(),
+                m_RouteErrorSet.Add(toPrecursor.GetDestination(),
                               toPrecursor.GetInterface().GetAddress(),
                               m_rerrTimeout);
             }

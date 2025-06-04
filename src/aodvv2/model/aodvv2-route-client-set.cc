@@ -19,18 +19,18 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("Aodvv2RouteClientSet");
+NS_LOG_COMPONENT_DEFINE("Aodvv2RouterClientSet");
 
 namespace aodvv2
 {
 template <typename T>
-RouteClientSet<T>::RouteClientSet()
+RouterClientSet<T>::RouterClientSet()
 {
 }
 
 template <typename T>
 bool
-RouteClientSet<T>::HasClient(T ip)
+RouterClientSet<T>::HasClient(T ip)
 {
     for (auto i = m_rc.begin(); i != m_rc.end(); ++i)
     {
@@ -44,14 +44,14 @@ RouteClientSet<T>::HasClient(T ip)
 
 template <typename T>
 void
-RouteClientSet<T>::Add(T ip, uint32_t mask, uint32_t cost)
+RouterClientSet<T>::Add(T ip, uint32_t mask, uint32_t cost)
 {
     m_rc.push_back(RouteClient(ip, mask, cost));
 }
 
 template <typename T>
 uint32_t
-RouteClientSet<T>::GetCost(T addr)
+RouterClientSet<T>::GetCost(T addr)
 {
     for (auto i = m_rc.begin(); i != m_rc.end(); ++i)
     {
@@ -63,8 +63,8 @@ RouteClientSet<T>::GetCost(T addr)
     return 0;
 }
 
-template class RouteClientSet<Ipv4Address>;
-template class RouteClientSet<Ipv6Address>;
+template class RouterClientSet<Ipv4Address>;
+template class RouterClientSet<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

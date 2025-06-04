@@ -20,7 +20,7 @@ namespace aodvv2
 {
 template <typename T>
 bool
-MultiMsgSet<T>::IsDuplicate(T origIp,
+MulticastMessageSet<T>::IsDuplicate(T origIp,
                             uint16_t origMask,
                             T targIp,
                             T seqNoRtr,
@@ -73,7 +73,7 @@ MultiMsgSet<T>::IsDuplicate(T origIp,
 
 template <typename T>
 void
-MultiMsgSet<T>::Purge()
+MulticastMessageSet<T>::Purge()
 {
     m_msgCache.erase(remove_if(m_msgCache.begin(), m_msgCache.end(), IsExpired()),
                      m_msgCache.end());
@@ -81,7 +81,7 @@ MultiMsgSet<T>::Purge()
 
 template <typename T>
 uint32_t
-MultiMsgSet<T>::GetSize()
+MulticastMessageSet<T>::GetSize()
 {
     Purge();
     return m_msgCache.size();
@@ -89,7 +89,7 @@ MultiMsgSet<T>::GetSize()
 
 template <typename T>
 void
-MultiMsgSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+MulticastMessageSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
     std::vector<MultiMsgEntry> table = m_msgCache;
     std::ostream* os = stream->GetStream();
@@ -127,8 +127,8 @@ MultiMsgSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time
     *stream->GetStream() << "\n";
 }
 
-template class MultiMsgSet<Ipv4Address>;
-template class MultiMsgSet<Ipv6Address>;
+template class MulticastMessageSet<Ipv4Address>;
+template class MulticastMessageSet<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

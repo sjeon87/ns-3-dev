@@ -546,13 +546,13 @@ class Aodvv2RoutingProtocol : public std::enable_if_t<std::is_same_v<Ipv4Routing
     /// Request sequence number
     uint16_t m_seqNo;
     /// Handle duplicated RREQ
-    MultiMsgSet<IpAddress> m_mms;
+    MulticastMessageSet<IpAddress> m_mms;
     /// Handle neighbors
     NeighborSet<IpAddress> m_nb;
     /// Handle route clients
-    RouteClientSet<IpAddress> m_rcs;
+    RouterClientSet<IpAddress> m_rcs;
     /// Handle rerrs
-    RerrSet<IpAddress> m_rerrSet;
+    RouteErrorSet<IpAddress> m_RouteErrorSet;
     /// Number of RREQs used for RREQ rate control
     uint16_t m_rreqCount;
     /// Number of RREPs used for RREP rate control

@@ -20,18 +20,18 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("Aodvv2RerrSet");
+NS_LOG_COMPONENT_DEFINE("Aodvv2RouteErrorSet");
 
 namespace aodvv2
 {
 template <typename T>
-RerrSet<T>::RerrSet()
+RouteErrorSet<T>::RouteErrorSet()
 {
 }
 
 template <typename T>
 bool
-RerrSet<T>::HasRerr(T unreachableAddr, T pktSource)
+RouteErrorSet<T>::HasRerr(T unreachableAddr, T pktSource)
 {
     for (auto i = m_rerr.begin(); i != m_rerr.end(); ++i)
     {
@@ -45,14 +45,14 @@ RerrSet<T>::HasRerr(T unreachableAddr, T pktSource)
 
 template <typename T>
 void
-RerrSet<T>::Add(T unreachableAddr, T pktSource, Time timeout)
+RouteErrorSet<T>::Add(T unreachableAddr, T pktSource, Time timeout)
 {
     m_rerr.push_back(Rerr(timeout + Simulator::Now(), unreachableAddr, pktSource));
 }
 
 template <typename T>
 Time
-RerrSet<T>::GetTimeout(T addr)
+RouteErrorSet<T>::GetTimeout(T addr)
 {
     for (auto i = m_rerr.begin(); i != m_rerr.end(); ++i)
     {
@@ -66,7 +66,7 @@ RerrSet<T>::GetTimeout(T addr)
 
 template <typename T>
 void
-RerrSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
+RouteErrorSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S */) const
 {
     std::vector<Rerr> table = m_rerr;
     std::ostream* os = stream->GetStream();
@@ -96,8 +96,8 @@ RerrSet<T>::Print(Ptr<OutputStreamWrapper> stream, Time::Unit unit /* = Time::S 
     *stream->GetStream() << "\n";
 }
 
-template class RerrSet<Ipv4Address>;
-template class RerrSet<Ipv6Address>;
+template class RouteErrorSet<Ipv4Address>;
+template class RouteErrorSet<Ipv6Address>;
 
 } // namespace aodvv2
 } // namespace ns3

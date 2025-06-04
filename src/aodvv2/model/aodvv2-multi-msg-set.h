@@ -32,7 +32,7 @@ namespace aodvv2
  * @brief Multicast message set used by AODVv2 protocol to avoid duplicate RREQ messages
  */
 template <typename T>
-class MultiMsgSet
+class MulticastMessageSet
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
@@ -48,7 +48,7 @@ class MultiMsgSet
      * constructor
      * @param lifetime the lifetime for added entries
      */
-    MultiMsgSet(Time lifetime)
+    MulticastMessageSet(Time lifetime)
         : m_maxSeqnoLifetime(lifetime)
     {
     }

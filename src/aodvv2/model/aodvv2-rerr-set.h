@@ -32,7 +32,7 @@ namespace aodvv2
  * @brief maintain list of sent rerr messages
  */
 template <typename T>
-class RerrSet
+class RouteErrorSet
     : public std::enable_if_t<std::is_same_v<Ipv4Address, T> || std::is_same_v<Ipv6Address, T>, T>
 {
     /// Alias for determining whether the parent is Ipv4Address or Ipv6Address
@@ -45,7 +45,7 @@ class RerrSet
     /**
      * constructor
      */
-    RerrSet();
+    RouteErrorSet();
 
     /// Rerr description
     struct Rerr
