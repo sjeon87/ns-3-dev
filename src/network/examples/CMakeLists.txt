@@ -5,6 +5,8 @@ set(base_examples
     main-packet-tag
     packet-socket-apps
     sequence-number-example
+    lollipop-comparisons
+    clock-model
 )
 
 foreach(
