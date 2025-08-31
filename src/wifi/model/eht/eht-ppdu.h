@@ -79,13 +79,15 @@ class EhtPpdu : public HePpdu
      * @param ppduDuration the transmission duration of this PPDU
      * @param uid the unique ID of this PPDU or of the triggering PPDU if this is an EHT TB PPDU
      * @param flag the flag indicating the type of Tx PSD to build
+     * @param instantiateHeaders flag used to instantiate EHT header, should be disabled by child
      */
     EhtPpdu(const WifiConstPsduMap& psdus,
             const WifiTxVector& txVector,
             const WifiPhyOperatingChannel& channel,
             Time ppduDuration,
             uint64_t uid,
-            TxPsdFlag flag);
+            TxPsdFlag flag,
+            bool instantiateHeaders = true);
 
     WifiPpduType GetType() const override;
     Ptr<const WifiPsdu> GetPsdu(uint8_t bssColor, uint16_t staId = SU_STA_ID) const override;

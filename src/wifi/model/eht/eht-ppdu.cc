@@ -29,11 +29,16 @@ EhtPpdu::EhtPpdu(const WifiConstPsduMap& psdus,
                  const WifiPhyOperatingChannel& channel,
                  Time ppduDuration,
                  uint64_t uid,
-                 TxPsdFlag flag)
+                 TxPsdFlag flag,
+                 bool instantiateHeaders /* = true */)
     : HePpdu(psdus, txVector, channel, ppduDuration, uid, flag, false)
 {
-    NS_LOG_FUNCTION(this << psdus << txVector << channel << ppduDuration << uid << flag);
-    SetPhyHeaders(txVector, ppduDuration);
+    NS_LOG_FUNCTION(this << psdus << txVector << channel << ppduDuration << uid << flag
+                         << instantiateHeaders);
+    if (instantiateHeaders)
+    {
+        SetPhyHeaders(txVector, ppduDuration);
+    }
 }
 
 void
