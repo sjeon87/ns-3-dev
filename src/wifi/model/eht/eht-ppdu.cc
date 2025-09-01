@@ -366,34 +366,22 @@ EhtPpdu::GetPsdu(uint8_t bssColor, uint16_t staId /* = SU_STA_ID */) const
         NS_ASSERT(m_psdus.size() == 1);
         return m_psdus.at(SU_STA_ID);
     }
+    return HePpdu::GetPsdu(bssColor, staId);
+}
 
+uint8_t
+EhtPpdu::GetBssColor() const
+{
     if (IsUlMu())
     {
-        auto ehtPhyHeader = std::get_if<EhtTbPhyHeader>(&m_ehtPhyHeader);
-        NS_ASSERT(ehtPhyHeader);
-        NS_ASSERT(m_psdus.size() == 1);
-        if ((bssColor == 0) || (ehtPhyHeader->m_bssColor == 0) ||
-            (bssColor == ehtPhyHeader->m_bssColor))
-        {
-            return m_psdus.cbegin()->second;
-        }
-    }
-    else if (IsDlMu())
-    {
-        auto ehtPhyHeader = std::get_if<EhtMuPhyHeader>(&m_ehtPhyHeader);
-        NS_ASSERT(ehtPhyHeader);
-        if ((bssColor == 0) || (ehtPhyHeader->m_bssColor == 0) ||
-            (bssColor == ehtPhyHeader->m_bssColor))
-        {
-            const auto it = m_psdus.find(staId);
-            if (it != m_psdus.cend())
-            {
-                return it->second;
-            }
-        }
+        auto ehtSigHeader = std::get_if<EhtTbPhyHeader>(&m_ehtPhyHeader);
+        NS_ASSERT(ehtSigHeader);
+        return ehtSigHeader->m_bssColor;
     }
 
-    return nullptr;
+    auto ehtSigHeader = std::get_if<EhtMuPhyHeader>(&m_ehtPhyHeader);
+    NS_ASSERT(ehtSigHeader);
+    return ehtSigHeader->m_bssColor;
 }
 
 WifiRu::RuSpec

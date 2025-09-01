@@ -435,6 +435,28 @@ HePpdu::IsUlMu() const
     return (m_preamble == WIFI_PREAMBLE_HE_TB);
 }
 
+uint8_t
+HePpdu::GetBssColor() const
+{
+    if (IsDlMu())
+    {
+        auto heSigHeader = std::get_if<HeMuSigHeader>(&m_heSig);
+        NS_ASSERT(heSigHeader);
+        return heSigHeader->m_bssColor;
+    }
+
+    if (IsUlMu())
+    {
+        auto heSigHeader = std::get_if<HeTbSigHeader>(&m_heSig);
+        NS_ASSERT(heSigHeader);
+        return heSigHeader->m_bssColor;
+    }
+
+    auto heSigHeader = std::get_if<HeSuSigHeader>(&m_heSig);
+    NS_ASSERT(heSigHeader);
+    return heSigHeader->m_bssColor;
+}
+
 Ptr<const WifiPsdu>
 HePpdu::GetPsdu(uint8_t bssColor, uint16_t staId /* = SU_STA_ID */) const
 {
@@ -444,23 +466,17 @@ HePpdu::GetPsdu(uint8_t bssColor, uint16_t staId /* = SU_STA_ID */) const
         return m_psdus.at(SU_STA_ID);
     }
 
-    if (IsUlMu())
+    if (const auto myBssColor = GetBssColor(); IsUlMu())
     {
-        auto heSigHeader = std::get_if<HeTbSigHeader>(&m_heSig);
-        NS_ASSERT(heSigHeader);
         NS_ASSERT(m_psdus.size() == 1);
-        if ((bssColor == 0) || (heSigHeader->m_bssColor == 0) ||
-            (bssColor == heSigHeader->m_bssColor))
+        if ((bssColor == 0) || (myBssColor == 0) || (bssColor == myBssColor))
         {
             return m_psdus.cbegin()->second;
         }
     }
     else
     {
-        auto heSigHeader = std::get_if<HeMuSigHeader>(&m_heSig);
-        NS_ASSERT(heSigHeader);
-        if ((bssColor == 0) || (heSigHeader->m_bssColor == 0) ||
-            (bssColor == heSigHeader->m_bssColor))
+        if ((bssColor == 0) || (myBssColor == 0) || (bssColor == myBssColor))
         {
             const auto it = m_psdus.find(staId);
             if (it != m_psdus.cend())

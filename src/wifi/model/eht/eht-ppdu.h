@@ -152,10 +152,29 @@ class EhtPpdu : public HePpdu
                                     std::optional<bool> isLow80MHz);
 
   protected:
+    uint8_t GetBssColor() const override;
     WifiRu::RuSpec GetRuSpec(std::size_t ruAllocIndex,
                              MHz_u bw,
                              RuType ruType,
                              std::size_t phyIndex) const override;
+
+    /**
+     * Convert channel width expressed in MHz to bandwidth field encoding in U-SIG.
+     *
+     * @param channelWidth the channel width in MHz to use for the transmission
+     * @param channel the operating channel of the PHY
+     * @return the value used to encode the bandwidth field in U-SIG
+     */
+    static uint8_t GetChannelWidthEncodingFromMhz(MHz_u channelWidth,
+                                                  const WifiPhyOperatingChannel& channel);
+
+    /**
+     * Convert channel width expressed in MHz from bandwidth field encoding in U-SIG.
+     *
+     * @param bandwidth the value of the bandwidth field in U-SIG
+     * @return the channel width in MHz
+     */
+    static MHz_u GetChannelWidthMhzFromEncoding(uint8_t bandwidth);
 
   private:
     bool IsDlMu() const override;
@@ -184,24 +203,6 @@ class EhtPpdu : public HePpdu
      * @param txVector the TXVECTOR that was used for this PPDU
      */
     void SetEhtPhyHeader(const WifiTxVector& txVector);
-
-    /**
-     * Convert channel width expressed in MHz to bandwidth field encoding in U-SIG.
-     *
-     * @param channelWidth the channel width in MHz to use for the transmission
-     * @param channel the operating channel of the PHY
-     * @return the value used to encode the bandwidth field in U-SIG
-     */
-    static uint8_t GetChannelWidthEncodingFromMhz(MHz_u channelWidth,
-                                                  const WifiPhyOperatingChannel& channel);
-
-    /**
-     * Convert channel width expressed in MHz from bandwidth field encoding in U-SIG.
-     *
-     * @param bandwidth the value of the bandwidth field in U-SIG
-     * @return the channel width in MHz
-     */
-    static MHz_u GetChannelWidthMhzFromEncoding(uint8_t bandwidth);
 
     EhtPhyHeader m_ehtPhyHeader; //!< the EHT PHY header
 };
