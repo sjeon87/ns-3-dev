@@ -1867,6 +1867,16 @@ StaWifiMac::RecordOperations(const MgtFrameType& frame, const Mac48Address& from
         {
             remoteStationManager->AddStationEhtOperation(from, *ehtOperation);
         }
+
+        if (!GetUhrSupported())
+        {
+            return;
+        }
+        /* UHR station */
+        if (const auto& uhrOperation = frame.template Get<UhrOperation>())
+        {
+            remoteStationManager->AddStationUhrOperation(from, *uhrOperation);
+        }
     };
 
     // process Information Elements included in the current frame variant
