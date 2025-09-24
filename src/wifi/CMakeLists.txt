@@ -433,5 +433,6 @@ build_lib(
     test/wifi-phy-mu-mimo-test.cc
     test/wifi-operating-channel-test.cc
     test/wifi-tx-stats-helper-test.cc
+    test/wifi-uhr-info-elems-test.cc
   GENERATE_EXPORT_HEADER
 )
