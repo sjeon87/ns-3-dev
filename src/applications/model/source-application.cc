@@ -8,6 +8,7 @@
 
 #include "source-application.h"
 
+#include "ns3/boolean.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/log.h"
@@ -48,10 +49,19 @@ SourceApplication::GetTypeId()
                           UintegerValue(0),
                           MakeUintegerAccessor(&SourceApplication::m_tos),
                           MakeUintegerChecker<uint8_t>())
+            .AddAttribute("EnableSeqTsSizeHeader",
+                          "Enable use of SeqTsSizeHeader for sequence number and timestamp",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&SourceApplication::m_enableSeqTsSizeHeader),
+                          MakeBooleanChecker())
             .AddTraceSource("Tx",
                             "A packet is sent",
                             MakeTraceSourceAccessor(&SourceApplication::m_txTrace),
                             "ns3::Packet::TracedCallback")
+            .AddTraceSource("TxWithSeqTsSize",
+                            "A new packet is created with SeqTsSizeHeader",
+                            MakeTraceSourceAccessor(&SourceApplication::m_txTraceWithSeqTsSize),
+                            "ns3::SinkApplication::SeqTsSizeCallback")
             .AddTraceSource("ConnectionSucceeded",
                             "Succeeded to establish connection",
                             MakeTraceSourceAccessor(&SourceApplication::m_connectionSuccess),

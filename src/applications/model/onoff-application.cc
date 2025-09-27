@@ -12,7 +12,6 @@
 
 #include "onoff-application.h"
 
-#include "ns3/boolean.h"
 #include "ns3/data-rate.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
@@ -80,19 +79,10 @@ OnOffApplication::GetTypeId()
                           MakeTypeIdAccessor(&OnOffApplication::m_protocolTid),
                           // This should check for SocketFactory as a parent
                           MakeTypeIdChecker())
-            .AddAttribute("EnableSeqTsSizeHeader",
-                          "Enable use of SeqTsSizeHeader for sequence number and timestamp",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&OnOffApplication::m_enableSeqTsSizeHeader),
-                          MakeBooleanChecker())
             .AddTraceSource("TxWithAddresses",
                             "A new packet is created and is sent",
                             MakeTraceSourceAccessor(&OnOffApplication::m_txTraceWithAddresses),
                             "ns3::Packet::TwoAddressTracedCallback")
-            .AddTraceSource("TxWithSeqTsSize",
-                            "A new packet is created with SeqTsSizeHeader",
-                            MakeTraceSourceAccessor(&OnOffApplication::m_txTraceWithSeqTsSize),
-                            "ns3::PacketSink::SeqTsSizeCallback")
             .AddTraceSource("OnOffState",
                             "Application state (0-OFF, 1-ON)",
                             MakeTraceSourceAccessor(&OnOffApplication::m_state),

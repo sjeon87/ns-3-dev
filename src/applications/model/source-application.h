@@ -9,6 +9,8 @@
 #ifndef SOURCE_APPLICATION_H
 #define SOURCE_APPLICATION_H
 
+#include "seq-ts-size-header.h"
+
 #include "ns3/address.h"
 #include "ns3/application.h"
 #include "ns3/traced-callback.h"
@@ -92,6 +94,11 @@ class SourceApplication : public Application
                                             const Address& local,
                                             const Address& remote);
 
+    /// Callback for tracing the packet Tx events, includes source, destination,  the packet sent,
+    /// and header
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
+        m_txTraceWithSeqTsSize;
+
     /// Traced Callback: connection success event.
     TracedCallback<Ptr<Socket>, const Address&, const Address&> m_connectionSuccess;
 
@@ -105,6 +112,8 @@ class SourceApplication : public Application
     Address m_peer;  //!< Peer address
     Address m_local; //!< Local address to bind to
     uint8_t m_tos;   //!< The packets Type of Service
+
+    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the use of SeqTsSizeHeader
 
     bool m_connected{false}; //!< flag whether socket is connected
 

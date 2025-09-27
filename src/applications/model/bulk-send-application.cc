@@ -8,7 +8,6 @@
 
 #include "bulk-send-application.h"
 
-#include "ns3/boolean.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/nstime.h"
@@ -54,15 +53,6 @@ BulkSendApplication::GetTypeId()
                           TypeIdValue(TcpSocketFactory::GetTypeId()),
                           MakeTypeIdAccessor(&BulkSendApplication::m_protocolTid),
                           MakeTypeIdChecker())
-            .AddAttribute("EnableSeqTsSizeHeader",
-                          "Add SeqTsSizeHeader to each packet",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&BulkSendApplication::m_enableSeqTsSizeHeader),
-                          MakeBooleanChecker())
-            .AddTraceSource("TxWithSeqTsSize",
-                            "A new packet is created with SeqTsSizeHeader",
-                            MakeTraceSourceAccessor(&BulkSendApplication::m_txTraceWithSeqTsSize),
-                            "ns3::PacketSink::SeqTsSizeCallback")
             .AddTraceSource("TcpRetransmission",
                             "The TCP socket retransmitted a packet",
                             MakeTraceSourceAccessor(&BulkSendApplication::m_retransmissionTrace),

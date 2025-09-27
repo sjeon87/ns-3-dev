@@ -13,7 +13,6 @@
 #ifndef ONOFF_APPLICATION_H
 #define ONOFF_APPLICATION_H
 
-#include "seq-ts-size-header.h"
 #include "source-application.h"
 
 #include "ns3/data-rate.h"
@@ -148,15 +147,9 @@ class OnOffApplication : public SourceApplication
     EventId m_sendEvent;                 //!< Event id of pending "send packet" event
     uint32_t m_seq{0};                   //!< Sequence
     Ptr<Packet> m_unsentPacket;          //!< Unsent packet cached for future attempt
-    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the use of SeqTsSizeHeader
 
     /// Callbacks for tracing the packet Tx events, includes source and destination addresses
     TracedCallback<Ptr<const Packet>, const Address&, const Address&> m_txTraceWithAddresses;
-
-    /// Callback for tracing the packet Tx events, includes source, destination, the packet sent,
-    /// and header
-    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
-        m_txTraceWithSeqTsSize;
 
     TracedValue<bool> m_state; //!< State of application (0-OFF, 1-ON)
 };

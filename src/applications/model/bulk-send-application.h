@@ -9,7 +9,6 @@
 #ifndef BULK_SEND_APPLICATION_H
 #define BULK_SEND_APPLICATION_H
 
-#include "seq-ts-size-header.h"
 #include "source-application.h"
 
 #include "ns3/event-id.h"
@@ -100,12 +99,11 @@ class BulkSendApplication : public SourceApplication
      */
     void SendData(const Address& from, const Address& to);
 
-    uint32_t m_sendSize;                 //!< Size of data to send each time
-    uint64_t m_maxBytes;                 //!< Limit total number of bytes sent
-    uint64_t m_totBytes{0};              //!< Total bytes sent so far
-    uint32_t m_seq{0};                   //!< Sequence
-    Ptr<Packet> m_unsentPacket;          //!< Variable to cache unsent packet
-    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the SeqTsSizeHeader
+    uint32_t m_sendSize;        //!< Size of data to send each time
+    uint64_t m_maxBytes;        //!< Limit total number of bytes sent
+    uint64_t m_totBytes{0};     //!< Total bytes sent so far
+    uint32_t m_seq{0};          //!< Sequence
+    Ptr<Packet> m_unsentPacket; //!< Variable to cache unsent packet
 
     /// Traced Callback: retransmitted packets
     TracedCallback<Ptr<const Packet>,
@@ -114,11 +112,6 @@ class BulkSendApplication : public SourceApplication
                    const Address&,
                    Ptr<const TcpSocketBase>>
         m_retransmissionTrace;
-
-    /// Callback for tracing the packet Tx events, includes source, destination,  the packet sent,
-    /// and header
-    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
-        m_txTraceWithSeqTsSize;
 
     /**
      * @brief Send more data as soon as some has been transmitted.
