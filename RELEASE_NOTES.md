@@ -39,6 +39,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 - (network) IANA protocol and link types are now centralized in network module headers.
 - Added support for `nlohmann/json`, a header-only C++ third-party library for JSON parsing and serialization.
 - (applications) Added a `TxWithSeqTs` trace to use instead of `TxWithSeqTsSize` if a NS3_SOCK_DGRAM socket type is used by the application (i.e. it uses UDP protocol).
+- (applications) Added a `IncrementCounterIfTxFailed` attribute to the `SourceApplication` base class to select whether the sequence number counter is incremented even if the transmission of the packet failed.
 
 ### Bugs fixed
 

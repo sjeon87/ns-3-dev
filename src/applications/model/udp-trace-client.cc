@@ -102,7 +102,7 @@ UdpTraceClient::GetTypeId()
 }
 
 UdpTraceClient::UdpTraceClient()
-    : SourceApplication(false)
+    : SourceApplication(false, false)
 {
     NS_LOG_FUNCTION(this);
     m_protocolTid = TypeId::LookupByName("ns3::UdpSocketFactory");
@@ -294,19 +294,7 @@ void
 UdpTraceClient::SendPacket(uint32_t size)
 {
     NS_LOG_FUNCTION(this << size);
-    uint32_t packetSize;
-    if (size > 12)
-    {
-        packetSize = size - 12; // 12 is the size of the SeqTsHeader
-    }
-    else
-    {
-        packetSize = 0;
-    }
-    auto p = Create<Packet>(packetSize);
-    SeqTsHeader seqTs;
-    seqTs.SetSeq(m_sent);
-    p->AddHeader(seqTs);
+    auto p = CreatePacket(size);
 
     std::stringstream addressString{};
 #ifdef NS3_LOG_ENABLE

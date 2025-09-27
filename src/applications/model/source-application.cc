@@ -9,6 +9,7 @@
 #include "source-application.h"
 
 #include "ns3/boolean.h"
+#include "ns3/enum.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/log.h"
@@ -56,6 +57,20 @@ SourceApplication::GetTypeId()
                           BooleanValue(false),
                           MakeBooleanAccessor(&SourceApplication::m_enableSeqTsSizeHeader),
                           MakeBooleanChecker())
+            .AddAttribute("IncrementCounterIfTxFailed",
+                          "If enabled, the sequence number counter is incremented even if the "
+                          "transmission of the packet failed.",
+                          EnumValue(SourceApplication::IncrementCounterIfTxFailed::
+                                        UNDEFINED), // default value defined by the the child class
+                          MakeEnumAccessor<SourceApplication::IncrementCounterIfTxFailed>(
+                              &SourceApplication::SetIncrementCounterIfTxFailed,
+                              &SourceApplication::GetIncrementCounterIfTxFailed),
+                          MakeEnumChecker(SourceApplication::IncrementCounterIfTxFailed::UNDEFINED,
+                                          "Undefined",
+                                          SourceApplication::IncrementCounterIfTxFailed::ENABLED,
+                                          "Enabled",
+                                          SourceApplication::IncrementCounterIfTxFailed::DISABLED,
+                                          "Disabled"))
             .AddTraceSource("Tx",
                             "A packet is sent",
                             MakeTraceSourceAccessor(&SourceApplication::m_txTrace),
@@ -79,8 +94,9 @@ SourceApplication::GetTypeId()
     return tid;
 }
 
-SourceApplication::SourceApplication(bool allowPacketSocket)
-    : m_allowPacketSocket{allowPacketSocket}
+SourceApplication::SourceApplication(bool allowPacketSocket, bool incrementCounterIfTxFailed)
+    : m_allowPacketSocket{allowPacketSocket},
+      m_incrementCounterIfTxFailed{incrementCounterIfTxFailed}
 {
     NS_LOG_FUNCTION(this);
 }
@@ -119,6 +135,26 @@ Ptr<Socket>
 SourceApplication::GetSocket() const
 {
     return m_socket;
+}
+
+void
+SourceApplication::SetIncrementCounterIfTxFailed(
+    SourceApplication::IncrementCounterIfTxFailed option)
+{
+    NS_LOG_FUNCTION(this << static_cast<uint8_t>(option));
+    if (option == IncrementCounterIfTxFailed::UNDEFINED)
+    {
+        return;
+    }
+    m_incrementCounterIfTxFailed = (option == IncrementCounterIfTxFailed::ENABLED);
+}
+
+SourceApplication::IncrementCounterIfTxFailed
+SourceApplication::GetIncrementCounterIfTxFailed() const
+{
+    NS_LOG_FUNCTION(this);
+    return m_incrementCounterIfTxFailed ? IncrementCounterIfTxFailed::ENABLED
+                                        : IncrementCounterIfTxFailed::DISABLED;
 }
 
 void
@@ -237,6 +273,70 @@ void
 SourceApplication::DoConnectionFailed(Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION(this << socket);
+}
+
+Ptr<Packet>
+SourceApplication::CreatePacketWithSeqTsSizeHeader(uint32_t seq, uint64_t size)
+{
+    NS_LOG_FUNCTION(this << seq << size);
+    NS_ASSERT_MSG(m_enableSeqTsSizeHeader, "Use of SeqTsSizeHeader not enabled");
+
+    uint32_t headerSize{0};
+    SeqTsSizeHeader seqTsSizeHdr;
+    SeqTsHeader seqTsHdr;
+    if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+    {
+        seqTsSizeHdr.SetSeq(seq);
+        seqTsSizeHdr.SetSize(size);
+        headerSize = seqTsSizeHdr.GetSerializedSize();
+    }
+    else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+    {
+        seqTsHdr.SetSeq(seq);
+        headerSize = seqTsHdr.GetSerializedSize();
+    }
+
+    NS_ABORT_IF(size < headerSize);
+    auto packet = Create<Packet>(size - headerSize);
+
+    // Trace before adding header, for consistency with sink applications
+    NS_ASSERT(m_socket);
+    Address from;
+    Address to;
+    m_socket->GetSockName(from);
+    m_socket->GetPeerName(to);
+    if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+    {
+        m_txTraceWithSeqTsSize(packet, from, to, seqTsSizeHdr);
+        packet->AddHeader(seqTsSizeHdr);
+    }
+    else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+    {
+        m_txTraceWithSeqTs(packet, from, to, seqTsHdr);
+        packet->AddHeader(seqTsHdr);
+    }
+
+    return packet;
+}
+
+Ptr<Packet>
+SourceApplication::CreatePacket(uint64_t size)
+{
+    NS_LOG_FUNCTION(this << size);
+    return m_enableSeqTsSizeHeader ? CreatePacketWithSeqTsSizeHeader(m_seq, size)
+                                   : Create<Packet>(size);
+}
+
+int
+SourceApplication::SendPacket(Ptr<Packet> packet)
+{
+    NS_LOG_FUNCTION(this << packet);
+    auto ret = m_socket->Send(packet);
+    if (ret >= 0 || m_incrementCounterIfTxFailed)
+    {
+        ++m_seq;
+    }
+    return ret;
 }
 
 } // Namespace ns3

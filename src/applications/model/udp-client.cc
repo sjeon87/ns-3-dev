@@ -9,8 +9,6 @@
 
 #include "udp-client.h"
 
-#include "seq-ts-header.h"
-
 #include "ns3/address-utils.h"
 #include "ns3/log.h"
 #include "ns3/nstime.h"
@@ -83,7 +81,7 @@ UdpClient::GetTypeId()
 }
 
 UdpClient::UdpClient()
-    : SourceApplication(false)
+    : SourceApplication(false, true)
 {
     NS_LOG_FUNCTION(this);
     m_protocolTid = TypeId::LookupByName("ns3::UdpSocketFactory");
@@ -188,22 +186,15 @@ UdpClient::Send()
     NS_LOG_FUNCTION(this);
     NS_ASSERT(m_sendEvent.IsExpired());
 
+    auto p = CreatePacket(m_size);
+    m_txTrace(p);
     Address from;
     Address to;
     m_socket->GetSockName(from);
     m_socket->GetPeerName(to);
-    SeqTsHeader seqTs;
-    seqTs.SetSeq(m_sent);
-    NS_ABORT_IF(m_size < seqTs.GetSerializedSize());
-    auto p = Create<Packet>(m_size - seqTs.GetSerializedSize());
-
-    // Trace before adding header, for consistency with PacketSink
-    m_txTrace(p);
     m_txTraceWithAddresses(p, from, to);
 
-    p->AddHeader(seqTs);
-
-    if ((m_socket->Send(p)) >= 0)
+    if ((SendPacket(p)) >= 0)
     {
         ++m_sent;
         m_totalTx += p->GetSize();

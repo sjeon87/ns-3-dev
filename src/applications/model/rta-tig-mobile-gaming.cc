@@ -217,11 +217,11 @@ RtaTigMobileGaming::ScheduleNext()
     NS_LOG_FUNCTION(this);
     NS_ASSERT(!m_txEvent.IsPending());
     const auto delay = MicroSeconds(m_levArrivals->GetValue());
-    m_txEvent = Simulator::Schedule(delay, &RtaTigMobileGaming::SendPacket, this);
+    m_txEvent = Simulator::Schedule(delay, &RtaTigMobileGaming::TransmitPacket, this);
 }
 
 void
-RtaTigMobileGaming::SendPacket()
+RtaTigMobileGaming::TransmitPacket()
 {
     NS_LOG_FUNCTION(this);
 
@@ -240,9 +240,9 @@ RtaTigMobileGaming::SendPacket()
         packetSize = std::round(m_levSizes->GetValue());
         break;
     }
-    auto packet = Create<Packet>(packetSize);
+    auto packet = CreatePacket(packetSize);
 
-    const auto actualSize = static_cast<uint32_t>(m_socket->Send(packet));
+    const auto actualSize = static_cast<uint32_t>(SendPacket(packet));
     NS_ABORT_MSG_IF(actualSize != packetSize,
                     "Sent size " << actualSize << " does not match expected size " << packetSize);
     m_txTrace(packet);

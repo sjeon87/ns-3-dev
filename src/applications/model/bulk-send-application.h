@@ -52,13 +52,6 @@ class TcpSocketBase;
  * and SOCK_SEQPACKET sockets are supported.
  * For example, TCP sockets can be used, but
  * UDP sockets can not be used.
- *
- * If the attribute "EnableSeqTsSizeHeader" is enabled, the application will
- * use some bytes of the payload to store an header with a sequence number,
- * a timestamp, and the size of the packet sent. Support for extracting
- * statistics from this header have been added to \c ns3::PacketSink
- * (enable its "EnableSeqTsSizeHeader" attribute), or users may extract
- * the header via trace sources.
  */
 class BulkSendApplication : public SourceApplication
 {
@@ -100,7 +93,6 @@ class BulkSendApplication : public SourceApplication
     uint32_t m_sendSize;        //!< Size of data to send each time
     uint64_t m_maxBytes;        //!< Limit total number of bytes sent
     uint64_t m_totBytes{0};     //!< Total bytes sent so far
-    uint32_t m_seq{0};          //!< Sequence
     Ptr<Packet> m_unsentPacket; //!< Variable to cache unsent packet
 
     /// Traced Callback: retransmitted packets

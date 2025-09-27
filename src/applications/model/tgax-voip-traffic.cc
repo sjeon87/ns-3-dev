@@ -220,7 +220,7 @@ TgaxVoipTraffic::ScheduleNext()
 }
 
 void
-TgaxVoipTraffic::SendPacket(uint64_t eventId, Ptr<Packet> packet, Time jitter)
+TgaxVoipTraffic::TransmitPacket(uint64_t eventId, Ptr<Packet> packet, Time jitter)
 {
     const auto size = packet->GetSize();
     NS_LOG_FUNCTION(this << eventId << size << jitter);
@@ -229,7 +229,7 @@ TgaxVoipTraffic::SendPacket(uint64_t eventId, Ptr<Packet> packet, Time jitter)
     NS_ASSERT(it != m_txPacketEvents.end());
     NS_ASSERT(it->second.IsExpired());
 
-    const auto actualSize = static_cast<uint32_t>(m_socket->Send(packet));
+    const auto actualSize = static_cast<uint32_t>(SendPacket(packet));
     NS_ABORT_IF(actualSize != size);
     m_txTrace(packet);
     m_txJitterTrace(packet, jitter);
@@ -322,9 +322,9 @@ TgaxVoipTraffic::UpdateState()
         const auto payloadSize = (m_currentState == VoiceActivityState::ACTIVE_TALKING)
                                      ? m_activePacketSize
                                      : m_silencePacketSize;
-        auto packet = Create<Packet>(payloadSize);
+        auto packet = CreatePacket(payloadSize);
         m_txPacketEvents[m_nextEventId] = Simulator::Schedule(delay,
-                                                              &TgaxVoipTraffic::SendPacket,
+                                                              &TgaxVoipTraffic::TransmitPacket,
                                                               this,
                                                               m_nextEventId,
                                                               packet,

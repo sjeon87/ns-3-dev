@@ -311,8 +311,8 @@ TgaxVideoTraffic::Send(uint64_t eventId, uint32_t size, Time latency)
     NS_ASSERT(it != m_sendEvents.end());
     NS_ASSERT(it->second.IsExpired());
 
-    auto packet = m_unsentPackets.empty() ? Create<Packet>(size) : m_unsentPackets.front().packet;
-    const auto actual = static_cast<unsigned int>(m_socket->Send(packet));
+    auto packet = m_unsentPackets.empty() ? CreatePacket(size) : m_unsentPackets.front().packet;
+    const auto actual = static_cast<unsigned int>(SendPacket(packet));
     if (actual == size)
     {
         if (!m_unsentPackets.empty())

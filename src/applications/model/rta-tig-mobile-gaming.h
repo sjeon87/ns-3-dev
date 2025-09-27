@@ -86,7 +86,7 @@ class RtaTigMobileGaming : public SourceApplication
     /**
      * Transmit one initial, gaming or ending packet
      */
-    void SendPacket();
+    void TransmitPacket();
 
     ModelPresets m_modelPresets; //!< Model presets to use to configure the traffic generator
 

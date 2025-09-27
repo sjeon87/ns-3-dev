@@ -108,7 +108,7 @@ class TgaxVoipTraffic : public SourceApplication
      * @param packet the packet to transmit
      * @param jitter the delay jitter applied to that packet
      */
-    void SendPacket(uint64_t eventId, Ptr<Packet> packet, Time jitter);
+    void TransmitPacket(uint64_t eventId, Ptr<Packet> packet, Time jitter);
 
     /**
      * Get the duration to encode a frame based on the current state

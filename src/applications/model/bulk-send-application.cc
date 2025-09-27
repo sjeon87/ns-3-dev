@@ -139,52 +139,10 @@ BulkSendApplication::SendData()
 
         NS_LOG_LOGIC("sending packet at " << Simulator::Now());
 
-        Ptr<Packet> packet;
-        if (m_unsentPacket)
-        {
-            packet = m_unsentPacket;
-            toSend = packet->GetSize();
-        }
-        else if (m_enableSeqTsSizeHeader)
-        {
-            uint32_t headerSize{0};
-            SeqTsSizeHeader seqTsSizeHdr;
-            SeqTsHeader seqTsHdr;
-            if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
-            {
-                seqTsSizeHdr.SetSeq(m_seq++);
-                seqTsSizeHdr.SetSize(toSend);
-                headerSize = seqTsSizeHdr.GetSerializedSize();
-            }
-            else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
-            {
-                seqTsHdr.SetSeq(m_seq++);
-                headerSize = seqTsHdr.GetSerializedSize();
-            }
-            NS_ABORT_IF(toSend < headerSize);
-            packet = Create<Packet>(toSend - headerSize);
-            // Trace before adding header, for consistency with PacketSink
-            Address from;
-            Address to;
-            m_socket->GetSockName(from);
-            m_socket->GetPeerName(to);
-            if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
-            {
-                m_txTraceWithSeqTsSize(packet, from, to, seqTsSizeHdr);
-                packet->AddHeader(seqTsSizeHdr);
-            }
-            else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
-            {
-                m_txTraceWithSeqTs(packet, from, to, seqTsHdr);
-                packet->AddHeader(seqTsHdr);
-            }
-        }
-        else
-        {
-            packet = Create<Packet>(toSend);
-        }
+        auto packet = m_unsentPacket ? m_unsentPacket : CreatePacket(toSend);
+        toSend = packet->GetSize();
 
-        int actual = m_socket->Send(packet);
+        int actual = SendPacket(packet);
         if ((unsigned)actual == toSend)
         {
             m_totBytes += actual;
