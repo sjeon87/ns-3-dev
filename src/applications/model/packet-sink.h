@@ -12,8 +12,6 @@
 #include "sink-application.h"
 
 #include "ns3/event-id.h"
-#include "ns3/inet-socket-address.h"
-#include "ns3/inet6-socket-address.h"
 #include "ns3/ptr.h"
 #include "ns3/traced-callback.h"
 
@@ -89,12 +87,8 @@ class PacketSink : public SinkApplication
   private:
     void DoStartApplication() override;
     void DoStopApplication() override;
+    void ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from) override;
 
-    /**
-     * @brief Handle a packet received by the application
-     * @param socket the receiving socket
-     */
-    void HandleRead(Ptr<Socket> socket);
     /**
      * @brief Handle an incoming connection
      * @param socket the incoming connection socket
@@ -111,53 +105,6 @@ class PacketSink : public SinkApplication
      * @param socket the connected socket
      */
     void HandlePeerError(Ptr<Socket> socket);
-
-    /**
-     * @brief Packet received: assemble byte stream to extract SeqTsSizeHeader
-     * @param p received packet
-     * @param from from address
-     * @param localAddress local address
-     *
-     * The method assembles a received byte stream and extracts SeqTsSizeHeader
-     * instances from the stream to export in a trace source.
-     */
-    void PacketReceived(const Ptr<Packet>& p, const Address& from, const Address& localAddress);
-
-    /**
-     * @brief Hashing for the Address class
-     */
-    struct AddressHash
-    {
-        /**
-         * @brief operator ()
-         * @param x the address of which calculate the hash
-         * @return the hash of x
-         *
-         * Should this method go in address.h?
-         *
-         * It calculates the hash taking the uint32_t hash value of the IPv4 or IPv6 address.
-         * It works only for InetSocketAddresses (IPv4 version) or Inet6SocketAddresses (IPv6
-         * version)
-         */
-        size_t operator()(const Address& x) const
-        {
-            if (InetSocketAddress::IsMatchingType(x))
-            {
-                InetSocketAddress a = InetSocketAddress::ConvertFrom(x);
-                return std::hash<Ipv4Address>{}(a.GetIpv4());
-            }
-            else if (Inet6SocketAddress::IsMatchingType(x))
-            {
-                Inet6SocketAddress a = Inet6SocketAddress::ConvertFrom(x);
-                return std::hash<Ipv6Address>{}(a.GetIpv6());
-            }
-
-            NS_ABORT_MSG("PacketSink: unexpected address type, neither IPv4 nor IPv6");
-            return 0; // silence the warnings.
-        }
-    };
-
-    std::unordered_map<Address, Ptr<Packet>, AddressHash> m_buffer; //!< Buffer for received packets
 
     // In the case of TCP, each socket accept returns a new socket, so the
     // listening socket is stored separately from the accepted sockets

@@ -259,7 +259,6 @@ ThreeGppHttpServer::DoStartApplication()
         MakeCallback(&ThreeGppHttpServer::NewConnectionCreatedCallback, this));
     m_socket->SetCloseCallbacks(MakeCallback(&ThreeGppHttpServer::NormalCloseCallback, this),
                                 MakeCallback(&ThreeGppHttpServer::ErrorCloseCallback, this));
-    m_socket->SetRecvCallback(MakeCallback(&ThreeGppHttpServer::ReceivedDataCallback, this));
     m_socket->SetSendCallback(MakeCallback(&ThreeGppHttpServer::SendCallback, this));
 
     SwitchToState(STARTED);
@@ -290,7 +289,7 @@ ThreeGppHttpServer::NewConnectionCreatedCallback(Ptr<Socket> socket, const Addre
 
     socket->SetCloseCallbacks(MakeCallback(&ThreeGppHttpServer::NormalCloseCallback, this),
                               MakeCallback(&ThreeGppHttpServer::ErrorCloseCallback, this));
-    socket->SetRecvCallback(MakeCallback(&ThreeGppHttpServer::ReceivedDataCallback, this));
+    socket->SetRecvCallback(MakeCallback(&ThreeGppHttpServer::HandleRead, this));
     socket->SetSendCallback(MakeCallback(&ThreeGppHttpServer::SendCallback, this));
 
     m_connectionEstablishedTrace(this, socket);
@@ -299,14 +298,14 @@ ThreeGppHttpServer::NewConnectionCreatedCallback(Ptr<Socket> socket, const Addre
     /*
      * A typical connection is established after receiving an empty (i.e., no
      * data) TCP packet with ACK flag. The actual data will follow in a separate
-     * packet after that and will be received by ReceivedDataCallback().
+     * packet after that and will be received by HandleRead().
      *
      * However, that empty ACK packet might get lost. In this case, we may
      * receive the first data packet right here already, because it also counts
      * as a new connection. The statement below attempts to fetch the data from
      * that packet, if any.
      */
-    ReceivedDataCallback(socket);
+    HandleRead(socket);
 }
 
 void
@@ -365,77 +364,72 @@ ThreeGppHttpServer::ErrorCloseCallback(Ptr<Socket> socket)
 }
 
 void
-ThreeGppHttpServer::ReceivedDataCallback(Ptr<Socket> socket)
+ThreeGppHttpServer::ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from)
 {
-    NS_LOG_FUNCTION(this << socket);
+    NS_LOG_FUNCTION(this << socket << packet << from);
 
-    Address from;
-    while (auto packet = socket->RecvFrom(from))
+    if (packet->GetSize() == 0)
     {
-        if (packet->GetSize() == 0)
-        {
-            break; // EOF
-        }
+        return; // EOF
+    }
 
 #ifdef NS3_LOG_ENABLE
-        // Some log messages.
-        if (InetSocketAddress::IsMatchingType(from))
-        {
-            NS_LOG_INFO(this << " A packet of " << packet->GetSize() << " bytes"
-                             << " received from " << InetSocketAddress::ConvertFrom(from).GetIpv4()
-                             << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " / "
-                             << InetSocketAddress::ConvertFrom(from));
-        }
-        else if (Inet6SocketAddress::IsMatchingType(from))
-        {
-            NS_LOG_INFO(this << " A packet of " << packet->GetSize() << " bytes"
-                             << " received from " << Inet6SocketAddress::ConvertFrom(from).GetIpv6()
-                             << " port " << Inet6SocketAddress::ConvertFrom(from).GetPort() << " / "
-                             << Inet6SocketAddress::ConvertFrom(from));
-        }
+    // Some log messages.
+    if (InetSocketAddress::IsMatchingType(from))
+    {
+        NS_LOG_INFO(this << " A packet of " << packet->GetSize() << " bytes"
+                         << " received from " << InetSocketAddress::ConvertFrom(from).GetIpv4()
+                         << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " / "
+                         << InetSocketAddress::ConvertFrom(from));
+    }
+    else if (Inet6SocketAddress::IsMatchingType(from))
+    {
+        NS_LOG_INFO(this << " A packet of " << packet->GetSize() << " bytes"
+                         << " received from " << Inet6SocketAddress::ConvertFrom(from).GetIpv6()
+                         << " port " << Inet6SocketAddress::ConvertFrom(from).GetPort() << " / "
+                         << Inet6SocketAddress::ConvertFrom(from));
+    }
 #endif /* NS3_LOG_ENABLE */
 
-        // Check the header. No need to remove it, since it is not a "real" header.
-        ThreeGppHttpHeader httpHeader;
-        packet->PeekHeader(httpHeader);
+    // Check the header. No need to remove it, since it is not a "real" header.
+    ThreeGppHttpHeader httpHeader;
+    packet->PeekHeader(httpHeader);
 
-        // Fire trace sources.
-        m_rxTraceWithoutAddress(packet);
-        m_rxTrace(packet, from);
-        m_rxTraceWithAddresses(packet, from, m_local);
-        m_rxDelayTrace(Simulator::Now() - httpHeader.GetClientTs(), from);
+    // Fire trace sources.
+    m_rxTraceWithoutAddress(packet);
+    m_rxTrace(packet, from);
+    m_rxTraceWithAddresses(packet, from, m_local);
+    m_rxDelayTrace(Simulator::Now() - httpHeader.GetClientTs(), from);
 
-        switch (httpHeader.GetContentType())
-        {
-        case ThreeGppHttpHeader::MAIN_OBJECT: {
-            const auto processingDelay = m_httpVariables->GetMainObjectGenerationDelay();
-            NS_LOG_INFO(this << " Will finish generating a main object in "
-                             << processingDelay.As(Time::S) << ".");
-            m_txBuffer->RecordNextServe(socket,
-                                        Simulator::Schedule(processingDelay,
-                                                            &ThreeGppHttpServer::ServeNewMainObject,
-                                                            this,
-                                                            socket),
-                                        httpHeader.GetClientTs());
-            break;
-        }
-        case ThreeGppHttpHeader::EMBEDDED_OBJECT: {
-            const auto processingDelay = m_httpVariables->GetEmbeddedObjectGenerationDelay();
-            NS_LOG_INFO(this << " Will finish generating an embedded object in "
-                             << processingDelay.As(Time::S) << ".");
-            m_txBuffer->RecordNextServe(
-                socket,
-                Simulator::Schedule(processingDelay,
-                                    &ThreeGppHttpServer::ServeNewEmbeddedObject,
-                                    this,
-                                    socket),
-                httpHeader.GetClientTs());
-            break;
-        }
-        default:
-            NS_FATAL_ERROR("Invalid packet.");
-            break;
-        }
+    switch (httpHeader.GetContentType())
+    {
+    case ThreeGppHttpHeader::MAIN_OBJECT: {
+        const auto processingDelay = m_httpVariables->GetMainObjectGenerationDelay();
+        NS_LOG_INFO(this << " Will finish generating a main object in "
+                         << processingDelay.As(Time::S) << ".");
+        m_txBuffer->RecordNextServe(socket,
+                                    Simulator::Schedule(processingDelay,
+                                                        &ThreeGppHttpServer::ServeNewMainObject,
+                                                        this,
+                                                        socket),
+                                    httpHeader.GetClientTs());
+        break;
+    }
+    case ThreeGppHttpHeader::EMBEDDED_OBJECT: {
+        const auto processingDelay = m_httpVariables->GetEmbeddedObjectGenerationDelay();
+        NS_LOG_INFO(this << " Will finish generating an embedded object in "
+                         << processingDelay.As(Time::S) << ".");
+        m_txBuffer->RecordNextServe(socket,
+                                    Simulator::Schedule(processingDelay,
+                                                        &ThreeGppHttpServer::ServeNewEmbeddedObject,
+                                                        this,
+                                                        socket),
+                                    httpHeader.GetClientTs());
+        break;
+    }
+    default:
+        NS_FATAL_ERROR("Invalid packet.");
+        break;
     }
 }
 

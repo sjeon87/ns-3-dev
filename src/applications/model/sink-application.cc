@@ -118,11 +118,13 @@ SinkApplication::StartApplication()
     // note: it is currently not possible to restart an application
 
     m_socket = Socket::CreateSocket(GetNode(), m_protocolTid);
+    m_socket->SetRecvCallback(MakeCallback(&SinkApplication::HandleRead, this));
     if (m_local.IsInvalid() && !m_socket6)
     {
         // local address is not specified, so create another socket to also listen to all IPv6
         // addresses
         m_socket6 = Socket::CreateSocket(GetNode(), m_protocolTid);
+        m_socket6->SetRecvCallback(MakeCallback(&SinkApplication::HandleRead, this));
     }
 
     DoStartApplication();
@@ -173,6 +175,62 @@ void
 SinkApplication::DoStopApplication()
 {
     NS_LOG_FUNCTION(this);
+}
+
+void
+SinkApplication::ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
+                                        const Address& from,
+                                        const Address& localAddress)
+{
+    NS_LOG_FUNCTION(this << p << from << localAddress);
+
+    auto itBuffer = m_buffer.find(from);
+    if (itBuffer == m_buffer.end())
+    {
+        itBuffer = m_buffer.emplace(from, Create<Packet>(0)).first;
+    }
+
+    auto buffer = itBuffer->second;
+    buffer->AddAtEnd(p);
+
+    SeqTsSizeHeader header;
+    while ((buffer->GetSize() >= header.GetSerializedSize()))
+    {
+        buffer->PeekHeader(header);
+        NS_ABORT_MSG_IF((header.GetSize() == 0),
+                        "A SeqTsSizeHeader could not be found in the packet");
+        if (buffer->GetSize() < header.GetSize())
+        {
+            break;
+        }
+
+        NS_LOG_DEBUG("Removing packet of size " << header.GetSize() << " from buffer of size "
+                                                << buffer->GetSize());
+        auto complete = buffer->CreateFragment(0, static_cast<uint32_t>(header.GetSize()));
+        buffer->RemoveAtStart(static_cast<uint32_t>(header.GetSize()));
+
+        complete->RemoveHeader(header);
+
+        m_rxTraceWithSeqTsSize(complete, from, localAddress, header);
+    }
+}
+
+void
+SinkApplication::HandleRead(Ptr<Socket> socket)
+{
+    NS_LOG_FUNCTION(this << socket);
+    Address from;
+    while (auto packet = socket->RecvFrom(from))
+    {
+        ReceivePacket(socket, packet, from);
+        if (!m_enableSeqTsSizeHeader || m_rxTraceWithSeqTsSize.IsEmpty())
+        {
+            continue;
+        }
+        Address localAddress;
+        socket->GetSockName(localAddress);
+        ProcessSeqTsSizeHeader(packet, from, localAddress);
+    }
 }
 
 } // Namespace ns3

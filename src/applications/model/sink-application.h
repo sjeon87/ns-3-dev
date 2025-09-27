@@ -13,9 +13,12 @@
 
 #include "ns3/address.h"
 #include "ns3/application.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/inet6-socket-address.h"
 #include "ns3/traced-callback.h"
 
 #include <limits>
+#include <unordered_map>
 
 namespace ns3
 {
@@ -104,9 +107,23 @@ class SinkApplication : public Application
     TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
         m_rxTraceWithSeqTsSize;
 
+    /**
+     * @brief Handle a packet received by the application
+     * @param socket the receiving socket
+     */
+    void HandleRead(Ptr<Socket> socket);
+
   private:
     void StartApplication() override;
     void StopApplication() override;
+
+    /**
+     * @brief Handle a packet received by the application (to be implemented by subclasses)
+     * @param socket the receiving socket
+     * @param packet the received packet
+     * @param from the source address
+     */
+    virtual void ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from) = 0;
 
     /**
      * @brief set the local address
@@ -148,6 +165,56 @@ class SinkApplication : public Application
      * @brief Application specific shutdown code for child subclasses
      */
     virtual void DoStopApplication();
+
+    /**
+     * @brief Assemble byte stream to extract SeqTsSizeHeader
+     *
+     * @param p received packet
+     * @param from from address
+     * @param localAddress local address
+     *
+     * The method assembles a received byte stream and extracts SeqTsSizeHeader
+     * instances from the stream to export in a trace source.
+     */
+    void ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
+                                const Address& from,
+                                const Address& localAddress);
+
+    /**
+     * @brief Hashing for the Address class
+     */
+    struct AddressHash
+    {
+        /**
+         * @brief operator ()
+         * @param x the address of which calculate the hash
+         * @return the hash of x
+         *
+         * Should this method go in address.h?
+         *
+         * It calculates the hash taking the uint32_t hash value of the IPv4 or IPv6 address.
+         * It works only for InetSocketAddresses (IPv4 version) or Inet6SocketAddresses (IPv6
+         * version)
+         */
+        size_t operator()(const Address& x) const
+        {
+            if (InetSocketAddress::IsMatchingType(x))
+            {
+                InetSocketAddress a = InetSocketAddress::ConvertFrom(x);
+                return std::hash<Ipv4Address>{}(a.GetIpv4());
+            }
+            else if (Inet6SocketAddress::IsMatchingType(x))
+            {
+                Inet6SocketAddress a = Inet6SocketAddress::ConvertFrom(x);
+                return std::hash<Ipv6Address>{}(a.GetIpv6());
+            }
+
+            NS_ABORT_MSG("PacketSink: unexpected address type, neither IPv4 nor IPv6");
+            return 0; // silence the warnings.
+        }
+    };
+
+    std::unordered_map<Address, Ptr<Packet>, AddressHash> m_buffer; //!< Buffer for received packets
 };
 
 } // namespace ns3

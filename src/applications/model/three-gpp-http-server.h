@@ -146,6 +146,7 @@ class ThreeGppHttpServer : public SinkApplication
     void DoStopApplication() override;
     void SetLocal(const Address& addr) override;
     void SetPort(uint32_t port) override;
+    void ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from) override;
 
     // SOCKET CALLBACK METHODS
 
@@ -177,16 +178,6 @@ class ThreeGppHttpServer : public SinkApplication
      * @param socket Pointer to the socket where the event originates from.
      */
     void ErrorCloseCallback(Ptr<Socket> socket);
-    /**
-     * Invoked when #m_socket receives some packet data. It will check the
-     * packet for ThreeGppHttpHeader. It also fires the `Rx` trace source.
-     *
-     * Depending on the type of object requested, the method will trigger
-     * ServeMainObject() or ServeEmbeddedObject() after some delays.
-     *
-     * @param socket Pointer to the socket where the event originates from.
-     */
-    void ReceivedDataCallback(Ptr<Socket> socket);
     /**
      * Invoked when more buffer space for transmission is added to a socket. The
      * method will invoke ServeFromTxBuffer() to start some transmission using
