@@ -9,6 +9,8 @@
 #ifndef SINK_APPLICATION_H
 #define SINK_APPLICATION_H
 
+#include "seq-ts-size-header.h"
+
 #include "ns3/address.h"
 #include "ns3/application.h"
 #include "ns3/traced-callback.h"
@@ -59,6 +61,19 @@ class SinkApplication : public Application
 
     static constexpr uint32_t INVALID_PORT{std::numeric_limits<uint32_t>::max()}; //!< invalid port
 
+    /**
+     * TracedCallback signature for a reception with addresses and SeqTsSizeHeader
+     *
+     * @param p The packet received (without the SeqTsSize header)
+     * @param from From address
+     * @param to Local address
+     * @param header The SeqTsSize header
+     */
+    typedef void (*SeqTsSizeCallback)(Ptr<const Packet> p,
+                                      const Address& from,
+                                      const Address& to,
+                                      const SeqTsSizeHeader& header);
+
   protected:
     void DoDispose() override;
 
@@ -81,6 +96,13 @@ class SinkApplication : public Application
 
     Address m_local; //!< Local address to bind to (address and port)
     uint32_t m_port; //!< Local port to bind to
+
+    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the export of SeqTsSize header
+
+    /// Callbacks for tracing the packet Rx events, includes source, destination addresses, and
+    /// headers
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
+        m_rxTraceWithSeqTsSize;
 
   private:
     void StartApplication() override;

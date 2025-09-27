@@ -9,7 +9,6 @@
 #ifndef PACKET_SINK_H
 #define PACKET_SINK_H
 
-#include "seq-ts-size-header.h"
 #include "sink-application.h"
 
 #include "ns3/event-id.h"
@@ -83,19 +82,6 @@ class PacketSink : public SinkApplication
      * @return list of pointers to accepted sockets
      */
     std::list<Ptr<Socket>> GetAcceptedSockets() const;
-
-    /**
-     * TracedCallback signature for a reception with addresses and SeqTsSizeHeader
-     *
-     * @param p The packet received (without the SeqTsSize header)
-     * @param from From address
-     * @param to Local address
-     * @param header The SeqTsSize header
-     */
-    typedef void (*SeqTsSizeCallback)(Ptr<const Packet> p,
-                                      const Address& from,
-                                      const Address& to,
-                                      const SeqTsSizeHeader& header);
 
   protected:
     void DoDispose() override;
@@ -179,14 +165,8 @@ class PacketSink : public SinkApplication
 
     uint64_t m_totalRx{0}; //!< Total bytes received
 
-    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the export of SeqTsSize header
-
     /// Callback for tracing the packet Rx events, includes source and destination addresses
     TracedCallback<Ptr<const Packet>, const Address&, const Address&> m_rxTraceWithAddresses;
-    /// Callbacks for tracing the packet Rx events, includes source, destination addresses, and
-    /// headers
-    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
-        m_rxTraceWithSeqTsSize;
 
     uint8_t m_tos{0}; //!< Type of Service for outbound packets
 };

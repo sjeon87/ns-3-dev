@@ -9,7 +9,6 @@
 #include "packet-sink.h"
 
 #include "ns3/address-utils.h"
-#include "ns3/boolean.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/ipv4-packet-info-tag.h"
@@ -45,11 +44,6 @@ PacketSink::GetTypeId()
                           TypeIdValue(UdpSocketFactory::GetTypeId()),
                           MakeTypeIdAccessor(&PacketSink::m_protocolTid),
                           MakeTypeIdChecker())
-            .AddAttribute("EnableSeqTsSizeHeader",
-                          "Enable optional header tracing of SeqTsSizeHeader",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&PacketSink::m_enableSeqTsSizeHeader),
-                          MakeBooleanChecker())
             .AddAttribute("Tos",
                           "The Type of Service used to send IPv4 packets. "
                           "All 8 bits of the TOS byte are set (including ECN bits).",
@@ -59,11 +53,7 @@ PacketSink::GetTypeId()
             .AddTraceSource("RxWithAddresses",
                             "A packet has been received",
                             MakeTraceSourceAccessor(&PacketSink::m_rxTraceWithAddresses),
-                            "ns3::Packet::TwoAddressTracedCallback")
-            .AddTraceSource("RxWithSeqTsSize",
-                            "A packet with SeqTsSize header has been received",
-                            MakeTraceSourceAccessor(&PacketSink::m_rxTraceWithSeqTsSize),
-                            "ns3::PacketSink::SeqTsSizeCallback");
+                            "ns3::Packet::TwoAddressTracedCallback");
     return tid;
 }
 

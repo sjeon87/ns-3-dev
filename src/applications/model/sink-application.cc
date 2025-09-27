@@ -8,6 +8,7 @@
 
 #include "sink-application.h"
 
+#include "ns3/boolean.h"
 #include "ns3/log.h"
 #include "ns3/socket.h"
 #include "ns3/uinteger.h"
@@ -39,6 +40,11 @@ SinkApplication::GetTypeId()
                 UintegerValue(INVALID_PORT),
                 MakeUintegerAccessor(&SinkApplication::SetPort, &SinkApplication::GetPort),
                 MakeUintegerChecker<uint32_t>())
+            .AddAttribute("EnableSeqTsSizeHeader",
+                          "Enable optional header tracing of SeqTsSizeHeader",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&SinkApplication::m_enableSeqTsSizeHeader),
+                          MakeBooleanChecker())
             .AddTraceSource("Rx",
                             "A packet has been received",
                             MakeTraceSourceAccessor(&SinkApplication::m_rxTrace),
@@ -46,7 +52,11 @@ SinkApplication::GetTypeId()
             .AddTraceSource("RxWithoutAddress",
                             "A packet has been received from a given address",
                             MakeTraceSourceAccessor(&SinkApplication::m_rxTraceWithoutAddress),
-                            "ns3::Packet::TracedCallback");
+                            "ns3::Packet::TracedCallback")
+            .AddTraceSource("RxWithSeqTsSize",
+                            "A packet with SeqTsSize header has been received",
+                            MakeTraceSourceAccessor(&SinkApplication::m_rxTraceWithSeqTsSize),
+                            "ns3::PacketSink::SeqTsSizeCallback");
     return tid;
 }
 
