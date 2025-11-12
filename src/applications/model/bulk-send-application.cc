@@ -101,13 +101,11 @@ BulkSendApplication::DoStartApplication() // Called at time specified by Start
 {
     NS_LOG_FUNCTION(this);
 
-    // Fatal error if socket type is not NS3_SOCK_STREAM or NS3_SOCK_SEQPACKET
-    if (m_socket->GetSocketType() != Socket::NS3_SOCK_STREAM &&
-        m_socket->GetSocketType() != Socket::NS3_SOCK_SEQPACKET)
+    // Fatal error if socket type is not NS3_SOCK_STREAM
+    if (m_socket->GetSocketType() != Socket::NS3_SOCK_STREAM)
     {
-        NS_FATAL_ERROR("Using BulkSend with an incompatible socket type. "
-                       "BulkSend requires SOCK_STREAM or SOCK_SEQPACKET. "
-                       "In other words, use TCP instead of UDP.");
+        NS_FATAL_ERROR("Using BulkSend with an incompatible socket type. BulkSend requires "
+                       "SOCK_STREAM. In other words, use TCP instead of UDP.");
     }
 
     m_socket->ShutdownRecv();
