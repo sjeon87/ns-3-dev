@@ -296,7 +296,13 @@ SourceApplication::CreatePacketWithSeqTsSizeHeader(uint32_t seq, uint64_t size)
         headerSize = seqTsHdr.GetSerializedSize();
     }
 
-    NS_ABORT_IF(size < headerSize);
+    if (size < headerSize)
+    {
+        NS_LOG_WARN("Packet size " << size << " is smaller than SeqTsSizeHeader size " << headerSize
+                                   << ": no SeqTsSizeHeader will be added");
+        return Create<Packet>(size);
+    }
+
     auto packet = Create<Packet>(size - headerSize);
 
     // Trace before adding header, for consistency with sink applications
