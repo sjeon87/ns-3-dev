@@ -125,6 +125,19 @@ build_example(
     ${libapplications}
     ${libtraffic-control}
 )
+
+build_example(
+  NAME tcp-ledbat-pp-example
+  SOURCE_FILES tcp-ledbat-pp-example.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libapplications}
+    ${libtraffic-control}
+    ${libnetwork}
+    ${libinternet-apps}
+    ${libflow-monitor}
+)
 build_example(
   NAME fack-example
   SOURCE_FILES fack-example.cc
