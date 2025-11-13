@@ -97,6 +97,7 @@ set(source_files
     model/tcp-illinois.cc
     model/tcp-l4-protocol.cc
     model/tcp-ledbat.cc
+    model/tcp-ledbat-pp.cc
     model/tcp-linux-reno.cc
     model/tcp-lp.cc
     model/tcp-option-rfc793.cc
@@ -223,6 +224,7 @@ set(header_files
     model/tcp-illinois.h
     model/tcp-l4-protocol.h
     model/tcp-ledbat.h
+    model/tcp-ledbat-pp.h
     model/tcp-linux-reno.h
     model/tcp-lp.h
     model/tcp-option-rfc793.h
