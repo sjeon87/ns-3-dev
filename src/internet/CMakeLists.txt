@@ -289,6 +289,7 @@ set(test_sources
     test/ipv6-raw-test.cc
     test/ipv6-ripng-test.cc
     test/ipv6-test.cc
+    test/ipvx-network-address-test.cc
     test/neighbor-cache-test.cc
     test/rtt-test.cc
     test/tcp-abe-test.cc
