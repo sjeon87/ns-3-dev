@@ -42,7 +42,9 @@ set(source_files
     utils/inet-socket-address.cc
     utils/inet6-socket-address.cc
     utils/ipv4-address.cc
+    utils/ipv4-network-address.cc
     utils/ipv6-address.cc
+    utils/ipv6-network-address.cc
     utils/llc-snap-header.cc
     utils/mac16-address.cc
     utils/mac48-address.cc
@@ -122,7 +124,9 @@ set(header_files
     utils/inet-socket-address.h
     utils/inet6-socket-address.h
     utils/ipv4-address.h
+    utils/ipv4-network-address.h
     utils/ipv6-address.h
+    utils/ipv6-network-address.h
     utils/llc-snap-header.h
     utils/lollipop-counter.h
     utils/mac16-address.h
@@ -168,6 +172,7 @@ build_lib(
     test/drop-tail-queue-test-suite.cc
     test/error-model-test-suite.cc
     test/ipv6-address-test-suite.cc
+    test/ipvx-network-address-test.cc
     test/lollipop-counter-test.cc
     test/network-traced-callback-typedef-test-suite.cc
     test/packet-metadata-test.cc
