@@ -242,18 +242,37 @@ OnOffApplication::SendPacket()
     }
     else if (m_enableSeqTsSizeHeader)
     {
+        uint32_t headerSize{0};
+        SeqTsSizeHeader seqTsSizeHdr;
+        SeqTsHeader seqTsHdr;
+        if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+        {
+            seqTsSizeHdr.SetSeq(m_seq++);
+            seqTsSizeHdr.SetSize(m_pktSize);
+            headerSize = seqTsSizeHdr.GetSerializedSize();
+        }
+        else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+        {
+            seqTsHdr.SetSeq(m_seq++);
+            headerSize = seqTsHdr.GetSerializedSize();
+        }
+        NS_ABORT_IF(m_pktSize < headerSize);
+        packet = Create<Packet>(m_pktSize - headerSize);
+        // Trace before adding header, for consistency with PacketSink
         Address from;
         Address to;
         m_socket->GetSockName(from);
         m_socket->GetPeerName(to);
-        SeqTsSizeHeader header;
-        header.SetSeq(m_seq++);
-        header.SetSize(m_pktSize);
-        NS_ABORT_IF(m_pktSize < header.GetSerializedSize());
-        packet = Create<Packet>(m_pktSize - header.GetSerializedSize());
-        // Trace before adding header, for consistency with PacketSink
-        m_txTraceWithSeqTsSize(packet, from, to, header);
-        packet->AddHeader(header);
+        if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+        {
+            m_txTraceWithSeqTsSize(packet, from, to, seqTsSizeHdr);
+            packet->AddHeader(seqTsSizeHdr);
+        }
+        else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+        {
+            m_txTraceWithSeqTs(packet, from, to, seqTsHdr);
+            packet->AddHeader(seqTsHdr);
+        }
     }
     else
     {

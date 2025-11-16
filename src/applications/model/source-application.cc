@@ -50,7 +50,9 @@ SourceApplication::GetTypeId()
                           MakeUintegerAccessor(&SourceApplication::m_tos),
                           MakeUintegerChecker<uint8_t>())
             .AddAttribute("EnableSeqTsSizeHeader",
-                          "Enable use of SeqTsSizeHeader for sequence number and timestamp",
+                          "Enable use of SeqTsHeader (for NS3_SOCK_DGRAM socket) or "
+                          "SeqTsSizeHeader (for NS3_SOCK_STREAM socket) for sequence number, "
+                          "timestamp and size (for NS3_SOCK_STREAM socket only)",
                           BooleanValue(false),
                           MakeBooleanAccessor(&SourceApplication::m_enableSeqTsSizeHeader),
                           MakeBooleanChecker())
@@ -62,6 +64,10 @@ SourceApplication::GetTypeId()
                             "A new packet is created with SeqTsSizeHeader",
                             MakeTraceSourceAccessor(&SourceApplication::m_txTraceWithSeqTsSize),
                             "ns3::SinkApplication::SeqTsSizeCallback")
+            .AddTraceSource("TxWithSeqTs",
+                            "A new packet is created with SeqTsHeader",
+                            MakeTraceSourceAccessor(&SourceApplication::m_txTraceWithSeqTs),
+                            "ns3::SinkApplication::SeqTsCallback")
             .AddTraceSource("ConnectionSucceeded",
                             "Succeeded to establish connection",
                             MakeTraceSourceAccessor(&SourceApplication::m_connectionSuccess),

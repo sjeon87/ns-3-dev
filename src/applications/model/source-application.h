@@ -94,10 +94,15 @@ class SourceApplication : public Application
                                             const Address& local,
                                             const Address& remote);
 
-    /// Callback for tracing the packet Tx events, includes source, destination,  the packet sent,
-    /// and header
+    /// Callback for tracing the packet Tx events, includes source, destination, the packet sent,
+    /// and header if EnableSeqTsSizeHeader is enabled (for NS3_SOCK_STREAM sockets only)
     TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
         m_txTraceWithSeqTsSize;
+
+    /// Callback for tracing the packet Tx events, includes source, destination, the packet sent,
+    /// and header if EnableSeqTsSizeHeader is enabled (for NS3_SOCK_DGRAM sockets only)
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsHeader&>
+        m_txTraceWithSeqTs;
 
     /// Traced Callback: connection success event.
     TracedCallback<Ptr<Socket>, const Address&, const Address&> m_connectionSuccess;

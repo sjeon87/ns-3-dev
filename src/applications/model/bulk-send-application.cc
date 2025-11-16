@@ -147,18 +147,37 @@ BulkSendApplication::SendData()
         }
         else if (m_enableSeqTsSizeHeader)
         {
-            SeqTsSizeHeader header;
-            header.SetSeq(m_seq++);
-            header.SetSize(toSend);
-            NS_ABORT_IF(toSend < header.GetSerializedSize());
-            packet = Create<Packet>(toSend - header.GetSerializedSize());
+            uint32_t headerSize{0};
+            SeqTsSizeHeader seqTsSizeHdr;
+            SeqTsHeader seqTsHdr;
+            if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+            {
+                seqTsSizeHdr.SetSeq(m_seq++);
+                seqTsSizeHdr.SetSize(toSend);
+                headerSize = seqTsSizeHdr.GetSerializedSize();
+            }
+            else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+            {
+                seqTsHdr.SetSeq(m_seq++);
+                headerSize = seqTsHdr.GetSerializedSize();
+            }
+            NS_ABORT_IF(toSend < headerSize);
+            packet = Create<Packet>(toSend - headerSize);
             // Trace before adding header, for consistency with PacketSink
             Address from;
             Address to;
             m_socket->GetSockName(from);
             m_socket->GetPeerName(to);
-            m_txTraceWithSeqTsSize(packet, from, to, header);
-            packet->AddHeader(header);
+            if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+            {
+                m_txTraceWithSeqTsSize(packet, from, to, seqTsSizeHdr);
+                packet->AddHeader(seqTsSizeHdr);
+            }
+            else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+            {
+                m_txTraceWithSeqTs(packet, from, to, seqTsHdr);
+                packet->AddHeader(seqTsHdr);
+            }
         }
         else
         {
