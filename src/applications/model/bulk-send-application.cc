@@ -108,20 +108,21 @@ BulkSendApplication::DoStartApplication() // Called at time specified by Start
             MakeCallback(&BulkSendApplication::PacketRetransmitted, this));
     }
 
-    if (m_connected)
-    {
-        Address from;
-        m_socket->GetSockName(from);
-        SendData(from, m_peer);
-    }
+    SendData();
 }
 
 // Private helpers
 
 void
-BulkSendApplication::SendData(const Address& from, const Address& to)
+BulkSendApplication::SendData()
 {
     NS_LOG_FUNCTION(this);
+
+    if (!m_connected)
+    {
+        // We can only send data once the connection has completed
+        return;
+    }
 
     while (m_maxBytes == 0 || m_totBytes < m_maxBytes)
     { // Time to send more
@@ -152,6 +153,10 @@ BulkSendApplication::SendData(const Address& from, const Address& to)
             NS_ABORT_IF(toSend < header.GetSerializedSize());
             packet = Create<Packet>(toSend - header.GetSerializedSize());
             // Trace before adding header, for consistency with PacketSink
+            Address from;
+            Address to;
+            m_socket->GetSockName(from);
+            m_socket->GetPeerName(to);
             m_txTraceWithSeqTsSize(packet, from, to, header);
             packet->AddHeader(header);
         }
@@ -208,26 +213,14 @@ BulkSendApplication::DoConnectionSucceeded(Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION(this << socket);
     NS_LOG_LOGIC("BulkSendApplication Connection succeeded");
-    Address from;
-    Address to;
-    socket->GetSockName(from);
-    socket->GetPeerName(to);
-    SendData(from, to);
+    SendData();
 }
 
 void
 BulkSendApplication::DataSend(Ptr<Socket> socket, uint32_t)
 {
     NS_LOG_FUNCTION(this);
-
-    if (m_connected)
-    { // Only send new data if the connection has completed
-        Address from;
-        Address to;
-        socket->GetSockName(from);
-        socket->GetPeerName(to);
-        SendData(from, to);
-    }
+    SendData();
 }
 
 void

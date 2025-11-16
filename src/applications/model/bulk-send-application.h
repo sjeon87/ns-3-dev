@@ -94,10 +94,8 @@ class BulkSendApplication : public SourceApplication
 
     /**
      * @brief Send data until the L4 transmission buffer is full.
-     * @param from From address
-     * @param to To address
      */
-    void SendData(const Address& from, const Address& to);
+    void SendData();
 
     uint32_t m_sendSize;        //!< Size of data to send each time
     uint64_t m_maxBytes;        //!< Limit total number of bytes sent
