@@ -111,15 +111,6 @@ class TracedValue
     }
 
     /**
-     * Copy constructor.
-     * @param [in] o The value to copy.
-     */
-    TracedValue(const TracedValue& o)
-        : m_v(o.m_v)
-    {
-    }
-
-    /**
      * Construct from an explicit variable.
      * @param [in] v The variable to trace.
      */

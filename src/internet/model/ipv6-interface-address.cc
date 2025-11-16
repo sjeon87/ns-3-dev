@@ -59,16 +59,6 @@ Ipv6InterfaceAddress::Ipv6InterfaceAddress(Ipv6Address address, Ipv6Prefix prefi
     m_nsDadUid = 0;
 }
 
-Ipv6InterfaceAddress::Ipv6InterfaceAddress(const Ipv6InterfaceAddress& o)
-    : m_address(o.m_address),
-      m_prefix(o.m_prefix),
-      m_state(o.m_state),
-      m_scope(o.m_scope),
-      m_onLink(o.m_onLink),
-      m_nsDadUid(o.m_nsDadUid)
-{
-}
-
 Ipv6InterfaceAddress::~Ipv6InterfaceAddress()
 {
     NS_LOG_FUNCTION(this);

@@ -36,14 +36,6 @@ class OlsrHelper : public Ipv4RoutingHelper
      */
     OlsrHelper();
 
-    /**
-     * @brief Construct an OlsrHelper from another previously initialized instance
-     * (Copy Constructor).
-     *
-     * @param o object to copy
-     */
-    OlsrHelper(const OlsrHelper& o);
-
     // Delete assignment operator to avoid misuse
     OlsrHelper& operator=(const OlsrHelper&) = delete;
 

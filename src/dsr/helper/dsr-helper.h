@@ -52,12 +52,6 @@ class DsrHelper
     DsrHelper& operator=(const DsrHelper&) = delete;
 
     /**
-     * @brief Construct an DsrHelper from another previously initialized instance
-     * (Copy Constructor).
-     * @param o object to copy from
-     */
-    DsrHelper(const DsrHelper& o);
-    /**
      * @returns pointer to clone of this DsrHelper
      *
      * This method is mainly for internal use by the other helpers;

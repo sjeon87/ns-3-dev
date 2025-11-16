@@ -567,17 +567,6 @@ class TypeId
 
     /** Default constructor.  This produces an invalid TypeId. */
     inline TypeId();
-    /**
-     * Copy constructor.
-     * @param [in] o The other TypeId.
-     */
-    inline TypeId(const TypeId& o);
-    /**
-     * Assignment.
-     * @param [in] o The other TypeId.
-     * @returns The copied TypeId.
-     */
-    inline TypeId& operator=(const TypeId& o);
     /** Destructor. */
     inline ~TypeId();
 
@@ -656,18 +645,6 @@ namespace ns3
 TypeId::TypeId()
     : m_tid(0)
 {
-}
-
-TypeId::TypeId(const TypeId& o)
-    : m_tid(o.m_tid)
-{
-}
-
-TypeId&
-TypeId::operator=(const TypeId& o)
-{
-    m_tid = o.m_tid;
-    return *this;
 }
 
 TypeId::~TypeId()

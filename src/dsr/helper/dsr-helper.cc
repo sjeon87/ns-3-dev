@@ -43,12 +43,6 @@ DsrHelper::DsrHelper()
     m_agentFactory.SetTypeId("ns3::dsr::DsrRouting");
 }
 
-DsrHelper::DsrHelper(const DsrHelper& o)
-    : m_agentFactory(o.m_agentFactory)
-{
-    NS_LOG_FUNCTION(this);
-}
-
 DsrHelper::~DsrHelper()
 {
     NS_LOG_FUNCTION(this);

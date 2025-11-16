@@ -36,13 +36,6 @@ class RipHelper : public Ipv4RoutingHelper
      */
     RipHelper();
 
-    /**
-     * @brief Construct an RipHelper from another previously
-     * initialized instance (Copy Constructor).
-     * @param o The object to copy from.
-     */
-    RipHelper(const RipHelper& o);
-
     ~RipHelper() override;
 
     // Delete assignment operator to avoid misuse

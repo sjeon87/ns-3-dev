@@ -48,21 +48,6 @@ class ClickInternetStackHelper : public PcapHelperForIpv4, public AsciiTraceHelp
     ~ClickInternetStackHelper() override;
 
     /**
-     * Copy constructor.
-     *
-     * @param o Object to copy from.
-     */
-    ClickInternetStackHelper(const ClickInternetStackHelper& o);
-
-    /**
-     * Assignment operator.
-     *
-     * @param o Object to copy from.
-     * @return Reference to updated object.
-     */
-    ClickInternetStackHelper& operator=(const ClickInternetStackHelper& o);
-
-    /**
      * Return helper internal state to that of a newly constructed one
      */
     void Reset();

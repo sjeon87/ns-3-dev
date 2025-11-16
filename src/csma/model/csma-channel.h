@@ -45,12 +45,6 @@ class CsmaDeviceRec
     CsmaDeviceRec(Ptr<CsmaNetDevice> device);
 
     /**
-     * Copy constructor
-     * @param o the object to copy
-     */
-    CsmaDeviceRec(const CsmaDeviceRec& o);
-
-    /**
      * @return If the net device pointed to by the devicePtr is active
      * and ready to RX/TX.
      */

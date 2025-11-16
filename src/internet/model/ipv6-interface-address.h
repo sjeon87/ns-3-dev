@@ -79,12 +79,6 @@ class Ipv6InterfaceAddress
     Ipv6InterfaceAddress(Ipv6Address address, Ipv6Prefix prefix, bool onLink);
 
     /**
-     * @brief Copy constructor.
-     * @param o object to copy
-     */
-    Ipv6InterfaceAddress(const Ipv6InterfaceAddress& o);
-
-    /**
      * @brief Destructor.
      */
     ~Ipv6InterfaceAddress();

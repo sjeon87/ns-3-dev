@@ -171,21 +171,6 @@ ClickInternetStackHelper::~ClickInternetStackHelper()
 {
 }
 
-ClickInternetStackHelper::ClickInternetStackHelper(const ClickInternetStackHelper& o)
-{
-    m_ipv4Enabled = o.m_ipv4Enabled;
-}
-
-ClickInternetStackHelper&
-ClickInternetStackHelper::operator=(const ClickInternetStackHelper& o)
-{
-    if (this != &o)
-    {
-        m_ipv4Enabled = o.m_ipv4Enabled;
-    }
-    return *this;
-}
-
 void
 ClickInternetStackHelper::Reset()
 {

@@ -38,13 +38,6 @@ class RipNgHelper : public Ipv6RoutingHelper
      */
     RipNgHelper();
 
-    /**
-     * @brief Construct an RipNgHelper from another previously
-     * initialized instance (Copy Constructor).
-     * @param o The object to copy from.
-     */
-    RipNgHelper(const RipNgHelper& o);
-
     ~RipNgHelper() override;
 
     // Delete assignment operator to avoid misuse
