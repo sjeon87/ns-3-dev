@@ -41,7 +41,8 @@ SinkApplication::GetTypeId()
                 MakeUintegerAccessor(&SinkApplication::SetPort, &SinkApplication::GetPort),
                 MakeUintegerChecker<uint32_t>())
             .AddAttribute("EnableSeqTsSizeHeader",
-                          "Enable optional header tracing of SeqTsSizeHeader",
+                          "Enable optional header tracing of SeqTsSizeHeader (for NS3_SOCK_STREAM "
+                          "socket) or SeqTsHeader (for NS3_SOCK_DGRAM socket)",
                           BooleanValue(false),
                           MakeBooleanAccessor(&SinkApplication::m_enableSeqTsSizeHeader),
                           MakeBooleanChecker())
@@ -56,7 +57,11 @@ SinkApplication::GetTypeId()
             .AddTraceSource("RxWithSeqTsSize",
                             "A packet with SeqTsSize header has been received",
                             MakeTraceSourceAccessor(&SinkApplication::m_rxTraceWithSeqTsSize),
-                            "ns3::PacketSink::SeqTsSizeCallback");
+                            "ns3::SinkApplication::SeqTsSizeCallback")
+            .AddTraceSource("RxWithSeqTs",
+                            "A packet with SeqTs header has been received",
+                            MakeTraceSourceAccessor(&SinkApplication::m_rxTraceWithSeqTs),
+                            "ns3::SinkApplication::SeqTsCallback");
     return tid;
 }
 
@@ -199,6 +204,7 @@ SinkApplication::ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
         buffer->PeekHeader(header);
         NS_ABORT_MSG_IF((header.GetSize() == 0),
                         "A SeqTsSizeHeader could not be found in the packet");
+
         if (buffer->GetSize() < header.GetSize())
         {
             break;
@@ -213,6 +219,26 @@ SinkApplication::ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
 
         m_rxTraceWithSeqTsSize(complete, from, localAddress, header);
     }
+}
+
+void
+SinkApplication::ProcessSeqTsHeader(const Ptr<Packet>& p,
+                                    const Address& from,
+                                    const Address& localAddress)
+{
+    NS_LOG_FUNCTION(this << p << from << localAddress);
+
+    SeqTsHeader header;
+    p->PeekHeader(header);
+
+    if ((header.GetSeq() == 0) && (header.GetTs().IsZero()))
+    {
+        NS_LOG_WARN("SeqTsHeader not transmitted");
+        return;
+    }
+
+    p->RemoveHeader(header);
+    m_rxTraceWithSeqTs(p, from, localAddress, header);
 }
 
 void
@@ -233,7 +259,14 @@ SinkApplication::HandleRead(Ptr<Socket> socket)
         }
         Address localAddress;
         socket->GetSockName(localAddress);
-        ProcessSeqTsSizeHeader(packet, from, localAddress);
+        if (socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+        {
+            ProcessSeqTsHeader(packet, from, localAddress);
+        }
+        else if (socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+        {
+            ProcessSeqTsSizeHeader(packet, from, localAddress);
+        }
     }
 }
 

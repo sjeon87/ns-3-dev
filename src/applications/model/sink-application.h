@@ -103,9 +103,14 @@ class SinkApplication : public Application
     bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the export of SeqTsSize header
 
     /// Callbacks for tracing the packet Rx events, includes source, destination addresses, and
-    /// headers
+    /// SeqTsSizeHeader
     TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
         m_rxTraceWithSeqTsSize;
+
+    /// Callbacks for tracing the packet Rx events, includes source, destination addresses, and
+    /// SeqTsHeader
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsHeader&>
+        m_rxTraceWithSeqTs;
 
     /**
      * @brief Handle a packet received by the application
@@ -165,6 +170,15 @@ class SinkApplication : public Application
      * @brief Application specific shutdown code for child subclasses
      */
     virtual void DoStopApplication();
+
+    /**
+     * @brief Extract SeqTsHeader from received packet if any
+     *
+     * @param p received packet
+     * @param from from address
+     * @param localAddress local address
+     */
+    void ProcessSeqTsHeader(const Ptr<Packet>& p, const Address& from, const Address& localAddress);
 
     /**
      * @brief Assemble byte stream to extract SeqTsSizeHeader
