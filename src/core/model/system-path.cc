@@ -402,6 +402,8 @@ Exists(const std::string path)
 std::string
 CreateValidSystemPath(const std::string path)
 {
+    NS_LOG_FUNCTION(path);
+
     // Windows and its file systems, e.g. NTFS and (ex)FAT(12|16|32),
     // do not like paths with empty spaces or special symbols.
     // Some of these symbols are allowed in test names, checked in TestCase::AddTestCase.
