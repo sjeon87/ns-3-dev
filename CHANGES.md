@@ -29,6 +29,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (wifi) `WifiRemoteStationManager::GetCtsToSelfTxVector()` now takes the channel width of the data frame being protected, so that the returned TXVECTOR covers that bandwidth (using the non-HT duplicate format if wider than 20 MHz).
 * (network) `Buffer::Serialize`, `ByteTagList::Serialize`, `NixVector::Serialize`, `PacketMetadata::Serialize`, `PacketTagList::Serialize` and `Packet::Serialize` functions return now the number of serialized bytes instead of just `1` for a successful serialization.
 * (network) `Buffer::Deserialize`, `ByteTagList::Deserialize`, `PacketMetadata::Deserialize`, `PacketTagList::Deserialize` and `Packet::Deserialize` functions return now the number of deserialized bytes instead of just `1` for a successful deserialization.
+* (applications) `UdpServer` application does no longer trace a received packet whose size is zero.
 
 ### Changes to build system
 

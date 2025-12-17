@@ -138,11 +138,7 @@ UdpServer::ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& 
     m_rxTrace(packet, from);
     m_rxTraceWithAddresses(packet, from, localAddress);
 
-    if (packet->GetSize() == 0)
-    {
-        return;
-    }
-
+    NS_ASSERT_MSG(packet->GetSize() != 0, "Received empty packet.");
     const auto receivedSize = packet->GetSize();
     SeqTsHeader seqTs;
     packet->RemoveHeader(seqTs);

@@ -368,10 +368,7 @@ ThreeGppHttpServer::ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const 
 {
     NS_LOG_FUNCTION(this << socket << packet << from);
 
-    if (packet->GetSize() == 0)
-    {
-        return; // EOF
-    }
+    NS_ASSERT_MSG(packet->GetSize() != 0, "Received empty packet.");
 
 #ifdef NS3_LOG_ENABLE
     // Some log messages.

@@ -190,10 +190,7 @@ PacketSink::ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address&
 {
     NS_LOG_FUNCTION(this << socket << packet << from);
 
-    if (packet->GetSize() == 0)
-    {
-        return;
-    }
+    NS_ASSERT_MSG(packet->GetSize() != 0, "Received empty packet.");
 
     m_totalRx += packet->GetSize();
     if (InetSocketAddress::IsMatchingType(from))

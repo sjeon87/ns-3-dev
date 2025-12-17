@@ -222,6 +222,10 @@ SinkApplication::HandleRead(Ptr<Socket> socket)
     Address from;
     while (auto packet = socket->RecvFrom(from))
     {
+        if (packet->GetSize() == 0)
+        {
+            continue;
+        }
         ReceivePacket(socket, packet, from);
         if (!m_enableSeqTsSizeHeader || m_rxTraceWithSeqTsSize.IsEmpty())
         {
