@@ -575,3 +575,4 @@ LrWpanCsmaCa::GetBatteryLifeExtension() const
 
 } // namespace lrwpan
 } // namespace ns3
+// Force pipeline trigger
