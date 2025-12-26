@@ -32,29 +32,29 @@ NS_LOG_COMPONENT_DEFINE("LrWpanCsmaCa");
 NS_OBJECT_ENSURE_REGISTERED(LrWpanCsmaCa);
 
 TypeId
-LrWpanCsmaCa::GetTypeId()
+LrWpanCsmaCa::GetTypeId (void)
 {
-    static TypeId tid = TypeId("ns3::lrwpan::LrWpanCsmaCa")
-                            .AddDeprecatedName("ns3::LrWpanCsmaCa")
-                            .SetParent<Object>()
-                            .SetGroupName("LrWpan")
-                            .AddConstructor<LrWpanCsmaCa>()
-                            .AddAttribute ("MacMinBE",
-                                           "The minimum backoff exponent.",
-                                           UintegerValue (3),
-                                           MakeUintegerAccessor (&LrWpanCsmaCa::m_macMinBE),
-                                           MakeUintegerChecker<uint8_t> (0, 8))
-                            .AddAttribute ("MacMaxBE",
-                                           "The maximum backoff exponent.",
-                                           UintegerValue (5),
-                                           MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxBE),
-                                           MakeUintegerChecker<uint8_t> (3, 8))
-                            .AddAttribute ("MacMaxCSMABackoffs",
-                                           "The maximum number of backoffs.",
-                                           UintegerValue (4),
-                                           MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxCSMABackoffs),
-                                           MakeUintegerChecker<uint8_t> (0, 5));
-    return tid;
+  static TypeId tid = TypeId ("ns3::lrwpan::LrWpanCsmaCa")
+    .AddDeprecatedName ("ns3::LrWpanCsmaCa")
+    .SetParent<Object> ()
+    .SetGroupName ("LrWpan")
+    .AddConstructor<LrWpanCsmaCa> ()
+    .AddAttribute ("MacMinBE",
+                   "The minimum backoff exponent.",
+                   UintegerValue (3),
+                   MakeUintegerAccessor (&LrWpanCsmaCa::m_macMinBE),
+                   MakeUintegerChecker<uint8_t> (0, 8))
+    .AddAttribute ("MacMaxBE",
+                   "The maximum backoff exponent.",
+                   UintegerValue (5),
+                   MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxBE),
+                   MakeUintegerChecker<uint8_t> (3, 8))
+    .AddAttribute ("MacMaxCSMABackoffs",
+                   "The maximum number of backoffs.",
+                   UintegerValue (4),
+                   MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxCSMABackoffs),
+                   MakeUintegerChecker<uint8_t> (0, 5));
+  return tid;
 }
 
 LrWpanCsmaCa::LrWpanCsmaCa()
