@@ -464,7 +464,7 @@ LrWpanCsmaCa::PlmeCcaConfirm(PhyEnumeration status)
 {
     NS_LOG_FUNCTION(this << status);
 
-    // Only react on this event, if we are actually waiting for a CCA.
+    // Only react on this event,  if we are actually waiting for a CCA.
     // If the CSMA algorithm was canceled, we could still receive this event from
     // the PHY. In this case we ignore the event.
     if (m_ccaRequestRunning)
