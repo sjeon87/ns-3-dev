@@ -38,7 +38,22 @@ LrWpanCsmaCa::GetTypeId()
                             .AddDeprecatedName("ns3::LrWpanCsmaCa")
                             .SetParent<Object>()
                             .SetGroupName("LrWpan")
-                            .AddConstructor<LrWpanCsmaCa>();
+                            .AddConstructor<LrWpanCsmaCa>()
+                            .AddAttribute ("MacMinBE",
+                                           "The minimum backoff exponent.",
+                                           UintegerValue (3),
+                                           MakeUintegerAccessor (&LrWpanCsmaCa::m_macMinBE),
+                                           MakeUintegerChecker<uint8_t> (0, 8))
+                            .AddAttribute ("MacMaxBE",
+                                           "The maximum backoff exponent.",
+                                           UintegerValue (5),
+                                           MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxBE),
+                                           MakeUintegerChecker<uint8_t> (3, 8))
+                            .AddAttribute ("MacMaxCSMABackoffs",
+                                           "The maximum number of backoffs.",
+                                           UintegerValue (4),
+                                           MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxCSMABackoffs),
+                                           MakeUintegerChecker<uint8_t> (0, 5));
     return tid;
 }
 
@@ -50,9 +65,6 @@ LrWpanCsmaCa::LrWpanCsmaCa()
     m_NB = 0;
     m_CW = 2;
     m_macBattLifeExt = false;
-    m_macMinBE = 3;
-    m_macMaxBE = 5;
-    m_macMaxCSMABackoffs = 4;
     m_random = CreateObject<UniformRandomVariable>();
     m_BE = m_macMinBE;
     m_ccaRequestRunning = false;
