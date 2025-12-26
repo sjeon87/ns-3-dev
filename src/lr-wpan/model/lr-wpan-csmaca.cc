@@ -36,7 +36,6 @@ TypeId
 LrWpanCsmaCa::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::lrwpan::LrWpanCsmaCa")
-    .AddDeprecatedName ("ns3::LrWpanCsmaCa")
     .SetParent<Object> ()
     .SetGroupName ("LrWpan")
     .AddConstructor<LrWpanCsmaCa> ()
