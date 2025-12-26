@@ -32,7 +32,6 @@ NS_LOG_COMPONENT_DEFINE("LrWpanCsmaCa");
 NS_OBJECT_ENSURE_REGISTERED(LrWpanCsmaCa);
 
 TypeId
-TypeId
 LrWpanCsmaCa::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::lrwpan::LrWpanCsmaCa")
