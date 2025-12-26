@@ -27,10 +27,10 @@ namespace ns3
 {
 namespace lrwpan
 {
-
+// clang-format off
 NS_LOG_COMPONENT_DEFINE("LrWpanCsmaCa");
 NS_OBJECT_ENSURE_REGISTERED(LrWpanCsmaCa);
-// clang-format off
+
 TypeId
 LrWpanCsmaCa::GetTypeId (void)
 {
