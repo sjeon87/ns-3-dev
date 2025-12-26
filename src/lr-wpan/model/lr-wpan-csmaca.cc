@@ -31,6 +31,7 @@ namespace lrwpan
 NS_LOG_COMPONENT_DEFINE("LrWpanCsmaCa");
 NS_OBJECT_ENSURE_REGISTERED(LrWpanCsmaCa);
 
+// clang-format off
 TypeId
 LrWpanCsmaCa::GetTypeId (void)
 {
@@ -55,6 +56,7 @@ LrWpanCsmaCa::GetTypeId (void)
                    MakeUintegerChecker<uint8_t> (0, 5));
   return tid;
 }
+// clang-format on
 
 LrWpanCsmaCa::LrWpanCsmaCa()
 {
