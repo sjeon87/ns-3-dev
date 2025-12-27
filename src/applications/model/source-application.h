@@ -22,6 +22,7 @@ namespace ns3
 
 class Packet;
 class Socket;
+class UniformRandomVariable;
 
 /**
  * @ingroup applications
@@ -64,6 +65,8 @@ class SourceApplication : public Application
     SourceApplication(bool allowPacketSocket = true, bool incrementCounterIfTxFailed = false);
     ~SourceApplication() override;
 
+    int64_t AssignStreams(int64_t stream) override;
+
     /**
      * @brief set the remote address
      * @param addr remote address
@@ -92,6 +95,7 @@ class SourceApplication : public Application
     };
 
   protected:
+    void DoInitialize() override;
     void DoDispose() override;
 
     /**
@@ -158,6 +162,7 @@ class SourceApplication : public Application
     uint8_t m_tos;   //!< The packets Type of Service
 
     bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the use of SeqTsSizeHeader
+    bool m_randomPayload{false};         //!< Fill packet payload with random bytes
 
     bool m_connected{false}; //!< flag whether socket is connected
 
@@ -227,9 +232,18 @@ class SourceApplication : public Application
      */
     Ptr<Packet> CreatePacketWithSeqTsSizeHeader(uint32_t seq, uint64_t size);
 
+    /**
+     * @brief Create a packet with a payload, either filled in with zeros or random bytes depending
+     * on the setting of the RandomPayload attribute
+     * @param size the size of the payload
+     * @return the created packet
+     */
+    Ptr<Packet> CreatePacketWithPayload(uint64_t size);
+
     bool m_allowPacketSocket;          //!< Allow use of packet socket
     bool m_incrementCounterIfTxFailed; //!< Flag whether to increment the sequence number counter if
                                        //!< the transmission of the packet failed
+    Ptr<UniformRandomVariable> m_bytesRng; //!< Random variable for random payload generation
 
     uint32_t m_seq{0}; //!< Sequence number for created packets
 };

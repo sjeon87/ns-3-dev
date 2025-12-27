@@ -9,11 +9,13 @@
 #include "source-application.h"
 
 #include "ns3/boolean.h"
+#include "ns3/double.h"
 #include "ns3/enum.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/log.h"
 #include "ns3/packet-socket-address.h"
+#include "ns3/random-variable-stream.h"
 #include "ns3/socket.h"
 #include "ns3/uinteger.h"
 
@@ -71,6 +73,12 @@ SourceApplication::GetTypeId()
                                           "Enabled",
                                           SourceApplication::IncrementCounterIfTxFailed::DISABLED,
                                           "Disabled"))
+            .AddAttribute("RandomPayload",
+                          "If true, the payload of created packets is filled with random bytes. "
+                          "If false, the payload is filled in with zeros.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&SourceApplication::m_randomPayload),
+                          MakeBooleanChecker())
             .AddTraceSource("Tx",
                             "A packet is sent",
                             MakeTraceSourceAccessor(&SourceApplication::m_txTrace),
@@ -96,7 +104,8 @@ SourceApplication::GetTypeId()
 
 SourceApplication::SourceApplication(bool allowPacketSocket, bool incrementCounterIfTxFailed)
     : m_allowPacketSocket{allowPacketSocket},
-      m_incrementCounterIfTxFailed{incrementCounterIfTxFailed}
+      m_incrementCounterIfTxFailed{incrementCounterIfTxFailed},
+      m_bytesRng{CreateObject<UniformRandomVariable>()}
 {
     NS_LOG_FUNCTION(this);
 }
@@ -107,12 +116,31 @@ SourceApplication::~SourceApplication()
 }
 
 void
+SourceApplication::DoInitialize()
+{
+    NS_LOG_FUNCTION(this);
+    Application::DoInitialize();
+    m_bytesRng->SetAttribute("Min", DoubleValue(0));
+    m_bytesRng->SetAttribute("Max", DoubleValue(256));
+}
+
+void
 SourceApplication::DoDispose()
 {
     NS_LOG_FUNCTION(this);
     CancelEvents();
     m_socket = nullptr;
     Application::DoDispose();
+}
+
+int64_t
+SourceApplication::AssignStreams(int64_t stream)
+{
+    NS_LOG_FUNCTION(this << stream);
+    auto currentStream = stream;
+    m_bytesRng->SetStream(currentStream++);
+    currentStream += Application::AssignStreams(currentStream);
+    return (currentStream - stream);
 }
 
 void
@@ -300,10 +328,10 @@ SourceApplication::CreatePacketWithSeqTsSizeHeader(uint32_t seq, uint64_t size)
     {
         NS_LOG_WARN("Packet size " << size << " is smaller than SeqTsSizeHeader size " << headerSize
                                    << ": no SeqTsSizeHeader will be added");
-        return Create<Packet>(size);
+        return CreatePacketWithPayload(size);
     }
 
-    auto packet = Create<Packet>(size - headerSize);
+    auto packet = CreatePacketWithPayload(size - headerSize);
 
     // Trace before adding header, for consistency with sink applications
     NS_ASSERT(m_socket);
@@ -330,7 +358,23 @@ SourceApplication::CreatePacket(uint64_t size)
 {
     NS_LOG_FUNCTION(this << size);
     return m_enableSeqTsSizeHeader ? CreatePacketWithSeqTsSizeHeader(m_seq, size)
-                                   : Create<Packet>(size);
+                                   : CreatePacketWithPayload(size);
+}
+
+Ptr<Packet>
+SourceApplication::CreatePacketWithPayload(uint64_t size)
+{
+    NS_LOG_FUNCTION(this << size);
+    if (!m_randomPayload)
+    {
+        return Create<Packet>(size);
+    }
+    std::vector<uint8_t> data(size);
+    for (uint64_t i = 0; i < size; ++i)
+    {
+        data[i] = static_cast<uint8_t>(m_bytesRng->GetValue());
+    }
+    return Create<Packet>(data.data(), size);
 }
 
 int
