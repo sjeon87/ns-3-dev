@@ -25,6 +25,11 @@ ApplicationHelper::ApplicationHelper(const std::string& typeId)
     SetTypeId(typeId);
 }
 
+ApplicationHelper::ApplicationHelper(ObjectFactory factory)
+    : m_factory(factory)
+{
+}
+
 void
 ApplicationHelper::SetTypeId(TypeId typeId)
 {

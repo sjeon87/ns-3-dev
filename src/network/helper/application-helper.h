@@ -42,6 +42,13 @@ class ApplicationHelper
     explicit ApplicationHelper(const std::string& typeId);
 
     /**
+     * Create an application using a given ObjectFactory
+     *
+     * @param factory the ObjectFactory.
+     */
+    explicit ApplicationHelper(ObjectFactory factory);
+
+    /**
      * Allow the helper to be repurposed for another application type
      *
      * @param typeId the type ID.
