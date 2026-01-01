@@ -183,6 +183,27 @@ process_options()
 # ##############################################################################
 # Add subdirectories                  #
 # ##############################################################################
+
+# si-units
+add_subdirectory(third-party/si-units)
+
+# Copy si-units headers to build/include for Python bindings (cppyy)
+# compatibility This ensures <si-units> can be found during Python binding
+# compilation
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/third-party/si-units/include/si-units
+     DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include/
+)
+
+# Also copy all model headers to build/include so they can be found by
+# <si-units>
+file(
+  COPY ${CMAKE_CURRENT_SOURCE_DIR}/third-party/si-units/model/
+  DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include/
+  FILES_MATCHING
+  PATTERN "*.h"
+)
+
+
 # Build NS3 library core
 add_subdirectory(src)
 
