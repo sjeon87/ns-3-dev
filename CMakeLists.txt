@@ -203,7 +203,6 @@ file(
   PATTERN "*.h"
 )
 
-
 # Build NS3 library core
 add_subdirectory(src)
 
