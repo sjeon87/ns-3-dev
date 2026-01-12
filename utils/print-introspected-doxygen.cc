@@ -1135,7 +1135,40 @@ PrintAllTypeIds(std::ostream& os)
  *
  * @todo Print this sorted by class (the current version)
  * as well as by Attribute name.
+ *
  */
+
+/**
+ * Print the attributes of a single TypeId in the style used by PrintAllAttributes()
+ *
+ * @param os output stream
+ * @param tid the TypeId whose attributes should be printed
+ */
+void
+PrintTypeIdAttributes(std::ostream& os, const TypeId& tid)
+{
+    if (tid.GetAttributeN() == 0)
+    {
+        return; // skipping over classes without attributes
+    }
+
+    os << boldStart << tid.GetName() << boldStop << breakHtmlOnly << "\n";
+
+    auto sortedAttrs = SortedAttributeInfo(tid);
+
+    os << listStart << "\n";
+
+    for (const auto& [attrName, attrInfo] : sortedAttrs)
+    {
+        os << listLineStart << boldStart << attrName << boldStop << ": " << attrInfo.help
+           << listLineStop << "\n";
+    }
+
+    os << listStop << "\n";
+}
+
+// Print TypeId attributes
+
 void
 PrintAllAttributes(std::ostream& os)
 {
@@ -1173,6 +1206,7 @@ PrintAllAttributes(std::ostream& os)
                << listLineStop << "\n";
         }
         os << listStop << "\n";
+        PrintTypeIdAttributes(os, tid);
     }
     os << commentStop << std::endl;
 
@@ -1183,6 +1217,66 @@ PrintAllAttributes(std::ostream& os)
  *
  * @param [in,out] os The output stream.
  */
+/**
+ * Print attribute lists for each Doxygen group (module), adding sections to group pages.
+ *
+ * @param [in,out] os The output stream.
+ */
+void
+PrintAllGroupAttributes(std::ostream& os)
+{
+    NS_LOG_FUNCTION_NOARGS();
+
+    std::set<std::string> groups; // collect all unique group names
+    for (uint32_t i = 0; i < TypeId::GetRegisteredN(); ++i)
+    {
+        TypeId tid = TypeId::GetRegistered(i);
+        std::string group = tid.GetGroupName();
+        if (!group.empty())
+        {
+            groups.insert(group);
+        }
+    }
+
+    for (const auto& group : groups)
+    {
+        // Check if the group has any attribes
+        bool hasAttributes = false;
+        for (uint32_t i = 0; i < TypeId::GetRegisteredN(); ++i)
+        {
+            TypeId tid = TypeId::GetRegistered(i);
+            if (tid.GetGroupName() == group && tid.GetAttributeN() > 0)
+            {
+                hasAttributes = true;
+                break;
+            }
+        }
+        if (!hasAttributes)
+        {
+            continue; // Skip groups with no attributes
+        }
+
+        // Output stanza as requested in #1221
+        os << commentStart << "@addtogroup " << group << "\n"
+           << "All Attributes of Classes in group " << group << "\n"
+           << "@{\n";
+
+        // Step 3: Iterate through TypeIds in this group and print their attributes
+        for (uint32_t i = 0; i < TypeId::GetRegisteredN(); ++i)
+        {
+            TypeId tid = TypeId::GetRegistered(i);
+            if (tid.GetGroupName() == group)
+            {
+                // Step 4: Use the helper to print attributes for this TypeId
+                PrintTypeIdAttributes(os, tid);
+            }
+        }
+
+        // Step 5: Output the footer stanza
+        os << "@}\n" << commentStop << std::endl;
+    }
+}
+
 void
 PrintAllGlobals(std::ostream& os)
 {
@@ -1206,6 +1300,37 @@ PrintAllGlobals(std::ostream& os)
 
 /**
  * Print the list of all groups
+ *
+ * @param [in,out] os The output stream.
+ */
+/*void
+PrintAllGroups(std::ostream& os)
+{
+    NS_LOG_FUNCTION_NOARGS();
+    os << commentStart << page << "GroupsList All Object Groups\n\n"
+       << "This is a list of all Object Groups.\n"
+       << "Objects are added to groups by " << hrefStart << "ns3::TypeId::SetGroupName()" << hrefMid
+       << "ns3::TypeId::SetGroupName" << hrefStop << "\n\n";
+
+    auto groups = GetGroupsList();
+
+    for (const auto& g : groups)
+    {
+        os << boldStart << g.first << boldStop << breakHtmlOnly << "\n";
+
+        os << listStart << "\n";
+        for (const auto& tid : g.second)
+        {
+            os << indentHtmlOnly << listLineStart << hrefStart << tid.GetName() << hrefMid
+               << tid.GetName() << hrefStop << listLineStop << "\n";
+        }
+        os << listStop << "\n";
+    }
+    os << commentStop << std::endl;
+}
+
+/**
+ * Print the list of all LogComponents.
  *
  * @param [in,out] os The output stream.
  */
@@ -1240,6 +1365,7 @@ PrintAllGroups(std::ostream& os)
  *
  * @param [in,out] os The output stream.
  */
+
 void
 PrintAllLogComponents(std::ostream& os)
 {
@@ -1687,6 +1813,8 @@ main(int argc, char* argv[])
     PrintAllGroups(std::cout);
     PrintAllLogComponents(std::cout);
     PrintAllTraceSources(std::cout);
+
+    PrintAllGroupAttributes(std::cout); // new function declared earlier
     PrintAttributeImplementations(std::cout);
 
     return 0;
