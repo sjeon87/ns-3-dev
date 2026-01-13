@@ -315,6 +315,7 @@ set(test_sources
     test/tcp-hybla-test.cc
     test/tcp-illinois-test.cc
     test/tcp-ledbat-test.cc
+    test/tcp-ledbat-pp-test.cc
     test/tcp-linux-reno-test.cc
     test/tcp-loss-test.cc
     test/tcp-lp-test.cc
