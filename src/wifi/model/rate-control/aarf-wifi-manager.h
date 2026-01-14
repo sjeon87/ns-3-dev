@@ -66,6 +66,7 @@ class AarfWifiManager : public WifiRemoteStationManager
     uint32_t m_maxSuccessThreshold; ///< maximum success threshold
     double m_timerK;                ///< Multiplication factor for the timer threshold
 
+    NS_DEPRECATED_3_47("Use RateUsed in the base class instead")
     TracedValue<uint64_t> m_currentRate; //!< Trace rate changes
 };
 

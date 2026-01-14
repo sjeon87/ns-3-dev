@@ -164,7 +164,9 @@ MinstrelHtWifiManager::GetTypeId()
             .AddTraceSource("Rate",
                             "Traced value for rate changes (b/s)",
                             MakeTraceSourceAccessor(&MinstrelHtWifiManager::m_currentRate),
-                            "ns3::TracedValueCallback::Uint64");
+                            "ns3::TracedValueCallback::Uint64",
+                            TypeId::SupportLevel::DEPRECATED,
+                            "use RateUsed trace in the base class instead");
     return tid;
 }
 
@@ -1043,6 +1045,9 @@ MinstrelHtWifiManager::DoGetDataTxVector(WifiRemoteStation* st, MHz_u allowedWid
         GetPhy()->GetTxBandwidth(mode, group.chWidth),
         GetAggregation(station) && !station->m_isSampling};
     uint64_t dataRate = mode.GetDataRate(txVector);
+
+    m_rateUsed(DataRate(dataRate), GetAddress(station), 0);
+
     if (m_currentRate != dataRate && !station->m_isSampling)
     {
         NS_LOG_DEBUG("New datarate: " << dataRate);
