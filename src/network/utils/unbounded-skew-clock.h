@@ -10,9 +10,11 @@
 #define UNBOUNDED_SKEW_CLOCK_H
 
 #include "local-clock.h"
+
 #include "ns3/core-module.h"
 
-namespace ns3 {
+namespace ns3
+{
 
 /**
  * @ingroup clocks
@@ -24,13 +26,12 @@ namespace ns3 {
  */
 class UnboundedSkewClock : public LocalClock
 {
-public:
+  public:
     /**
      * @brief Get the type ID.
      * @return The object TypeId.
      */
-    static TypeId
-    GetTypeId();
+    static TypeId GetTypeId();
 
     UnboundedSkewClock();
 
@@ -40,9 +41,7 @@ public:
      * @param u_maxSkew The maximum skew value (e.g., 1.01).
      * @param u_numSkews The number of random skew values to generate.
      */
-    UnboundedSkewClock(double u_minSkew,
-                       double u_maxSkew,
-                       uint32_t u_numSkews);
+    UnboundedSkewClock(double u_minSkew, double u_maxSkew, uint32_t u_numSkews);
 
     ~UnboundedSkewClock() override;
 
@@ -54,50 +53,44 @@ public:
      * @param stream the stream index offset start
      * @return the number of stream indices assigned by this model
      */
-    int64_t
-    AssignStreams(int64_t stream);
+    int64_t AssignStreams(int64_t stream);
 
     /**
      * @brief Get the current time from the local clock.
      * @return Current time
      */
-    Time
-    Now() override;
+    Time Now() override;
 
     /**
      * @brief Shuffle the skew values to simulate unbounded skew.
      */
-    void
-    ShuffleSkew();
+    void ShuffleSkew();
 
     /**
      * @brief Increment the skew index to simulate changing skew over time.
      */
-    void
-    IncrementSkewIndex();
+    void IncrementSkewIndex();
 
     /**
      * @brief Set custom skew values for testing purposes.
      * @param values Vector of skew values to set
      */
-    void
-    SetSkewValues(const std::vector<double>& values);
+    void SetSkewValues(const std::vector<double>& values);
 
-protected:
+  protected:
     /**
      * Assign a fixed random variable stream number to the random variables used by this model.
      *
      * @param stream first stream index to use
      * @return the number of stream indices assigned by this model
      */
-    int64_t
-    DoAssignStreams(int64_t stream);
+    int64_t DoAssignStreams(int64_t stream);
 
-private:
-    Time m_ptime;                          ///< Current time
-    Time m_lastreadptime;                  ///< Last read time
-    std::vector<double> m_skew_values;     ///< Vector to store skew values
-    uint32_t m_index;                      ///< Index to track current position in skew array
+  private:
+    Time m_ptime;                              ///< Current time
+    Time m_lastreadptime;                      ///< Last read time
+    std::vector<double> m_skew_values;         ///< Vector to store skew values
+    uint32_t m_index;                          ///< Index to track current position in skew array
     Ptr<UniformRandomVariable> m_skewVariable; ///< Skew random variable
 };
 
