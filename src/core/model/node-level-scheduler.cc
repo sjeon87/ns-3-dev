@@ -49,7 +49,8 @@ NodeLevelScheduler::GetTypeId()
             .AddConstructor<NodeLevelScheduler>()
             .AddAttribute("Intervals",
                           "A semicolon-separated list of intervals. "
-                          "Format for each is 'nodeId,simStartTime,simEndTime,nodeStartTime,nodeEndTime,skew'.",
+                          "Format for each is "
+                          "'nodeId,simStartTime,simEndTime,nodeStartTime,nodeEndTime,skew'.",
                           StringValue(""),
                           MakeStringAccessor(&NodeLevelScheduler::SetIntervalsFromString),
                           MakeStringChecker());
@@ -106,8 +107,7 @@ NodeLevelScheduler::SetIntervalsFromString(const std::string& intervalsStr)
         double skew = std::stod(parts[5]);
 
         // Add the parsed interval
-        m_nodeTimings->AddInterval(nodeId,
-                                   {simStart, simEnd, nodeStart, nodeEnd, skew});
+        m_nodeTimings->AddInterval(nodeId, {simStart, simEnd, nodeStart, nodeEnd, skew});
     }
 }
 

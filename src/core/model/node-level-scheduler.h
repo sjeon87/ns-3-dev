@@ -133,7 +133,7 @@ class NodeLevelScheduler : public PriorityQueueScheduler
     void Insert(const Scheduler::Event& ev) override;
 
     /**
-     * \return pointer to the NodeTimingGraph instance
+     * @return pointer to the NodeTimingGraph instance
      */
     Ptr<NodeTimingGraph> GetTimingGraph() const
     {

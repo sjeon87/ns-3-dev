@@ -1,7 +1,7 @@
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
-#include "ns3/node-level-scheduler.h" // Your scheduler's header
-#include "ns3/test.h"                  // Required for NS_TEST_ASSERT_MSG_EQ
+#include "ns3/node-level-scheduler.h"
+#include "ns3/test.h"
 
 #include <map>
 #include <string>
@@ -10,8 +10,6 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("ComprehensiveSchedulerTest");
 
-// A map to store the actual execution times of events for later verification.
-// Key: A unique identifier for the event. Value: The global time it executed.
 static std::map<std::string, Time> g_executionTimes;
 
 /**
@@ -25,7 +23,6 @@ RecordExecutionTimeEvent(std::string eventId)
     NS_LOG_UNCOND("Event [" << eventId << "] executed at " << Simulator::Now());
 }
 
-// --- Test Case Class ---
 class SchedulerTestCase : public TestCase
 {
   public:
@@ -44,8 +41,8 @@ SchedulerTestCase::DoRun()
     // --- 1. SETUP ---
     LogComponentEnable("NodeLevelScheduler", LOG_LEVEL_LOGIC);
 
-    std::string intervalConfig = "1,0,100,0,100,1.0;"    // Node 1: NORMAL clock (skew is 1.0)
-                                 "2,0,10,0,5,0.5;"         // Node 2: Slow clock (first part)
+    std::string intervalConfig = "1,0,100,0,100,1.0;"     // Node 1: NORMAL clock (skew is 1.0)
+                                 "2,0,10,0,5,0.5;"        // Node 2: Slow clock (first part)
                                  "2,10,1000,5,1000,1.5;"; // Node 2: Faster clock (second part)
 
     ObjectFactory schedulerFactory;
@@ -93,9 +90,7 @@ SchedulerTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ(g_executionTimes["A1_Normal"],
                           Seconds(2.0),
                           "A1_Normal should run at 2.0s");
-    NS_TEST_ASSERT_MSG_EQ(g_executionTimes["A2_Slow"],
-                          Seconds(4.0),
-                          "A2_Slow should run at 4.0s");
+    NS_TEST_ASSERT_MSG_EQ(g_executionTimes["A2_Slow"], Seconds(4.0), "A2_Slow should run at 4.0s");
 
     NS_TEST_ASSERT_MSG_EQ(g_executionTimes["B1_BeforeChange"],
                           Seconds(8.0),
@@ -107,7 +102,7 @@ SchedulerTestCase::DoRun()
     NS_LOG_UNCOND("-------------------------------------\n");
 
     Simulator::Destroy();
-    g_executionTimes.clear(); // Clean up for next potential test run
+    g_executionTimes.clear();
 }
 
 static class SchedulerTestSuite : public TestSuite
