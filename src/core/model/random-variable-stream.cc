@@ -26,6 +26,11 @@
 #include <cmath>
 #include <iostream>
 #include <numbers>
+#include <unordered_set>
+
+#ifdef STACKTRACE_LIBRARY_IS_LINKED
+#include <stacktrace>
+#endif
 
 /**
  * @file
@@ -40,6 +45,20 @@ NS_LOG_COMPONENT_DEFINE("RandomVariableStream");
 
 NS_OBJECT_ENSURE_REGISTERED(RandomVariableStream);
 
+/**
+ *  Log of automatically assigned RNG streams.
+ *
+ *  The log will be printed at the end of the simulation if the environment variable
+ *  NS_CHECK_AUTOMATIC_STREAMS is set.
+ *
+ *  \p void* The RandomVariableStream address
+ *  \p string TypeId name
+ *  \p string Stack trace (if that is linked in/enabled)
+ *  \p function<bool()> Function that returns true if the stream was used
+ */
+std::unordered_map<void*, std::tuple<std::string, std::string, std::function<bool()>>>
+    g_automaticStreams;
+
 TypeId
 RandomVariableStream::GetTypeId()
 {
@@ -47,12 +66,13 @@ RandomVariableStream::GetTypeId()
                             .SetParent<Object>()
                             .SetGroupName("Core")
                             .AddAttribute("Stream",
-                                          "The stream number for this RNG stream. -1 means "
+                                          "The stream number for this RNG stream. -2 means"
+                                          "\"lazily allocate a stream automatically\", -1 means "
                                           "\"allocate a stream automatically\". "
                                           "Note that if -1 is set, Get will return -1 so that it "
                                           "is not possible to know which "
                                           "value was automatically allocated.",
-                                          IntegerValue(-1),
+                                          IntegerValue(-2),
                                           MakeIntegerAccessor(&RandomVariableStream::SetStream,
                                                               &RandomVariableStream::GetStream),
                                           MakeIntegerChecker<int64_t>())
@@ -99,11 +119,27 @@ RandomVariableStream::GetInteger()
 }
 
 void
+RandomVariableStream::InitializeStream()
+{
+    if (!m_used)
+    {
+        SetStream(m_stream);
+        m_used = true;
+    }
+}
+
+void
 RandomVariableStream::SetStream(int64_t stream)
 {
     NS_LOG_FUNCTION(this << stream);
     // negative values are not legal.
-    NS_ASSERT(stream >= -1);
+    NS_ASSERT(stream >= -2);
+    // -2 is a special value that indicates that the stream should be lazily set
+    if (stream == -2)
+    {
+        m_stream = -1;
+        return;
+    }
     delete m_rng;
     if (stream == -1)
     {
@@ -111,7 +147,19 @@ RandomVariableStream::SetStream(int64_t stream)
         // number assignment.
         uint64_t nextStream = RngSeedManager::GetNextStreamIndex();
         NS_ASSERT(nextStream <= ((1ULL) << 63));
+#ifdef STACKTRACE_LIBRARY_IS_LINKED
+        // To be more useful for the user, we inspect stacktrace to inform user which particular
+        // object forgot to initialize the random stream
+        NS_LOG_INFO(GetInstanceTypeId().GetName()
+                    << " automatic stream: " << nextStream << ", instantiated in:\n"
+                    << std::stacktrace::current());
+        g_automaticStreams[this] = {GetInstanceTypeId().GetName(),
+                                    std::to_string(std::stacktrace::current()),
+                                    [this]() { return m_used; }};
+#else
         NS_LOG_INFO(GetInstanceTypeId().GetName() << " automatic stream: " << nextStream);
+        g_automaticStreams[this] = {GetInstanceTypeId().GetName(), "", [this]() { return m_used; }};
+#endif
         m_rng = new RngStream(RngSeedManager::GetSeed(), nextStream, RngSeedManager::GetRun());
     }
     else
@@ -121,6 +169,8 @@ RandomVariableStream::SetStream(int64_t stream)
         uint64_t base = ((1ULL) << 63);
         uint64_t target = base + stream;
         NS_LOG_INFO(GetInstanceTypeId().GetName() << " configured stream: " << stream);
+        // Remove stream from the automatically assigned list
+        g_automaticStreams.erase(this);
         m_rng = new RngStream(RngSeedManager::GetSeed(), target, RngSeedManager::GetRun());
     }
     m_stream = stream;
@@ -136,6 +186,36 @@ RngStream*
 RandomVariableStream::Peek() const
 {
     return m_rng;
+}
+
+/* static */
+void
+RandomVariableStream::CheckAutomaticStreams()
+{
+    if (!g_automaticStreams.empty())
+    {
+        std::unordered_set<std::size_t> uniqueStacks;
+        for (const auto& [rng, data] : g_automaticStreams)
+        {
+            const auto& [tidName, stack, getUsedFunc] = data;
+            if (uniqueStacks.count(std::hash<std::string>{}(stack)) == 0)
+            {
+                std::cout << "Automatic variable stream: " << tidName << ", instantiated in:\n"
+                          << stack << std::endl;
+                uniqueStacks.insert(std::hash<std::string>{}(stack));
+            }
+        }
+        NS_ABORT_MSG("NS_CHECK_AUTOMATIC_STREAMS: " << uniqueStacks.size()
+                                                    << " automatic variable streams");
+    }
+    NS_LOG_UNCOND("NS_CHECK_AUTOMATIC_STREAMS: No automatic variable streams");
+}
+
+/* static */
+void
+RandomVariableStream::DisposeGAutoStreams()
+{
+    g_automaticStreams.clear();
 }
 
 NS_OBJECT_ENSURE_REGISTERED(UniformRandomVariable);
@@ -182,6 +262,7 @@ UniformRandomVariable::GetMax() const
 double
 UniformRandomVariable::GetValue(double min, double max)
 {
+    InitializeStream();
     double v = min + Peek()->RandU01() * (max - min);
     if (IsAntithetic())
     {
@@ -250,6 +331,7 @@ double
 ConstantRandomVariable::GetValue(double constant)
 {
     NS_LOG_DEBUG("value: " << constant << " stream: " << GetStream());
+    InitializeStream();
     return constant;
 }
 
@@ -336,6 +418,7 @@ SequentialRandomVariable::GetConsecutive() const
 double
 SequentialRandomVariable::GetValue()
 {
+    InitializeStream();
     // Set the current sequence value if it hasn't been set.
     if (!m_isCurrentSet)
     {
@@ -403,6 +486,7 @@ ExponentialRandomVariable::GetBound() const
 double
 ExponentialRandomVariable::GetValue(double mean, double bound)
 {
+    InitializeStream();
     while (true)
     {
         // Get a uniform random variable in [0,1].
@@ -500,6 +584,7 @@ ParetoRandomVariable::GetBound() const
 double
 ParetoRandomVariable::GetValue(double scale, double shape, double bound)
 {
+    InitializeStream();
     while (true)
     {
         // Get a uniform random variable in [0,1].
@@ -609,6 +694,7 @@ WeibullRandomVariable::GetMean() const
 double
 WeibullRandomVariable::GetValue(double scale, double shape, double bound)
 {
+    InitializeStream();
     double exponent = 1.0 / shape;
     while (true)
     {
@@ -718,6 +804,7 @@ NormalRandomVariable::GetBound() const
 double
 NormalRandomVariable::GetValue(double mean, double variance, double bound)
 {
+    InitializeStream();
     if (m_nextValid)
     { // use previously generated
         m_nextValid = false;
@@ -848,6 +935,7 @@ LogNormalRandomVariable::GetSigma() const
 double
 LogNormalRandomVariable::GetValue(double mu, double sigma)
 {
+    InitializeStream();
     if (m_nextValid)
     { // use previously generated
         m_nextValid = false;
@@ -971,6 +1059,7 @@ GammaRandomVariable::GetBeta() const
 double
 GammaRandomVariable::GetValue(double alpha, double beta)
 {
+    InitializeStream();
     if (alpha < 1)
     {
         double u = Peek()->RandU01();
@@ -1145,6 +1234,7 @@ ErlangRandomVariable::GetLambda() const
 double
 ErlangRandomVariable::GetValue(uint32_t k, double lambda)
 {
+    InitializeStream();
     double mean = lambda;
     double bound = 0.0;
 
@@ -1255,6 +1345,7 @@ TriangularRandomVariable::GetMax() const
 double
 TriangularRandomVariable::GetValue(double mean, double min, double max)
 {
+    InitializeStream();
     // Calculate the mode.
     double mode = 3.0 * mean - min - max;
 
@@ -1341,6 +1432,7 @@ ZipfRandomVariable::GetAlpha() const
 double
 ZipfRandomVariable::GetValue(uint32_t n, double alpha)
 {
+    InitializeStream();
     // Calculate the normalization constant c.
     m_c = 0.0;
     for (uint32_t i = 1; i <= n; i++)
@@ -1421,6 +1513,7 @@ ZetaRandomVariable::GetAlpha() const
 double
 ZetaRandomVariable::GetValue(double alpha)
 {
+    InitializeStream();
     m_b = std::pow(2.0, alpha - 1.0);
 
     double u;
@@ -1528,6 +1621,7 @@ DeterministicRandomVariable::SetValueArray(const double* values, std::size_t len
 double
 DeterministicRandomVariable::GetValue()
 {
+    InitializeStream();
     // Make sure the array has been set.
     NS_ASSERT(m_count > 0);
 
@@ -1609,6 +1703,7 @@ EmpiricalRandomVariable::PreSample(double& value)
 double
 EmpiricalRandomVariable::GetValue()
 {
+    InitializeStream();
     double value;
     if (PreSample(value))
     {
@@ -1776,6 +1871,7 @@ BinomialRandomVariable::BinomialRandomVariable()
 double
 BinomialRandomVariable::GetValue(uint32_t trials, double probability)
 {
+    InitializeStream();
     double successes = 0;
 
     for (uint32_t i = 0; i < trials; ++i)
@@ -1838,6 +1934,7 @@ BernoulliRandomVariable::BernoulliRandomVariable()
 double
 BernoulliRandomVariable::GetValue(double probability)
 {
+    InitializeStream();
     double v = Peek()->RandU01();
     if (IsAntithetic())
     {
@@ -1923,6 +2020,7 @@ LaplacianRandomVariable::GetValue(double location, double scale, double bound)
 {
     NS_LOG_FUNCTION(this << location << scale << bound);
     NS_ABORT_MSG_IF(scale <= 0, "Scale parameter should be larger than 0");
+    InitializeStream();
 
     while (true)
     {
@@ -2019,6 +2117,7 @@ LargestExtremeValueRandomVariable::GetValue(double location, double scale)
 {
     NS_LOG_FUNCTION(this << location << scale);
     NS_ABORT_MSG_IF(scale <= 0, "Scale parameter should be larger than 0");
+    InitializeStream();
 
     // Get a uniform random variable in [0,1].
     auto v = Peek()->RandU01();
