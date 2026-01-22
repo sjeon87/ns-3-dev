@@ -16,6 +16,8 @@
 #include "simulator.h"
 
 #include <deque>
+#include <fstream>  // Required for std::ifstream
+#include <optional> // Required for std::optional (C++17)
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -29,6 +31,9 @@
 namespace ns3
 {
 
+/**
+ * @brief Represents a time dilation interval for a node.
+ */
 struct Interval
 {
     Time simulatorStartTime;
@@ -38,6 +43,10 @@ struct Interval
     double skew;
 };
 
+/**
+ * @brief A helper class to manage the *active* lookup table for node times.
+ * This graph only holds intervals relevant to the current sliding window.
+ */
 class NodeTimingGraph : public Object
 {
   public:
@@ -46,7 +55,10 @@ class NodeTimingGraph : public Object
     ~NodeTimingGraph() = default;
 
     /**
-     * @brief Add a timing interval for a specific node.
+     * @brief Add a timing interval to the active memory cache.
+     * This is called by the scheduler when an interval enters the sliding window.
+     * @param nodeId The ID of the node.
+     * @param interval The timing interval data.
      */
     void AddInterval(uint32_t nodeId, const Interval& interval)
     {
@@ -54,13 +66,17 @@ class NodeTimingGraph : public Object
     }
 
     /**
-     * @brief Remove intervals that ended before the cutoff time.
-     * @param cutoff The simulation time before which intervals should be removed.
+     * @brief Remove intervals that have finished (EndTime < cutoff).
+     * This keeps memory usage low by discarding past history.
+     * @param cutoff The current simulation time (or slightly before it).
      */
     void PruneIntervals(Time cutoff);
 
     /**
-     * @brief Get the global simulator time corresponding to a given node time.
+     * @brief Translate Node Local Time -> Global Simulator Time.
+     * @param nodeId The node context.
+     * @param nodeTime The local time requested by the event.
+     * @return The calculated global simulation time.
      */
     Time GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) const;
 
@@ -68,6 +84,14 @@ class NodeTimingGraph : public Object
     std::unordered_map<uint32_t, std::vector<Interval>> m_nodeIntervals;
 };
 
+/**
+ * @ingroup scheduler
+ * @brief A scheduler that streams interval data from a file to manage node-level time dilation.
+ *
+ * This scheduler intercepts event insertions, interprets the timestamp as Node Local Time,
+ * and maps it to Global Simulator Time based on intervals streamed from a CSV file.
+ * It uses a sliding window approach to keep memory usage constant regardless of simulation length.
+ */
 class NodeLevelScheduler : public PriorityQueueScheduler
 {
   public:
@@ -76,34 +100,56 @@ class NodeLevelScheduler : public PriorityQueueScheduler
     NodeLevelScheduler();
     ~NodeLevelScheduler() override;
 
+    // Inherited from Scheduler
     void Insert(const Scheduler::Event& ev) override;
 
-    Ptr<NodeTimingGraph> GetTimingGraph() const
-    {
-        return m_nodeTimings;
-    }
-
-    void SetIntervalsFromString(const std::string& intervalsStr);
+    /**
+     * @brief Sets the path to the CSV file containing intervals.
+     * The file is opened lazily when the simulation starts.
+     * @param filepath Path to the CSV file.
+     */
+    void SetIntervalFile(const std::string& filepath);
 
   private:
     /**
-     * @brief Updates the active interval table.
-     * Loads new intervals within the window and removes old ones.
+     * @brief Periodic maintenance task.
+     * 1. Prunes old intervals from RAM.
+     * 2. Reads new intervals from Disk.
+     * 3. Adds them to NodeTimingGraph (RAM) if they are within the window.
+     * 4. Reschedules itself.
      */
     void UpdateIntervalWindow();
 
-    Ptr<NodeTimingGraph> m_nodeTimings;
+    /**
+     * @brief Helper to parse the next line from the CSV stream.
+     * Populates m_nextBufferedInterval if successful.
+     * @return true if a line was parsed successfully, false on EOF.
+     */
+    bool ParseNextLine();
 
+    Ptr<NodeTimingGraph> m_nodeTimings; //!< The active lookup table (RAM)
+
+    // --- File Streaming Members ---
+    std::string m_intervalsFilePath;
+    std::ifstream m_intervalStream; //!< The open file handle
+
+    // Temporary storage for parsed CSV data
     struct PendingInterval
     {
         uint32_t nodeId;
         Interval data;
     };
 
-    std::deque<PendingInterval> m_pendingIntervals; //!< Sorted list of all future intervals
-    Time m_windowSize;   //!< How far ahead to load intervals (e.g., 100s)
-    Time m_updatePeriod; //!< How often to run the cleanup/load event
-    bool m_initialized;  //!< Ensures the window update loop starts once
+    /**
+     * @brief Buffer for a single interval read from disk.
+     * Since we read sequentially, we might read one line that is "too far in the future"
+     * (beyond the current window). We store it here until the window catches up.
+     */
+    std::optional<PendingInterval> m_nextBufferedInterval;
+
+    Time m_windowSize;   //!< Lookahead horizon (e.g., 60s)
+    Time m_updatePeriod; //!< Maintenance frequency (e.g., 10s)
+    bool m_initialized;  //!< Flag to start the maintenance loop
 };
 
 } // namespace ns3
