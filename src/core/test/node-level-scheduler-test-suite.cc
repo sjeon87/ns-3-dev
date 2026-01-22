@@ -12,15 +12,20 @@ NS_LOG_COMPONENT_DEFINE("ComprehensiveSchedulerTest");
 
 static std::map<std::string, Time> g_executionTimes;
 
-/**
- * @brief A simple event handler that records its execution time.
- * @param eventId A unique name for this event instance.
- */
 void
 RecordExecutionTimeEvent(std::string eventId)
 {
     g_executionTimes[eventId] = Simulator::Now();
-    NS_LOG_UNCOND("Event [" << eventId << "] executed at " << Simulator::Now());
+    NS_LOG_UNCOND("Event [" << eventId << "] executed at " << Simulator::Now().GetSeconds() << "s");
+}
+
+/**
+ * @brief Helper event to schedule the far future event dynamically.
+ */
+void
+ScheduleNextEvent(uint32_t node, Time delay, std::string eventName)
+{
+    Simulator::ScheduleWithContext(node, delay, &RecordExecutionTimeEvent, eventName);
 }
 
 class SchedulerTestCase : public TestCase
@@ -38,69 +43,81 @@ SchedulerTestCase::SchedulerTestCase()
 void
 SchedulerTestCase::DoRun()
 {
-    // --- 1. SETUP ---
     LogComponentEnable("NodeLevelScheduler", LOG_LEVEL_LOGIC);
 
-    std::string intervalConfig = "1,0,100,0,100,1.0;"     // Node 1: NORMAL clock (skew is 1.0)
-                                 "2,0,10,0,5,0.5;"        // Node 2: Slow clock (first part)
-                                 "2,10,1000,5,1000,1.5;"; // Node 2: Faster clock (second part)
+    // Interval Config:
+    // Node 2 (Int 2): Sim [10, 20), Node [5, 11.666) -> Skew 1.5
+    // Node 2 (Int 3): Sim [20, 30), Node [11.666, 12.666) -> Skew 0.1
+    std::string intervalConfig = "1,0,100,0,100,1.0;"
+                                 "2,0,10,0,5,0.5;"
+                                 "2,10,20,5,11.6666,1.5;"
+                                 "2,20,30,11.6666,12.6666,0.1;";
 
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
     schedulerFactory.Set("Intervals", StringValue(intervalConfig));
+
+    // Window Size is 15s. At T=0, we only know about intervals up to T=15.
+    schedulerFactory.Set("WindowSize", TimeValue(Seconds(15.0)));
+    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(1.0)));
+
     Simulator::SetScheduler(schedulerFactory);
 
-    // Test with 3 nodes
     NodeContainer nodes;
     nodes.Create(3);
 
     NS_LOG_UNCOND("--- Scheduling Test Events ---");
 
-    // Test Case A: Basic Reordering (all scheduled at node time 2.0s)
-    NS_LOG_UNCOND("Test A: Scheduling events for all nodes at local time 2.0s");
+    // Test A & B (Within initial window)
     Simulator::ScheduleWithContext(0, Seconds(2.0), &RecordExecutionTimeEvent, "A0_Normal");
     Simulator::ScheduleWithContext(1, Seconds(2.0), &RecordExecutionTimeEvent, "A1_Normal");
     Simulator::ScheduleWithContext(2, Seconds(2.0), &RecordExecutionTimeEvent, "A2_Slow");
-    // Predictions:
-    // A0_Normal: 2.0s / 1.0 = 2.0s
-    // A1_Normal: 2.0s / 1.0 = 2.0s
-    // A2_Slow:   2.0s / 0.5 = 4.0s (uses first interval)
-
-    // Test Case B: Dynamic Skew Test (for Node 2)
-    NS_LOG_UNCOND("Test B: Scheduling events for Node 2 around its skew change time (5s)");
     Simulator::ScheduleWithContext(2, Seconds(4.0), &RecordExecutionTimeEvent, "B1_BeforeChange");
     Simulator::ScheduleWithContext(2, Seconds(6.0), &RecordExecutionTimeEvent, "B2_AfterChange");
-    // Predictions:
-    // B1_BeforeChange: Still in slow interval. 4.0s / 0.5 = 8.0s
-    // B2_AfterChange: In fast interval.
-    //   - Global start of interval: 10s. Node start: 5s.
-    //   - Delta node time: 6.0s - 5.0s = 1.0s.
-    //   - Scaled delta: 1.0s / 1.5 = 0.666...s
-    //   - Final time: 10.0s + 0.666...s = 10.666...s
 
-    Simulator::Stop(Seconds(15.0));
+    // Test C: Dynamic Window Loading
+    // "Bridge Event" at SimTime T=10s.
+    // We want to schedule the next event for Node Time 12.0s.
+    // Since we are currently at SimTime 10.0s, the delay must be 2.0s.
+    // Logic: TargetNodeTime (12) = Now (10) + Delay (2).
+    NS_LOG_UNCOND("Test C: Scheduling Bridge Event at 10s to schedule Future Event");
+
+    Simulator::Schedule(Seconds(10.0), &ScheduleNextEvent, 2, Seconds(2.0), "C1_FarFuture");
+
+    Simulator::Stop(Seconds(25.0));
     Simulator::Run();
 
     NS_LOG_UNCOND("\n--- Verifying Execution Times ---");
 
-    // Test Case A Verification
-    NS_TEST_ASSERT_MSG_EQ(g_executionTimes["A0_Normal"],
-                          Seconds(2.0),
-                          "A0_Normal should run at 2.0s");
-    NS_TEST_ASSERT_MSG_EQ(g_executionTimes["A1_Normal"],
-                          Seconds(2.0),
-                          "A1_Normal should run at 2.0s");
-    NS_TEST_ASSERT_MSG_EQ(g_executionTimes["A2_Slow"], Seconds(4.0), "A2_Slow should run at 4.0s");
+    Time tolerance = MicroSeconds(1);
 
-    NS_TEST_ASSERT_MSG_EQ(g_executionTimes["B1_BeforeChange"],
-                          Seconds(8.0),
-                          "B1_BeforeChange should run at 8.0s");
-    NS_TEST_ASSERT_MSG_EQ(g_executionTimes["B2_AfterChange"],
-                          Seconds(10.0) + Seconds(1.0 / 1.5),
-                          "B2_AfterChange should run at 10.66...s");
+    // Verify A
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A0_Normal"], Seconds(2.0), tolerance, "A0");
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A1_Normal"], Seconds(2.0), tolerance, "A1");
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A2_Slow"], Seconds(4.0), tolerance, "A2");
 
-    NS_LOG_UNCOND("-------------------------------------\n");
+    // Verify B
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["B1_BeforeChange"], Seconds(8.0), tolerance, "B1");
+    Time expectedB2 = Seconds(10.0) + Seconds(1.0 / 1.5);
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["B2_AfterChange"], expectedB2, tolerance, "B2");
 
+    // Verify C
+    // Interval 3 Start: Node 11.6666, Sim 20.0, Skew 0.1
+    // Target Node Time: 12.0
+    // Delta Node: 12.0 - 11.6666 = 0.3333
+    // Scaled Delta: 0.3333 / 0.1 = 3.333
+    // Sim Time: 20.0 + 3.333 = 23.333
+    double nodeStart3 = 11.6666;
+    double skew3 = 0.1;
+    double simStart3 = 20.0;
+    Time expectedC1 = Seconds(simStart3 + ((12.0 - nodeStart3) / skew3));
+
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["C1_FarFuture"],
+                              expectedC1,
+                              tolerance,
+                              "C1 (Window Test)");
+
+    NS_LOG_UNCOND("All tests passed!");
     Simulator::Destroy();
     g_executionTimes.clear();
 }

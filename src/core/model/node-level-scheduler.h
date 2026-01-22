@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 INRIA
+ * Copyright (c) 2025 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
@@ -13,7 +13,9 @@
 #include "object.h"
 #include "priority-queue-scheduler.h"
 #include "ptr.h"
+#include "simulator.h"
 
+#include <deque>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -39,20 +41,12 @@ struct Interval
 class NodeTimingGraph : public Object
 {
   public:
-    /**
-     * Register this type.
-     * @return The object TypeId.
-     */
     static TypeId GetTypeId();
-
     NodeTimingGraph() = default;
-
     ~NodeTimingGraph() = default;
 
     /**
      * @brief Add a timing interval for a specific node.
-     * @param nodeId The ID of the node.
-     * @param interval The timing interval to add.
      */
     void AddInterval(uint32_t nodeId, const Interval& interval)
     {
@@ -60,96 +54,56 @@ class NodeTimingGraph : public Object
     }
 
     /**
-     * @brief Get the global simulator time corresponding to a given node time.
-     * @param nodeId The ID of the node.
-     * @param nodeTime The local time of the node.
-     * @return The corresponding global simulator time.
+     * @brief Remove intervals that ended before the cutoff time.
+     * @param cutoff The simulation time before which intervals should be removed.
      */
-    Time GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) const
-    {
-        auto it = m_nodeIntervals.find(nodeId);
-        if (it == m_nodeIntervals.end())
-        {
-            return nodeTime;
-        }
-        const auto& intervals = it->second;
-        for (const auto& interval : intervals)
-        {
-            if (nodeTime >= interval.nodeStartTime && nodeTime < interval.nodeEndTime)
-            {
-                Time deltaNodeTime = (nodeTime - interval.nodeStartTime);
-                Time scaledDelta = Seconds(deltaNodeTime.GetSeconds() / interval.skew);
-                return interval.simulatorStartTime + scaledDelta;
-            }
-        }
+    void PruneIntervals(Time cutoff);
 
-        return nodeTime;
-    }
+    /**
+     * @brief Get the global simulator time corresponding to a given node time.
+     */
+    Time GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) const;
 
   private:
     std::unordered_map<uint32_t, std::vector<Interval>> m_nodeIntervals;
 };
 
-/**
- * @ingroup scheduler
- * @brief a std::priority_queue event scheduler
- *
- * This class implements an event scheduler using
- * `std::priority_queue` on a `std::vector`.
- *
- * @par Time Complexity
- *
- * Operation    | Amortized %Time  | Reason
- * :----------- | :--------------- | :-----
- * Insert()     | Logarithmic      | `std::push_heap()`
- * IsEmpty()    | Constant         | `std::vector::empty()`
- * PeekNext()   | Constant         | `std::vector::front()`
- * Remove()     | Linear           | `std::find()` and `std::make_heap()`
- * RemoveNext() | Logarithmic      | `std::pop_heap()`
- *
- * @par Memory Complexity
- *
- * Category  | Memory                           | Reason
- * :-------- | :------------------------------- | :-----
- * Overhead  | 3 x `sizeof (*)`<br/>(24 bytes)  | `std::vector`
- * Per Event | 0                                | Events stored in `std::vector` directly
- *
- */
 class NodeLevelScheduler : public PriorityQueueScheduler
 {
   public:
-    /**
-     * Register this type.
-     * @return The object TypeId.
-     */
     static TypeId GetTypeId();
 
-    /** Constructor. */
     NodeLevelScheduler();
-    /** Destructor. */
     ~NodeLevelScheduler() override;
 
-    // Inherited
     void Insert(const Scheduler::Event& ev) override;
 
-    /**
-     * @return pointer to the NodeTimingGraph instance
-     */
     Ptr<NodeTimingGraph> GetTimingGraph() const
     {
         return m_nodeTimings;
     }
 
-    /**
-     * @brief Set timing intervals from a formatted string.
-     * @param intervalsStr A semicolon-separated list of intervals.
-     * Each interval is formatted as
-     * 'nodeId,simStartTime,simEndTime,nodeStartTime,nodeEndTime,skew'.
-     */
     void SetIntervalsFromString(const std::string& intervalsStr);
 
   private:
-    Ptr<NodeTimingGraph> m_nodeTimings; //!< Timing graph for node-level virtual time management
+    /**
+     * @brief Updates the active interval table.
+     * Loads new intervals within the window and removes old ones.
+     */
+    void UpdateIntervalWindow();
+
+    Ptr<NodeTimingGraph> m_nodeTimings;
+
+    struct PendingInterval
+    {
+        uint32_t nodeId;
+        Interval data;
+    };
+
+    std::deque<PendingInterval> m_pendingIntervals; //!< Sorted list of all future intervals
+    Time m_windowSize;   //!< How far ahead to load intervals (e.g., 100s)
+    Time m_updatePeriod; //!< How often to run the cleanup/load event
+    bool m_initialized;  //!< Ensures the window update loop starts once
 };
 
 } // namespace ns3
