@@ -10,7 +10,7 @@
 #include "ns3/network-module.h"
 #include "ns3/node-level-scheduler.h"
 
-#include <cstdio> 
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 
@@ -25,30 +25,29 @@ void
 Ping(uint32_t nodeId)
 {
     Time now = Simulator::Now();
-    std::cout << "  [SimTime=" << now.GetSeconds() 
-              << "s] Executing Ping for Node " << nodeId << std::endl;
+    std::cout << "  [SimTime=" << now.GetSeconds() << "s] Executing Ping for Node " << nodeId
+              << std::endl;
 }
 
 int
 main(int argc, char* argv[])
 {
-    
     LogComponentEnable("NodeLevelScheduler", LOG_LEVEL_LOGIC);
 
     std::string csvFilename = "node-intervals.csv";
     {
         std::ofstream outFile(csvFilename);
-        
+
         // File Format: nodeId, simStart, simEnd, nodeStart, nodeEnd, skew
-        
+
         // Node 0: Normal Clock (Skew 1.0)
         // Global: 0-100s -> Local: 0-100s
         outFile << "0,0,100,0,100,1.0\n";
-        
+
         // Node 1: Fast Clock (Skew 2.0)
         // Global: 0-50s -> Local: 0-100s (Time moves 2x faster)
         outFile << "1,0,50,0,100,2.0\n";
-        
+
         // Node 2: Slow Clock (Skew 0.5)
         // Global: 0-200s -> Local: 0-100s (Time moves 0.5x speed)
         outFile << "2,0,200,0,100,0.5\n";
@@ -59,11 +58,11 @@ main(int argc, char* argv[])
 
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
-    
+
     schedulerFactory.Set("IntervalFile", StringValue(csvFilename));
-    
-    schedulerFactory.Set("WindowSize", TimeValue(Seconds(60.0))); 
-    
+
+    schedulerFactory.Set("WindowSize", TimeValue(Seconds(60.0)));
+
     schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10.0)));
 
     Simulator::SetScheduler(schedulerFactory);

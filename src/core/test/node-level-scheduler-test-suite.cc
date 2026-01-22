@@ -11,10 +11,10 @@
 #include "ns3/node-level-scheduler.h"
 #include "ns3/test.h"
 
+#include <cstdio> // For std::remove
 #include <fstream>
 #include <map>
 #include <string>
-#include <cstdio> // For std::remove
 
 using namespace ns3;
 
@@ -62,7 +62,7 @@ void
 SchedulerTestCase::DoRun()
 {
     std::string tempFileName = "scheduler-test-intervals.csv";
-    
+
     {
         std::ofstream outFile(tempFileName);
         // Format: nodeId, simStart, simEnd, nodeStart, nodeEnd, skew
@@ -81,11 +81,11 @@ SchedulerTestCase::DoRun()
 
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
-    
+
     // Point to our temporary file
     schedulerFactory.Set("IntervalFile", StringValue(tempFileName));
-    
-    // Set WindowSize to 15s. 
+
+    // Set WindowSize to 15s.
     // At T=0, the scheduler loads intervals up to T=15.
     // Interval 3 (starting at T=20) will NOT be loaded initially.
     schedulerFactory.Set("WindowSize", TimeValue(Seconds(15.0)));
@@ -125,19 +125,34 @@ SchedulerTestCase::DoRun()
     Time tolerance = MicroSeconds(1);
 
     // Verify A
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A0_Normal"], Seconds(2.0), tolerance, "A0 (Normal) Failed");
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A1_Normal"], Seconds(2.0), tolerance, "A1 (Normal) Failed");
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A2_Slow"], Seconds(4.0), tolerance, "A2 (Slow) Failed");
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A0_Normal"],
+                              Seconds(2.0),
+                              tolerance,
+                              "A0 (Normal) Failed");
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A1_Normal"],
+                              Seconds(2.0),
+                              tolerance,
+                              "A1 (Normal) Failed");
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A2_Slow"],
+                              Seconds(4.0),
+                              tolerance,
+                              "A2 (Slow) Failed");
 
     // Verify B
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["B1_BeforeChange"], Seconds(8.0), tolerance, "B1 (Before Skew) Failed");
-    
-    // B2 Calculation: 
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["B1_BeforeChange"],
+                              Seconds(8.0),
+                              tolerance,
+                              "B1 (Before Skew) Failed");
+
+    // B2 Calculation:
     // Interval 2 starts at NodeTime 5.0 (Sim 10.0). Target is 6.0.
     // Delta = 1.0. Skew = 1.5. Scaled = 0.666.
     // SimTime = 10.0 + 0.666...
     Time expectedB2 = Seconds(10.0) + Seconds(1.0 / 1.5);
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["B2_AfterChange"], expectedB2, tolerance, "B2 (After Skew) Failed");
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["B2_AfterChange"],
+                              expectedB2,
+                              tolerance,
+                              "B2 (After Skew) Failed");
 
     // Verify C (File Streaming & Window)
     // Interval 3 starts at NodeTime 11.6666 (Sim 20.0). Target is 12.0.
@@ -147,14 +162,17 @@ SchedulerTestCase::DoRun()
     double skew3 = 0.1;
     double simStart3 = 20.0;
     Time expectedC1 = Seconds(simStart3 + ((12.0 - nodeStart3) / skew3));
-    
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["C1_FarFuture"], expectedC1, tolerance, "C1 (File Stream Test) Failed");
+
+    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["C1_FarFuture"],
+                              expectedC1,
+                              tolerance,
+                              "C1 (File Stream Test) Failed");
 
     NS_LOG_UNCOND("All tests passed!");
-    
+
     Simulator::Destroy();
     g_executionTimes.clear();
-    
+
     // Remove the temporary file
     std::remove(tempFileName.c_str());
 }

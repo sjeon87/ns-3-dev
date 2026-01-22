@@ -66,12 +66,11 @@ NodeTimingGraph::PruneIntervals(Time cutoff)
     for (auto it = m_nodeIntervals.begin(); it != m_nodeIntervals.end();)
     {
         auto& intervals = it->second;
-        
-        auto newEnd = std::remove_if(intervals.begin(), intervals.end(),
-                                     [&](const Interval& i) {
-                                         return i.simulatorEndTime < cutoff;
-                                     });
-        
+
+        auto newEnd = std::remove_if(intervals.begin(), intervals.end(), [&](const Interval& i) {
+            return i.simulatorEndTime < cutoff;
+        });
+
         intervals.erase(newEnd, intervals.end());
 
         if (intervals.empty())
@@ -143,11 +142,12 @@ NodeLevelScheduler::ParseNextLine()
         {
             return false;
         }
-        
+
         m_intervalStream.open(m_intervalsFilePath);
         if (!m_intervalStream.is_open())
         {
-            NS_FATAL_ERROR("NodeLevelScheduler: Could not open interval file: " << m_intervalsFilePath);
+            NS_FATAL_ERROR(
+                "NodeLevelScheduler: Could not open interval file: " << m_intervalsFilePath);
             return false;
         }
     }
@@ -155,7 +155,7 @@ NodeLevelScheduler::ParseNextLine()
     std::string line;
     while (std::getline(m_intervalStream, line))
     {
-        if (line.empty() || line[0] == '#') 
+        if (line.empty() || line[0] == '#')
         {
             continue;
         }
@@ -175,7 +175,7 @@ NodeLevelScheduler::ParseNextLine()
             continue;
         }
 
-        try 
+        try
         {
             PendingInterval p;
             p.nodeId = std::stoul(parts[0]);
@@ -184,11 +184,11 @@ NodeLevelScheduler::ParseNextLine()
             p.data.nodeStartTime = Seconds(std::stod(parts[3]));
             p.data.nodeEndTime = Seconds(std::stod(parts[4]));
             p.data.skew = std::stod(parts[5]);
-            
+
             m_nextBufferedInterval = p;
             return true;
-        } 
-        catch (const std::exception& e) 
+        }
+        catch (const std::exception& e)
         {
             NS_LOG_WARN("Error parsing interval values: " << line << " (" << e.what() << ")");
             continue;
@@ -204,7 +204,8 @@ NodeLevelScheduler::UpdateIntervalWindow()
     Time now = Simulator::Now();
     Time horizon = now + m_windowSize;
 
-    NS_LOG_LOGIC("Update Window: Now=" << now.GetSeconds() << "s, Horizon=" << horizon.GetSeconds() << "s");
+    NS_LOG_LOGIC("Update Window: Now=" << now.GetSeconds() << "s, Horizon=" << horizon.GetSeconds()
+                                       << "s");
 
     m_nodeTimings->PruneIntervals(now);
 
@@ -213,20 +214,22 @@ NodeLevelScheduler::UpdateIntervalWindow()
         if (!m_nextBufferedInterval.has_value())
         {
             bool success = ParseNextLine();
-            if (!success) 
+            if (!success)
             {
-                break; 
+                break;
             }
         }
 
         if (m_nextBufferedInterval->data.simulatorStartTime <= horizon)
         {
-            NS_LOG_LOGIC("Loading interval for Node " << m_nextBufferedInterval->nodeId 
-                         << " starting at SimTime " << m_nextBufferedInterval->data.simulatorStartTime.GetSeconds() << "s");
-            
-            m_nodeTimings->AddInterval(m_nextBufferedInterval->nodeId, m_nextBufferedInterval->data);
-            
-            m_nextBufferedInterval.reset(); 
+            NS_LOG_LOGIC("Loading interval for Node "
+                         << m_nextBufferedInterval->nodeId << " starting at SimTime "
+                         << m_nextBufferedInterval->data.simulatorStartTime.GetSeconds() << "s");
+
+            m_nodeTimings->AddInterval(m_nextBufferedInterval->nodeId,
+                                       m_nextBufferedInterval->data);
+
+            m_nextBufferedInterval.reset();
         }
         else
         {
