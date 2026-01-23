@@ -25,7 +25,14 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("NodeLevelScheduler");
 
+NS_OBJECT_ENSURE_REGISTERED(NodeTimingGraph);
 NS_OBJECT_ENSURE_REGISTERED(NodeLevelScheduler);
+
+// -----------------------------------------------------------------------------
+// NodeTimingGraph
+// -----------------------------------------------------------------------------
+
+static Ptr<NodeTimingGraph> g_nodeTimingGraph = nullptr;
 
 TypeId
 NodeTimingGraph::GetTypeId()
@@ -35,6 +42,22 @@ NodeTimingGraph::GetTypeId()
                             .SetGroupName("Core")
                             .AddConstructor<NodeTimingGraph>();
     return tid;
+}
+
+Ptr<NodeTimingGraph>
+NodeTimingGraph::GetInstance()
+{
+    if (!g_nodeTimingGraph)
+    {
+        g_nodeTimingGraph = CreateObject<NodeTimingGraph>();
+    }
+    return g_nodeTimingGraph;
+}
+
+void
+NodeTimingGraph::AddInterval(uint32_t nodeId, const IntervalData& interval)
+{
+    m_nodeIntervals[nodeId].push_back({interval});
 }
 
 Time
@@ -56,8 +79,30 @@ NodeTimingGraph::GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) co
             return interval.simulatorStartTime + scaledDelta;
         }
     }
-
     return nodeTime;
+}
+
+Time
+NodeTimingGraph::GetNodeTimeFromSimulatorTime(uint32_t nodeId, Time simulatorTime) const
+{
+    auto it = m_nodeIntervals.find(nodeId);
+    if (it == m_nodeIntervals.end())
+    {
+        return simulatorTime;
+    }
+
+    const auto& intervals = it->second;
+    for (const auto& interval : intervals)
+    {
+        if (simulatorTime >= interval.simulatorStartTime &&
+            simulatorTime < interval.simulatorEndTime)
+        {
+            Time deltaSimTime = (simulatorTime - interval.simulatorStartTime);
+            Time scaledDelta = Seconds(deltaSimTime.GetSeconds() * interval.skew);
+            return interval.nodeStartTime + scaledDelta;
+        }
+    }
+    return simulatorTime;
 }
 
 void
@@ -66,7 +111,6 @@ NodeTimingGraph::PruneIntervals(Time cutoff)
     for (auto it = m_nodeIntervals.begin(); it != m_nodeIntervals.end();)
     {
         auto& intervals = it->second;
-
         auto newEnd = std::remove_if(intervals.begin(), intervals.end(), [&](const Interval& i) {
             return i.simulatorEndTime < cutoff;
         });
@@ -84,30 +128,32 @@ NodeTimingGraph::PruneIntervals(Time cutoff)
     }
 }
 
+// -----------------------------------------------------------------------------
+// NodeLevelScheduler
+// -----------------------------------------------------------------------------
+
 TypeId
 NodeLevelScheduler::GetTypeId()
 {
-    static TypeId tid =
-        TypeId("ns3::NodeLevelScheduler")
-            .SetParent<Scheduler>()
-            .SetGroupName("Core")
-            .AddConstructor<NodeLevelScheduler>()
-            .AddAttribute("IntervalFile",
-                          "Path to the CSV file containing sorted intervals. "
-                          "Format: nodeId,simStart,simEnd,nodeStart,nodeEnd,skew",
-                          StringValue(""),
-                          MakeStringAccessor(&NodeLevelScheduler::SetIntervalFile),
-                          MakeStringChecker())
-            .AddAttribute("WindowSize",
-                          "The lookahead window for loading intervals from disk to RAM.",
-                          TimeValue(Seconds(100.0)),
-                          MakeTimeAccessor(&NodeLevelScheduler::m_windowSize),
-                          MakeTimeChecker())
-            .AddAttribute("UpdatePeriod",
-                          "How frequently to run the maintenance task (prune old / load new).",
-                          TimeValue(Seconds(10.0)),
-                          MakeTimeAccessor(&NodeLevelScheduler::m_updatePeriod),
-                          MakeTimeChecker());
+    static TypeId tid = TypeId("ns3::NodeLevelScheduler")
+                            .SetParent<MapScheduler>() // Inherit from MapScheduler
+                            .SetGroupName("Core")
+                            .AddConstructor<NodeLevelScheduler>()
+                            .AddAttribute("IntervalFile",
+                                          "Path to the CSV file.",
+                                          StringValue(""),
+                                          MakeStringAccessor(&NodeLevelScheduler::SetIntervalFile),
+                                          MakeStringChecker())
+                            .AddAttribute("WindowSize",
+                                          "The lookahead window.",
+                                          TimeValue(Seconds(100.0)),
+                                          MakeTimeAccessor(&NodeLevelScheduler::m_windowSize),
+                                          MakeTimeChecker())
+                            .AddAttribute("UpdatePeriod",
+                                          "Maintenance period.",
+                                          TimeValue(Seconds(10.0)),
+                                          MakeTimeAccessor(&NodeLevelScheduler::m_updatePeriod),
+                                          MakeTimeChecker());
     return tid;
 }
 
@@ -115,7 +161,7 @@ NodeLevelScheduler::NodeLevelScheduler()
     : m_initialized(false)
 {
     NS_LOG_FUNCTION(this);
-    m_nodeTimings = CreateObject<NodeTimingGraph>();
+    m_nodeTimings = NodeTimingGraph::GetInstance();
 }
 
 NodeLevelScheduler::~NodeLevelScheduler()
@@ -142,12 +188,10 @@ NodeLevelScheduler::ParseNextLine()
         {
             return false;
         }
-
         m_intervalStream.open(m_intervalsFilePath);
         if (!m_intervalStream.is_open())
         {
-            NS_FATAL_ERROR(
-                "NodeLevelScheduler: Could not open interval file: " << m_intervalsFilePath);
+            NS_FATAL_ERROR("NodeLevelScheduler: Could not open " << m_intervalsFilePath);
             return false;
         }
     }
@@ -159,11 +203,9 @@ NodeLevelScheduler::ParseNextLine()
         {
             continue;
         }
-
         std::stringstream ss(line);
         std::string part;
         std::vector<std::string> parts;
-
         while (std::getline(ss, part, ','))
         {
             parts.push_back(part);
@@ -171,7 +213,6 @@ NodeLevelScheduler::ParseNextLine()
 
         if (parts.size() != 6)
         {
-            NS_LOG_WARN("Skipping invalid line format in interval file: " << line);
             continue;
         }
 
@@ -184,17 +225,14 @@ NodeLevelScheduler::ParseNextLine()
             p.data.nodeStartTime = Seconds(std::stod(parts[3]));
             p.data.nodeEndTime = Seconds(std::stod(parts[4]));
             p.data.skew = std::stod(parts[5]);
-
             m_nextBufferedInterval = p;
             return true;
         }
-        catch (const std::exception& e)
+        catch (...)
         {
-            NS_LOG_WARN("Error parsing interval values: " << line << " (" << e.what() << ")");
             continue;
         }
     }
-
     return false;
 }
 
@@ -203,18 +241,13 @@ NodeLevelScheduler::UpdateIntervalWindow()
 {
     Time now = Simulator::Now();
     Time horizon = now + m_windowSize;
-
-    NS_LOG_LOGIC("Update Window: Now=" << now.GetSeconds() << "s, Horizon=" << horizon.GetSeconds()
-                                       << "s");
-
     m_nodeTimings->PruneIntervals(now);
 
     while (true)
     {
         if (!m_nextBufferedInterval.has_value())
         {
-            bool success = ParseNextLine();
-            if (!success)
+            if (!ParseNextLine())
             {
                 break;
             }
@@ -222,13 +255,8 @@ NodeLevelScheduler::UpdateIntervalWindow()
 
         if (m_nextBufferedInterval->data.simulatorStartTime <= horizon)
         {
-            NS_LOG_LOGIC("Loading interval for Node "
-                         << m_nextBufferedInterval->nodeId << " starting at SimTime "
-                         << m_nextBufferedInterval->data.simulatorStartTime.GetSeconds() << "s");
-
             m_nodeTimings->AddInterval(m_nextBufferedInterval->nodeId,
                                        m_nextBufferedInterval->data);
-
             m_nextBufferedInterval.reset();
         }
         else
@@ -236,7 +264,6 @@ NodeLevelScheduler::UpdateIntervalWindow()
             break;
         }
     }
-
     Simulator::Schedule(m_updatePeriod, &NodeLevelScheduler::UpdateIntervalWindow, this);
 }
 
@@ -252,17 +279,19 @@ NodeLevelScheduler::Insert(const Event& ev)
     if (m_nodeTimings)
     {
         uint32_t nodeId = ev.key.m_context;
+        // Interpret event timestamp as Node Time, convert to Simulator Time
         Time nodeTime = NanoSeconds(ev.key.m_ts);
-
         Time simulatorTime = m_nodeTimings->GetSimulatorTimeFromNodeTime(nodeId, nodeTime);
 
         Event adjustedEv = ev;
         adjustedEv.key.m_ts = simulatorTime.GetNanoSeconds();
-        PriorityQueueScheduler::Insert(adjustedEv);
+
+        // Pass to parent MapScheduler
+        MapScheduler::Insert(adjustedEv);
     }
     else
     {
-        PriorityQueueScheduler::Insert(ev);
+        MapScheduler::Insert(ev);
     }
 }
 

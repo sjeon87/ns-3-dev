@@ -49,6 +49,7 @@ set(source_files
     utils/mac48-address.cc
     utils/mac64-address.cc
     utils/mac8-address.cc
+    utils/multi-rate-clock.cc
     utils/net-device-queue-interface.cc
     utils/output-stream-wrapper.cc
     utils/packet-burst.cc
@@ -132,6 +133,7 @@ set(header_files
     utils/mac48-address.h
     utils/mac64-address.h
     utils/mac8-address.h
+    utils/multi-rate-clock.h
     utils/net-device-queue-interface.h
     utils/output-stream-wrapper.h
     utils/packet-burst.h
