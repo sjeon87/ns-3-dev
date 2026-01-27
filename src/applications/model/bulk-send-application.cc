@@ -12,10 +12,12 @@
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/nstime.h"
+#include "ns3/object-factory.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 #include "ns3/socket-factory.h"
 #include "ns3/socket.h"
+#include "ns3/tcp-recovery-ops.h"
 #include "ns3/tcp-socket-base.h"
 #include "ns3/tcp-socket-factory.h"
 #include "ns3/trace-source-accessor.h"
@@ -53,6 +55,11 @@ BulkSendApplication::GetTypeId()
                           "The type of protocol to use.",
                           TypeIdValue(TcpSocketFactory::GetTypeId()),
                           MakeTypeIdAccessor(&BulkSendApplication::m_protocolTid),
+                          MakeTypeIdChecker())
+            .AddAttribute("RecoveryType",
+                          "Recovery type of TCP objects.",
+                          TypeIdValue(Object::GetTypeId()),
+                          MakeTypeIdAccessor(&BulkSendApplication::m_recoveryTypeId),
                           MakeTypeIdChecker())
             .AddAttribute("EnableSeqTsSizeHeader",
                           "Add SeqTsSizeHeader to each packet",
@@ -118,6 +125,16 @@ BulkSendApplication::DoStartApplication() // Called at time specified by Start
         tcpSocket->TraceConnectWithoutContext(
             "Retransmission",
             MakeCallback(&BulkSendApplication::PacketRetransmitted, this));
+
+        // Only override the recovery algorithm if the attribute was explicitly set
+        if (m_recoveryTypeId != Object::GetTypeId())
+        {
+            NS_LOG_INFO("Setting TcpRecoveryOps type to " << m_recoveryTypeId.GetName());
+            ObjectFactory recoveryFactory;
+            recoveryFactory.SetTypeId(m_recoveryTypeId);
+            auto recoveryOps = recoveryFactory.Create<TcpRecoveryOps>();
+            tcpSocket->SetRecoveryAlgorithm(recoveryOps);
+        }
     }
 
     if (m_connected)
