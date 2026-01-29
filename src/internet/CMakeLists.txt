@@ -106,6 +106,7 @@ set(source_files
     model/tcp-option-winscale.cc
     model/tcp-option.cc
     model/tcp-prr-recovery.cc
+    model/tcp-r-ledbat.cc
     model/tcp-rate-ops.cc
     model/tcp-recovery-ops.cc
     model/tcp-rx-buffer.cc
@@ -232,6 +233,7 @@ set(header_files
     model/tcp-option-winscale.h
     model/tcp-option.h
     model/tcp-prr-recovery.h
+    model/tcp-r-ledbat.h
     model/tcp-rate-ops.h
     model/tcp-recovery-ops.h
     model/tcp-rx-buffer.h
