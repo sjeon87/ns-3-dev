@@ -11,6 +11,10 @@
 #include "ns3/random-variable-stream.h"
 #include "ns3/test.h"
 
+#include <array>
+#include <deque>
+#include <vector>
+
 using namespace ns3;
 
 /**
@@ -391,6 +395,120 @@ BufferTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ((src == dst),
                               true,
                               "Buffer iterator-pair Write/Read round-trip failed");
+    }
+
+    {
+        constexpr uint32_t N = 100;
+
+        std::vector<uint8_t> writeData(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            writeData[k] = static_cast<uint8_t>(k * 3 + 7);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(writeData.begin(), writeData.end());
+
+        std::vector<uint8_t> readData(N, 0);
+        it = b.Begin();
+        it.Read(readData.begin(), readData.end());
+
+        NS_TEST_ASSERT_MSG_EQ(writeData.size(), readData.size(), "Vector size mismatch");
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(writeData[k], readData[k], "Vector mismatch at index " << k);
+        }
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(), 0, "Iterator not at end after vector read");
+    }
+
+    {
+        constexpr uint32_t N = 64;
+
+        std::array<uint8_t, N> writeData{};
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            writeData[k] = static_cast<uint8_t>(k * 5 + 11);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(writeData.begin(), writeData.end());
+
+        std::array<uint8_t, N> readData{};
+        it = b.Begin();
+        it.Read(readData.begin(), readData.end());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(writeData[k], readData[k], "Array mismatch at index " << k);
+        }
+    }
+
+    {
+        constexpr uint32_t N = 50;
+
+        std::deque<uint8_t> writeData(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            writeData[k] = static_cast<uint8_t>(k * 7 + 3);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(writeData.begin(), writeData.end());
+
+        std::deque<uint8_t> readData(N);
+        it = b.Begin();
+        it.Read(readData.begin(), readData.end());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(writeData[k], readData[k], "Deque mismatch at index " << k);
+        }
+    }
+
+    {
+        constexpr uint32_t N = 10;
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().WriteU8(0xAB, N);
+
+        std::vector<uint8_t> empty;
+        Buffer::Iterator it = b.Begin();
+        it.Write(empty.begin(), empty.end());
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(), N, "Empty write should not advance iterator");
+
+        std::vector<uint8_t> got(N, 0);
+        it = b.Begin();
+        it.Read(got.begin(), got.end());
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(got[k], 0xAB, "Empty write modified buffer at index " << k);
+        }
+    }
+
+    {
+        constexpr uint32_t N = 5;
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().WriteU8(0xAA, N);
+
+        std::vector<uint8_t> empty;
+        Buffer::Iterator it = b.Begin();
+        it.Read(empty.begin(), empty.end());
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(), N, "Empty read should not advance iterator");
     }
 }
 
