@@ -102,6 +102,17 @@ class TcpL4Protocol : public IpL4Protocol
     Ptr<Socket> CreateSocket();
 
     /**
+     * @brief Create a TCP socket using specified socket implementation and congestion control
+     *
+     * @param socketImplType the socket implementation TypeId
+     * @param congestionTypeId the congestion control algorithm TypeId
+     * @param recoveryTypeId the recovery algorithm TypeId
+     *
+     * @return A smart Socket pointer to a TcpSocket allocated by this instance
+     */
+    Ptr<Socket> CreateSocket(TypeId socketImplType, TypeId congestionTypeId, TypeId recoveryTypeId);
+
+    /**
      * @brief Create a TCP socket using the specified congestion control algorithm TypeId
      *
      * @return A smart Socket pointer to a TcpSocket allocated by this instance
@@ -330,6 +341,7 @@ class TcpL4Protocol : public IpL4Protocol
     Ipv4EndPointDemux* m_endPoints;  //!< A list of IPv4 end points.
     Ipv6EndPointDemux* m_endPoints6; //!< A list of IPv6 end points.
     TypeId m_rttTypeId;              //!< The RTT Estimator TypeId
+    TypeId m_socketImplTypeId;       //!< TCP socket implementation TypeId
     TypeId m_congestionTypeId;       //!< The socket TypeId
     TypeId m_recoveryTypeId;         //!< The recovery TypeId
     std::unordered_map<uint64_t, Ptr<TcpSocketBase>>
