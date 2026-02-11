@@ -11,8 +11,8 @@
 #include "ns3/network-module.h"
 #include "ns3/node-level-scheduler.h"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 using namespace ns3;
 
@@ -22,10 +22,11 @@ void
 Ping(Ptr<Node> node)
 {
     Time simTime = Simulator::Now();
-    
-    Time localTime = node->GetLocalTime(); 
 
-    std::cout << "  [SimTime=" << std::fixed << std::setprecision(4) << simTime.GetSeconds() << "s] "
+    Time localTime = node->GetLocalTime();
+
+    std::cout << "  [SimTime=" << std::fixed << std::setprecision(4) << simTime.GetSeconds()
+              << "s] "
               << "Node " << node->GetId() << " Ping Executed. "
               << "Node Local Time: " << localTime.GetSeconds() << "s" << std::endl;
 }
@@ -33,15 +34,14 @@ Ping(Ptr<Node> node)
 int
 main(int argc, char* argv[])
 {
-
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
-    
-    schedulerFactory.Set("MinimumSkew", DoubleValue(0.5)); 
-    schedulerFactory.Set("MaximumSkew", DoubleValue(2.0)); 
+
+    schedulerFactory.Set("MinimumSkew", DoubleValue(0.5));
+    schedulerFactory.Set("MaximumSkew", DoubleValue(2.0));
     schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10.0)));
     schedulerFactory.Set("WindowSize", TimeValue(Seconds(60.0)));
-    
+
     Simulator::SetScheduler(schedulerFactory);
 
     NodeContainer nodes;
@@ -54,7 +54,7 @@ main(int argc, char* argv[])
         clock->SetNodeId(node->GetId());
         node->SetAttribute("LocalClock", PointerValue(clock));
     }
-    
+
     Simulator::ScheduleWithContext(0, Seconds(10.0), &Ping, nodes.Get(0));
     Simulator::ScheduleWithContext(1, Seconds(10.0), &Ping, nodes.Get(1));
     Simulator::ScheduleWithContext(2, Seconds(10.0), &Ping, nodes.Get(2));
