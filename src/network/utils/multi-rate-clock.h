@@ -40,7 +40,6 @@ class MultiRateClock : public LocalClock
 
   private:
     uint32_t m_nodeId;
-    Ptr<NodeTimingGraph> m_timingGraph;
 };
 
 } // namespace ns3

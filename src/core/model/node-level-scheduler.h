@@ -10,88 +10,219 @@
 #ifndef NODE_LEVEL_SCHEDULER_H
 #define NODE_LEVEL_SCHEDULER_H
 
-#include "event-impl.h"
+#include "event-id.h"
 #include "map-scheduler.h"
 #include "nstime.h"
 #include "object.h"
-#include "simulator.h"
 
-#include <fstream>
 #include <map>
-#include <optional>
-#include <string>
 #include <vector>
 
 namespace ns3
 {
 
-struct IntervalData
-{
-    Time simulatorStartTime;
-    Time simulatorEndTime;
-    Time nodeStartTime;
-    Time nodeEndTime;
-    double skew;
-};
-
-struct Interval : public IntervalData
-{
-};
-
-struct PendingInterval
-{
-    uint32_t nodeId;
-    IntervalData data;
-};
+/**
+ * @ingroup core
+ * @defgroup node-level-scheduler Node Level Scheduler
+ * * \brief Classes to support per-node clock skew simulation.
+ */
 
 /**
- * @brief A singleton graph that manages time translation for all nodes.
+ * @ingroup node-level-scheduler
+ * @brief Maintain the mapping between Simulator Time and Node Time.
+ *
+ * This class stores a history of time intervals for each node. Each interval
+ * represents a period where the node's clock runs at a constant drift (skew)
+ * relative to the global Simulator time.
+ *
+ * It allows converting a local Node Time (what the node thinks the time is)
+ * to the absolute Simulator Time,
+ * and vice versa.
  */
 class NodeTimingGraph : public Object
 {
   public:
-    static TypeId GetTypeId();
-    static Ptr<NodeTimingGraph> GetInstance();
-    NodeTimingGraph() = default;
+    /**
+     * @brief Structure representing a continuous period of constant clock skew.
+     */
+    struct Interval
+    {
+        Time simulatorStartTime; /**< Start time in global simulator reference. */
+        Time simulatorEndTime;   /**< End time in global simulator reference. */
+        Time nodeStartTime;      /**< Start time in local node reference. */
+        Time nodeEndTime;        /**< End time in local node reference. */
+        double skew;             /**< The clock skew factor (1.0 = perfect sync). */
+    };
 
+    /**
+     * @brief Get the type ID.
+     * @return the object TypeId
+     */
+    static TypeId GetTypeId(void);
+
+    /**
+     * @brief Constructor.
+     */
+    NodeTimingGraph();
+
+    /**
+     * @brief Destructor.
+     */
+    virtual ~NodeTimingGraph();
+
+    /**
+     * @brief Add a new timing interval for a specific node.
+     * @param nodeId The ID of the node.
+     * @param interval The timing interval details.
+     */
+    void AddInterval(uint32_t nodeId, const Interval& interval);
+
+    /**
+     * @brief Check if timing information exists for a node.
+     * @param nodeId The ID of the node.
+     * @return True if the node is tracked, false otherwise.
+     */
+    bool HasNode(uint32_t nodeId) const;
+
+    /**
+     * @brief Convert local Node Time to global Simulator Time.
+     *
+     * @param nodeId The ID of the node context.
+     * @param nodeTime The local time on the node.
+     * @return The corresponding global simulator time.
+     */
     Time GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) const;
+
+    /**
+     * @brief Convert global Simulator Time to local Node Time.
+     * * This is used by local clocks to report the "current time" based on
+     * the global simulator state.
+     *
+     * @param nodeId The ID of the node context.
+     * @param simulatorTime The global simulator time.
+     * @return The corresponding local time on the node.
+     */
     Time GetNodeTimeFromSimulatorTime(uint32_t nodeId, Time simulatorTime) const;
-    void AddInterval(uint32_t nodeId, const IntervalData& interval);
+
+    /**
+     * @brief Get the latest local time covered by the graph for a node.
+     * @param nodeId The ID of the node.
+     * @return The max node time currently tracked.
+     */
+    Time GetMaxNodeTime(uint32_t nodeId) const;
+
+    /**
+     * @brief Get the latest simulator time covered by the graph for a node.
+     * @param nodeId The ID of the node.
+     * @return The max simulator time currently tracked.
+     */
+    Time GetMaxSimulatorTime(uint32_t nodeId) const;
+
+    /**
+     * @brief Remove old intervals that are no longer needed.
+     * * Removes intervals where the SimulatorEndTime is older than the cutoff.
+     *
+     * @param cutoff The simulator time threshold for pruning.
+     */
     void PruneIntervals(Time cutoff);
 
   private:
+    /**
+     * @brief Map of Node IDs to their list of timing intervals.
+     */
     std::map<uint32_t, std::vector<Interval>> m_nodeIntervals;
+    std::map<uint32_t, Time> m_lastSimEndTime;  /**< Last known simulator end time per node. */
+    std::map<uint32_t, Time> m_lastNodeEndTime; /**< Last known node end time per node. */
+    std::map<uint32_t, double> m_lastSkew;      /**< Last known skew per node. */
 };
 
 /**
- * @brief Scheduler that intercepts events and adjusts execution time.
- * Inherits from MapScheduler to handle the actual event storage.
+ * @ingroup node-level-scheduler
+ * @brief A custom scheduler that implements per-node clock skew.
+ *
+ * This scheduler wraps the standard MapScheduler. When an event is inserted
+ * with a specific Node Context, the scheduler translates the requested
+ * execution time (assumed to be relative to the Node's local clock) into
+ * the correct global Simulator Time based on the NodeTimingGraph.
  */
 class NodeLevelScheduler : public MapScheduler
 {
   public:
-    static TypeId GetTypeId();
+    /**
+     * @brief Get the type ID.
+     * @return the object TypeId
+     */
+    static TypeId GetTypeId(void);
 
+    /**
+     * @brief Constructor.
+     */
     NodeLevelScheduler();
+
+    /**
+     * @brief Destructor.
+     */
     virtual ~NodeLevelScheduler();
 
-    // We only override Insert. MapScheduler handles Peek, Remove, etc.
+    /**
+     * @brief Insert an event into the schedule.
+     * * This overrides the base Scheduler::Insert. It checks the event's context
+     * (Node ID). If valid, it calculates the delay based on the node's
+     * clock skew, adjusts the event's timestamp to the correct global time,
+     * and then delegates to MapScheduler::Insert.
+     *
+     * @param ev The event to schedule.
+     */
     virtual void Insert(const Event& ev) override;
 
-    void SetIntervalFile(const std::string& filepath);
+    /**
+     * @brief Get the underlying timing graph.
+     * @return A pointer to the NodeTimingGraph.
+     */
+    Ptr<NodeTimingGraph> GetTimingGraph() const;
+
+    /**
+     * @brief Static accessor to get the graph of the currently active scheduler.
+     * @return A pointer to the active NodeTimingGraph, or nullptr if not active.
+     */
+    static Ptr<NodeTimingGraph> GetCurrentGraph();
 
   private:
-    bool ParseNextLine();
-    void UpdateIntervalWindow();
+    /**
+     * @brief Schedule the periodic cleanup task.
+     */
+    void StartCleanupTask();
 
-    std::string m_intervalsFilePath;
-    std::ifstream m_intervalStream;
-    Time m_windowSize;
-    Time m_updatePeriod;
+    /**
+     * @brief Ensure the timing graph covers the target node time.
+     * * If the target time is beyond the current graph history, new intervals
+     * are generated and appended.
+     *
+     * @param nodeId The node context.
+     * @param targetNodeTime The local time that needs to be reached.
+     */
+    void ExtendTimingGraph(uint32_t nodeId, Time targetNodeTime);
 
-    std::optional<PendingInterval> m_nextBufferedInterval;
-    Ptr<NodeTimingGraph> m_nodeTimings;
-    bool m_initialized;
+    /**
+     * @brief Generate a new window of random skew intervals for a node.
+     * @param nodeId The node to generate intervals for.
+     */
+    void AppendWindow(uint32_t nodeId);
+
+    /**
+     * @brief Periodic cleanup event handler.
+     * * Prunes old intervals from the graph to manage memory usage.
+     */
+    void Cleanup();
+
+    Ptr<NodeTimingGraph> m_nodeTimings; /**< The timing graph instance. */
+    bool m_initialized;                 /**< specific initialization flag. */
+
+    double m_maxSkew;       /**< Maximum allowed clock skew. */
+    double m_minSkew;       /**< Minimum allowed clock skew */
+    Time m_windowSize;      /**< Duration of the lookahead window. */
+    Time m_updatePeriod;    /**< How often the skew changes. */
+    EventId m_cleanupEvent; /**< The ID of the next scheduled cleanup event. */
 };
 
 } // namespace ns3

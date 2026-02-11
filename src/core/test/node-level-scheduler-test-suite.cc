@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2016 IITP
  * Copyright (c) 2025 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
@@ -6,168 +7,242 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "ns3/core-module.h"
-#include "ns3/multi-rate-clock.h"
-#include "ns3/network-module.h"
+#include "ns3/double.h"
+#include "ns3/log.h"
 #include "ns3/node-level-scheduler.h"
+#include "ns3/nstime.h"
+#include "ns3/object-factory.h"
+#include "ns3/pointer.h"
+#include "ns3/random-variable-stream.h"
+#include "ns3/simulator.h"
 #include "ns3/test.h"
-
-#include <cstdio>
-#include <fstream>
-#include <map>
-#include <string>
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("ComprehensiveSchedulerTest");
+NS_LOG_COMPONENT_DEFINE("NodeLevelSchedulerTestSuite");
 
-static std::map<std::string, Time> g_executionTimes;
-
-// Helper to record execution time (SimTime)
-void
-RecordExecutionTimeEvent(std::string eventId)
+Ptr<NodeTimingGraph>
+GetCurrentTimingGraph()
 {
-    g_executionTimes[eventId] = Simulator::Now();
-    NS_LOG_INFO("Event [" << eventId << "] executed at SimTime " << Simulator::Now().GetSeconds()
-                          << "s");
+    return NodeLevelScheduler::GetCurrentGraph();
 }
 
-class SchedulerTestCase : public TestCase
+class NodeLevelSchedulerAccuracyTestCase : public TestCase
 {
   public:
-    SchedulerTestCase();
-    void DoRun() override;
+    NodeLevelSchedulerAccuracyTestCase();
+    virtual ~NodeLevelSchedulerAccuracyTestCase();
 
   private:
-    void VerifyNodeClock(Ptr<Node> node, Time expectedNodeTime, std::string label);
-    void ScheduleFutureEvent(); // Helper to schedule dynamically
+    virtual void DoRun(void);
+    void EventHandler(uint32_t nodeId, Time scheduledNodeTime);
+
+    Time m_lastSimTime;
 };
 
-SchedulerTestCase::SchedulerTestCase()
-    : TestCase("Comprehensive NodeLevelScheduler & MultiRateClock Test")
+NodeLevelSchedulerAccuracyTestCase::NodeLevelSchedulerAccuracyTestCase()
+    : TestCase("Verify that events are executed with correct skew translation")
+{
+}
+
+NodeLevelSchedulerAccuracyTestCase::~NodeLevelSchedulerAccuracyTestCase()
 {
 }
 
 void
-SchedulerTestCase::VerifyNodeClock(Ptr<Node> node, Time expectedNodeTime, std::string label)
+NodeLevelSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduledNodeTime)
 {
-    Time actualNodeTime = node->GetLocalTime();
-    double tolerance = 1e-5;
+    Time now = Simulator::Now();
 
-    NS_TEST_EXPECT_MSG_EQ_TOL(actualNodeTime.GetSeconds(),
-                              expectedNodeTime.GetSeconds(),
-                              tolerance,
-                              "Clock Verification Failed for " << label);
+    NS_TEST_ASSERT_MSG_GT_OR_EQ(now, m_lastSimTime, "Simulator time moved backwards!");
+    m_lastSimTime = now;
 
-    NS_LOG_INFO("Clock Check [" << label << "]: SimTime=" << Simulator::Now().GetSeconds()
-                                << "s, Node reports=" << actualNodeTime.GetSeconds()
-                                << "s (Expected=" << expectedNodeTime.GetSeconds() << "s) - OK");
+    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
+    // Fix: Check for null pointer implicitly or explicitly against nullptr
+    bool graphExists = (graph != nullptr);
+    NS_TEST_ASSERT_MSG_EQ(graphExists, true, "Could not retrieve NodeTimingGraph from Scheduler");
+
+    Time expectedSimTime = graph->GetSimulatorTimeFromNodeTime(nodeId, scheduledNodeTime);
+
+    double diff = std::abs((now - expectedSimTime).GetSeconds());
+    NS_TEST_ASSERT_MSG_LT(diff, 1e-9, "Event executed at wrong Simulator Time compared to Graph");
 }
 
 void
-SchedulerTestCase::ScheduleFutureEvent()
+NodeLevelSchedulerAccuracyTestCase::DoRun(void)
 {
-    Simulator::ScheduleWithContext(2, Seconds(2.0), &RecordExecutionTimeEvent, "C_Future_Exec");
-}
-
-void
-SchedulerTestCase::DoRun()
-{
-    std::string tempFileName = "scheduler-test-intervals.csv";
-
-    // 1. Create the Interval File
-    {
-        std::ofstream outFile(tempFileName);
-        // Format: nodeId, simStart, simEnd, nodeStart, nodeEnd, skew
-        outFile << "1,0,100,0,100,1.0\n";
-        outFile << "2,0,10,0,5,0.5\n";                  // Interval 1
-        outFile << "2,10,20,5,11.666666,1.5\n";         // Interval 2
-        outFile << "2,20,30,11.666666,12.666666,0.1\n"; // Interval 3 (Sim 20-30)
-        outFile.close();
-    }
-
-    LogComponentEnable("NodeLevelScheduler", LOG_LEVEL_LOGIC);
-    LogComponentEnable("ComprehensiveSchedulerTest", LOG_LEVEL_INFO);
-
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
-    schedulerFactory.Set("IntervalFile", StringValue(tempFileName));
-    schedulerFactory.Set("WindowSize", TimeValue(Seconds(15.0)));
-    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(1.0)));
+    schedulerFactory.Set("WindowSize", TimeValue(Seconds(100)));
+    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10)));
+    schedulerFactory.Set("MinimumSkew", DoubleValue(0.5));
+    schedulerFactory.Set("MaximumSkew", DoubleValue(1.5));
+
     Simulator::SetScheduler(schedulerFactory);
 
-    NodeContainer nodes;
-    nodes.Create(3);
+    uint32_t nodeId = 1;
+    m_lastSimTime = Seconds(0);
 
-    // Install Clocks
+    for (int i = 1; i <= 10; ++i)
     {
-        Ptr<MultiRateClock> clock2 = CreateObject<MultiRateClock>();
-        clock2->SetNodeId(2);
-        nodes.Get(2)->SetAttribute("LocalClock", PointerValue(clock2));
-
-        Ptr<MultiRateClock> clock1 = CreateObject<MultiRateClock>();
-        clock1->SetNodeId(1);
-        nodes.Get(1)->SetAttribute("LocalClock", PointerValue(clock1));
+        Time t = Seconds(i * 5.0);
+        Simulator::ScheduleWithContext(nodeId,
+                                       t,
+                                       &NodeLevelSchedulerAccuracyTestCase::EventHandler,
+                                       this,
+                                       nodeId,
+                                       t);
     }
 
-    // Test A: Skew 0.5 (Target 2.0s -> Sim 4.0s)
-    Simulator::ScheduleWithContext(2, Seconds(2.0), &RecordExecutionTimeEvent, "A_Slow_Exec");
-
-    Simulator::Schedule(Seconds(4.0) + MicroSeconds(1),
-                        &SchedulerTestCase::VerifyNodeClock,
-                        this,
-                        nodes.Get(2),
-                        Seconds(2.0),
-                        "A_Slow_Clock");
-
-    // Test B: Skew 1.5 (Target 6.0s -> Sim 10.666s)
-    Time expectedSimB = Seconds(10.0 + (1.0 / 1.5));
-    Simulator::ScheduleWithContext(2, Seconds(6.0), &RecordExecutionTimeEvent, "B_Fast_Exec");
-
-    Simulator::Schedule(expectedSimB + MicroSeconds(1),
-                        &SchedulerTestCase::VerifyNodeClock,
-                        this,
-                        nodes.Get(2),
-                        Seconds(6.0),
-                        "B_Fast_Clock");
-
-    // Test C: Dynamic Loading (Target NodeTime 12.0s -> Sim 23.333s)
-    // We schedule a helper event at T=10s to ensure the interval (Start T=20s) is loaded.
-    Simulator::Schedule(Seconds(10.0), &SchedulerTestCase::ScheduleFutureEvent, this);
-
-    Time expectedSimC = Seconds(20.0 + ((12.0 - 11.666666) / 0.1));
-
-    Simulator::Schedule(expectedSimC + MicroSeconds(1),
-                        &SchedulerTestCase::VerifyNodeClock,
-                        this,
-                        nodes.Get(2),
-                        Seconds(12.0),
-                        "C_Future_Clock");
-
-    Simulator::Stop(Seconds(30.0));
+    Simulator::Stop(Seconds(60.0));
     Simulator::Run();
-
-    Time tolerance = MicroSeconds(10);
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["A_Slow_Exec"], Seconds(4.0), tolerance, "A Failed");
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["B_Fast_Exec"], expectedSimB, tolerance, "B Failed");
-    NS_TEST_ASSERT_MSG_EQ_TOL(g_executionTimes["C_Future_Exec"],
-                              expectedSimC,
-                              tolerance,
-                              "C Failed");
-
-    NS_LOG_UNCOND("All tests passed!");
-
     Simulator::Destroy();
-    g_executionTimes.clear();
-    std::remove(tempFileName.c_str());
 }
 
-static class SchedulerTestSuite : public TestSuite
+class NodeLevelSchedulerFutureEventTestCase : public TestCase
 {
   public:
-    SchedulerTestSuite()
-        : TestSuite("SchedulerTestSuite", Type::UNIT)
+    NodeLevelSchedulerFutureEventTestCase();
+    virtual ~NodeLevelSchedulerFutureEventTestCase();
+
+  private:
+    virtual void DoRun(void);
+    void FarFutureHandler(uint32_t nodeId);
+    bool m_eventRan;
+};
+
+NodeLevelSchedulerFutureEventTestCase::NodeLevelSchedulerFutureEventTestCase()
+    : TestCase("Verify scheduling far into the future triggers graph extension"),
+      m_eventRan(false)
+{
+}
+
+NodeLevelSchedulerFutureEventTestCase::~NodeLevelSchedulerFutureEventTestCase()
+{
+}
+
+void
+NodeLevelSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId)
+{
+    m_eventRan = true;
+
+    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
+    bool graphExists = (graph != nullptr);
+    NS_TEST_ASSERT_MSG_EQ(graphExists, true, "Could not retrieve NodeTimingGraph from Scheduler");
+
+    Time maxNodeTime = graph->GetMaxNodeTime(nodeId);
+
+    NS_TEST_ASSERT_MSG_GT(maxNodeTime,
+                          Seconds(4999),
+                          "Graph did not extend to cover the event time");
+}
+
+void
+NodeLevelSchedulerFutureEventTestCase::DoRun(void)
+{
+    ObjectFactory schedulerFactory;
+    schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
+    schedulerFactory.Set("WindowSize", TimeValue(Seconds(100)));
+    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10)));
+
+    Simulator::SetScheduler(schedulerFactory);
+
+    uint32_t nodeId = 2;
+
+    Simulator::ScheduleWithContext(nodeId,
+                                   Seconds(5000),
+                                   &NodeLevelSchedulerFutureEventTestCase::FarFutureHandler,
+                                   this,
+                                   nodeId);
+
+    Simulator::Stop(Seconds(60000));
+
+    Simulator::Run();
+
+    NS_TEST_ASSERT_MSG_EQ(m_eventRan, true, "Far future event failed to execute");
+
+    Simulator::Destroy();
+}
+
+class NodeLevelSchedulerStressTestCase : public TestCase
+{
+  public:
+    NodeLevelSchedulerStressTestCase();
+    virtual ~NodeLevelSchedulerStressTestCase();
+
+  private:
+    virtual void DoRun(void);
+    void StressHandler(uint32_t nodeId);
+    uint32_t m_eventCount;
+};
+
+NodeLevelSchedulerStressTestCase::NodeLevelSchedulerStressTestCase()
+    : TestCase("Stress test with multiple nodes and frequent events"),
+      m_eventCount(0)
+{
+}
+
+NodeLevelSchedulerStressTestCase::~NodeLevelSchedulerStressTestCase()
+{
+}
+
+void
+NodeLevelSchedulerStressTestCase::StressHandler(uint32_t nodeId)
+{
+    m_eventCount++;
+}
+
+void
+NodeLevelSchedulerStressTestCase::DoRun(void)
+{
+    ObjectFactory schedulerFactory;
+    schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
+    schedulerFactory.Set("WindowSize", TimeValue(Seconds(50)));
+    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(5)));
+
+    Simulator::SetScheduler(schedulerFactory);
+
+    uint32_t numNodes = 50;
+    uint32_t eventsPerNode = 100;
+
+    Ptr<UniformRandomVariable> rng = CreateObject<UniformRandomVariable>();
+
+    for (uint32_t i = 0; i < numNodes; ++i)
     {
-        AddTestCase(new SchedulerTestCase, Duration::QUICK);
+        uint32_t nodeId = i + 10;
+        for (uint32_t j = 0; j < eventsPerNode; ++j)
+        {
+            Time t = Seconds(rng->GetValue(1.0, 500.0));
+            Simulator::ScheduleWithContext(nodeId,
+                                           t,
+                                           &NodeLevelSchedulerStressTestCase::StressHandler,
+                                           this,
+                                           nodeId);
+        }
     }
-} g_schedulerTestSuite;
+
+    Simulator::Stop(Seconds(6000));
+    Simulator::Run();
+
+    NS_TEST_ASSERT_MSG_EQ(m_eventCount,
+                          numNodes * eventsPerNode,
+                          "Not all stress test events executed");
+
+    Simulator::Destroy();
+}
+
+class NodeLevelSchedulerTestSuite : public TestSuite
+{
+  public:
+    NodeLevelSchedulerTestSuite();
+};
+
+NodeLevelSchedulerTestSuite::NodeLevelSchedulerTestSuite()
+    : TestSuite("node-level-scheduler", TestSuite::Type::UNIT)
+{
+    AddTestCase(new NodeLevelSchedulerAccuracyTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new NodeLevelSchedulerFutureEventTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new NodeLevelSchedulerStressTestCase, TestCase::Duration::TAKES_FOREVER);
+}
+
+static NodeLevelSchedulerTestSuite g_nodeLevelSchedulerTestSuite;
