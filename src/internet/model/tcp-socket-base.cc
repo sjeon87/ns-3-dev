@@ -149,6 +149,11 @@ TcpSocketBase::GetTypeId()
                           BooleanValue(false),
                           MakeBooleanAccessor(&TcpSocketBase::m_fackEnabled),
                           MakeBooleanChecker())
+            .AddAttribute("Rack",
+                          "Enable or disable RACK option",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&TcpSocketBase::m_rackEnabled),
+                          MakeBooleanChecker())
             .AddAttribute(
                 "MinRto",
                 "Minimum retransmit timeout value",
@@ -322,7 +327,7 @@ TcpSocketBase::TcpSocketBase()
     m_outstandingRetransBytes = 0;
 
     m_tcb->m_rxBuffer = CreateObject<TcpRxBuffer>();
-
+    m_rack = CreateObject<TcpRack>();
     m_tcb->m_pacingRate = m_tcb->m_maxPacingRate;
     m_pacingTimer.SetFunction(&TcpSocketBase::NotifyPacingPerformed, this);
 
@@ -430,6 +435,7 @@ TcpSocketBase::TcpSocketBase(const TcpSocketBase& sock)
       m_timestampToEcho(sock.m_timestampToEcho),
       m_dsackEnabled(sock.m_dsackEnabled),
       m_fackEnabled(sock.m_fackEnabled),
+      m_rackEnabled(sock.m_rackEnabled),
       m_recover(sock.m_recover),
       m_recoverActive(sock.m_recoverActive),
       m_retxThresh(sock.m_retxThresh),
@@ -462,6 +468,7 @@ TcpSocketBase::TcpSocketBase(const TcpSocketBase& sock)
     m_txBuffer->SetRWndCallback(MakeCallback(&TcpSocketBase::GetRWnd, this));
     m_tcb = CopyObject(sock.m_tcb);
     m_tcb->m_rxBuffer = CopyObject(sock.m_tcb->m_rxBuffer);
+    m_rack = CopyObject(sock.m_rack);
 
     m_tcb->m_pacingRate = m_tcb->m_maxPacingRate;
     m_pacingTimer.SetFunction(&TcpSocketBase::NotifyPacingPerformed, this);
@@ -1784,6 +1791,20 @@ TcpSocketBase::EnterRecovery(uint32_t currentDelivered)
 }
 
 void
+TcpSocketBase::RackLoss()
+{
+    NS_LOG_FUNCTION(this);
+    double timeout = 0.0;
+    m_txBuffer->DetectRackLoss(m_rack, &timeout);
+
+    if (timeout > 0)
+    {
+        CancelLossTimers();
+        m_rackEvent = Simulator::Schedule(Seconds(timeout), &TcpSocketBase::RackLoss, this);
+    }
+}
+
+void
 TcpSocketBase::DupAck(uint32_t currentDelivered)
 {
     NS_LOG_FUNCTION(this);
@@ -1914,6 +1935,7 @@ TcpSocketBase::ReceivedAck(Ptr<Packet> packet, const TcpHeader& tcpHeader)
     NS_ASSERT(0 != (tcpHeader.GetFlags() & TcpHeader::ACK));
     NS_ASSERT(m_tcb->m_segmentSize > 0);
 
+    m_dsackSeen = false;
     uint32_t previousLost = m_txBuffer->GetLost();
     uint32_t priorInFlight = m_tcb->m_bytesInFlight.Get();
 
@@ -1951,11 +1973,62 @@ TcpSocketBase::ReceivedAck(Ptr<Packet> packet, const TcpHeader& tcpHeader)
         }
     }
 
+    // Update RACK parameters
+    if (m_rackEnabled && ackNumber >= oldHeadSequence)
+    {
+        Ptr<const TcpOptionTS> ts =
+            DynamicCast<const TcpOptionTS>(tcpHeader.GetOption(TcpOption::TS));
+        uint32_t tser = 0;
+        if (ts)
+        {
+            tser = ts->GetEcho();
+        }
+
+        TcpTxItem item;
+        if (bytesSacked == 0)
+        {
+            m_txBuffer->GetPacketInfo(ackNumber, &item);
+        }
+        else
+        {
+            SequenceNumber32 highestSacked = m_txBuffer->GetHighestSacked();
+            m_txBuffer->GetPacketInfo(highestSacked, &item);
+        }
+
+        Time rtt = Simulator::Now() - item.GetLastSent();
+
+        m_rack->UpdateStats(tser,
+                            item.m_retrans,
+                            item.GetLastSent(),
+                            bytesSacked == 0 ? ackNumber : m_txBuffer->GetHighestSacked(),
+                            m_tcb->m_nextTxSequence,
+                            rtt);
+
+        // Check if TCP will be exiting loss recovery
+        bool exiting =
+            (m_tcb->m_congState == TcpSocketState::CA_RECOVERY && m_recover <= ackNumber);
+
+        m_rack->UpdateReoWnd(m_reorder,
+                             m_dsackSeen,
+                             m_tcb->m_nextTxSequence,
+                             oldHeadSequence,
+                             m_tcb,
+                             m_txBuffer->GetSacked(),
+                             m_retxThresh,
+                             exiting);
+    }
+
     m_txBuffer->DiscardUpTo(ackNumber, MakeCallback(&TcpRateOps::SkbDelivered, m_rateOps));
 
     auto currentDelivered =
         static_cast<uint32_t>(m_rateOps->GetConnectionRate().m_delivered - previousDelivered);
     m_tcb->m_lastAckedSackedBytes = currentDelivered;
+
+    // Check for RACK losses
+    if (m_rackEnabled)
+    {
+        RackLoss();
+    }
 
     if (m_tcb->m_congState == TcpSocketState::CA_CWR && (ackNumber > m_recover))
     {
@@ -2255,6 +2328,7 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
                     // packet algorithm from FACK to NewReno. We simply go back in Open.
                     m_congestionControl->CongestionStateSet(m_tcb, TcpSocketState::CA_OPEN);
                     m_tcb->m_congState = TcpSocketState::CA_OPEN;
+                    m_reorder = false;
                     NS_LOG_DEBUG(segsAcked << " segments acked in CA_DISORDER, ack of " << ackNumber
                                            << " exiting CA_DISORDER -> CA_OPEN");
                 }
@@ -2287,6 +2361,7 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
                 m_congestionControl->CwndEvent(m_tcb, TcpSocketState::CA_EVENT_COMPLETE_CWR);
                 m_congestionControl->CongestionStateSet(m_tcb, TcpSocketState::CA_OPEN);
                 m_tcb->m_congState = TcpSocketState::CA_OPEN;
+                m_reorder = false;
                 exitedFastRecovery = true;
                 m_dupAckCount = 0; // From recovery to open, reset dupack
 
@@ -2306,6 +2381,7 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
 
                 m_congestionControl->CongestionStateSet(m_tcb, TcpSocketState::CA_OPEN);
                 m_tcb->m_congState = TcpSocketState::CA_OPEN;
+                m_reorder = false;
                 NS_LOG_DEBUG(segsAcked << " segments acked in CA_LOSS, ack of" << ackNumber
                                        << ", exiting CA_LOSS -> CA_OPEN");
             }
@@ -2928,6 +3004,13 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
         { // The window scaling option is set only on SYN packets
             AddOptionWScale(header);
         }
+
+        if (!m_sackEnabled)
+        {
+            m_dsackEnabled = false;
+            m_rackEnabled = false;
+        }
+
         if (m_sackEnabled)
         {
             AddOptionSackPermitted(header);
@@ -3923,11 +4006,28 @@ TcpSocketBase::NewAck(const SequenceNumber32& ack, bool resetRTO)
     // Reset the data retransmission count. We got a new ACK!
     m_dataRetrCount = m_dataRetries;
 
+    // Reset reordering flag. We got a new ACK!
+    m_reorder = false;
+
     // Update m_sndFack if possible
-    if (m_fackEnabled && ack.GetValue() > m_sndFack)
+    if (m_fackEnabled || m_rackEnabled)
     {
-        NS_LOG_INFO(" m_sndFack " << m_sndFack << " updated by normal ack to " << ack.GetValue());
-        m_sndFack = ack.GetValue();
+        if (ack.GetValue() > m_sndFack)
+        {
+            NS_LOG_INFO(" m_sndFack " << m_sndFack << " updated by normal ack to "
+                                      << ack.GetValue());
+            m_sndFack = ack.GetValue();
+        }
+        else if (m_rackEnabled)
+        {
+            TcpTxItem item;
+            m_txBuffer->GetPacketInfo(ack, &item);
+            // Packet reordering seen
+            if (ack.GetValue() < m_sndFack && !item.m_retrans)
+            {
+                m_reorder = true;
+            }
+        }
     }
 
     if (m_state != SYN_RCVD && resetRTO)
@@ -4049,7 +4149,14 @@ TcpSocketBase::ReTxTimeout()
     // The head of the sent list will not be marked as sacked, therefore
     // will be retransmitted, if the receiver renegotiate the SACK blocks
     // that we received.
-    m_txBuffer->SetSentListLost(resetSack);
+    if (m_rackEnabled)
+    {
+        m_txBuffer->RackMarkLossesOnRto(m_rack);
+    }
+    else
+    {
+        m_txBuffer->SetSentListLost(resetSack);
+    }
 
     // From RFC 6675, Section 5.1
     // If an RTO occurs during loss recovery as specified in this document,
@@ -4240,6 +4347,15 @@ TcpSocketBase::CancelAllTimers()
     m_timewaitEvent.Cancel();
     m_sendPendingDataEvent.Cancel();
     m_pacingTimer.Cancel();
+    m_rackEvent.Cancel();
+}
+
+void
+TcpSocketBase::CancelLossTimers()
+{
+    m_rackEvent.Cancel();
+    m_retxEvent.Cancel();
+    m_persistEvent.Cancel();
 }
 
 /* Move TCP to Time_Wait state and schedule a transition to Closed state */
@@ -4526,9 +4642,17 @@ TcpSocketBase::ProcessOptionSack(const Ptr<const TcpOption> option)
     NS_LOG_FUNCTION(this << option);
 
     Ptr<const TcpOptionSack> s = DynamicCast<const TcpOptionSack>(option);
+    TcpOptionSack::SackList list = s->GetSackList();
+    SequenceNumber32 oldHeadSequence = m_txBuffer->HeadSequence();
+
+    // Check if the SACK block contains a DSACK
+    if (m_rackEnabled)
+    {
+        m_dsackSeen = (list.begin()->first) < oldHeadSequence;
+    }
 
     // Update m_sndFack with the highest sequence number acknowledged from the SACK blocks
-    if (m_fackEnabled)
+    if (m_fackEnabled || m_rackEnabled)
     {
         for (const auto& [leftEdge, rightEdge] : s->GetSackList())
         {
@@ -4538,10 +4662,20 @@ TcpSocketBase::ProcessOptionSack(const Ptr<const TcpOption> option)
                                                        << rightEdge.GetValue());
                 m_sndFack = rightEdge.GetValue();
             }
+            else if (m_rackEnabled)
+            {
+                TcpTxItem item;
+                m_txBuffer->GetPacketInfo(rightEdge, &item);
+                // Packet reordering seen
+                if (rightEdge.GetValue() < m_sndFack && !item.m_retrans)
+                {
+                    m_reorder = true;
+                }
+            }
         }
     }
 
-    return m_txBuffer->Update(s->GetSackList(), MakeCallback(&TcpRateOps::SkbDelivered, m_rateOps));
+    return m_txBuffer->Update(list, MakeCallback(&TcpRateOps::SkbDelivered, m_rateOps));
 }
 
 void
