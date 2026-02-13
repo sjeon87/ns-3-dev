@@ -325,6 +325,7 @@ set(test_sources
     test/tcp-pacing-test.cc
     test/tcp-pkts-acked-test.cc
     test/tcp-prr-recovery-test.cc
+    test/tcp-rack-tlp-test.cc
     test/tcp-rate-ops-test.cc
     test/tcp-rto-test.cc
     test/tcp-rtt-estimation.cc
