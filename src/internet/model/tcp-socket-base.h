@@ -39,6 +39,7 @@ class TcpRxBuffer;
 class TcpTxBuffer;
 class TcpOption;
 class TcpRack;
+class TcpTlp;
 class Ipv4Interface;
 class Ipv6Interface;
 class TcpRateOps;
@@ -1223,6 +1224,10 @@ class TcpSocketBase : public TcpSocket
     virtual void ReTxTimeout();
 
     /**
+     * @brief An PTO event happened
+     */
+    virtual void PTOTimeout(void);
+    /**
      * @brief Action upon delay ACK timeout, i.e. send an ACK
      */
     virtual void DelAckTimeout();
@@ -1416,6 +1421,7 @@ class TcpSocketBase : public TcpSocket
     EventId m_persistEvent{};  //!< Persist event: Send 1 byte to probe for a non-zero Rx window
     EventId m_timewaitEvent{}; //!< TIME_WAIT expiration event: Move this socket to CLOSED state
     EventId m_rackEvent{};     //!< RACK reordering timer event
+    EventId m_tlptimerEvent{}; //!< TLP timer >
     // ACK management
     uint32_t m_dupAckCount{0};    //!< Dupack counter
     uint32_t m_delAckCount{0};    //!< Delayed ACK counter
@@ -1492,6 +1498,7 @@ class TcpSocketBase : public TcpSocket
 
     bool m_fackEnabled{false}; //!< flag for enabling FACK
     bool m_rackEnabled{false}; //!< RACK option enabled
+    bool m_tlpEnabled{false};  //!< TLP option enabled
 
     EventId m_sendPendingDataEvent{}; //!< micro-delay event to send pending data
 
@@ -1510,6 +1517,9 @@ class TcpSocketBase : public TcpSocket
     Ptr<TcpRecoveryOps> m_recoveryOps;         //!< Recovery Algorithm
     Ptr<TcpRack> m_rack;                       //!< Rack state
     Ptr<TcpRateOps> m_rateOps;                 //!< Rate operations
+
+    // TLP related variables
+    Ptr<TcpTlp> m_tlp; //!< TLP state
 
     // Guesses over the other connection end
     bool m_isFirstPartialAck{true}; //!< First partial ACK during RECOVERY
