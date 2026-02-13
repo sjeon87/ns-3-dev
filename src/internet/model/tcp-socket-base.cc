@@ -34,6 +34,7 @@
 #include "tcp-rate-ops.h"
 #include "tcp-recovery-ops.h"
 #include "tcp-rx-buffer.h"
+#include "tcp-tlp.h"
 #include "tcp-tx-buffer.h"
 
 #include "ns3/abort.h"
@@ -153,6 +154,11 @@ TcpSocketBase::GetTypeId()
                           "Enable or disable RACK option",
                           BooleanValue(false),
                           MakeBooleanAccessor(&TcpSocketBase::m_rackEnabled),
+                          MakeBooleanChecker())
+            .AddAttribute("Tlp",
+                          "Enable or disable TLP option",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&TcpSocketBase::m_tlpEnabled),
                           MakeBooleanChecker())
             .AddAttribute(
                 "MinRto",
@@ -328,6 +334,7 @@ TcpSocketBase::TcpSocketBase()
 
     m_tcb->m_rxBuffer = CreateObject<TcpRxBuffer>();
     m_rack = CreateObject<TcpRack>();
+    m_tlp = CreateObject<TcpTlp>();
     m_tcb->m_pacingRate = m_tcb->m_maxPacingRate;
     m_pacingTimer.SetFunction(&TcpSocketBase::NotifyPacingPerformed, this);
 
@@ -436,6 +443,7 @@ TcpSocketBase::TcpSocketBase(const TcpSocketBase& sock)
       m_dsackEnabled(sock.m_dsackEnabled),
       m_fackEnabled(sock.m_fackEnabled),
       m_rackEnabled(sock.m_rackEnabled),
+      m_tlpEnabled(sock.m_tlpEnabled),
       m_recover(sock.m_recover),
       m_recoverActive(sock.m_recoverActive),
       m_retxThresh(sock.m_retxThresh),
@@ -469,6 +477,7 @@ TcpSocketBase::TcpSocketBase(const TcpSocketBase& sock)
     m_tcb = CopyObject(sock.m_tcb);
     m_tcb->m_rxBuffer = CopyObject(sock.m_tcb->m_rxBuffer);
     m_rack = CopyObject(sock.m_rack);
+    m_tlp = CopyObject(sock.m_tlp);
 
     m_tcb->m_pacingRate = m_tcb->m_maxPacingRate;
     m_pacingTimer.SetFunction(&TcpSocketBase::NotifyPacingPerformed, this);
@@ -1740,6 +1749,11 @@ TcpSocketBase::EnterRecovery(uint32_t currentDelivered)
 
     NS_LOG_DEBUG(TcpSocketState::TcpCongStateName[m_tcb->m_congState] << " -> CA_RECOVERY");
 
+    if (m_tlpEnabled)
+    {
+        m_tlp->Reset(m_rtt->GetNSamples());
+    }
+
     if (!m_sackEnabled)
     {
         // One segment has left the network, PLUS the head is lost
@@ -2028,6 +2042,16 @@ TcpSocketBase::ReceivedAck(Ptr<Packet> packet, const TcpHeader& tcpHeader)
     if (m_rackEnabled)
     {
         RackLoss();
+    }
+
+    if (m_tlpEnabled)
+    {
+        bool isDupAckNoSack = (m_dupAckCount > 0 && m_txBuffer->GetSacked() == 0);
+        bool tlpLoss = m_tlp->OnAckReceived(ackNumber, m_dsackSeen, isDupAckNoSack);
+        if (tlpLoss && m_tcb->m_congState < TcpSocketState::CA_RECOVERY && BytesInFlight() > 0)
+        {
+            EnterRecovery(currentDelivered);
+        }
     }
 
     if (m_tcb->m_congState == TcpSocketState::CA_CWR && (ackNumber > m_recover))
@@ -3516,6 +3540,21 @@ TcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withA
     }
     // Update highTxMark
     m_tcb->m_highTxMark = std::max(seq + sz, m_tcb->m_highTxMark.Get());
+
+    if (m_tlpEnabled && !isRetransmission && m_tcb->m_congState == TcpSocketState::CA_OPEN &&
+        !m_tlp->IsProbeOutstanding() && m_txBuffer->GetSacked() == 0 && BytesInFlight() > 0)
+    {
+        double rtoLeft = Simulator::GetDelayLeft(m_retxEvent).GetSeconds();
+        uint32_t inflight = BytesInFlight();
+        Time srtt = m_tcb->m_srtt.Get();
+
+        Time pto = m_tlp->CalculatePto(srtt, inflight, rtoLeft);
+
+        CancelLossTimers();
+        m_tlptimerEvent = Simulator::Schedule(pto, &TcpSocketBase::PTOTimeout, this);
+
+        NS_LOG_DEBUG("PTO restarted after sending new data: " << pto.GetSeconds());
+    }
     return sz;
 }
 
@@ -3540,6 +3579,53 @@ TcpSocketBase::UpdateRttHistory(const SequenceNumber32& seq, uint32_t sz, bool i
                 break;
             }
         }
+    }
+}
+
+// Triggered when PTO event fires.
+// Sends a probe packet to avoid waiting for RTO to initiate fast recovery.
+void
+TcpSocketBase::PTOTimeout()
+{
+    NS_LOG_LOGIC(this << " PTOTimeout Expired at time " << Simulator::Now().GetSeconds());
+
+    bool canProbe = m_sackEnabled && m_tcb->m_congState == TcpSocketState::CA_OPEN &&
+                    m_tlp->CanSendProbe(m_rtt->GetNSamples());
+
+    if (canProbe)
+    {
+        uint32_t npacketSent = 0;
+        bool isRetrans = false;
+        SequenceNumber32 lastPacketSent;
+        npacketSent = SendPendingData(m_connected);
+
+        if (npacketSent == 0)
+        {
+            lastPacketSent = m_txBuffer->GetLastPacket();
+
+            npacketSent = SendDataPacket(lastPacketSent, m_tcb->m_segmentSize, m_connected);
+
+            isRetrans = true;
+        }
+
+        if (npacketSent > 0)
+        {
+            SequenceNumber32 endSeq = m_tcb->m_nextTxSequence;
+
+            m_tlp->OnProbeSent(endSeq, isRetrans, m_rtt->GetNSamples());
+
+            NS_LOG_DEBUG("TLP probe sent (retrans=" << isRetrans << ")");
+        }
+    }
+
+    if (BytesInFlight() > 0)
+    {
+        if (m_retxEvent.IsPending())
+        {
+            m_retxEvent.Cancel();
+        }
+
+        m_retxEvent = Simulator::Schedule(m_rto, &TcpSocketBase::ReTxTimeout, this);
     }
 }
 
@@ -4045,6 +4131,21 @@ TcpSocketBase::NewAck(const SequenceNumber32& ack, bool resetRTO)
                           << " to expire at time "
                           << (Simulator::Now() + m_rto.Get()).GetSeconds());
         m_retxEvent = Simulator::Schedule(m_rto, &TcpSocketBase::ReTxTimeout, this);
+
+        // RFC 8985 7.2: Restart PTO on new cumulative ACK
+        if (m_tlpEnabled && m_tcb->m_congState == TcpSocketState::CA_OPEN &&
+            !m_tlp->IsProbeOutstanding() && m_txBuffer->GetSacked() == 0)
+        {
+            double rtoLeft = Simulator::GetDelayLeft(m_retxEvent).GetSeconds();
+            uint32_t inflight = BytesInFlight();
+            Time srtt = m_tcb->m_srtt.Get();
+
+            Time pto = m_tlp->CalculatePto(srtt, inflight, rtoLeft);
+
+            CancelLossTimers();
+            m_tlptimerEvent = Simulator::Schedule(pto, &TcpSocketBase::PTOTimeout, this);
+            NS_LOG_DEBUG("PTO restarted on new ACK: " << pto.GetSeconds());
+        }
     }
 
     // Note the highest ACK and tell app to send more
@@ -4124,6 +4225,12 @@ TcpSocketBase::ReTxTimeout()
     else
     {
         --m_dataRetrCount;
+    }
+
+    if (m_tlpEnabled)
+    {
+        NS_LOG_INFO("Resetting TLP state due to RTO");
+        m_tlp->Reset(m_rtt->GetNSamples());
     }
 
     uint32_t inFlightBeforeRto = BytesInFlight();
@@ -4347,6 +4454,7 @@ TcpSocketBase::CancelAllTimers()
     m_timewaitEvent.Cancel();
     m_sendPendingDataEvent.Cancel();
     m_pacingTimer.Cancel();
+    m_tlptimerEvent.Cancel();
     m_rackEvent.Cancel();
 }
 
@@ -4355,6 +4463,7 @@ TcpSocketBase::CancelLossTimers()
 {
     m_rackEvent.Cancel();
     m_retxEvent.Cancel();
+    m_tlptimerEvent.Cancel();
     m_persistEvent.Cancel();
 }
 

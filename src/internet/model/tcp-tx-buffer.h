@@ -289,6 +289,11 @@ class TcpTxBuffer : public Object
         return m_highestSack.second;
     }
 
+    /**
+     * @brief returns sequence number of the last packet
+     * @return sequence number of the last packet
+     */
+    SequenceNumber32 GetLastPacket();
 
     /**
      * @brief Returns the information of the latest packet acked

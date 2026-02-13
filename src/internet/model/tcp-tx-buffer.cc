@@ -148,6 +148,22 @@ TcpTxBuffer::GetSacked() const
     return m_sackedOut;
 }
 
+SequenceNumber32
+TcpTxBuffer::GetLastPacket()
+{
+    auto it = m_sentList.end();
+    it--;
+    TcpTxItem* packet = *it;
+
+    while ((packet->m_sacked || packet->m_lost) && it != m_sentList.begin())
+    {
+        it--;
+        packet = *it;
+    }
+
+    return packet->m_startSeq;
+}
+
 void
 TcpTxBuffer::SetHeadSequence(const SequenceNumber32& seq)
 {
