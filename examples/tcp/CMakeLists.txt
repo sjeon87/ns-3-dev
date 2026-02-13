@@ -146,3 +146,12 @@ build_example(
     ${libinternet}
     ${libapplications}
 )
+
+build_example(
+  NAME rack-tlp-example
+  SOURCE_FILES rack-tlp-example.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libapplications}
+)
