@@ -38,6 +38,7 @@ class RttEstimator;
 class TcpRxBuffer;
 class TcpTxBuffer;
 class TcpOption;
+class TcpRack;
 class Ipv4Interface;
 class Ipv6Interface;
 class TcpRateOps;
@@ -685,9 +686,12 @@ class TcpSocketBase : public TcpSocket
                                            const Ptr<const TcpSocketBase> socket);
 
     // D-SACK related variables
-    bool m_isDsack{false}; //!< Boolean variable to check if a duplicate packet has arrived
+    bool m_isDsack{false};   //!< Boolean variable to check if a duplicate packet has arrived
+    bool m_dsackSeen{false}; //!< Check if DS-ACK is received
     SequenceNumber32 m_dsackLeftEdge{0};  //!< First Sequence number of D-SACK block
     SequenceNumber32 m_dsackRightEdge{0}; //!< Second Sequence number of D-SACK block
+
+    bool m_reorder{false}; //!< Variable to check if packets are reordered
 
     // Variables for FACK
     uint32_t m_sndFack;                  //!< Sequence number of the forward most acknowledgement
@@ -977,6 +981,13 @@ class TcpSocketBase : public TcpSocket
     void CancelAllTimers();
 
     /**
+     * @brief Cancel all loss recovery timers (RACK, TLP, Retransmission and ZWP).
+     *
+     * This function is typically called when arming a RACK reordering or TLP PTO timer.
+     */
+    void CancelLossTimers();
+
+    /**
      * @brief Move from CLOSING or FIN_WAIT_2 to TIME_WAIT state
      */
     void TimeWait();
@@ -1195,6 +1206,11 @@ class TcpSocketBase : public TcpSocket
     void EnterCwr(uint32_t currentDelivered);
 
     /**
+     * @brief RACK Loss Detection
+     */
+    void RackLoss();
+
+    /**
      * @brief Enter the CA_RECOVERY, and retransmit the head
      *
      * @param currentDelivered Currently (S)ACKed bytes
@@ -1399,7 +1415,7 @@ class TcpSocketBase : public TcpSocket
     EventId m_delAckEvent{};   //!< Delayed ACK timeout event
     EventId m_persistEvent{};  //!< Persist event: Send 1 byte to probe for a non-zero Rx window
     EventId m_timewaitEvent{}; //!< TIME_WAIT expiration event: Move this socket to CLOSED state
-
+    EventId m_rackEvent{};     //!< RACK reordering timer event
     // ACK management
     uint32_t m_dupAckCount{0};    //!< Dupack counter
     uint32_t m_delAckCount{0};    //!< Delayed ACK counter
@@ -1475,6 +1491,7 @@ class TcpSocketBase : public TcpSocket
     bool m_dsackEnabled{true};      //!< D-SACK option enabled
 
     bool m_fackEnabled{false}; //!< flag for enabling FACK
+    bool m_rackEnabled{false}; //!< RACK option enabled
 
     EventId m_sendPendingDataEvent{}; //!< micro-delay event to send pending data
 
@@ -1491,6 +1508,7 @@ class TcpSocketBase : public TcpSocket
     Ptr<TcpSocketState> m_tcb;                 //!< Congestion control information
     Ptr<TcpCongestionOps> m_congestionControl; //!< Congestion control
     Ptr<TcpRecoveryOps> m_recoveryOps;         //!< Recovery Algorithm
+    Ptr<TcpRack> m_rack;                       //!< Rack state
     Ptr<TcpRateOps> m_rateOps;                 //!< Rate operations
 
     // Guesses over the other connection end
