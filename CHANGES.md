@@ -16,6 +16,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 ### New API
 
+* (internet) Added **TCP D-SACK** option (RFC 2883). Can be configured through the Attribute `TcpSocketBase::DSack` (default: true)
 * (internet) Added support for TCP FACK (Forward Acknowledgement).
 * (applications) New trace sources `SourceApplication::ConnectionSucceeded` and `SourceApplication::ConnectionFailed` have been added to report connection success/failure events.
 * (lr-wpan) The `McpsDataIndication` parameters now include rssi value.
