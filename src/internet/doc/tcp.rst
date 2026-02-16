@@ -49,9 +49,10 @@ Vegas, Scalable, Veno, Binary Increase Congestion Control (BIC), Yet Another
 HighSpeed TCP (YeAH), Illinois, H-TCP, Low Extra Delay Background Transport
 (LEDBAT), TCP Low Priority (TCP-LP), Data Center TCP (DCTCP) and Bottleneck
 Bandwidth and RTT (BBR) also supported. The model also supports Selective
-Acknowledgements (SACK), Forward Acknowledgement (FACK), Duplicate Selective Acknowledgement (D-SACK),
-Proportional Rate Reduction (PRR) and Explicit Congestion Notification (ECN).
-Multipath-TCP is not yet supported in the |ns3| releases.
+Acknowledgements (SACK), Forward Acknowledgement (FACK), Duplicate
+Selective Acknowledgement (D-SACK), Recent Acknowledgement (RACK), Proportional
+Rate Reduction (PRR) and Explicit Congestion Notification (ECN).  Multipath-TCP
+is not yet supported in the |ns3| releases.
 
 Model history
 +++++++++++++
@@ -1409,6 +1410,7 @@ section below on :ref:`Writing-tcp-tests`.
 * **tcp-endpoint-bug2211-test:** A test for an issue that was causing stack overflow
 * **tcp-dsack-test:** Unit test on D-SACK
 * **tcp-fack-test:** Unit tests on FACK
+* **tcp-rack-tlp-test:** Unit test on RACK-TLP
 * **tcp-fast-retr-test:** Fast Retransmit testing
 * **tcp-header:** Unit tests on the TCP header
 * **tcp-highspeed-test:** Unit tests on the HighSpeed congestion control
@@ -1832,6 +1834,54 @@ This confirms that FACK successfully decouples data recovery from congestion con
 
 More information (paper): https://dl.acm.org/citation.cfm?id=248181
 
+
+Recent Acknowledgement (RACK)
++++++++++++++++++++++++++++++
+Recent Acknowledgement (RACK) is the time-based loss detection defined in
+RFC 8985. It infers loss from the most recently delivered segment’s transmit
+timestamp rather than sequence counting.
+
+
+RACK runs entirely at the sender. Each ACK (cumulative or SACK-driven) updates
+the latest RTT sample from the acknowledged segment; timestamp echoes are used
+when present and non-zero, otherwise the elapsed time since that segment’s last
+send is measured. RTT samples are kept in a sliding window (attribute
+``RackMinRttWindow``, default 300 s) and the minimum across that window forms
+``min_RTT``.
+
+The reordering window is derived from that minimum RTT and capped by SRTT::
+
+  reo_wnd = min( min_RTT / 4 * reo_wnd_mult, SRTT)
+
+where ``reo_wnd_mult`` is increased when a DSACK is observed (to tolerate more
+reordering) and decays after 16 recoveries. A packet sent at ``xmit_ts`` is
+declared lost when the sender’s current time satisfies::
+
+  now > xmit_ts + latest_RTT + reo_wnd
+
+Spurious retransmits are filtered: if a timestamp echo predates the transmit
+time, the RTT sample is ignored.
+
+Unit tests: ``tcp-rack-tlp-test`` covers enabling SACK when needed and entering
+recovery on RACK loss detection.
+
+More information: https://www.rfc-editor.org/rfc/rfc8985.html
+
+Tail Loss Probe (TLP)
++++++++++++++++++++++
+TLP (RFC 8985 Section 7) sends a probe after a Probe Timeout (PTO) to recover
+tail losses faster than RTO. The PTO is calculated as twice SRTT (plus 200 ms
+delayed-ACK allowance when exactly one segment is in flight), falling back to
+1 s when no SRTT exists, and capped by the current RTO.
+
+Only one probe is outstanding at a time; a new RTT sample must be collected
+between probes. Probes record their ending sequence and whether they were a
+retransmission so acknowledgments can distinguish successful repairs from
+spurious probes. ``OnAckReceived`` now returns a boolean indicating whether the
+probe repaired loss; if so, loss recovery is entered (only when bytes in flight
+are non-zero to avoid spurious crashes).
+
+Unit tests: ``tcp-rack-tlp-test`` exercises the combined RACK + TLP behavior.
 
 Loss Recovery Algorithms
 ++++++++++++++++++++++++
