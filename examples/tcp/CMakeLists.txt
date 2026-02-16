@@ -137,3 +137,21 @@ build_example(
     ${libinternet-apps}
     ${libflow-monitor}
 )
+
+build_example(
+  NAME dsack-example
+  SOURCE_FILES dsack-example.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libapplications}
+)
+
+build_example(
+  NAME rack-tlp-example
+  SOURCE_FILES rack-tlp-example.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libapplications}
+)

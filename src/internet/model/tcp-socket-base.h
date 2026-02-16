@@ -38,6 +38,8 @@ class RttEstimator;
 class TcpRxBuffer;
 class TcpTxBuffer;
 class TcpOption;
+class TcpRack;
+class TcpTlp;
 class Ipv4Interface;
 class Ipv6Interface;
 class TcpRateOps;
@@ -684,6 +686,14 @@ class TcpSocketBase : public TcpSocket
                                            const Address& peerAddr,
                                            const Ptr<const TcpSocketBase> socket);
 
+    // D-SACK related variables
+    bool m_isDsack{false};   //!< Boolean variable to check if a duplicate packet has arrived
+    bool m_dsackSeen{false}; //!< Check if DS-ACK is received
+    SequenceNumber32 m_dsackLeftEdge{0};  //!< First Sequence number of D-SACK block
+    SequenceNumber32 m_dsackRightEdge{0}; //!< Second Sequence number of D-SACK block
+
+    bool m_reorder{false}; //!< Variable to check if packets are reordered
+
     // Variables for FACK
     uint32_t m_sndFack;                  //!< Sequence number of the forward most acknowledgement
     uint32_t m_outstandingRetransBytes;  //!< Number of outstanding retransmitted bytes
@@ -972,6 +982,13 @@ class TcpSocketBase : public TcpSocket
     void CancelAllTimers();
 
     /**
+     * @brief Cancel all loss recovery timers (RACK, TLP, Retransmission and ZWP).
+     *
+     * This function is typically called when arming a RACK reordering or TLP PTO timer.
+     */
+    void CancelLossTimers();
+
+    /**
      * @brief Move from CLOSING or FIN_WAIT_2 to TIME_WAIT state
      */
     void TimeWait();
@@ -1190,6 +1207,11 @@ class TcpSocketBase : public TcpSocket
     void EnterCwr(uint32_t currentDelivered);
 
     /**
+     * @brief RACK Loss Detection
+     */
+    void RackLoss();
+
+    /**
      * @brief Enter the CA_RECOVERY, and retransmit the head
      *
      * @param currentDelivered Currently (S)ACKed bytes
@@ -1201,6 +1223,10 @@ class TcpSocketBase : public TcpSocket
      */
     virtual void ReTxTimeout();
 
+    /**
+     * @brief An PTO event happened
+     */
+    virtual void PTOTimeout(void);
     /**
      * @brief Action upon delay ACK timeout, i.e. send an ACK
      */
@@ -1311,6 +1337,13 @@ class TcpSocketBase : public TcpSocket
     void AddOptionSack(TcpHeader& header);
 
     /**
+     * @brief Add the D-SACK block to the header
+     *
+     * @param header TcpHeader where the method should add the option
+     */
+    void AddDsack(TcpHeader& header);
+
+    /**
      * @brief Process the timestamp option from other side
      *
      * Get the timestamp and the echo, then save timestamp (which will
@@ -1387,7 +1420,8 @@ class TcpSocketBase : public TcpSocket
     EventId m_delAckEvent{};   //!< Delayed ACK timeout event
     EventId m_persistEvent{};  //!< Persist event: Send 1 byte to probe for a non-zero Rx window
     EventId m_timewaitEvent{}; //!< TIME_WAIT expiration event: Move this socket to CLOSED state
-
+    EventId m_rackEvent{};     //!< RACK reordering timer event
+    EventId m_tlptimerEvent{}; //!< TLP timer >
     // ACK management
     uint32_t m_dupAckCount{0};    //!< Dupack counter
     uint32_t m_delAckCount{0};    //!< Delayed ACK counter
@@ -1460,8 +1494,11 @@ class TcpSocketBase : public TcpSocket
     uint8_t m_sndWindShift{0};      //!< Window shift to apply to incoming segments
     bool m_timestampEnabled{true};  //!< Timestamp option enabled
     uint32_t m_timestampToEcho{0};  //!< Timestamp to echo
+    bool m_dsackEnabled{true};      //!< D-SACK option enabled
 
     bool m_fackEnabled{false}; //!< flag for enabling FACK
+    bool m_rackEnabled{false}; //!< RACK option enabled
+    bool m_tlpEnabled{false};  //!< TLP option enabled
 
     EventId m_sendPendingDataEvent{}; //!< micro-delay event to send pending data
 
@@ -1478,7 +1515,11 @@ class TcpSocketBase : public TcpSocket
     Ptr<TcpSocketState> m_tcb;                 //!< Congestion control information
     Ptr<TcpCongestionOps> m_congestionControl; //!< Congestion control
     Ptr<TcpRecoveryOps> m_recoveryOps;         //!< Recovery Algorithm
+    Ptr<TcpRack> m_rack;                       //!< Rack state
     Ptr<TcpRateOps> m_rateOps;                 //!< Rate operations
+
+    // TLP related variables
+    Ptr<TcpTlp> m_tlp; //!< TLP state
 
     // Guesses over the other connection end
     bool m_isFirstPartialAck{true}; //!< First partial ACK during RECOVERY
