@@ -173,5 +173,6 @@ build_lib(
     test/packetbb-test-suite.cc
     test/pcap-file-test-suite.cc
     test/sequence-number-test-suite.cc
+    test/reorder-queue-test-suite.cc
     test/test-data-rate.cc
 )
