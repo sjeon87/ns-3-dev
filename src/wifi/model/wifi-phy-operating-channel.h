@@ -116,16 +116,6 @@ class WIFI_EXPORT WifiPhyOperatingChannel
      */
     bool operator==(const WifiPhyOperatingChannel& other) const;
 
-    /**
-     * Check if the given WifiPhyOperatingChannel is different.
-     *
-     * @param other another WifiPhyOperatingChannel
-     *
-     * @return true if the given WifiPhyOperatingChannel is different,
-     *         false otherwise
-     */
-    bool operator!=(const WifiPhyOperatingChannel& other) const;
-
     static const std::set<FrequencyChannelInfo>
         m_frequencyChannels; //!< Available frequency channels
 

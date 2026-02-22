@@ -35,12 +35,15 @@ struct FcfsPrio
  * @return whether the left hand side priority is equal to the right hand side priority
  */
 bool operator==(const FcfsPrio& lhs, const FcfsPrio& rhs);
+
 /**
+ * @brief Three-way comparison operator.
+ *
  * @param lhs the left hand side priority
  * @param rhs the right hand side priority
- * @return whether the left hand side priority is less than the right hand side priority
+ * @return The result of the comparison.
  */
-bool operator<(const FcfsPrio& lhs, const FcfsPrio& rhs);
+std::weak_ordering operator<=>(const FcfsPrio& lhs, const FcfsPrio& rhs);
 
 /**
  * @ingroup wifi

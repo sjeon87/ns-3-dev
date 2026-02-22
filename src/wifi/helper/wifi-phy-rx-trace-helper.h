@@ -686,31 +686,15 @@ class WifiPhyRxTraceSink : public Object
 bool operator==(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs);
 
 /**
- * @brief Checks if two WifiPpduRxRecord objects are not equal.
+ * @brief Three-way comparison operator.
  *
- * Compares two WifiPpduRxRecord objects to determine if they are not equal. Two objects
- * are considered not equal if at least one of their corresponding counts have different values.
- *
- * @param lhs The left-hand side WifiPpduRxRecord object in the comparison.
- * @param rhs The right-hand side WifiPpduRxRecord object in the comparison.
- * @return true if the objects are not equal, false otherwise.
- */
-bool operator!=(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs);
-
-/**
- * @brief Determines if one WifiPpduRxRecord object is less than another.
- *
- * Compares two WifiPpduRxRecord objects to determine if the left-hand side object is
- * considered less than the right-hand side object based on a specific criteria of comparison,
- * such as a key property value.
- *
- * @note The specific criteria for comparison should be defined and consistent.
+ * Three-way compares two WifiPpduRxRecord objects based their unique reception tag (m_rxTag).
  *
  * @param lhs The left-hand side WifiPpduRxRecord object in the comparison.
  * @param rhs The right-hand side WifiPpduRxRecord object in the comparison.
- * @return true if lhs is considered less than rhs, false otherwise.
+ * @return The result of the comparison.
  */
-bool operator<(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs);
+std::weak_ordering operator<=>(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs);
 
 /**
  * @brief Checks if two WifiPhyTraceStatistics objects are equal.
@@ -723,18 +707,6 @@ bool operator<(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs);
  * @return true if all counts are equal, false otherwise.
  */
 bool operator==(const WifiPhyTraceStatistics& lhs, const WifiPhyTraceStatistics& rhs);
-
-/**
- * @brief Checks if two WifiPhyTraceStatistics objects are not equal.
- *
- * Determines if two WifiPhyTraceStatistics objects are not equal by comparing their counts.
- * Non-equality is based on any of the relevant statistical counts having different values.
- *
- * @param lhs The left-hand side WifiPhyTraceStatistics object in the comparison.
- * @param rhs The right-hand side WifiPhyTraceStatistics object in the comparison.
- * @return true if any property is different, false otherwise.
- */
-bool operator!=(const WifiPhyTraceStatistics& lhs, const WifiPhyTraceStatistics& rhs);
 
 /**
  * @brief Adds two WifiPhyTraceStatistics objects.

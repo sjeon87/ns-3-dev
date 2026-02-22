@@ -24,30 +24,30 @@ operator==(const FcfsPrio& lhs, const FcfsPrio& rhs)
     return lhs.priority == rhs.priority && lhs.type == rhs.type;
 }
 
-bool
-operator<(const FcfsPrio& lhs, const FcfsPrio& rhs)
+std::weak_ordering
+operator<=>(const FcfsPrio& lhs, const FcfsPrio& rhs)
 {
     // Control queues have the highest priority
     if (lhs.type == WIFI_CTL_QUEUE && rhs.type != WIFI_CTL_QUEUE)
     {
-        return true;
+        return std::weak_ordering::less;
     }
     if (lhs.type != WIFI_CTL_QUEUE && rhs.type == WIFI_CTL_QUEUE)
     {
-        return false;
+        return std::weak_ordering::greater;
     }
     // Management queues have the second highest priority
     if (lhs.type == WIFI_MGT_QUEUE && rhs.type != WIFI_MGT_QUEUE)
     {
-        return true;
+        return std::weak_ordering::less;
     }
     if (lhs.type != WIFI_MGT_QUEUE && rhs.type == WIFI_MGT_QUEUE)
     {
-        return false;
+        return std::weak_ordering::greater;
     }
     // we get here if both priority values refer to container queues of the same type,
     // hence we can compare the time values.
-    return lhs.priority < rhs.priority;
+    return lhs.priority <=> rhs.priority;
 }
 
 NS_OBJECT_ENSURE_REGISTERED(FcfsWifiQueueScheduler);

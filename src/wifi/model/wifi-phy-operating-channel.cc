@@ -941,12 +941,6 @@ WifiPhyOperatingChannel::operator==(const WifiPhyOperatingChannel& other) const
     return m_channelIts == other.m_channelIts;
 }
 
-bool
-WifiPhyOperatingChannel::operator!=(const WifiPhyOperatingChannel& other) const
-{
-    return !(*this == other);
-}
-
 std::ostream&
 operator<<(std::ostream& os, const WifiPhyOperatingChannel& channel)
 {

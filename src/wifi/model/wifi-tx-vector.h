@@ -39,13 +39,6 @@ struct HeMuUserInfo
      * @return true if this user info compares equal to the given user info, false otherwise
      */
     bool operator==(const HeMuUserInfo& other) const;
-    /**
-     * Compare this user info to the given user info.
-     *
-     * @param other the given user info
-     * @return true if this user info differs from the given user info, false otherwise
-     */
-    bool operator!=(const HeMuUserInfo& other) const;
 };
 
 /// 9 bits RU_ALLOCATION per 20 MHz

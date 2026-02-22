@@ -150,47 +150,13 @@ class WifiAc
 
 /**
  * @ingroup wifi
- * Operator> overload returning true if the AC on the left has higher priority
- * than the AC on the right.
+ * Three-way comparison operator
  *
- * @param left the AC on the left of operator>
- * @param right the AC on the right of operator>
- * @return true if the AC on the left has higher priority than the AC on the right
+ * @param left the AC on the left of operator
+ * @param right the AC on the right of operator
+ * @return The result of the comparison
  */
-bool operator>(AcIndex left, AcIndex right);
-
-/**
- * @ingroup wifi
- * Operator>= overload returning true if the AC on the left has higher or the same
- * priority than the AC on the right.
- *
- * @param left the AC on the left of operator>=
- * @param right the AC on the right of operator>=
- * @return true if the AC on the left has higher or the same priority than the AC on the right
- */
-bool operator>=(AcIndex left, AcIndex right);
-
-/**
- * @ingroup wifi
- * Operator< overload returning true if the AC on the left has lower priority
- * than the AC on the right.
- *
- * @param left the AC on the left of operator<
- * @param right the AC on the right of operator<
- * @return true if the AC on the left has lower priority than the AC on the right
- */
-bool operator<(AcIndex left, AcIndex right);
-
-/**
- * @ingroup wifi
- * Operator<= overload returning true if the AC on the left has lower or the same
- * priority than the AC on the right.
- *
- * @param left the AC on the left of operator<=
- * @param right the AC on the right of operator<=
- * @return true if the AC on the left has lower or the same priority than the AC on the right
- */
-bool operator<=(AcIndex left, AcIndex right);
+std::strong_ordering operator<=>(AcIndex left, AcIndex right);
 
 /**
  * Map containing the four ACs in increasing order of priority (according to

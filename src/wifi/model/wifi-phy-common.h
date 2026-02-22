@@ -62,24 +62,24 @@ using RxPowerWattPerChannelBand = std::map<WifiSpectrumBandInfo, Watt_u>;
 
 /**
  * @ingroup wifi
- * Compare two bands.
+ * Three-way comparison operator.
  *
- * @param lhs the band on the left of operator<
- * @param rhs the band on the right of operator<
- * @return true if the start/stop frequencies of the first segment of left are lower than the
- * start/stop frequencies of the first segment of right. If the first segment is the same for left
- * and right, it return true if the start/stop frequencies of the second segment of left are lower
- * than the start/stop frequencies of the second segment of right. Otherwise, the function return
- * false.
+ * Three-way compares two objects based on the start/stop frequencies of their
+ * first segment. If the first segments compare equal, the comparison is performed on
+ * the start/stop frequencies of the second segment.
+ *
+ * @param lhs the band on the left of operator.
+ * @param rhs the band on the right of operator.
+ * @return The result of the comparison.
  */
-inline bool
-operator<(const WifiSpectrumBandInfo& lhs, const WifiSpectrumBandInfo& rhs)
+inline std::partial_ordering
+operator<=>(const WifiSpectrumBandInfo& lhs, const WifiSpectrumBandInfo& rhs)
 {
     if (lhs.frequencies.front() == rhs.frequencies.front())
     {
-        return lhs.frequencies.back() < rhs.frequencies.back();
+        return lhs.frequencies.back() <=> rhs.frequencies.back();
     }
-    return lhs.frequencies.front() < rhs.frequencies.front();
+    return lhs.frequencies.front() <=> rhs.frequencies.front();
 }
 
 /**

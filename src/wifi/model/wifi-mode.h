@@ -179,6 +179,15 @@ class WifiMode
      */
     WifiMode(std::string name);
 
+    /**
+     * Three-way comparison operator.
+     *
+     * @param rhs The WifiMode on the right hand side of the operator.
+     *
+     * @return The result of the comparison.
+     */
+    auto operator<=>(const WifiMode& rhs) const = default;
+
   private:
     /// allow WifiModeFactory class access
     friend class WifiModeFactory;
@@ -190,39 +199,6 @@ class WifiMode
     WifiMode(uint32_t uid);
     uint32_t m_uid; ///< UID
 };
-
-/**
- * Check if the two WifiModes are identical.
- *
- * @param a WifiMode
- * @param b WifiMode
- *
- * @return true if the two WifiModes are identical,
- *         false otherwise
- */
-bool operator==(const WifiMode& a, const WifiMode& b);
-
-/**
- * Check if the two WifiModes are different.
- *
- * @param a WifiMode
- * @param b WifiMode
- *
- * @return true if the two WifiModes are different,
- *         false otherwise
- */
-bool operator!=(const WifiMode& a, const WifiMode& b);
-
-/**
- * Compare two WifiModes
- *
- * @param a WifiMode
- * @param b WifiMode
- *
- * @return true if a is less than b,
- *         false otherwise
- */
-bool operator<(const WifiMode& a, const WifiMode& b);
 
 /**
  * Serialize WifiMode to ostream (human-readable).
