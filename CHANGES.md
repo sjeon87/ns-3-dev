@@ -16,6 +16,9 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 ### New API
 
+* (applications) SourceApplication base class now supports SetSocket() method to allow direct customization of the socket type (TCP congestion control or recovery algorithm) on a per-application basis.
+* (applications) SinkApplication base class now supports SetPrimarySocket() and SetDualStackSocket() methods (and corresponding getters) to allow direct customization of the socket type (TCP congestion control or recovery algorithm) on a per-application basis.
+
 ### Changes to existing API
 
 ### Changes to build system

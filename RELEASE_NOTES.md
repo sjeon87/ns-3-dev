@@ -36,6 +36,11 @@ been tested on Linux. As of this release, the latest known version to work with 
 
 ### New user-visible features
 
+Numbers preceded by '!' reference GitLab.com Merge Request numbers (for more information)
+Numbers preceded by '#' reference GitLab.com Issue numbers (for more information)
+
+- (applications) #1050 BulkSendApplication and PacketSink now allow configuration by custom sockets, enabling the support of different TCP variants on the same node
+
 ### Bugs fixed
 
 ## Release 3.47
