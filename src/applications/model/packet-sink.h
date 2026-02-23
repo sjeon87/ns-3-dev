@@ -56,6 +56,17 @@ class Packet;
  * as a callback on the receiving socket.  By default, when logging is
  * enabled, it prints out the size of packets and their address.
  * A tracing source to Receive() is also available.
+ *
+ * When used with TCP, the TCP sockets used by the application are created by
+ * TcpL4Protocol depending on how that object is configured. Users may use
+ * the SetPrimarySocket() and SetDualStackSocket() methods to bypass the
+ * TcpL4Protocol configuration, which can enable the use of different TCP
+ * variants on the same node. Usually, only SetPrimarySocket() is used, but
+ * in the case that the Local address attribute is not set (i.e., the case
+ * in which the sink is listening for both IPv4 and IPv6 connections), there
+ * is a second SetDualStackSocket() to handle that configuration case. The
+ * BulkSendCustomSocketTestCase demonstrates several possible configuration
+ * approaches to do this.
  */
 class PacketSink : public SinkApplication
 {
