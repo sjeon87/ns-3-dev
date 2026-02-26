@@ -656,11 +656,35 @@ WifiSpectrumValueHelper::CreateHeMuOfdmTxPowerSpectralDensity(
     // Build spectrum mask
     auto vit = c->ValuesBegin();
     auto bit = c->ConstBandsBegin();
-    const auto numSubcarriers =
-        std::accumulate(ru.begin(), ru.end(), 0, [](uint32_t sum, const auto& p) {
+    // Calculate total number of subcarriers in the RU (including null subcarriers)
+    const auto totalSubcarriers =
+        std::accumulate(ru.cbegin(), ru.cend(), 0, [](uint32_t sum, const auto& p) {
             return sum + (p.second - p.first) + 1;
         });
-    const auto txPowerPerBand = (txPower / numSubcarriers); // FIXME: null subcarriers
+
+    // Estimate active subcarriers (ones that actually transmit power)
+    // For HE (WiFi 6), approximately 75% of subcarriers are active data subcarriers
+    uint32_t activeSubcarriers = 0;
+    for (const auto& band : ru)
+    {
+        uint32_t bandSize = band.second - band.first + 1;
+        // In HE, each 4-subcarrier group has 3 data + 1 pilot
+        // This is a simplification - actual ratio depends on RU size
+        uint32_t activeInBand = (bandSize * 3) / 4; // Ceiling division to avoid zero
+        activeSubcarriers += (activeInBand > 0) ? activeInBand : bandSize;
+    }
+
+    // Fallback to total if calculation fails
+    if (activeSubcarriers == 0)
+    {
+        activeSubcarriers = totalSubcarriers;
+        NS_LOG_WARN("Using total subcarriers as fallback");
+    }
+
+    // Divide power among ACTIVE subcarriers only
+    const auto txPowerPerBand = (txPower / activeSubcarriers);
+    NS_LOG_DEBUG("Power per active subcarrier: " << txPowerPerBand << " W over "
+                                                 << activeSubcarriers << " active subcarriers");
     uint32_t numBands = c->GetSpectrumModel()->GetNumBands();
     const auto psd = txPowerPerBand / (bit->fh - bit->fl);
     for (size_t i = 0; i < numBands; i++, vit++, bit++)
