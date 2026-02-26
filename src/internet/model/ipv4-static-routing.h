@@ -353,22 +353,22 @@ class Ipv4StaticRouting : public Ipv4RoutingProtocol
 
   private:
     /// Container for the network routes
-    typedef std::list<std::pair<Ipv4RoutingTableEntry*, uint32_t>> NetworkRoutes;
+    typedef std::list<std::pair<Ipv4RoutingTableEntry, uint32_t>> NetworkRoutes;
 
     /// Const Iterator for container for the network routes
-    typedef std::list<std::pair<Ipv4RoutingTableEntry*, uint32_t>>::const_iterator NetworkRoutesCI;
+    typedef std::list<std::pair<Ipv4RoutingTableEntry, uint32_t>>::const_iterator NetworkRoutesCI;
 
     /// Iterator for container for the network routes
-    typedef std::list<std::pair<Ipv4RoutingTableEntry*, uint32_t>>::iterator NetworkRoutesI;
+    typedef std::list<std::pair<Ipv4RoutingTableEntry, uint32_t>>::iterator NetworkRoutesI;
 
     /// Container for the multicast routes
-    typedef std::list<Ipv4MulticastRoutingTableEntry*> MulticastRoutes;
+    typedef std::list<Ipv4MulticastRoutingTableEntry> MulticastRoutes;
 
     /// Const Iterator for container for the multicast routes
-    typedef std::list<Ipv4MulticastRoutingTableEntry*>::const_iterator MulticastRoutesCI;
+    typedef std::list<Ipv4MulticastRoutingTableEntry>::const_iterator MulticastRoutesCI;
 
     /// Iterator for container for the multicast routes
-    typedef std::list<Ipv4MulticastRoutingTableEntry*>::iterator MulticastRoutesI;
+    typedef std::list<Ipv4MulticastRoutingTableEntry>::iterator MulticastRoutesI;
 
     /**
      * @brief Checks if a route is already present in the forwarding table.
