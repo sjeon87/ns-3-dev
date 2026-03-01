@@ -25,6 +25,14 @@ namespace ns3
 /**
  * @ingroup packet
  * Concept matching a forward iterator whose value type is uint8_t.
+ * @note This concept accepts reverse iterators (rbegin/rend)
+ * when the underlying iterator satisfies forward iterator requirements.
+ * The current implementation of Write/Read relies only on increment
+ * and dereference, so reverse iteration works transparently.
+ *
+ * Any future optimization using contiguous iterators (like using memcpy)
+ * must explicitly handle reverse iterators, as std::reverse_iterator
+ * does not model std::contiguous_iterator.
  */
 template <typename It>
 concept Uint8tForwardIterator =
@@ -279,6 +287,8 @@ class Buffer
          * @param last one-past-the-end of the range to copy in
          *
          * Advances the iterator position by std::distance(first, last) bytes.
+         * Supports both forward and reverse iterators (rbegin/rend), since
+         * iteration is performed element-by-element.
          */
         template <Uint8tForwardIterator Iter>
         void Write(Iter first, Iter last)
@@ -395,11 +405,13 @@ class Buffer
         /**
          * @brief Read into a range of uint8_t storage from the buffer.
          *
-         * @tparam Iter a forward iterator with value type uint8_t
+ * @tparam Iter a forward iterator with value type uint8_t
          * @param first start of the destination range
          * @param last one-past-the-end of the destination range
          *
-         * Advances the iterator position by std::distance(first, last) bytes.
+ * Advances the iterator position by std::distance(first, last) bytes.
+         * Supports both forward and reverse iterators (rbegin/rend), since
+         * iteration is performed element-by-element.
          */
         template <Uint8tForwardIterator Iter>
         void Read(Iter first, Iter last)
@@ -1102,7 +1114,6 @@ Buffer::Iterator::ReadU16()
     uint16_t data = byte1;
     data <<= 8;
     data |= byte0;
-
     return data;
 }
 

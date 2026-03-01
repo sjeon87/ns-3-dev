@@ -510,6 +510,71 @@ BufferTest::DoRun()
 
         NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(), N, "Empty read should not advance iterator");
     }
+    {
+        constexpr uint32_t N = 50;
+
+        std::vector<uint8_t> original(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            original[k] = static_cast<uint8_t>(k);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(original.rbegin(), original.rend());
+
+        std::vector<uint8_t> result(N);
+        it = b.Begin();
+        it.Read(result.begin(), result.end());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(result[k],
+                                  original[N - 1 - k],
+                                  "Reverse write mismatch at index " << k);
+        }
+    }
+    {
+        constexpr uint32_t N = 50;
+
+        std::vector<uint8_t> original(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            original[k] = static_cast<uint8_t>(k);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().Write(original.begin(), original.end());
+
+        std::vector<uint8_t> result(N);
+        Buffer::Iterator it = b.Begin();
+        it.Read(result.rbegin(), result.rend());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(result[k],
+                                  original[N - 1 - k],
+                                  "Reverse read mismatch at index " << k);
+        }
+    }
+    {
+        constexpr uint32_t N = 10;
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().WriteU8(0xCD, N);
+
+        std::vector<uint8_t> empty;
+        Buffer::Iterator it = b.Begin();
+        it.Write(empty.rbegin(), empty.rend());
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(),
+                              N,
+                              "Empty reverse write should not advance iterator");
+    }
 }
 
 /**
