@@ -164,6 +164,8 @@ set(source_files
     model/global-value.cc
     model/trace-source-accessor.cc
     model/config.cc
+    model/db.cc
+    model/dbm.cc
     model/callback.cc
     model/names.cc
     model/vector.cc
