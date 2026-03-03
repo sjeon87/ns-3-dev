@@ -206,6 +206,31 @@ BridgeNetDevice::Learn(Mac48Address source, Ptr<NetDevice> port)
     }
 }
 
+uint32_t
+BridgeNetDevice::GetMacTableSize() const
+{
+    return m_learnState.size();
+}
+
+void
+BridgeNetDevice::FlushMacTable()
+{
+    m_learnState.clear();
+    NS_LOG_INFO("MAC table flushed");
+}
+
+void
+BridgeNetDevice::FlushMacEntry(const Mac48Address& address)
+{
+    NS_LOG_FUNCTION(this << address);
+    auto it = m_learnState.find(address);
+    if (it != m_learnState.end())
+    {
+        m_learnState.erase(it);
+        NS_LOG_INFO("MAC entry flushed for address " << address);
+    }
+}
+
 Ptr<NetDevice>
 BridgeNetDevice::GetLearnedState(Mac48Address source)
 {

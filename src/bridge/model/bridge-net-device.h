@@ -103,6 +103,23 @@ class BridgeNetDevice : public NetDevice
      */
     Ptr<NetDevice> GetBridgePort(uint32_t n) const;
 
+    /**
+     * @brief Get current size of MAC address table
+     * @return number of entries in MAC table
+     */
+    uint32_t GetMacTableSize() const;
+
+    /**
+     * @brief Flush all learned MAC addresses
+     */
+    void FlushMacTable();
+
+    /**
+     * @brief Flush a specific MAC address entry
+     * @param address the MAC address to flush
+     */
+    void FlushMacEntry(const Mac48Address& address);
+
     // inherited from NetDevice base class.
     void SetIfIndex(const uint32_t index) override;
     uint32_t GetIfIndex() const override;
