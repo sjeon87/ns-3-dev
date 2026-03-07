@@ -9,6 +9,7 @@
 #define IPV4_ROUTING_TABLE_ENTRY_H
 
 #include "ns3/ipv4-address.h"
+#include "ns3/ipv4-network-address.h"
 
 #include <list>
 #include <ostream>
@@ -155,10 +156,11 @@ class Ipv4RoutingTableEntry
      */
     Ipv4RoutingTableEntry(Ipv4Address dest, uint32_t interface);
 
-    Ipv4Address m_dest;         //!< destination address
-    Ipv4Mask m_destNetworkMask; //!< destination network mask
-    Ipv4Address m_gateway;      //!< gateway
-    uint32_t m_interface;       //!< output interface
+    Ipv4NetworkAddress m_network; // new internal representation
+    Ipv4Address m_dest;           //!< destination address
+    Ipv4Mask m_destNetworkMask;   //!< destination network mask
+    Ipv4Address m_gateway;        //!< gateway
+    uint32_t m_interface;         //!< output interface
 };
 
 /**
