@@ -803,7 +803,7 @@ CsmaNetDevice::Receive(Ptr<const Packet> packet, Ptr<CsmaNetDevice> senderDevice
     //
     m_promiscSnifferTrace(packet);
     m_macPromiscRxTrace(packet);
-    m_macPromiscRxTrace(packet);
+
     if (!m_promiscRxCallback.IsNull())
     {
         m_promiscRxCallback(this,
