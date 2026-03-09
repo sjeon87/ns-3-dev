@@ -526,7 +526,7 @@ FdNetDevice::ForwardUp()
     m_macPromiscRxTrace(originalPacket);
 
     if (!m_promiscRxCallback.IsNull())
-    {        
+    {
         m_promiscRxCallback(this, packet, protocol, source, destination, packetType);
     }
 
