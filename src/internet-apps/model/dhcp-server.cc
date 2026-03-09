@@ -395,6 +395,7 @@ DhcpServer::SendAck(Ptr<NetDevice> iDev, DhcpHeader header, InetSocketAddress fr
 void
 DhcpServer::AddStaticDhcpEntry(Address macAddr, Ipv4Address addr)
 {
+    NS_ASSERT_MSG(!addr.IsLinkLocal(), "DhcpHelper: Cannot assign link-local address.");
     NS_LOG_FUNCTION(this << macAddr << addr);
     DhcpChaddr chAddr{};
 

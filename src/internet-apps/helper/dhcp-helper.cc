@@ -123,6 +123,9 @@ DhcpHelper::InstallDhcpServer(Ptr<NetDevice> netDevice,
                               Ipv4Address maxAddr,
                               Ipv4Address gateway)
 {
+    NS_ASSERT_MSG(!poolAddr.IsLinkLocal(),
+                  "DhcpHelper: Invalid DHCP pool address. Link-local addresses (169.254/16) "
+                  "are not allowed.");
     m_serverFactory.Set("PoolAddresses", Ipv4AddressValue(poolAddr));
     m_serverFactory.Set("PoolMask", Ipv4MaskValue(poolMask));
     m_serverFactory.Set("FirstAddress", Ipv4AddressValue(minAddr));
