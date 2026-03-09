@@ -54,6 +54,19 @@ build_example(
 )
 
 build_example(
+  NAME tcp-r-ledbat-example
+  SOURCE_FILES tcp-r-ledbat-example.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libapplications}
+    ${libtraffic-control}
+    ${libnetwork}
+    ${libinternet-apps}
+    ${libflow-monitor}
+)
+
+build_example(
   NAME tcp-bulk-send
   SOURCE_FILES tcp-bulk-send.cc
   LIBRARIES_TO_LINK
