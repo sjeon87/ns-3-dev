@@ -467,6 +467,15 @@ PhyEntity::StartReceivePreamble(Ptr<const WifiPpdu> ppdu,
         DropPreambleEvent(ppdu, TXING, endRx);
         break;
     case WifiPhyState::CCA_BUSY:
+        /*
+         * When CCA_BUSY expires at the exact same simulation time as a new PPDU arrival,
+         * GetState() returns IDLE (strict >) while m_currentEvent may still be set from an
+         * in-progress preamble reception chain. Fall through to handle both states identically.
+         */
+    case WifiPhyState::IDLE:
+        NS_ASSERT_MSG((m_state->GetState() != WifiPhyState::IDLE) || !m_wifiPhy->m_currentEvent ||
+                          (m_state->GetLastTime({WifiPhyState::CCA_BUSY}) == Simulator::Now()),
+                      "IDLE with non-null m_currentEvent but CCA_BUSY did not just end");
         if (m_wifiPhy->m_currentEvent)
         {
             if (m_wifiPhy->m_frameCaptureModel &&
@@ -488,10 +497,6 @@ PhyEntity::StartReceivePreamble(Ptr<const WifiPpdu> ppdu,
         {
             StartPreambleDetectionPeriod(event);
         }
-        break;
-    case WifiPhyState::IDLE:
-        NS_ASSERT(!m_wifiPhy->m_currentEvent);
-        StartPreambleDetectionPeriod(event);
         break;
     case WifiPhyState::SLEEP:
         NS_LOG_DEBUG("Drop packet because in sleep mode");

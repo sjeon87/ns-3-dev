@@ -38,6 +38,8 @@ been tested on Linux. As of this release, the latest known version to work with 
 
 ### Bugs fixed
 
+- (wifi) !2776 Fix same-time event ordering race in PHY StartReceivePreamble (IDLE state)
+
 ## Release 3.47
 
 This release is available from:
