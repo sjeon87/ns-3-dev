@@ -43,6 +43,7 @@ SOURCES = \
 	source/tests.rst \
 	source/tracing.rst \
 	source/troubleshoot.rst \
+	source/units.rst \
 	source/utilities.rst \
 	source/working-with-cilicon.rst \
 	source/working-with-cmake.rst \
