@@ -68,7 +68,8 @@ Ipv4RoutingTableEntry::Ipv4RoutingTableEntry(Ipv4Address network,
     : m_dest(network),
       m_destNetworkMask(networkMask),
       m_gateway(gateway),
-      m_interface(interface)
+      m_interface(interface),
+      m_network(network, networkMask.GetPrefixLength()) // new internal representation
 {
     NS_LOG_FUNCTION(this << network << networkMask << gateway << interface);
 }
