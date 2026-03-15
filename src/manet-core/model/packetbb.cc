@@ -11,10 +11,9 @@
 
 #include "packetbb.h"
 
-#include "ipv4-address.h"
-#include "ipv6-address.h"
-
 #include "ns3/assert.h"
+#include "ns3/ipv4-address.h"
+#include "ns3/ipv6-address.h"
 #include "ns3/log.h"
 
 static const uint8_t VERSION = 0;
@@ -2143,7 +2142,11 @@ PbbAddressBlock::GetSerializedSize() const
 
     if (AddressSize() == 1)
     {
-        size += GetAddressLength() + PrefixSize();
+        size += GetAddressLength();
+        if (PrefixFront() != GetAddressLength() * 8)
+        {
+            size += PrefixSize();
+        }
     }
     else if (AddressSize() > 0)
     {
@@ -2171,7 +2174,32 @@ PbbAddressBlock::GetSerializedSize() const
         /* mid size */
         size += (GetAddressLength() - headlen - taillen) * AddressSize();
 
-        size += PrefixSize();
+        if (!m_prefixList.empty())
+        {
+            uint8_t minPrefix = 0;
+            uint8_t maxPrefix = GetAddressLength() * 8;
+
+            for (auto& prefix : m_prefixList)
+            {
+                minPrefix = std::max(prefix, minPrefix);
+                maxPrefix = std::min(prefix, maxPrefix);
+            }
+
+            if (minPrefix == maxPrefix)
+            {
+                // All the prefix are the same (or there is a single prefix)
+                if (minPrefix != GetAddressLength() * 8)
+                {
+                    size += 1;
+                }
+                // If the prefix is maximum we don't write anything.
+            }
+            else
+            {
+                // There are multiple prefixes and they're different.
+                size += PrefixSize();
+            }
+        }
 
         delete[] head;
         delete[] tail;
@@ -2191,13 +2219,17 @@ PbbAddressBlock::Serialize(Buffer::Iterator& start) const
     uint8_t flags = 0;
     start.Next();
 
+    NS_ASSERT_MSG(PrefixSize() == 0 || PrefixSize() == AddressSize(),
+                  "PbbAddressBlock has a wrong number of prefixes ("
+                      << PrefixSize() << ") for the given addresses (" << AddressSize() << ")");
+
     if (AddressSize() == 1)
     {
         auto buf = new uint8_t[GetAddressLength()];
         SerializeAddress(buf, AddressBegin());
         start.Write(buf, GetAddressLength());
 
-        if (PrefixSize() == 1)
+        if (PrefixSize() == 1 && PrefixFront() != GetAddressLength() * 8)
         {
             start.WriteU8(PrefixFront());
             flags |= AHAS_SINGLE_PRE_LEN;
@@ -2247,13 +2279,41 @@ PbbAddressBlock::Serialize(Buffer::Iterator& start) const
             delete[] mid;
         }
 
-        flags |= GetPrefixFlags();
-        bufref.WriteU8(flags);
-
-        for (auto iter = PrefixBegin(); iter != PrefixEnd(); iter++)
+        if (!m_prefixList.empty())
         {
-            start.WriteU8(*iter);
+            uint8_t minPrefix = 0;
+            uint8_t maxPrefix = GetAddressLength() * 8;
+
+            for (auto& prefix : m_prefixList)
+            {
+                minPrefix = std::max(prefix, minPrefix);
+                maxPrefix = std::min(prefix, maxPrefix);
+            }
+
+            if (minPrefix == maxPrefix)
+            {
+                // All the prefix are the same (or there is a single prefix)
+                if (minPrefix != GetAddressLength() * 8)
+                {
+                    // The prefix is not maximum
+                    // I.e., /32 for IPv4 and /128 for IPv6
+                    flags |= AHAS_SINGLE_PRE_LEN;
+                    start.WriteU8(minPrefix);
+                }
+                // If the prefix is maximum we don't write anything.
+            }
+            else
+            {
+                // There are multiple prefixes and they're different.
+                flags |= AHAS_MULTI_PRE_LEN;
+
+                for (auto& iter : m_prefixList)
+                {
+                    start.WriteU8(iter);
+                }
+            }
         }
+        bufref.WriteU8(flags);
 
         delete[] head;
         delete[] tail;
@@ -2300,13 +2360,26 @@ PbbAddressBlock::Deserialize(Buffer::Iterator& start)
 
         if (flags & AHAS_SINGLE_PRE_LEN)
         {
-            PrefixPushBack(start.ReadU8());
+            // A single prefix means that it applies to all the addresses in the block
+            for (auto i = 0; i < numaddr; i++)
+            {
+                PrefixPushBack(start.ReadU8());
+            }
         }
         else if (flags & AHAS_MULTI_PRE_LEN)
         {
             for (int i = 0; i < numaddr; i++)
             {
                 PrefixPushBack(start.ReadU8());
+            }
+        }
+        else
+        {
+            // No prefix means that all the addresses in the block have the maximum prefix
+            // I.e., /32 for IPv4 and /128 for IPv6
+            for (int i = 0; i < numaddr; i++)
+            {
+                PrefixPushBack(GetAddressLength() * 8);
             }
         }
 
@@ -2389,24 +2462,6 @@ PbbAddressBlock::operator==(const PbbAddressBlock& other) const
     }
 
     return m_addressTlvList == other.m_addressTlvList;
-}
-
-uint8_t
-PbbAddressBlock::GetPrefixFlags() const
-{
-    NS_LOG_FUNCTION(this);
-    switch (PrefixSize())
-    {
-    case 0:
-        return 0;
-    case 1:
-        return AHAS_SINGLE_PRE_LEN;
-    default:
-        return AHAS_MULTI_PRE_LEN;
-    }
-
-    /* Quiet compiler */
-    return 0;
 }
 
 void

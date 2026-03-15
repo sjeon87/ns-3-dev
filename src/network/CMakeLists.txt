@@ -42,7 +42,9 @@ set(source_files
     utils/inet-socket-address.cc
     utils/inet6-socket-address.cc
     utils/ipv4-address.cc
+    utils/ipv4-network-address.cc
     utils/ipv6-address.cc
+    utils/ipv6-network-address.cc
     utils/llc-snap-header.cc
     utils/mac16-address.cc
     utils/mac48-address.cc
@@ -58,7 +60,6 @@ set(source_files
     utils/packet-socket-factory.cc
     utils/packet-socket-server.cc
     utils/packet-socket.cc
-    utils/packetbb.cc
     utils/pcap-file-wrapper.cc
     utils/pcap-file.cc
     utils/queue-item.cc
@@ -118,7 +119,9 @@ set(header_files
     utils/inet-socket-address.h
     utils/inet6-socket-address.h
     utils/ipv4-address.h
+    utils/ipv4-network-address.h
     utils/ipv6-address.h
+    utils/ipv6-network-address.h
     utils/llc-snap-header.h
     utils/lollipop-counter.h
     utils/mac16-address.h
@@ -135,7 +138,6 @@ set(header_files
     utils/packet-socket-factory.h
     utils/packet-socket-server.h
     utils/packet-socket.h
-    utils/packetbb.h
     utils/pcap-file-wrapper.h
     utils/pcap-file.h
     utils/pcap-test.h
@@ -168,7 +170,6 @@ build_lib(
     test/packet-metadata-test.cc
     test/packet-socket-apps-test-suite.cc
     test/packet-test-suite.cc
-    test/packetbb-test-suite.cc
     test/pcap-file-test-suite.cc
     test/sequence-number-test-suite.cc
     test/test-data-rate.cc
