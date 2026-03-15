@@ -60,6 +60,12 @@ class EmuEpcHelper : public NoBackhaulEpcHelper
 
   private:
     /**
+     * The base IPv4 network address for the EPC emulation network
+     * (used for S1-U, X2-U, and X2-C interfaces over EmuFdNetDevice).
+     */
+    Ipv4Address m_epcIpv4Address{"10.0.0.0"};
+
+    /**
      * helper to assign addresses to S1-U NetDevices
      */
     Ipv4AddressHelper m_epcIpv4AddressHelper;
