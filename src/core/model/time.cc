@@ -12,8 +12,11 @@
 #include "nstime.h"
 
 #include <cmath> // pow
+#include <cstdlib>
+#include <iostream>
 #include <mutex>
 #include <sstream>
+#include <string>
 
 /**
  * @file
@@ -192,7 +195,55 @@ Time::SetDefaultNsResolution()
 {
     NS_LOG_FUNCTION_NOARGS();
     static Resolution resolution;
-    SetResolution(Time::NS, &resolution, false);
+
+    char* envRes = std::getenv("NS_TIME_RESOLUTION");
+
+    if (envRes != nullptr)
+    {
+        std::string resStr(envRes);
+        Unit unit = Time::NS;
+        bool found = true;
+
+        if (resStr == "s")
+        {
+            unit = Time::S;
+        }
+        else if (resStr == "ms")
+        {
+            unit = Time::MS;
+        }
+        else if (resStr == "us")
+        {
+            unit = Time::US;
+        }
+        else if (resStr == "ns")
+        {
+            unit = Time::NS;
+        }
+        else if (resStr == "ps")
+        {
+            unit = Time::PS;
+        }
+        else if (resStr == "fs")
+        {
+            unit = Time::FS;
+        }
+        else
+        {
+            found = false;
+        }
+
+        if (found)
+        {
+            std::cerr << "WARNING: Time resolution changed to " << resStr
+                      << " by NS_TIME_RESOLUTION environment variable." << std::endl;
+            SetResolution(unit, &resolution, false);
+        }
+    }
+    else
+    {
+        SetResolution(Time::NS, &resolution, false);
+    }
     return resolution;
 }
 
