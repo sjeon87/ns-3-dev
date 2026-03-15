@@ -33,6 +33,10 @@ Ipv4InterfaceAddress::Ipv4InterfaceAddress(Ipv4Address local, Ipv4Mask mask)
     {
         m_scope = HOST;
     }
+    if (m_local.IsLinkLocal())
+    {
+        m_scope = LINK;
+    }
     m_mask = mask;
 }
 
