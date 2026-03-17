@@ -24,7 +24,10 @@
 #include "ns3/string.h"
 #include "ns3/test.h"
 
+#include <numbers>
+
 using namespace ns3;
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("LteAntennaTest");
 
@@ -282,23 +285,23 @@ LteAntennaTestSuite::LteAntennaTestSuite()
     AddTestCase(new LteEnbAntennaTestCase(-90.0, 90.0, 1.0, -1.0, -3.0), TestCase::Duration::QUICK);
 
     AddTestCase(new LteEnbAntennaTestCase(0.0, 120.0, 1.0, 0.0, 0.0), TestCase::Duration::QUICK);
-    AddTestCase(new LteEnbAntennaTestCase(0.0, 120.0, 0.5, sin(M_PI / 3), -3.0),
+    AddTestCase(new LteEnbAntennaTestCase(0.0, 120.0, 0.5, sin(PI / 3), -3.0),
                 TestCase::Duration::QUICK);
-    AddTestCase(new LteEnbAntennaTestCase(0.0, 120.0, 0.5, -sin(M_PI / 3), -3.0),
+    AddTestCase(new LteEnbAntennaTestCase(0.0, 120.0, 0.5, -sin(PI / 3), -3.0),
                 TestCase::Duration::QUICK);
     AddTestCase(new LteEnbAntennaTestCase(0.0, 120.0, -1.0, -2.0, -13.410),
                 TestCase::Duration::QUICK);
     AddTestCase(new LteEnbAntennaTestCase(0.0, 120.0, -1.0, 1.0, -20.034),
                 TestCase::Duration::QUICK);
-    AddTestCase(new LteEnbAntennaTestCase(60.0, 120.0, 0.5, sin(M_PI / 3), 0.0),
+    AddTestCase(new LteEnbAntennaTestCase(60.0, 120.0, 0.5, sin(PI / 3), 0.0),
                 TestCase::Duration::QUICK);
-    AddTestCase(new LteEnbAntennaTestCase(-60.0, 120.0, 0.5, -sin(M_PI / 3), 0.0),
+    AddTestCase(new LteEnbAntennaTestCase(-60.0, 120.0, 0.5, -sin(PI / 3), 0.0),
                 TestCase::Duration::QUICK);
-    AddTestCase(new LteEnbAntennaTestCase(-60.0, 120.0, 0.5, -sin(M_PI / 3), 0.0),
+    AddTestCase(new LteEnbAntennaTestCase(-60.0, 120.0, 0.5, -sin(PI / 3), 0.0),
                 TestCase::Duration::QUICK);
-    AddTestCase(new LteEnbAntennaTestCase(-120.0, 120.0, -0.5, -sin(M_PI / 3), 0.0),
+    AddTestCase(new LteEnbAntennaTestCase(-120.0, 120.0, -0.5, -sin(PI / 3), 0.0),
                 TestCase::Duration::QUICK);
-    AddTestCase(new LteEnbAntennaTestCase(-120.0, 120.0, 0.5, -sin(M_PI / 3), -3.0),
+    AddTestCase(new LteEnbAntennaTestCase(-120.0, 120.0, 0.5, -sin(PI / 3), -3.0),
                 TestCase::Duration::QUICK);
     AddTestCase(new LteEnbAntennaTestCase(-120.0, 120.0, -1, 0, -3.0), TestCase::Duration::QUICK);
     AddTestCase(new LteEnbAntennaTestCase(-120.0, 120.0, -1, 2, -15.578),
