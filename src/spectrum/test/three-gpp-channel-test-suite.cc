@@ -28,9 +28,11 @@
 #include "ns3/uinteger.h"
 #include "ns3/uniform-planar-array.h"
 
+#include <numbers>
 #include <valarray>
 
 using namespace ns3;
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("ThreeGppChannelTestSuite");
 
@@ -911,7 +913,7 @@ ThreeGppChannelConsistencyTest::DoRun()
         "AntennaElement",
         PointerValue(CreateObject<IsotropicAntennaModel>()),
         "BearingAngle",
-        DoubleValue(M_PI));
+        DoubleValue(PI));
 
     // test if the channel matrix is correctly updated
     for (uint16_t i = 0; i < iterations; i++)
@@ -2017,7 +2019,7 @@ ThreeGppChannelTestSuite::ThreeGppChannelTestSuite()
                                                  Vector{0, 0, 3},
                                                  MimoPolarizationAntennaParams(false, 0, 0),
                                                  Vector{9, 0, 3},
-                                                 MimoPolarizationAntennaParams(false, 0, M_PI),
+                                                 MimoPolarizationAntennaParams(false, 0, PI),
                                                  testChannel1,
                                                  0.9),
                 TestCase::Duration::QUICK);
@@ -2035,9 +2037,9 @@ ThreeGppChannelTestSuite::ThreeGppChannelTestSuite()
     AddTestCase(
         new ThreeGppMimoPolarizationTest("Face-to-face. 30 and 0 pol. slant angles.",
                                          Vector{0, 0, 3},
-                                         MimoPolarizationAntennaParams(false, M_PI / 6, 0),
+                                         MimoPolarizationAntennaParams(false, PI / 6, 0),
                                          Vector{6, 0, 3},
-                                         MimoPolarizationAntennaParams(false, 0, M_PI),
+                                         MimoPolarizationAntennaParams(false, 0, PI),
                                          {5, 5, 3, 3, 5, 5, 3, 3, 3, 3, -5, -5, 3, 3, -5, -5},
                                          0.8),
         TestCase::Duration::QUICK);
@@ -2055,9 +2057,9 @@ ThreeGppChannelTestSuite::ThreeGppChannelTestSuite()
     AddTestCase(
         new ThreeGppMimoPolarizationTest("Face-to-face. 45 and 0 pol. slant angles.",
                                          Vector{0, 0, 3},
-                                         MimoPolarizationAntennaParams(false, M_PI / 4, 0),
+                                         MimoPolarizationAntennaParams(false, PI / 4, 0),
                                          Vector{6, 0, 3},
-                                         MimoPolarizationAntennaParams(false, 0, M_PI),
+                                         MimoPolarizationAntennaParams(false, 0, PI),
                                          {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, -4, -4, 4, 4, -4, -4},
                                          0.7),
         TestCase::Duration::QUICK);
@@ -2075,9 +2077,9 @@ ThreeGppChannelTestSuite::ThreeGppChannelTestSuite()
     AddTestCase(new ThreeGppMimoPolarizationTest(
                     "Face-to-face. 90 and 0 pol. slant angles.",
                     Vector{0, 0, 3},
-                    MimoPolarizationAntennaParams(false, M_PI / 2, 0),
+                    MimoPolarizationAntennaParams(false, PI / 2, 0),
                     Vector{6, 0, 3},
-                    MimoPolarizationAntennaParams(false, 0, M_PI),
+                    MimoPolarizationAntennaParams(false, 0, PI),
                     {0, 0, 5.8, 5.8, 0, 0, 5.8, 5.8, 5.9, 5.9, 0, 0, 5.9, 5.9, 0, 0},
                     0.9),
                 TestCase::Duration::QUICK);
@@ -2100,9 +2102,9 @@ ThreeGppChannelTestSuite::ThreeGppChannelTestSuite()
         new ThreeGppMimoPolarizationTest("Face-to-face. Different positions. Different bearing "
                                          "angles. 0 and 0 pol. slant angles.",
                                          Vector{0, 0, 3},
-                                         MimoPolarizationAntennaParams(false, 0, M_PI / 4),
+                                         MimoPolarizationAntennaParams(false, 0, PI / 4),
                                          Vector{6.363961031, 6.363961031, 3},
-                                         MimoPolarizationAntennaParams(false, 0, -(M_PI / 4) * 3),
+                                         MimoPolarizationAntennaParams(false, 0, -(PI / 4) * 3),
                                          testChannel1,
                                          0.9),
         TestCase::Duration::QUICK);
@@ -2122,7 +2124,7 @@ ThreeGppChannelTestSuite::ThreeGppChannelTestSuite()
                     Vector{0, 0, 10},
                     MimoPolarizationAntennaParams(false, 0, 0),
                     Vector{30, 0, 3},
-                    MimoPolarizationAntennaParams(false, 0, M_PI),
+                    MimoPolarizationAntennaParams(false, 0, PI),
                     {{2.5, -4.7},
                      {2.5, -4.7},
                      0,

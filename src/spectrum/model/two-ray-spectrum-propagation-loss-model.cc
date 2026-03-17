@@ -17,9 +17,11 @@
 #include "ns3/string.h"
 
 #include <algorithm>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 /**
  * Lookup table associating the simulation parameters to the corresponding fitted FTR parameters.
@@ -895,7 +897,7 @@ TwoRaySpectrumPropagationLossModel::TwoRaySpectrumPropagationLossModel()
     // Create the Random Number Generator (RNG) variables only once to speed-up the tests
     m_uniformRv = CreateObject<UniformRandomVariable>();
     m_uniformRv->SetAttribute("Min", DoubleValue(0));
-    m_uniformRv->SetAttribute("Max", DoubleValue(2 * M_PI));
+    m_uniformRv->SetAttribute("Max", DoubleValue(2 * PI));
 
     m_normalRv = CreateObject<NormalRandomVariable>();
     m_normalRv->SetAttribute("Mean", DoubleValue(0));

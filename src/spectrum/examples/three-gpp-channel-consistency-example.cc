@@ -73,8 +73,10 @@
 #include "ns3/uniform-planar-array.h"
 
 #include <fstream>
+#include <numbers>
 
 using namespace ns3;
+constexpr auto PI = std::numbers::pi;
 
 /// the log component
 NS_LOG_COMPONENT_DEFINE("ThreeGppChannelConsistencyExample");
@@ -125,22 +127,22 @@ CreateQuasiOmniBf(Ptr<PhasedArrayModel> antenna)
             std::complex<double> c = 0.0;
             if (antennaRows % 2 == 0)
             {
-                c = exp(std::complex<double>(0, M_PI * ind * ind / antennaRows));
+                c = exp(std::complex<double>(0, PI * ind * ind / antennaRows));
             }
             else
             {
-                c = exp(std::complex<double>(0, M_PI * ind * (ind + 1) / antennaRows));
+                c = exp(std::complex<double>(0, PI * ind * (ind + 1) / antennaRows));
             }
             for (uint32_t ind2 = 0; ind2 < antennaColumns; ind2++)
             {
                 std::complex<double> d = 0.0;
                 if (antennaColumns % 2 == 0)
                 {
-                    d = exp(std::complex<double>(0, M_PI * ind2 * ind2 / antennaColumns));
+                    d = exp(std::complex<double>(0, PI * ind2 * ind2 / antennaColumns));
                 }
                 else
                 {
-                    d = exp(std::complex<double>(0, M_PI * ind2 * (ind2 + 1) / antennaColumns));
+                    d = exp(std::complex<double>(0, PI * ind2 * (ind2 + 1) / antennaColumns));
                 }
                 omni[bfIndex] = (c * d * power);
                 bfIndex++;
@@ -255,14 +257,14 @@ main(int argc, char* argv[])
                                                        "NumRows",
                                                        UintegerValue(2),
                                                        "BearingAngle",
-                                                       DoubleValue(M_PI / 2));
+                                                       DoubleValue(PI / 2));
     Ptr<PhasedArrayModel> rxAntenna =
         CreateObjectWithAttributes<UniformPlanarArray>("NumColumns",
                                                        UintegerValue(2),
                                                        "NumRows",
                                                        UintegerValue(2),
                                                        "BearingAngle",
-                                                       DoubleValue(-M_PI / 2));
+                                                       DoubleValue(-PI / 2));
 
     Ptr<MobilityModel> txMob;
     Ptr<MobilityModel> rxMob;

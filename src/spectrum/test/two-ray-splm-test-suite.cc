@@ -25,8 +25,10 @@
 #include "ns3/uniform-planar-array.h"
 
 #include <array>
+#include <numbers>
 
 using namespace ns3;
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("TwoRaySplmTestSuite");
 
@@ -543,7 +545,7 @@ OverallGainAverageTest::DoRun()
 
         // Rotate the RX antenna array and set its dimensions
         rxArray->SetAttribute("AntennaElement", PointerValue(m_rxAntElem));
-        rxArray->SetAttribute("BearingAngle", DoubleValue(-M_PI));
+        rxArray->SetAttribute("BearingAngle", DoubleValue(-PI));
         rxArray->SetAttribute("NumRows", UintegerValue(std::sqrt(m_rxNumAntennas)));
         rxArray->SetAttribute("NumColumns", UintegerValue(std::sqrt(m_rxNumAntennas)));
 
@@ -595,7 +597,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
     // Test the CalcBeamformingGain function of the TwoRaySpectrumPropagationLossModel class
     auto iso = CreateObject<IsotropicAntennaModel>();
     auto tgpp = CreateObject<ThreeGppAntennaModel>();
-    const double maxTgppGain = tgpp->GetGainDb(Angles(0.0, M_PI / 2));
+    const double maxTgppGain = tgpp->GetGainDb(Angles(0.0, PI / 2));
 
     // Deploy 2 squared antenna arrays which face each other. Steer their beam towards the boresight
     // and check the resulting array gain. SE = single element radiation pattern, N = number of
@@ -609,7 +611,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       0.0),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(iso,
@@ -619,7 +621,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(4)),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(iso,
@@ -629,7 +631,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(16)),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(iso,
@@ -639,7 +641,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(64)),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(iso,
@@ -649,7 +651,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       2 * 10 * log10(4)),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(iso,
@@ -659,7 +661,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       2 * 10 * log10(16)),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(iso,
@@ -669,7 +671,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       2 * 10 * log10(64)),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -679,7 +681,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -689,7 +691,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(4) + maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -699,7 +701,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(16) + maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -709,7 +711,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(64) + maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -719,7 +721,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       2 * maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -729,7 +731,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(4) + 2 * maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -739,7 +741,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(16) + 2 * maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -749,7 +751,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       10 * log10(64) + 2 * maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -759,7 +761,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       2 * 10 * log10(4) + 2 * maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -769,7 +771,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       2 * 10 * log10(16) + 2 * maxTgppGain),
                 TestCase::Duration::QUICK);
     AddTestCase(new ArrayResponseTest(tgpp,
@@ -779,7 +781,7 @@ TwoRaySplmTestSuite::TwoRaySplmTestSuite()
                                       Vector(0.0, 0.0, 0.0),
                                       Vector(5.0, 0.0, 0.0),
                                       0.0,
-                                      -M_PI,
+                                      -PI,
                                       2 * 10 * log10(64) + 2 * maxTgppGain),
                 TestCase::Duration::QUICK);
 
