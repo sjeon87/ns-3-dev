@@ -11,18 +11,20 @@
 #include "ns3/log.h"
 
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("Angles");
 
 bool Angles::m_printDeg = false;
 
 /// Degrees to Radians conversion constant
-const double DEG_TO_RAD = M_PI / 180.0;
+const double DEG_TO_RAD = PI / 180.0;
 /// Radians to Degrees conversion constant
-const double RAD_TO_DEG = 180.0 / M_PI;
+const double RAD_TO_DEG = 180.0 / PI;
 
 double
 DegreesToRadians(double degrees)
@@ -106,9 +108,9 @@ double
 WrapTo2Pi(double a)
 {
     static constexpr int64_t INT_RANGE = 100000000000;
-    // Divide the input by 2*M_PI.
+    // Divide the input by 2*PI.
     // Multiply it by INT_RANGE and store into an integer.
-    int64_t b(a / (2 * M_PI) * INT_RANGE);
+    int64_t b(a / (2 * PI) * INT_RANGE);
     // Clamp it between [-INT_RANGE / 2, INT_RANGE / 2)
     b = b % INT_RANGE;
     if (b < 0)
@@ -119,17 +121,17 @@ WrapTo2Pi(double a)
     {
         b -= INT_RANGE;
     }
-    // Divide by INT_RANGE and multiply by 2*M_PI.
-    return b * (2 * M_PI) / INT_RANGE;
+    // Divide by INT_RANGE and multiply by 2*PI.
+    return b * (2 * PI) / INT_RANGE;
 }
 
 double
 WrapToPi(double a)
 {
     static constexpr int64_t INT_RANGE = 100000000000;
-    // Divide the input by 2*M_PI.
+    // Divide the input by 2*PI.
     // Multiply it by INT_RANGE and store into an integer.
-    int64_t b(a / (2 * M_PI) * INT_RANGE);
+    int64_t b(a / (2 * PI) * INT_RANGE);
     // Clamp it between [-INT_RANGE / 2, INT_RANGE / 2)
     b = b % INT_RANGE;
     if (b < -INT_RANGE / 2)
@@ -140,8 +142,8 @@ WrapToPi(double a)
     {
         b -= INT_RANGE;
     }
-    // Divide by INT_RANGE and multiply by 2*M_PI.
-    return b * (2 * M_PI) / INT_RANGE;
+    // Divide by INT_RANGE and multiply by 2*PI.
+    return b * (2 * PI) / INT_RANGE;
 }
 
 std::ostream&
@@ -257,7 +259,7 @@ Angles::CheckIfValid() const
 {
     if (std::isfinite(m_inclination) || std::isfinite(m_azimuth))
     {
-        NS_ASSERT_MSG(0.0 <= m_inclination && m_inclination <= M_PI,
+        NS_ASSERT_MSG(0.0 <= m_inclination && m_inclination <= PI,
                       "m_inclination=" << m_inclination << " not valid, should be in [0, pi] rad");
     }
     else

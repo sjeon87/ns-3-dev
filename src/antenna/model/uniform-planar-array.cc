@@ -11,8 +11,11 @@
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
 
+#include <numbers>
+
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("UniformPlanarArray");
 
@@ -65,19 +68,19 @@ UniformPlanarArray::GetTypeId()
                 "The bearing angle in radians",
                 DoubleValue(0.0),
                 MakeDoubleAccessor(&UniformPlanarArray::SetAlpha, &UniformPlanarArray::GetAlpha),
-                MakeDoubleChecker<double>(-M_PI, M_PI))
+                MakeDoubleChecker<double>(-PI, PI))
             .AddAttribute(
                 "DowntiltAngle",
                 "The downtilt angle in radians",
                 DoubleValue(0.0),
                 MakeDoubleAccessor(&UniformPlanarArray::SetBeta, &UniformPlanarArray::GetBeta),
-                MakeDoubleChecker<double>(-M_PI, M_PI))
+                MakeDoubleChecker<double>(-PI, PI))
             .AddAttribute("PolSlantAngle",
                           "The polarization slant angle in radians",
                           DoubleValue(0.0),
                           MakeDoubleAccessor(&UniformPlanarArray::SetPolSlant,
                                              &UniformPlanarArray::GetPolSlant),
-                          MakeDoubleChecker<double>(-M_PI, M_PI))
+                          MakeDoubleChecker<double>(-PI, PI))
             .AddAttribute("NumVerticalPorts",
                           "Vertical number of ports",
                           UintegerValue(1),
@@ -403,8 +406,8 @@ UniformPlanarArray::SetDualPol(bool isDualPol)
         m_isDualPolarized = isDualPol;
         if (isDualPol)
         {
-            m_cosPolSlant[1] = cos(m_polSlant - M_PI / 2);
-            m_sinPolSlant[1] = sin(m_polSlant - M_PI / 2);
+            m_cosPolSlant[1] = cos(m_polSlant - PI / 2);
+            m_sinPolSlant[1] = sin(m_polSlant - PI / 2);
         }
         InvalidateChannels();
     }

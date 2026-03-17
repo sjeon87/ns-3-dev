@@ -14,10 +14,12 @@
 #include "ns3/log.h"
 
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
 
+constexpr auto PI = std::numbers::pi;
 NS_LOG_COMPONENT_DEFINE("ParabolicAntennaModel");
 
 NS_OBJECT_ENSURE_REGISTERED(ParabolicAntennaModel);
@@ -85,13 +87,13 @@ ParabolicAntennaModel::GetGainDb(Angles a)
     double phi = a.GetAzimuth() - m_orientationRadians;
 
     // make sure phi is in (-pi, pi]
-    while (phi <= -M_PI)
+    while (phi <= -PI)
     {
-        phi += M_PI + M_PI;
+        phi += PI + PI;
     }
-    while (phi > M_PI)
+    while (phi > PI)
     {
-        phi -= M_PI + M_PI;
+        phi -= PI + PI;
     }
 
     NS_LOG_LOGIC("phi = " << phi);

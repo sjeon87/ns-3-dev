@@ -14,9 +14,11 @@
 #include "ns3/log.h"
 
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("CosineAntennaModel");
 
@@ -148,7 +150,7 @@ CosineAntennaModel::GetGainDb(Angles a)
     // P(az,el) = cos(az/2)^2m * cos(pi/2 - incl/2)^2n,
     // where az is the azimuth angle, and incl is the inclination angle.
     double gain = (std::pow(std::cos(a.GetAzimuth() / 2), 2 * m_horizontalExponent)) *
-                  (std::pow(std::cos((M_PI / 2 - a.GetInclination()) / 2), 2 * m_verticalExponent));
+                  (std::pow(std::cos((PI / 2 - a.GetInclination()) / 2), 2 * m_verticalExponent));
     double gainDb = 10 * std::log10(gain);
 
     NS_LOG_LOGIC("gain = " << gainDb << " + " << m_maxGain << " dB");
