@@ -51,6 +51,7 @@
 #include "ns3/uan-module.h"
 
 #include <fstream>
+#include <numbers>
 
 using namespace ns3;
 
@@ -276,7 +277,7 @@ Experiment::Run(uint32_t param)
 
     for (uint32_t i = 0; i < nNodes; i++)
     {
-        double theta = utheta->GetValue(0, 2.0 * M_PI);
+        double theta = utheta->GetValue(0, 2.0 * std::numbers::pi);
         double r = urv->GetValue(0, m_maxRange);
 
         double x = m_maxRange + r * std::cos(theta);

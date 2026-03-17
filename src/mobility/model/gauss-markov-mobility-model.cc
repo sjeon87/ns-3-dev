@@ -15,9 +15,11 @@
 #include "ns3/string.h"
 
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_OBJECT_ENSURE_REGISTERED(GaussMarkovMobilityModel);
 
@@ -176,7 +178,7 @@ GaussMarkovMobilityModel::DoWalk(Time delayLeft)
         if (nextPosition.x > m_bounds.xMax || nextPosition.x < m_bounds.xMin)
         {
             speed.x = -speed.x;
-            m_meanDirection = M_PI - m_meanDirection;
+            m_meanDirection = PI - m_meanDirection;
         }
 
         if (nextPosition.y > m_bounds.yMax || nextPosition.y < m_bounds.yMin)

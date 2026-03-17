@@ -15,6 +15,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <numbers>
 #include <sstream>
 
 namespace ns3
@@ -163,7 +164,7 @@ PointToPointStarHelper::BoundingBox(double ulx, double uly, double lrx, double l
         spokeDist = xDist / 4.0;
     }
 
-    double theta = 2 * M_PI / m_spokes.GetN();
+    double theta = 2 * std::numbers::pi / m_spokes.GetN();
     for (uint32_t i = 0; i < m_spokes.GetN(); ++i)
     {
         Ptr<Node> spokeNode = m_spokes.Get(i);

@@ -12,8 +12,10 @@
 #include "ns3/log.h"
 
 #include <cmath>
+#include <numbers>
 
 NS_LOG_COMPONENT_DEFINE("GeographicPositions");
+constexpr auto PI = std::numbers::pi;
 
 namespace
 {
@@ -224,15 +226,15 @@ GeographicPositions::RandCartesianPointsAroundGeographicPoint(double originLatit
 
     double originLatitudeRadians = DegreesToRadians(originLatitude);
     double originLongitudeRadians = DegreesToRadians(originLongitude);
-    double originColatitude = (M_PI_2)-originLatitudeRadians;
+    double originColatitude = ((PI / 2.0)) - originLatitudeRadians;
 
     // maximum alpha allowed (arc length formula)
     double a = maxDistFromOrigin / EARTH_SPHERE_RADIUS;
-    if (a > M_PI)
+    if (a > PI)
     {
         // pi is largest alpha possible (polar angle from origin that
         // points can be generated within)
-        a = M_PI;
+        a = PI;
     }
 
     std::list<Vector> generatedPoints;
@@ -241,26 +243,26 @@ GeographicPositions::RandCartesianPointsAroundGeographicPoint(double originLatit
         // random distance from North Pole (towards center of earth)
         double d = uniRand->GetValue(0, EARTH_SPHERE_RADIUS - EARTH_SPHERE_RADIUS * cos(a));
         // random angle in latitude slice (wrt Prime Meridian), radians
-        double phi = uniRand->GetValue(0, M_PI * 2);
+        double phi = uniRand->GetValue(0, PI * 2);
         // random angle from Center of Earth (wrt North Pole), radians
         double alpha = acos((EARTH_SPHERE_RADIUS - d) / EARTH_SPHERE_RADIUS);
 
         // shift coordinate system from North Pole referred to origin point referred
         // reference: http://en.wikibooks.org/wiki/General_Astronomy/Coordinate_Systems
-        double theta = M_PI_2 - alpha; // angle of elevation of new point wrt
-                                       // origin point (latitude in coordinate
-                                       // system referred to origin point)
+        double theta = (PI / 2.0) - alpha; // angle of elevation of new point wrt
+                                           // origin point (latitude in coordinate
+                                           // system referred to origin point)
         double randPointLatitude = asin(sin(theta) * cos(originColatitude) +
                                         cos(theta) * sin(originColatitude) * sin(phi));
         // declination
         double intermedLong = asin((sin(randPointLatitude) * cos(originColatitude) - sin(theta)) /
                                    (cos(randPointLatitude) * sin(originColatitude)));
         // right ascension
-        intermedLong = intermedLong + M_PI_2; // shift to longitude 0
+        intermedLong = intermedLong + (PI / 2.0); // shift to longitude 0
 
         // flip / mirror point if it has phi in quadrant II or III (wasn't
         // resolved correctly by arcsin) across longitude 0
-        if (phi > (M_PI_2) && phi <= (3 * M_PI_2))
+        if (phi > ((PI / 2.0)) && phi <= (3 * (PI / 2.0)))
         {
             intermedLong = -intermedLong;
         }

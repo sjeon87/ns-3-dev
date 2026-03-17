@@ -209,7 +209,7 @@ GeocentricConstantPositionMobilityModel::DoGetElevationAngle(
     x = std::max(x, -1.0);
 
     // asin returns radians, we convert to degrees
-    double elevAngle = std::abs((180.0 * M_1_PI) * asin(x));
+    double elevAngle = std::abs((180.0 * std::numbers::inv_pi) * asin(x));
 
     return elevAngle;
 }
