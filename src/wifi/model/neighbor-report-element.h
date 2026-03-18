@@ -413,6 +413,16 @@ class NeighborReportElement : public WifiInformationElement
     };
 
     /**
+     * @brief Wide Bandwidth Channel subelement data (IEEE 802.11-2024 Figure 9-423, ID 6)
+     */
+    struct WideBandwidthChannel
+    {
+        uint8_t channelWidth;       //!< Channel Width (1 octet)
+        uint8_t centerFreqSegment0; //!< Channel Center Frequency Segment 0 (1 octet)
+        uint8_t centerFreqSegment1; //!< Channel Center Frequency Segment 1 (1 octet)
+    };
+
+    /**
      * @brief BSS Termination Duration subelement data (IEEE 802.11-2024 Table 9-212, ID 4)
      */
     struct BssTerminationDuration
@@ -482,6 +492,21 @@ class NeighborReportElement : public WifiInformationElement
     std::optional<Bearing> GetBearing() const;
 
     /**
+     * @brief Set the Wide Bandwidth Channel subelement (ID 6).
+     * @param channelWidth the channel width
+     * @param centerFreqSegment0 center frequency segment 0
+     * @param centerFreqSegment1 center frequency segment 1
+     */
+    void SetWideBandwidthChannel(uint8_t channelWidth,
+                                 uint8_t centerFreqSegment0,
+                                 uint8_t centerFreqSegment1);
+    /**
+     * @brief Get the Wide Bandwidth Channel subelement.
+     * @return the Wide Bandwidth Channel data if present
+     */
+    std::optional<WideBandwidthChannel> GetWideBandwidthChannel() const;
+
+    /**
      * @brief Set the Vendor Specific subelement (ID 221).
      * @param data the vendor-specific data
      */
@@ -510,6 +535,7 @@ class NeighborReportElement : public WifiInformationElement
     std::optional<BssTerminationDuration>
         m_bssTerminationDuration;                         //!< BSS Termination Duration (ID 4)
     std::optional<Bearing> m_bearing;                     //!< Bearing (ID 5)
+    std::optional<WideBandwidthChannel> m_wideBandwidth;  //!< Wide Bandwidth Channel (ID 6)
     std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific (ID 221)
 };
 

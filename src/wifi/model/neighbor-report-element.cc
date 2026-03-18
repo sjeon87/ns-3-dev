@@ -507,6 +507,20 @@ NeighborReportElement::GetBearing() const
 }
 
 void
+NeighborReportElement::SetWideBandwidthChannel(uint8_t channelWidth,
+                                               uint8_t centerFreqSegment0,
+                                               uint8_t centerFreqSegment1)
+{
+    m_wideBandwidth = WideBandwidthChannel{channelWidth, centerFreqSegment0, centerFreqSegment1};
+}
+
+std::optional<NeighborReportElement::WideBandwidthChannel>
+NeighborReportElement::GetWideBandwidthChannel() const
+{
+    return m_wideBandwidth;
+}
+
+void
 NeighborReportElement::SetVendorSpecificData(std::vector<uint8_t> data)
 {
     NS_ASSERT_MSG(data.size() <= 255,
@@ -544,6 +558,10 @@ NeighborReportElement::GetInformationFieldSize() const
     if (m_bearing)
     {
         size += 2 + 8; // ID + Length + Bearing(2) + Distance(4) + RelHeight(2)
+    }
+    if (m_wideBandwidth)
+    {
+        size += 2 + 3; // ID + Length + ChWidth(1) + Seg0(1) + Seg1(1)
     }
     if (m_vendorSpecific)
     {
@@ -595,6 +613,14 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
         start.WriteU16(m_bearing->bearing);
         start.WriteU32(m_bearing->distance);
         start.WriteU16(static_cast<uint16_t>(m_bearing->relativeHeight));
+    }
+    if (m_wideBandwidth)
+    {
+        start.WriteU8(6); // subelement ID
+        start.WriteU8(3); // length
+        start.WriteU8(m_wideBandwidth->channelWidth);
+        start.WriteU8(m_wideBandwidth->centerFreqSegment0);
+        start.WriteU8(m_wideBandwidth->centerFreqSegment1);
     }
     if (m_vendorSpecific)
     {
@@ -655,6 +681,13 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
             m_bearing = Bearing{bearing, distance, relativeHeight};
             break;
         }
+        case 6: { // Wide Bandwidth Channel
+            uint8_t chWidth = i.ReadU8();
+            uint8_t seg0 = i.ReadU8();
+            uint8_t seg1 = i.ReadU8();
+            m_wideBandwidth = WideBandwidthChannel{chWidth, seg0, seg1};
+            break;
+        }
         case 221: { // Vendor Specific
             std::vector<uint8_t> data(subelemLen);
             for (uint8_t j = 0; j < subelemLen; j++)
@@ -705,6 +738,12 @@ NeighborReportElement::Print(std::ostream& os) const
     {
         os << ", Bearing(deg=" << m_bearing->bearing << ", dist=0x" << std::hex
            << m_bearing->distance << std::dec << ", height=" << m_bearing->relativeHeight << ")";
+    }
+    if (m_wideBandwidth)
+    {
+        os << ", WBC(width=" << +m_wideBandwidth->channelWidth
+           << ", seg0=" << +m_wideBandwidth->centerFreqSegment0
+           << ", seg1=" << +m_wideBandwidth->centerFreqSegment1 << ")";
     }
     if (m_vendorSpecific)
     {

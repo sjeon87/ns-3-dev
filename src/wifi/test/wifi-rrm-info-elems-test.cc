@@ -592,7 +592,60 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(bearing->relativeHeight, 0, "Zero relative height");
     }
 
-    // Test 12: Edge cases
+    // Test 12: Wide Bandwidth Channel subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetWideBandwidthChannel(1, 42, 0);
+
+        TestHeaderSerialization(nre);
+
+        auto wbc = nre.GetWideBandwidthChannel();
+        NS_TEST_ASSERT_MSG_EQ(wbc.has_value(), true, "WBC should be present");
+        NS_TEST_ASSERT_MSG_EQ(wbc->channelWidth, 1, "Channel width");
+        NS_TEST_ASSERT_MSG_EQ(wbc->centerFreqSegment0, 42, "Center freq seg 0");
+        NS_TEST_ASSERT_MSG_EQ(wbc->centerFreqSegment1, 0, "Center freq seg 1");
+    }
+
+    // Test 13: Wide Bandwidth Channel edge values
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetWideBandwidthChannel(255, 255, 255);
+
+        TestHeaderSerialization(nre);
+
+        auto wbc = nre.GetWideBandwidthChannel();
+        NS_TEST_ASSERT_MSG_EQ(wbc->channelWidth, 255, "Max channel width");
+        NS_TEST_ASSERT_MSG_EQ(wbc->centerFreqSegment0, 255, "Max center freq seg 0");
+        NS_TEST_ASSERT_MSG_EQ(wbc->centerFreqSegment1, 255, "Max center freq seg 1");
+    }
+
+    // Test 14: Bearing + Wide Bandwidth Channel together
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+        nre.SetOperatingClass(115);
+        nre.SetChannelNumber(36);
+        nre.SetPhyType(8);
+        nre.SetBearing(90, 0x41A00000, 3);
+        nre.SetWideBandwidthChannel(1, 42, 50);
+
+        TestHeaderSerialization(nre);
+
+        auto bearing = nre.GetBearing();
+        NS_TEST_ASSERT_MSG_EQ(bearing.has_value(), true, "Bearing present with WBC");
+        auto wbc = nre.GetWideBandwidthChannel();
+        NS_TEST_ASSERT_MSG_EQ(wbc.has_value(), true, "WBC present with Bearing");
+    }
+
+    // Test 15: Edge cases
     {
         // Max TSF offset
         NeighborReportElement nre;
