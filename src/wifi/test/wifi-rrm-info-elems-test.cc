@@ -10,6 +10,7 @@
 #include "ns3/link-measurement.h"
 #include "ns3/log.h"
 #include "ns3/neighbor-report-element.h"
+#include "ns3/tpc-report-element.h"
 
 #include <array>
 #include <vector>
@@ -669,6 +670,138 @@ LinkMeasurementRequestTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test serialization and deserialization of the TPC Report element
+ * (IEEE 802.11-2024 Section 9.4.2.15, IE 35)
+ */
+class TpcReportElementTest : public HeaderSerializationTestCase
+{
+  public:
+    TpcReportElementTest();
+
+  private:
+    void DoRun() override;
+};
+
+TpcReportElementTest::TpcReportElementTest()
+    : HeaderSerializationTestCase("Check serialization and deserialization of TPC Report element")
+{
+}
+
+void
+TpcReportElementTest::DoRun()
+{
+    // Test 1: Basic round-trip with positive values
+    {
+        TpcReportElement elem;
+        elem.SetTransmitPower(20);
+        elem.SetLinkMargin(10);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        TpcReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitPower(), 20, "Transmit power round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLinkMargin(), 10, "Link margin round-trip");
+    }
+
+    // Test 2: Negative Transmit Power
+    {
+        TpcReportElement elem;
+        elem.SetTransmitPower(-10);
+        elem.SetLinkMargin(5);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        TpcReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitPower(),
+                              -10,
+                              "Negative transmit power round-trip");
+    }
+
+    // Test 3: Negative Link Margin
+    {
+        TpcReportElement elem;
+        elem.SetTransmitPower(15);
+        elem.SetLinkMargin(-8);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        TpcReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLinkMargin(), -8, "Negative link margin round-trip");
+    }
+
+    // Test 4: INT8_MIN and INT8_MAX edge cases
+    {
+        TpcReportElement elem;
+        elem.SetTransmitPower(INT8_MAX);
+        elem.SetLinkMargin(INT8_MIN);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        TpcReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitPower(), INT8_MAX, "INT8_MAX transmit power");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLinkMargin(), INT8_MIN, "INT8_MIN link margin");
+    }
+
+    // Test 5: Both values zero
+    {
+        TpcReportElement elem;
+        elem.SetTransmitPower(0);
+        elem.SetLinkMargin(0);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        TpcReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitPower(), 0, "Zero transmit power");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLinkMargin(), 0, "Zero link margin");
+    }
+
+    // Test 6: Default construction round-trip
+    {
+        TpcReportElement elem;
+        TestHeaderSerialization(elem);
+    }
+
+    // Test 7: GetSerializedSize returns 4 (IE header 2 + payload 2)
+    {
+        TpcReportElement elem;
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 4, "Serialized size is 4 bytes");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -684,6 +817,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new BssidInfoFieldTest, TestCase::Duration::QUICK);
     AddTestCase(new NeighborReportSubelementsTest, TestCase::Duration::QUICK);
     AddTestCase(new LinkMeasurementRequestTest, TestCase::Duration::QUICK);
+    AddTestCase(new TpcReportElementTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite
