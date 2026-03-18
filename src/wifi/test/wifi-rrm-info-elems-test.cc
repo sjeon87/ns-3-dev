@@ -10,6 +10,9 @@
 #include "ns3/log.h"
 #include "ns3/neighbor-report-element.h"
 
+#include <array>
+#include <vector>
+
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("WifiRrmInfoElemsTest");
@@ -236,6 +239,312 @@ BssidInfoFieldTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test optional subelements of the Neighbor Report element
+ * (IEEE 802.11-2020 Table 9-150)
+ */
+class NeighborReportSubelementsTest : public HeaderSerializationTestCase
+{
+  public:
+    NeighborReportSubelementsTest();
+
+  private:
+    void DoRun() override;
+};
+
+NeighborReportSubelementsTest::NeighborReportSubelementsTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Neighbor Report subelements")
+{
+}
+
+void
+NeighborReportSubelementsTest::DoRun()
+{
+    // Test 1: TSF Information subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetBssidInfo(0x0000001F);
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetTsfInformation(1000, 100);
+
+        TestHeaderSerialization(nre);
+
+        auto tsf = nre.GetTsfInformation();
+        NS_TEST_ASSERT_MSG_EQ(tsf.has_value(), true, "TSF Information should be present");
+        NS_TEST_ASSERT_MSG_EQ(tsf->tsfOffset, 1000, "TSF offset");
+        NS_TEST_ASSERT_MSG_EQ(tsf->beaconInterval, 100, "Beacon interval");
+
+        // Other subelements should be empty
+        NS_TEST_ASSERT_MSG_EQ(nre.GetCondensedCountryString().has_value(),
+                              false,
+                              "Country string absent");
+        NS_TEST_ASSERT_MSG_EQ(nre.GetCandidatePreference().has_value(),
+                              false,
+                              "Candidate pref absent");
+        NS_TEST_ASSERT_MSG_EQ(nre.GetBssTerminationDuration().has_value(),
+                              false,
+                              "BSS termination absent");
+        NS_TEST_ASSERT_MSG_EQ(nre.GetVendorSpecificData().has_value(),
+                              false,
+                              "Vendor specific absent");
+    }
+
+    // Test 2: Condensed Country String subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetCondensedCountryString('U', 'S');
+
+        TestHeaderSerialization(nre);
+
+        auto cc = nre.GetCondensedCountryString();
+        NS_TEST_ASSERT_MSG_EQ(cc.has_value(), true, "Country string should be present");
+        NS_TEST_ASSERT_MSG_EQ((*cc)[0], 'U', "Country char 1");
+        NS_TEST_ASSERT_MSG_EQ((*cc)[1], 'S', "Country char 2");
+    }
+
+    // Test 3: BSS Transition Candidate Preference subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetCandidatePreference(200);
+
+        TestHeaderSerialization(nre);
+
+        auto pref = nre.GetCandidatePreference();
+        NS_TEST_ASSERT_MSG_EQ(pref.has_value(), true, "Candidate pref should be present");
+        NS_TEST_ASSERT_MSG_EQ(*pref, 200, "Candidate preference value");
+    }
+
+    // Test 4: BSS Termination Duration subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetBssTerminationDuration(0x0102030405060708ULL, 3600);
+
+        TestHeaderSerialization(nre);
+
+        auto term = nre.GetBssTerminationDuration();
+        NS_TEST_ASSERT_MSG_EQ(term.has_value(), true, "BSS termination should be present");
+        NS_TEST_ASSERT_MSG_EQ(term->terminationTsf, 0x0102030405060708ULL, "Termination TSF");
+        NS_TEST_ASSERT_MSG_EQ(term->duration, 3600, "Duration");
+    }
+
+    // Test 5: Vendor Specific subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetVendorSpecificData({0xAA, 0xBB, 0xCC, 0xDD});
+
+        TestHeaderSerialization(nre);
+
+        auto vs = nre.GetVendorSpecificData();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "Vendor specific should be present");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 4, "Vendor specific size");
+        NS_TEST_ASSERT_MSG_EQ((*vs)[0], 0xAA, "Vendor byte 0");
+        NS_TEST_ASSERT_MSG_EQ((*vs)[3], 0xDD, "Vendor byte 3");
+    }
+
+    // Test 6: All subelements together
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+        nre.SetBssidInfo(0x00000FFF);
+        nre.SetOperatingClass(115);
+        nre.SetChannelNumber(36);
+        nre.SetPhyType(8);
+        nre.SetTsfInformation(500, 200);
+        nre.SetCondensedCountryString('G', 'B');
+        nre.SetCandidatePreference(150);
+        nre.SetBssTerminationDuration(999999, 120);
+        nre.SetVendorSpecificData({0x01, 0x02});
+
+        TestHeaderSerialization(nre);
+
+        // Verify all survive round-trip
+        Buffer buf;
+        buf.AddAtStart(nre.GetSerializedSize());
+        nre.Serialize(buf.Begin());
+
+        NeighborReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto tsf = deserialized.GetTsfInformation();
+        NS_TEST_ASSERT_MSG_EQ(tsf.has_value(), true, "TSF survives all-together");
+        NS_TEST_ASSERT_MSG_EQ(tsf->tsfOffset, 500, "TSF offset all-together");
+        NS_TEST_ASSERT_MSG_EQ(tsf->beaconInterval, 200, "Beacon interval all-together");
+
+        auto cc = deserialized.GetCondensedCountryString();
+        NS_TEST_ASSERT_MSG_EQ(cc.has_value(), true, "Country survives all-together");
+        NS_TEST_ASSERT_MSG_EQ((*cc)[0], 'G', "Country c1 all-together");
+        NS_TEST_ASSERT_MSG_EQ((*cc)[1], 'B', "Country c2 all-together");
+
+        auto pref = deserialized.GetCandidatePreference();
+        NS_TEST_ASSERT_MSG_EQ(pref.has_value(), true, "Pref survives all-together");
+        NS_TEST_ASSERT_MSG_EQ(*pref, 150, "Pref value all-together");
+
+        auto term = deserialized.GetBssTerminationDuration();
+        NS_TEST_ASSERT_MSG_EQ(term.has_value(), true, "Term survives all-together");
+        NS_TEST_ASSERT_MSG_EQ(term->terminationTsf, 999999, "Term TSF all-together");
+        NS_TEST_ASSERT_MSG_EQ(term->duration, 120, "Term duration all-together");
+
+        auto vs = deserialized.GetVendorSpecificData();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS survives all-together");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 2, "VS size all-together");
+    }
+
+    // Test 7: No subelements (fixed-only) still works and size is 13
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+
+        // Element ID (1) + Length (1) + 13 fixed = 15 total serialized size
+        NS_TEST_ASSERT_MSG_EQ(nre.GetSerializedSize(), 15, "Fixed-only serialized size");
+        TestHeaderSerialization(nre);
+    }
+
+    // Test 8: Unknown subelement is silently skipped during deserialization
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetBssidInfo(0x0000001F);
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetCandidatePreference(42);
+
+        // Serialize to get a valid buffer
+        Buffer buf;
+        buf.AddAtStart(nre.GetSerializedSize());
+        nre.Serialize(buf.Begin());
+
+        // Build a new buffer with an unknown subelement (ID=99) injected before
+        // the candidate preference subelement
+        // Original layout: ElemID(1) + Length(1) + BSSID(6) + BSSIDInfo(4) + OpClass(1) +
+        //                  Channel(1) + PhyType(1) + [SubelID=3(1) + Len=1(1) + Pref(1)]
+        // We'll rebuild: fixed fields + unknown(ID=99, len=3, data={0xDE,0xAD,0xBE}) +
+        //                candidate pref subelement
+        uint16_t fixedFieldsSize = 13;
+        uint16_t unknownSubelemSize = 2 + 3;  // ID + Len + 3 bytes data
+        uint16_t candPrefSubelemSize = 2 + 1; // ID + Len + 1 byte
+        uint16_t totalInfoFieldSize = fixedFieldsSize + unknownSubelemSize + candPrefSubelemSize;
+        uint16_t totalSize = 2 + totalInfoFieldSize; // ElemID + Length + info field
+
+        Buffer manualBuf;
+        manualBuf.AddAtStart(totalSize);
+        Buffer::Iterator it = manualBuf.Begin();
+
+        // Element header
+        it.WriteU8(52); // IE_NEIGHBOR_REPORT = 52
+        it.WriteU8(static_cast<uint8_t>(totalInfoFieldSize));
+
+        // Fixed fields (copy from original)
+        Buffer::Iterator orig = buf.Begin();
+        orig.Next(2); // skip element header
+        for (uint16_t j = 0; j < fixedFieldsSize; j++)
+        {
+            it.WriteU8(orig.ReadU8());
+        }
+
+        // Unknown subelement
+        it.WriteU8(99); // unknown ID
+        it.WriteU8(3);  // length
+        it.WriteU8(0xDE);
+        it.WriteU8(0xAD);
+        it.WriteU8(0xBE);
+
+        // Candidate preference subelement
+        it.WriteU8(3);  // ID
+        it.WriteU8(1);  // length
+        it.WriteU8(42); // preference value
+
+        // Deserialize
+        NeighborReportElement deserialized;
+        deserialized.Deserialize(manualBuf.Begin());
+
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetBssid(),
+                              Mac48Address("00:11:22:33:44:55"),
+                              "BSSID after unknown skip");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetBssidInfo(),
+                              0x0000001F,
+                              "BSSIDInfo after unknown skip");
+        auto pref = deserialized.GetCandidatePreference();
+        NS_TEST_ASSERT_MSG_EQ(pref.has_value(), true, "Candidate pref parsed after unknown skip");
+        NS_TEST_ASSERT_MSG_EQ(*pref, 42, "Candidate pref value after unknown skip");
+    }
+
+    // Test 9: Edge cases
+    {
+        // Max TSF offset
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetTsfInformation(0xFFFF, 0xFFFF);
+        TestHeaderSerialization(nre);
+
+        auto tsf = nre.GetTsfInformation();
+        NS_TEST_ASSERT_MSG_EQ(tsf->tsfOffset, 0xFFFF, "Max TSF offset");
+        NS_TEST_ASSERT_MSG_EQ(tsf->beaconInterval, 0xFFFF, "Max beacon interval");
+
+        // Max candidate preference
+        NeighborReportElement nre2;
+        nre2.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre2.SetOperatingClass(81);
+        nre2.SetChannelNumber(6);
+        nre2.SetPhyType(7);
+        nre2.SetCandidatePreference(255);
+        TestHeaderSerialization(nre2);
+        NS_TEST_ASSERT_MSG_EQ(*nre2.GetCandidatePreference(), 255, "Max candidate preference");
+
+        // Empty vendor specific data
+        NeighborReportElement nre3;
+        nre3.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre3.SetOperatingClass(81);
+        nre3.SetChannelNumber(6);
+        nre3.SetPhyType(7);
+        nre3.SetVendorSpecificData({});
+        TestHeaderSerialization(nre3);
+        NS_TEST_ASSERT_MSG_EQ(nre3.GetVendorSpecificData()->empty(), true, "Empty vendor specific");
+
+        // Large vendor specific data
+        NeighborReportElement nre4;
+        nre4.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre4.SetOperatingClass(81);
+        nre4.SetChannelNumber(6);
+        nre4.SetPhyType(7);
+        std::vector<uint8_t> largeData(200, 0x42);
+        nre4.SetVendorSpecificData(largeData);
+        TestHeaderSerialization(nre4);
+        NS_TEST_ASSERT_MSG_EQ(nre4.GetVendorSpecificData()->size(),
+                              200,
+                              "Large vendor specific size");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -249,6 +558,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
 {
     AddTestCase(new NeighborReportElementTest, TestCase::Duration::QUICK);
     AddTestCase(new BssidInfoFieldTest, TestCase::Duration::QUICK);
+    AddTestCase(new NeighborReportSubelementsTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite

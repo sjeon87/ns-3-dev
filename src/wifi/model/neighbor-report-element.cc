@@ -291,11 +291,92 @@ NeighborReportElement::GetPhyType() const
     return m_phyType;
 }
 
+void
+NeighborReportElement::SetTsfInformation(uint16_t tsfOffset, uint16_t beaconInterval)
+{
+    m_tsfInfo = TsfInformation{tsfOffset, beaconInterval};
+}
+
+std::optional<NeighborReportElement::TsfInformation>
+NeighborReportElement::GetTsfInformation() const
+{
+    return m_tsfInfo;
+}
+
+void
+NeighborReportElement::SetCondensedCountryString(char c1, char c2)
+{
+    m_condensedCountryString = std::array<char, 2>{c1, c2};
+}
+
+std::optional<std::array<char, 2>>
+NeighborReportElement::GetCondensedCountryString() const
+{
+    return m_condensedCountryString;
+}
+
+void
+NeighborReportElement::SetCandidatePreference(uint8_t preference)
+{
+    m_candidatePreference = preference;
+}
+
+std::optional<uint8_t>
+NeighborReportElement::GetCandidatePreference() const
+{
+    return m_candidatePreference;
+}
+
+void
+NeighborReportElement::SetBssTerminationDuration(uint64_t terminationTsf, uint16_t duration)
+{
+    m_bssTerminationDuration = BssTerminationDuration{terminationTsf, duration};
+}
+
+std::optional<NeighborReportElement::BssTerminationDuration>
+NeighborReportElement::GetBssTerminationDuration() const
+{
+    return m_bssTerminationDuration;
+}
+
+void
+NeighborReportElement::SetVendorSpecificData(std::vector<uint8_t> data)
+{
+    m_vendorSpecific = std::move(data);
+}
+
+const std::optional<std::vector<uint8_t>>&
+NeighborReportElement::GetVendorSpecificData() const
+{
+    return m_vendorSpecific;
+}
+
 uint16_t
 NeighborReportElement::GetInformationFieldSize() const
 {
-    // TODO: add optional subelements size once they are supported
-    return 13; // BSSID (6) + BSSID Info (4) + Operating Class (1) + Channel (1) + PHY Type (1)
+    uint16_t size =
+        13; // BSSID (6) + BSSID Info (4) + Operating Class (1) + Channel (1) + PHY Type (1)
+    if (m_tsfInfo)
+    {
+        size += 2 + 4; // ID + Length + 4 bytes data
+    }
+    if (m_condensedCountryString)
+    {
+        size += 2 + 2;
+    }
+    if (m_candidatePreference)
+    {
+        size += 2 + 1;
+    }
+    if (m_bssTerminationDuration)
+    {
+        size += 2 + 10;
+    }
+    if (m_vendorSpecific)
+    {
+        size += 2 + m_vendorSpecific->size();
+    }
+    return size;
 }
 
 void
@@ -306,7 +387,43 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     start.WriteU8(m_operatingClass);
     start.WriteU8(m_channelNumber);
     start.WriteU8(m_phyType);
-    // TODO: serialize optional subelements here
+
+    if (m_tsfInfo)
+    {
+        start.WriteU8(1); // subelement ID
+        start.WriteU8(4); // length
+        start.WriteU16(m_tsfInfo->tsfOffset);
+        start.WriteU16(m_tsfInfo->beaconInterval);
+    }
+    if (m_condensedCountryString)
+    {
+        start.WriteU8(2);
+        start.WriteU8(2);
+        start.WriteU8(static_cast<uint8_t>((*m_condensedCountryString)[0]));
+        start.WriteU8(static_cast<uint8_t>((*m_condensedCountryString)[1]));
+    }
+    if (m_candidatePreference)
+    {
+        start.WriteU8(3);
+        start.WriteU8(1);
+        start.WriteU8(*m_candidatePreference);
+    }
+    if (m_bssTerminationDuration)
+    {
+        start.WriteU8(4);
+        start.WriteU8(10);
+        start.WriteU64(m_bssTerminationDuration->terminationTsf);
+        start.WriteU16(m_bssTerminationDuration->duration);
+    }
+    if (m_vendorSpecific)
+    {
+        start.WriteU8(221);
+        start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->size()));
+        for (auto byte : *m_vendorSpecific)
+        {
+            start.WriteU8(byte);
+        }
+    }
 }
 
 uint16_t
@@ -318,7 +435,57 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
     m_operatingClass = i.ReadU8();
     m_channelNumber = i.ReadU8();
     m_phyType = i.ReadU8();
-    // TODO: deserialize optional subelements from remaining bytes (length - 13)
+
+    uint16_t bytesRead = 13;
+    while (bytesRead < length)
+    {
+        uint8_t subelemId = i.ReadU8();
+        uint8_t subelemLen = i.ReadU8();
+        bytesRead += 2;
+
+        switch (subelemId)
+        {
+        case 1: { // TSF Information
+            uint16_t tsfOffset = i.ReadU16();
+            uint16_t beaconInterval = i.ReadU16();
+            m_tsfInfo = TsfInformation{tsfOffset, beaconInterval};
+            break;
+        }
+        case 2: { // Condensed Country String
+            char c1 = static_cast<char>(i.ReadU8());
+            char c2 = static_cast<char>(i.ReadU8());
+            m_condensedCountryString = std::array<char, 2>{c1, c2};
+            break;
+        }
+        case 3: { // BSS Transition Candidate Preference
+            m_candidatePreference = i.ReadU8();
+            break;
+        }
+        case 4: { // BSS Termination Duration
+            uint64_t tsf = i.ReadU64();
+            uint16_t duration = i.ReadU16();
+            m_bssTerminationDuration = BssTerminationDuration{tsf, duration};
+            break;
+        }
+        case 221: { // Vendor Specific
+            std::vector<uint8_t> data(subelemLen);
+            for (uint8_t j = 0; j < subelemLen; j++)
+            {
+                data[j] = i.ReadU8();
+            }
+            m_vendorSpecific = std::move(data);
+            break;
+        }
+        default: // Unknown subelement, skip
+            for (uint8_t j = 0; j < subelemLen; j++)
+            {
+                i.ReadU8();
+            }
+            break;
+        }
+        bytesRead += subelemLen;
+    }
+
     return i.GetDistanceFrom(start);
 }
 
@@ -327,7 +494,30 @@ NeighborReportElement::Print(std::ostream& os) const
 {
     os << "NeighborReport=[BSSID=" << m_bssid << ", BSSIDInfo=0x" << std::hex << m_bssidInfo
        << std::dec << ", OpClass=" << +m_operatingClass << ", Channel=" << +m_channelNumber
-       << ", PhyType=" << +m_phyType << "]";
+       << ", PhyType=" << +m_phyType;
+    if (m_tsfInfo)
+    {
+        os << ", TSF(offset=" << m_tsfInfo->tsfOffset << ", interval=" << m_tsfInfo->beaconInterval
+           << ")";
+    }
+    if (m_condensedCountryString)
+    {
+        os << ", Country=" << (*m_condensedCountryString)[0] << (*m_condensedCountryString)[1];
+    }
+    if (m_candidatePreference)
+    {
+        os << ", CandPref=" << +(*m_candidatePreference);
+    }
+    if (m_bssTerminationDuration)
+    {
+        os << ", BssTermination(tsf=" << m_bssTerminationDuration->terminationTsf
+           << ", dur=" << m_bssTerminationDuration->duration << ")";
+    }
+    if (m_vendorSpecific)
+    {
+        os << ", VendorSpecific(" << m_vendorSpecific->size() << " bytes)";
+    }
+    os << "]";
 }
 
 } // namespace ns3

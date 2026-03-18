@@ -13,6 +13,10 @@
 
 #include "ns3/mac48-address.h"
 
+#include <array>
+#include <optional>
+#include <vector>
+
 namespace ns3
 {
 
@@ -27,15 +31,17 @@ namespace ns3
  * including its BSSID, operating parameters, and capabilities. It is used
  * in Neighbor Report Response frames (802.11k Radio Resource Management).
  *
- * @todo Add support for Optional Subelements (IEEE 802.11-2020 Section 9.4.2.37):
+ * Supports optional subelements (IEEE 802.11-2020 Table 9-150):
  *   - TSF Information (ID 1)
  *   - Condensed Country String (ID 2)
  *   - BSS Transition Candidate Preference (ID 3)
  *   - BSS Termination Duration (ID 4)
+ *   - Vendor Specific (ID 221)
+ *
+ * @todo Add support for remaining subelements:
  *   - Measurement Pilot Transmission Information (ID 66)
  *   - RRM Enabled Capabilities (ID 70)
  *   - Multiple BSSID (ID 71)
- *   - Vendor Specific (ID 221)
  */
 class NeighborReportElement : public WifiInformationElement
 {
@@ -271,6 +277,82 @@ class NeighborReportElement : public WifiInformationElement
      */
     uint8_t GetPhyType() const;
 
+    /**
+     * @brief TSF Information subelement data (IEEE 802.11-2020 Table 9-150, ID 1)
+     */
+    struct TsfInformation
+    {
+        uint16_t tsfOffset;      //!< TSF Offset (2 octets)
+        uint16_t beaconInterval; //!< Beacon Interval (2 octets)
+    };
+
+    /**
+     * @brief BSS Termination Duration subelement data (IEEE 802.11-2020 Table 9-150, ID 4)
+     */
+    struct BssTerminationDuration
+    {
+        uint64_t terminationTsf; //!< BSS Termination TSF (8 octets)
+        uint16_t duration;       //!< Duration (2 octets)
+    };
+
+    /**
+     * @brief Set the TSF Information subelement (ID 1).
+     * @param tsfOffset the TSF offset
+     * @param beaconInterval the beacon interval
+     */
+    void SetTsfInformation(uint16_t tsfOffset, uint16_t beaconInterval);
+    /**
+     * @brief Get the TSF Information subelement.
+     * @return the TSF Information if present
+     */
+    std::optional<TsfInformation> GetTsfInformation() const;
+
+    /**
+     * @brief Set the Condensed Country String subelement (ID 2).
+     * @param c1 first country character
+     * @param c2 second country character
+     */
+    void SetCondensedCountryString(char c1, char c2);
+    /**
+     * @brief Get the Condensed Country String subelement.
+     * @return the two-character country string if present
+     */
+    std::optional<std::array<char, 2>> GetCondensedCountryString() const;
+
+    /**
+     * @brief Set the BSS Transition Candidate Preference subelement (ID 3).
+     * @param preference the preference value (0-255)
+     */
+    void SetCandidatePreference(uint8_t preference);
+    /**
+     * @brief Get the BSS Transition Candidate Preference subelement.
+     * @return the preference value if present
+     */
+    std::optional<uint8_t> GetCandidatePreference() const;
+
+    /**
+     * @brief Set the BSS Termination Duration subelement (ID 4).
+     * @param terminationTsf the BSS Termination TSF
+     * @param duration the duration in minutes
+     */
+    void SetBssTerminationDuration(uint64_t terminationTsf, uint16_t duration);
+    /**
+     * @brief Get the BSS Termination Duration subelement.
+     * @return the BSS Termination Duration if present
+     */
+    std::optional<BssTerminationDuration> GetBssTerminationDuration() const;
+
+    /**
+     * @brief Set the Vendor Specific subelement (ID 221).
+     * @param data the vendor-specific data
+     */
+    void SetVendorSpecificData(std::vector<uint8_t> data);
+    /**
+     * @brief Get the Vendor Specific subelement.
+     * @return the vendor-specific data if present
+     */
+    const std::optional<std::vector<uint8_t>>& GetVendorSpecificData() const;
+
   private:
     uint16_t GetInformationFieldSize() const override;
     void SerializeInformationField(Buffer::Iterator start) const override;
@@ -281,6 +363,14 @@ class NeighborReportElement : public WifiInformationElement
     uint8_t m_operatingClass; //!< Operating Class (1 octet)
     uint8_t m_channelNumber;  //!< Channel Number (1 octet)
     uint8_t m_phyType;        //!< PHY Type (1 octet)
+
+    std::optional<TsfInformation> m_tsfInfo; //!< TSF Information (ID 1)
+    std::optional<std::array<char, 2>>
+        m_condensedCountryString;                 //!< Condensed Country String (ID 2)
+    std::optional<uint8_t> m_candidatePreference; //!< BSS Transition Candidate Preference (ID 3)
+    std::optional<BssTerminationDuration>
+        m_bssTerminationDuration;                         //!< BSS Termination Duration (ID 4)
+    std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific (ID 221)
 };
 
 } // namespace ns3
