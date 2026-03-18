@@ -126,7 +126,7 @@ LinkMeasurementReportHeader::Print(std::ostream& os) const
 uint32_t
 LinkMeasurementReportHeader::GetSerializedSize() const
 {
-    return 9;
+    return 1 + m_tpcReport.GetSerializedSize() + 4;
 }
 
 void
@@ -134,8 +134,7 @@ LinkMeasurementReportHeader::Serialize(Buffer::Iterator start) const
 {
     Buffer::Iterator i = start;
     i.WriteU8(m_dialogToken);
-    m_tpcReport.Serialize(i);
-    i.Next(4);
+    i = m_tpcReport.Serialize(i);
     i.WriteU8(m_rxAntennaId);
     i.WriteU8(m_txAntennaId);
     i.WriteU8(m_rcpi);

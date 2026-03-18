@@ -25,13 +25,13 @@ namespace ns3
  * @ingroup wifi
  *
  * This class implements the Neighbor Report element as defined in
- * IEEE 802.11-2020 Section 9.4.2.37.
+ * IEEE 802.11-2024 Section 9.4.2.35.
  *
  * The Neighbor Report element contains information about a neighboring AP,
  * including its BSSID, operating parameters, and capabilities. It is used
  * in Neighbor Report Response frames (802.11k Radio Resource Management).
  *
- * Supports optional subelements (IEEE 802.11-2020 Table 9-150):
+ * Supports optional subelements (IEEE 802.11-2024 Table 9-212):
  *   - TSF Information (ID 1)
  *   - Condensed Country String (ID 2)
  *   - BSS Transition Candidate Preference (ID 3)
@@ -67,8 +67,8 @@ class NeighborReportElement : public WifiInformationElement
     /**
      * Set the BSSID Information field.
      * This 4-octet field contains capability and reachability
-     * information about the neighboring AP (see IEEE 802.11-2020
-     * Figure 9-331).
+     * information about the neighboring AP (see IEEE 802.11-2024
+     * Figure 9-417).
      *
      * @param info the BSSID Information field value
      */
@@ -82,7 +82,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the AP Reachability sub-field (bits 0-1) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param reachability the AP Reachability value (0-3)
      */
@@ -96,7 +96,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the Security sub-field (bit 2) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param security true to set, false to clear
      */
@@ -110,7 +110,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the Key Scope sub-field (bit 3) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param keyScope true to set, false to clear
      */
@@ -124,7 +124,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the Spectrum Management sub-field (bit 4) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param spectrumMgmt true to set, false to clear
      */
@@ -138,7 +138,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the QoS sub-field (bit 5) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param qos true to set, false to clear
      */
@@ -152,7 +152,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the APSD sub-field (bit 6) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param apsd true to set, false to clear
      */
@@ -166,7 +166,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the Radio Measurement sub-field (bit 7) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param radioMeasurement true to set, false to clear
      */
@@ -179,36 +179,8 @@ class NeighborReportElement : public WifiInformationElement
     bool GetRadioMeasurement() const;
 
     /**
-     * @brief Set the Delayed Block Ack sub-field (bit 8) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
-     *
-     * @param delayedBa true to set, false to clear
-     */
-    void SetDelayedBlockAck(bool delayedBa);
-    /**
-     * @brief Get the Delayed Block Ack sub-field (bit 8) of the BSSID Information field.
-     *
-     * @return the Delayed Block Ack sub-field value
-     */
-    bool GetDelayedBlockAck() const;
-
-    /**
-     * @brief Set the Immediate Block Ack sub-field (bit 9) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
-     *
-     * @param immediateBa true to set, false to clear
-     */
-    void SetImmediateBlockAck(bool immediateBa);
-    /**
-     * @brief Get the Immediate Block Ack sub-field (bit 9) of the BSSID Information field.
-     *
-     * @return the Immediate Block Ack sub-field value
-     */
-    bool GetImmediateBlockAck() const;
-
-    /**
      * @brief Set the Mobility Domain sub-field (bit 10) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param mobilityDomain true to set, false to clear
      */
@@ -222,7 +194,7 @@ class NeighborReportElement : public WifiInformationElement
 
     /**
      * @brief Set the High Throughput sub-field (bit 11) of the BSSID Information field.
-     * See IEEE 802.11-2020 Figure 9-331.
+     * See IEEE 802.11-2024 Figure 9-417.
      *
      * @param ht true to set, false to clear
      */
@@ -235,9 +207,153 @@ class NeighborReportElement : public WifiInformationElement
     bool GetHighThroughput() const;
 
     /**
+     * @brief Set the Very High Throughput sub-field (bit 12) of the BSSID Information field.
+     * See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param vht true to set, false to clear
+     */
+    void SetVeryHighThroughput(bool vht);
+    /**
+     * @brief Get the Very High Throughput sub-field (bit 12) of the BSSID Information field.
+     *
+     * @return the Very High Throughput sub-field value
+     */
+    bool GetVeryHighThroughput() const;
+
+    /**
+     * @brief Set the FTM sub-field (bit 13) of the BSSID Information field.
+     * See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param ftm true to set, false to clear
+     */
+    void SetFtm(bool ftm);
+    /**
+     * @brief Get the FTM sub-field (bit 13) of the BSSID Information field.
+     *
+     * @return the FTM sub-field value
+     */
+    bool GetFtm() const;
+
+    /**
+     * @brief Set the High Efficiency sub-field (bit 14) of the BSSID Information field.
+     * See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param he true to set, false to clear
+     */
+    void SetHighEfficiency(bool he);
+    /**
+     * @brief Get the High Efficiency sub-field (bit 14) of the BSSID Information field.
+     *
+     * @return the High Efficiency sub-field value
+     */
+    bool GetHighEfficiency() const;
+
+    /**
+     * @brief Set the ER BSS sub-field (bit 15) of the BSSID Information field.
+     * See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param erBss true to set, false to clear
+     */
+    void SetErBss(bool erBss);
+    /**
+     * @brief Get the ER BSS sub-field (bit 15) of the BSSID Information field.
+     *
+     * @return the ER BSS sub-field value
+     */
+    bool GetErBss() const;
+
+    /**
+     * @brief Set the Colocated AP sub-field (bit 16) of the BSSID Information field.
+     * See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param colocatedAp true to set, false to clear
+     */
+    void SetColocatedAp(bool colocatedAp);
+    /**
+     * @brief Get the Colocated AP sub-field (bit 16) of the BSSID Information field.
+     *
+     * @return the Colocated AP sub-field value
+     */
+    bool GetColocatedAp() const;
+
+    /**
+     * @brief Set the Unsolicited Probe Responses Active sub-field (bit 17) of the BSSID
+     * Information field. See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param active true to set, false to clear
+     */
+    void SetUnsolicitedProbeResponsesActive(bool active);
+    /**
+     * @brief Get the Unsolicited Probe Responses Active sub-field (bit 17) of the BSSID
+     * Information field.
+     *
+     * @return the Unsolicited Probe Responses Active sub-field value
+     */
+    bool GetUnsolicitedProbeResponsesActive() const;
+
+    /**
+     * @brief Set the Member of ESS with 2.4/5 GHz Colocated AP sub-field (bit 18) of the
+     * BSSID Information field. See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param member true to set, false to clear
+     */
+    void SetMemberOfEssWith2gOr5gColocatedAp(bool member);
+    /**
+     * @brief Get the Member of ESS with 2.4/5 GHz Colocated AP sub-field (bit 18) of the
+     * BSSID Information field.
+     *
+     * @return the Member of ESS with 2.4/5 GHz Colocated AP sub-field value
+     */
+    bool GetMemberOfEssWith2gOr5gColocatedAp() const;
+
+    /**
+     * @brief Set the OCT Supported with Reporting AP sub-field (bit 19) of the BSSID
+     * Information field. See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param oct true to set, false to clear
+     */
+    void SetOctSupportedWithReportingAp(bool oct);
+    /**
+     * @brief Get the OCT Supported with Reporting AP sub-field (bit 19) of the BSSID
+     * Information field.
+     *
+     * @return the OCT Supported with Reporting AP sub-field value
+     */
+    bool GetOctSupportedWithReportingAp() const;
+
+    /**
+     * @brief Set the Colocated with 6 GHz AP sub-field (bit 20) of the BSSID Information
+     * field. See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param colocated6g true to set, false to clear
+     */
+    void SetColocatedWith6gAp(bool colocated6g);
+    /**
+     * @brief Get the Colocated with 6 GHz AP sub-field (bit 20) of the BSSID Information
+     * field.
+     *
+     * @return the Colocated with 6 GHz AP sub-field value
+     */
+    bool GetColocatedWith6gAp() const;
+
+    /**
+     * @brief Set the DMG Positioning sub-field (bit 22) of the BSSID Information field.
+     * See IEEE 802.11-2024 Figure 9-417.
+     *
+     * @param dmg true to set, false to clear
+     */
+    void SetDmgPositioning(bool dmg);
+    /**
+     * @brief Get the DMG Positioning sub-field (bit 22) of the BSSID Information field.
+     *
+     * @return the DMG Positioning sub-field value
+     */
+    bool GetDmgPositioning() const;
+
+    /**
      * Set the Operating Class field.
      * Indicates the operating class of the neighboring AP
-     * as defined in Annex E of IEEE 802.11-2020.
+     * as defined in Annex E of IEEE 802.11-2024.
      *
      * @param operatingClass the operating class
      */
@@ -265,7 +381,7 @@ class NeighborReportElement : public WifiInformationElement
     /**
      * Set the PHY Type field.
      * Indicates the PHY type of the neighboring AP
-     * (see IEEE 802.11-2020 Table 9-176).
+     * (see IEEE 802.11-2024 Table 9-176).
      *
      * @param phyType the PHY type
      */
@@ -278,7 +394,7 @@ class NeighborReportElement : public WifiInformationElement
     uint8_t GetPhyType() const;
 
     /**
-     * @brief TSF Information subelement data (IEEE 802.11-2020 Table 9-150, ID 1)
+     * @brief TSF Information subelement data (IEEE 802.11-2024 Table 9-212, ID 1)
      */
     struct TsfInformation
     {
@@ -287,7 +403,7 @@ class NeighborReportElement : public WifiInformationElement
     };
 
     /**
-     * @brief BSS Termination Duration subelement data (IEEE 802.11-2020 Table 9-150, ID 4)
+     * @brief BSS Termination Duration subelement data (IEEE 802.11-2024 Table 9-212, ID 4)
      */
     struct BssTerminationDuration
     {

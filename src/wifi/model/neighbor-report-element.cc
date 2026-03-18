@@ -9,9 +9,12 @@
 #include "neighbor-report-element.h"
 
 #include "ns3/address-utils.h"
+#include "ns3/log.h"
 
 namespace ns3
 {
+
+NS_LOG_COMPONENT_DEFINE("NeighborReportElement");
 
 NeighborReportElement::NeighborReportElement()
     : m_bssid(Mac48Address()),
@@ -180,44 +183,6 @@ NeighborReportElement::GetRadioMeasurement() const
 }
 
 void
-NeighborReportElement::SetDelayedBlockAck(bool delayedBa)
-{
-    if (delayedBa)
-    {
-        m_bssidInfo |= (1 << 8);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 8);
-    }
-}
-
-bool
-NeighborReportElement::GetDelayedBlockAck() const
-{
-    return (m_bssidInfo & (1 << 8)) != 0;
-}
-
-void
-NeighborReportElement::SetImmediateBlockAck(bool immediateBa)
-{
-    if (immediateBa)
-    {
-        m_bssidInfo |= (1 << 9);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 9);
-    }
-}
-
-bool
-NeighborReportElement::GetImmediateBlockAck() const
-{
-    return (m_bssidInfo & (1 << 9)) != 0;
-}
-
-void
 NeighborReportElement::SetMobilityDomain(bool mobilityDomain)
 {
     if (mobilityDomain)
@@ -253,6 +218,196 @@ bool
 NeighborReportElement::GetHighThroughput() const
 {
     return (m_bssidInfo & (1 << 11)) != 0;
+}
+
+void
+NeighborReportElement::SetVeryHighThroughput(bool vht)
+{
+    if (vht)
+    {
+        m_bssidInfo |= (1 << 12);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 12);
+    }
+}
+
+bool
+NeighborReportElement::GetVeryHighThroughput() const
+{
+    return (m_bssidInfo & (1 << 12)) != 0;
+}
+
+void
+NeighborReportElement::SetFtm(bool ftm)
+{
+    if (ftm)
+    {
+        m_bssidInfo |= (1 << 13);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 13);
+    }
+}
+
+bool
+NeighborReportElement::GetFtm() const
+{
+    return (m_bssidInfo & (1 << 13)) != 0;
+}
+
+void
+NeighborReportElement::SetHighEfficiency(bool he)
+{
+    if (he)
+    {
+        m_bssidInfo |= (1 << 14);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 14);
+    }
+}
+
+bool
+NeighborReportElement::GetHighEfficiency() const
+{
+    return (m_bssidInfo & (1 << 14)) != 0;
+}
+
+void
+NeighborReportElement::SetErBss(bool erBss)
+{
+    if (erBss)
+    {
+        m_bssidInfo |= (1 << 15);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 15);
+    }
+}
+
+bool
+NeighborReportElement::GetErBss() const
+{
+    return (m_bssidInfo & (1 << 15)) != 0;
+}
+
+void
+NeighborReportElement::SetColocatedAp(bool colocatedAp)
+{
+    if (colocatedAp)
+    {
+        m_bssidInfo |= (1 << 16);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 16);
+    }
+}
+
+bool
+NeighborReportElement::GetColocatedAp() const
+{
+    return (m_bssidInfo & (1 << 16)) != 0;
+}
+
+void
+NeighborReportElement::SetUnsolicitedProbeResponsesActive(bool active)
+{
+    if (active)
+    {
+        m_bssidInfo |= (1 << 17);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 17);
+    }
+}
+
+bool
+NeighborReportElement::GetUnsolicitedProbeResponsesActive() const
+{
+    return (m_bssidInfo & (1 << 17)) != 0;
+}
+
+void
+NeighborReportElement::SetMemberOfEssWith2gOr5gColocatedAp(bool member)
+{
+    if (member)
+    {
+        m_bssidInfo |= (1 << 18);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 18);
+    }
+}
+
+bool
+NeighborReportElement::GetMemberOfEssWith2gOr5gColocatedAp() const
+{
+    return (m_bssidInfo & (1 << 18)) != 0;
+}
+
+void
+NeighborReportElement::SetOctSupportedWithReportingAp(bool oct)
+{
+    if (oct)
+    {
+        m_bssidInfo |= (1 << 19);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 19);
+    }
+}
+
+bool
+NeighborReportElement::GetOctSupportedWithReportingAp() const
+{
+    return (m_bssidInfo & (1 << 19)) != 0;
+}
+
+void
+NeighborReportElement::SetColocatedWith6gAp(bool colocated6g)
+{
+    if (colocated6g)
+    {
+        m_bssidInfo |= (1 << 20);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 20);
+    }
+}
+
+bool
+NeighborReportElement::GetColocatedWith6gAp() const
+{
+    return (m_bssidInfo & (1 << 20)) != 0;
+}
+
+void
+NeighborReportElement::SetDmgPositioning(bool dmg)
+{
+    if (dmg)
+    {
+        m_bssidInfo |= (1 << 22);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 22);
+    }
+}
+
+bool
+NeighborReportElement::GetDmgPositioning() const
+{
+    return (m_bssidInfo & (1 << 22)) != 0;
 }
 
 void
@@ -342,6 +497,8 @@ NeighborReportElement::GetBssTerminationDuration() const
 void
 NeighborReportElement::SetVendorSpecificData(std::vector<uint8_t> data)
 {
+    NS_ASSERT_MSG(data.size() <= 255,
+                  "Vendor specific data exceeds subelement length field (max 255 bytes)");
     m_vendorSpecific = std::move(data);
 }
 

@@ -24,7 +24,7 @@ NS_LOG_COMPONENT_DEFINE("WifiRrmInfoElemsTest");
  * @ingroup tests
  *
  * @brief Test serialization and deserialization of the Neighbor Report element
- * (IEEE 802.11-2020 Section 9.4.2.37)
+ * (IEEE 802.11-2024 Section 9.4.2.35)
  */
 class NeighborReportElementTest : public HeaderSerializationTestCase
 {
@@ -70,7 +70,7 @@ NeighborReportElementTest::DoRun()
  * @ingroup tests
  *
  * @brief Test BSSID Information bit-field accessors of the Neighbor Report element
- * (IEEE 802.11-2020 Figure 9-331)
+ * (IEEE 802.11-2024 Figure 9-417)
  */
 class BssidInfoFieldTest : public TestCase
 {
@@ -125,26 +125,63 @@ BssidInfoFieldTest::DoRun()
         NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 7), "Radio Measurement bit");
 
         nre.SetBssidInfo(0);
-        nre.SetDelayedBlockAck(true);
-        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 8), "Delayed Block Ack bit");
-
-        nre.SetBssidInfo(0);
-        nre.SetImmediateBlockAck(true);
-        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 9), "Immediate Block Ack bit");
-
-        nre.SetBssidInfo(0);
         nre.SetMobilityDomain(true);
         NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 10), "Mobility Domain bit");
 
         nre.SetBssidInfo(0);
         nre.SetHighThroughput(true);
         NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 11), "High Throughput bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetVeryHighThroughput(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 12), "Very High Throughput bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetFtm(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 13), "FTM bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetHighEfficiency(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 14), "High Efficiency bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetErBss(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 15), "ER BSS bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetColocatedAp(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 16), "Colocated AP bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetUnsolicitedProbeResponsesActive(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(),
+                              (1 << 17),
+                              "Unsolicited Probe Responses Active bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetMemberOfEssWith2gOr5gColocatedAp(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(),
+                              (1 << 18),
+                              "Member of ESS with 2.4/5 GHz Colocated AP bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetOctSupportedWithReportingAp(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 19), "OCT Supported bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetColocatedWith6gAp(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 20), "Colocated with 6 GHz AP bit");
+
+        nre.SetBssidInfo(0);
+        nre.SetDmgPositioning(true);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(), (1 << 22), "DMG Positioning bit");
     }
 
     // Test 2: Raw value to individual getters
     {
         NeighborReportElement nre;
-        nre.SetBssidInfo(0x00000FFF); // bits 0-11 all set
+        // Bits 0-7, 10-20, 22 all set (skip reserved B8-B9, B21)
+        nre.SetBssidInfo(0x005FFCFF);
 
         NS_TEST_EXPECT_MSG_EQ(nre.GetApReachability(), 3, "AP Reachability from raw");
         NS_TEST_EXPECT_MSG_EQ(nre.GetSecurity(), true, "Security from raw");
@@ -153,10 +190,22 @@ BssidInfoFieldTest::DoRun()
         NS_TEST_EXPECT_MSG_EQ(nre.GetQos(), true, "QoS from raw");
         NS_TEST_EXPECT_MSG_EQ(nre.GetApsd(), true, "APSD from raw");
         NS_TEST_EXPECT_MSG_EQ(nre.GetRadioMeasurement(), true, "Radio Measurement from raw");
-        NS_TEST_EXPECT_MSG_EQ(nre.GetDelayedBlockAck(), true, "Delayed Block Ack from raw");
-        NS_TEST_EXPECT_MSG_EQ(nre.GetImmediateBlockAck(), true, "Immediate Block Ack from raw");
         NS_TEST_EXPECT_MSG_EQ(nre.GetMobilityDomain(), true, "Mobility Domain from raw");
         NS_TEST_EXPECT_MSG_EQ(nre.GetHighThroughput(), true, "High Throughput from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetVeryHighThroughput(), true, "VHT from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetFtm(), true, "FTM from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetHighEfficiency(), true, "HE from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetErBss(), true, "ER BSS from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetColocatedAp(), true, "Colocated AP from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetUnsolicitedProbeResponsesActive(),
+                              true,
+                              "Unsolicited Probe Responses from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetMemberOfEssWith2gOr5gColocatedAp(),
+                              true,
+                              "Member of ESS from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetOctSupportedWithReportingAp(), true, "OCT Supported from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetColocatedWith6gAp(), true, "Colocated 6 GHz from raw");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetDmgPositioning(), true, "DMG Positioning from raw");
     }
 
     // Test 3: AP Reachability 2-bit edge cases
@@ -174,24 +223,24 @@ BssidInfoFieldTest::DoRun()
     // Test 4: Clearing boolean fields
     {
         NeighborReportElement nre;
-        nre.SetBssidInfo(0x00000FFF);
+        nre.SetBssidInfo(0x005FFCFF);
 
         nre.SetSecurity(false);
         NS_TEST_EXPECT_MSG_EQ(nre.GetSecurity(), false, "Security cleared");
         NS_TEST_EXPECT_MSG_EQ(nre.GetKeyScope(), true, "Key Scope unaffected");
 
-        nre.SetHighThroughput(false);
-        NS_TEST_EXPECT_MSG_EQ(nre.GetHighThroughput(), false, "HT cleared");
-        NS_TEST_EXPECT_MSG_EQ(nre.GetMobilityDomain(), true, "Mobility Domain unaffected");
+        nre.SetVeryHighThroughput(false);
+        NS_TEST_EXPECT_MSG_EQ(nre.GetVeryHighThroughput(), false, "VHT cleared");
+        NS_TEST_EXPECT_MSG_EQ(nre.GetColocatedAp(), true, "Colocated AP unaffected");
     }
 
-    // Test 5: Setting fields preserves reserved bits
+    // Test 5: Setting fields preserves reserved bits (B8-B9, B21, B23-B31)
     {
         NeighborReportElement nre;
-        nre.SetBssidInfo(0xFFFFF000); // reserved bits set
+        nre.SetBssidInfo(0xFF800300); // reserved bits set
         nre.SetSecurity(true);
         NS_TEST_EXPECT_MSG_EQ(nre.GetBssidInfo(),
-                              (0xFFFFF000 | (1 << 2)),
+                              (0xFF800300 | (1 << 2)),
                               "Reserved bits preserved");
     }
 
@@ -203,8 +252,9 @@ BssidInfoFieldTest::DoRun()
         nre.SetSecurity(true);
         nre.SetQos(true);
         nre.SetRadioMeasurement(true);
-        nre.SetImmediateBlockAck(true);
         nre.SetHighThroughput(true);
+        nre.SetVeryHighThroughput(true);
+        nre.SetFtm(true);
         nre.SetOperatingClass(81);
         nre.SetChannelNumber(6);
         nre.SetPhyType(7);
@@ -228,12 +278,11 @@ BssidInfoFieldTest::DoRun()
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetRadioMeasurement(),
                               true,
                               "Radio Meas survives serde");
-        NS_TEST_EXPECT_MSG_EQ(deserialized.GetImmediateBlockAck(), true, "Imm BA survives serde");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetHighThroughput(), true, "HT survives serde");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetVeryHighThroughput(), true, "VHT survives serde");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetFtm(), true, "FTM survives serde");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetKeyScope(), false, "Key Scope false survives serde");
-        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDelayedBlockAck(),
-                              false,
-                              "Delayed BA false survives serde");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetHighEfficiency(), false, "HE false survives serde");
     }
 }
 
@@ -242,7 +291,7 @@ BssidInfoFieldTest::DoRun()
  * @ingroup tests
  *
  * @brief Test optional subelements of the Neighbor Report element
- * (IEEE 802.11-2020 Table 9-150)
+ * (IEEE 802.11-2024 Table 9-212)
  */
 class NeighborReportSubelementsTest : public HeaderSerializationTestCase
 {
