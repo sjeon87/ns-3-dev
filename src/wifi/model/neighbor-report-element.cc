@@ -521,6 +521,54 @@ NeighborReportElement::GetWideBandwidthChannel() const
 }
 
 void
+NeighborReportElement::SetHtCapabilities(const HtCapabilities& htCapabilities)
+{
+    m_htCapabilities = htCapabilities;
+}
+
+std::optional<HtCapabilities>
+NeighborReportElement::GetHtCapabilities() const
+{
+    return m_htCapabilities;
+}
+
+void
+NeighborReportElement::SetHtOperation(const HtOperation& htOperation)
+{
+    m_htOperation = htOperation;
+}
+
+std::optional<HtOperation>
+NeighborReportElement::GetHtOperation() const
+{
+    return m_htOperation;
+}
+
+void
+NeighborReportElement::SetVhtCapabilities(const VhtCapabilities& vhtCapabilities)
+{
+    m_vhtCapabilities = vhtCapabilities;
+}
+
+std::optional<VhtCapabilities>
+NeighborReportElement::GetVhtCapabilities() const
+{
+    return m_vhtCapabilities;
+}
+
+void
+NeighborReportElement::SetVhtOperation(const VhtOperation& vhtOperation)
+{
+    m_vhtOperation = vhtOperation;
+}
+
+std::optional<VhtOperation>
+NeighborReportElement::GetVhtOperation() const
+{
+    return m_vhtOperation;
+}
+
+void
 NeighborReportElement::SetVendorSpecificData(std::vector<uint8_t> data)
 {
     NS_ASSERT_MSG(data.size() <= 255,
@@ -562,6 +610,22 @@ NeighborReportElement::GetInformationFieldSize() const
     if (m_wideBandwidth)
     {
         size += 2 + 3; // ID + Length + ChWidth(1) + Seg0(1) + Seg1(1)
+    }
+    if (m_htCapabilities)
+    {
+        size += m_htCapabilities->GetSerializedSize();
+    }
+    if (m_htOperation)
+    {
+        size += m_htOperation->GetSerializedSize();
+    }
+    if (m_vhtCapabilities)
+    {
+        size += m_vhtCapabilities->GetSerializedSize();
+    }
+    if (m_vhtOperation)
+    {
+        size += m_vhtOperation->GetSerializedSize();
     }
     if (m_vendorSpecific)
     {
@@ -622,6 +686,22 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
         start.WriteU8(m_wideBandwidth->centerFreqSegment0);
         start.WriteU8(m_wideBandwidth->centerFreqSegment1);
     }
+    if (m_htCapabilities)
+    {
+        start = m_htCapabilities->Serialize(start);
+    }
+    if (m_htOperation)
+    {
+        start = m_htOperation->Serialize(start);
+    }
+    if (m_vhtCapabilities)
+    {
+        start = m_vhtCapabilities->Serialize(start);
+    }
+    if (m_vhtOperation)
+    {
+        start = m_vhtOperation->Serialize(start);
+    }
     if (m_vendorSpecific)
     {
         start.WriteU8(221);
@@ -646,7 +726,51 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
     uint16_t bytesRead = 13;
     while (bytesRead < length)
     {
-        uint8_t subelemId = i.ReadU8();
+        uint8_t subelemId = i.PeekU8();
+
+        // IE-format subelements: subelement ID == IE Element ID,
+        // so DeserializeIfPresent can parse them directly.
+        bool ieHandled = true;
+        Buffer::Iterator before = i;
+        switch (subelemId)
+        {
+        case 45: { // HT Capabilities
+            HtCapabilities htCap;
+            i = htCap.DeserializeIfPresent(i);
+            m_htCapabilities = htCap;
+            break;
+        }
+        case 61: { // HT Operation
+            HtOperation htOp;
+            i = htOp.DeserializeIfPresent(i);
+            m_htOperation = htOp;
+            break;
+        }
+        case 191: { // VHT Capabilities
+            VhtCapabilities vhtCap;
+            i = vhtCap.DeserializeIfPresent(i);
+            m_vhtCapabilities = vhtCap;
+            break;
+        }
+        case 192: { // VHT Operation
+            VhtOperation vhtOp;
+            i = vhtOp.DeserializeIfPresent(i);
+            m_vhtOperation = vhtOp;
+            break;
+        }
+        default:
+            ieHandled = false;
+            break;
+        }
+
+        if (ieHandled)
+        {
+            bytesRead += i.GetDistanceFrom(before);
+            continue;
+        }
+
+        // Manual subelements: read ID + length + data
+        subelemId = i.ReadU8();
         uint8_t subelemLen = i.ReadU8();
         bytesRead += 2;
 
@@ -744,6 +868,22 @@ NeighborReportElement::Print(std::ostream& os) const
         os << ", WBC(width=" << +m_wideBandwidth->channelWidth
            << ", seg0=" << +m_wideBandwidth->centerFreqSegment0
            << ", seg1=" << +m_wideBandwidth->centerFreqSegment1 << ")";
+    }
+    if (m_htCapabilities)
+    {
+        os << ", HtCapabilities";
+    }
+    if (m_htOperation)
+    {
+        os << ", HtOperation";
+    }
+    if (m_vhtCapabilities)
+    {
+        os << ", VhtCapabilities";
+    }
+    if (m_vhtOperation)
+    {
+        os << ", VhtOperation";
     }
     if (m_vendorSpecific)
     {

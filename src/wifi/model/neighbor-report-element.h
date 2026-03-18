@@ -9,6 +9,10 @@
 #ifndef NEIGHBOR_REPORT_ELEMENT_H
 #define NEIGHBOR_REPORT_ELEMENT_H
 
+#include "ht/ht-capabilities.h"
+#include "ht/ht-operation.h"
+#include "vht/vht-capabilities.h"
+#include "vht/vht-operation.h"
 #include "wifi-information-element.h"
 
 #include "ns3/mac48-address.h"
@@ -507,6 +511,50 @@ class NeighborReportElement : public WifiInformationElement
     std::optional<WideBandwidthChannel> GetWideBandwidthChannel() const;
 
     /**
+     * @brief Set the HT Capabilities subelement (ID 45).
+     * @param htCapabilities the HT Capabilities element
+     */
+    void SetHtCapabilities(const HtCapabilities& htCapabilities);
+    /**
+     * @brief Get the HT Capabilities subelement.
+     * @return the HT Capabilities if present
+     */
+    std::optional<HtCapabilities> GetHtCapabilities() const;
+
+    /**
+     * @brief Set the HT Operation subelement (ID 61).
+     * @param htOperation the HT Operation element
+     */
+    void SetHtOperation(const HtOperation& htOperation);
+    /**
+     * @brief Get the HT Operation subelement.
+     * @return the HT Operation if present
+     */
+    std::optional<HtOperation> GetHtOperation() const;
+
+    /**
+     * @brief Set the VHT Capabilities subelement (ID 191).
+     * @param vhtCapabilities the VHT Capabilities element
+     */
+    void SetVhtCapabilities(const VhtCapabilities& vhtCapabilities);
+    /**
+     * @brief Get the VHT Capabilities subelement.
+     * @return the VHT Capabilities if present
+     */
+    std::optional<VhtCapabilities> GetVhtCapabilities() const;
+
+    /**
+     * @brief Set the VHT Operation subelement (ID 192).
+     * @param vhtOperation the VHT Operation element
+     */
+    void SetVhtOperation(const VhtOperation& vhtOperation);
+    /**
+     * @brief Get the VHT Operation subelement.
+     * @return the VHT Operation if present
+     */
+    std::optional<VhtOperation> GetVhtOperation() const;
+
+    /**
      * @brief Set the Vendor Specific subelement (ID 221).
      * @param data the vendor-specific data
      */
@@ -536,6 +584,10 @@ class NeighborReportElement : public WifiInformationElement
         m_bssTerminationDuration;                         //!< BSS Termination Duration (ID 4)
     std::optional<Bearing> m_bearing;                     //!< Bearing (ID 5)
     std::optional<WideBandwidthChannel> m_wideBandwidth;  //!< Wide Bandwidth Channel (ID 6)
+    std::optional<HtCapabilities> m_htCapabilities;       //!< HT Capabilities (ID 45)
+    std::optional<HtOperation> m_htOperation;             //!< HT Operation (ID 61)
+    std::optional<VhtCapabilities> m_vhtCapabilities;     //!< VHT Capabilities (ID 191)
+    std::optional<VhtOperation> m_vhtOperation;           //!< VHT Operation (ID 192)
     std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific (ID 221)
 };
 

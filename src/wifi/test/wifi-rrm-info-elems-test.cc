@@ -7,10 +7,14 @@
  */
 
 #include "ns3/header-serialization-test.h"
+#include "ns3/ht-capabilities.h"
+#include "ns3/ht-operation.h"
 #include "ns3/link-measurement.h"
 #include "ns3/log.h"
 #include "ns3/neighbor-report-element.h"
 #include "ns3/tpc-report-element.h"
+#include "ns3/vht-capabilities.h"
+#include "ns3/vht-operation.h"
 
 #include <array>
 #include <vector>
@@ -645,7 +649,170 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(wbc.has_value(), true, "WBC present with Bearing");
     }
 
-    // Test 15: Edge cases
+    // Test 15: HT Capabilities subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+
+        HtCapabilities htCap;
+        htCap.SetLdpc(1);
+        htCap.SetSupportedChannelWidth(1);
+        nre.SetHtCapabilities(htCap);
+
+        TestHeaderSerialization(nre);
+
+        auto result = nre.GetHtCapabilities();
+        NS_TEST_ASSERT_MSG_EQ(result.has_value(), true, "HT Capabilities should be present");
+        NS_TEST_ASSERT_MSG_EQ(result->GetLdpc(), 1, "HT LDPC round-trip");
+        NS_TEST_ASSERT_MSG_EQ(result->GetSupportedChannelWidth(), 1, "HT channel width round-trip");
+    }
+
+    // Test 16: HT Operation subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+
+        HtOperation htOp;
+        htOp.SetPrimaryChannel(6);
+        htOp.SetSecondaryChannelOffset(1);
+        nre.SetHtOperation(htOp);
+
+        TestHeaderSerialization(nre);
+
+        auto result = nre.GetHtOperation();
+        NS_TEST_ASSERT_MSG_EQ(result.has_value(), true, "HT Operation should be present");
+        NS_TEST_ASSERT_MSG_EQ(result->GetPrimaryChannel(), 6, "HT primary channel round-trip");
+    }
+
+    // Test 17: VHT Capabilities subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+
+        VhtCapabilities vhtCap;
+        vhtCap.SetMaxMpduLength(7991);
+        vhtCap.SetRxLdpc(1);
+        nre.SetVhtCapabilities(vhtCap);
+
+        TestHeaderSerialization(nre);
+
+        auto result = nre.GetVhtCapabilities();
+        NS_TEST_ASSERT_MSG_EQ(result.has_value(), true, "VHT Capabilities should be present");
+        NS_TEST_ASSERT_MSG_EQ(result->GetRxLdpc(), 1, "VHT LDPC round-trip");
+    }
+
+    // Test 18: VHT Operation subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+
+        VhtOperation vhtOp;
+        vhtOp.SetChannelWidth(1);
+        vhtOp.SetChannelCenterFrequencySegment0(42);
+        vhtOp.SetChannelCenterFrequencySegment1(0);
+        nre.SetVhtOperation(vhtOp);
+
+        TestHeaderSerialization(nre);
+
+        auto result = nre.GetVhtOperation();
+        NS_TEST_ASSERT_MSG_EQ(result.has_value(), true, "VHT Operation should be present");
+        NS_TEST_ASSERT_MSG_EQ(result->GetChannelWidth(), 1, "VHT channel width round-trip");
+        NS_TEST_ASSERT_MSG_EQ(result->GetChannelCenterFrequencySegment0(),
+                              42,
+                              "VHT seg0 round-trip");
+    }
+
+    // Test 19: All Tier 2 subelements together with Tier 1
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+        nre.SetOperatingClass(115);
+        nre.SetChannelNumber(36);
+        nre.SetPhyType(8);
+        nre.SetTsfInformation(500, 200);
+        nre.SetBearing(90, 0x41A00000, 3);
+        nre.SetWideBandwidthChannel(1, 42, 50);
+
+        HtCapabilities htCap;
+        htCap.SetLdpc(1);
+        nre.SetHtCapabilities(htCap);
+
+        HtOperation htOp;
+        htOp.SetPrimaryChannel(36);
+        nre.SetHtOperation(htOp);
+
+        VhtCapabilities vhtCap;
+        vhtCap.SetRxLdpc(1);
+        nre.SetVhtCapabilities(vhtCap);
+
+        VhtOperation vhtOp;
+        vhtOp.SetChannelWidth(1);
+        nre.SetVhtOperation(vhtOp);
+
+        TestHeaderSerialization(nre);
+
+        // Verify all survive round-trip
+        Buffer buf;
+        buf.AddAtStart(nre.GetSerializedSize());
+        nre.Serialize(buf.Begin());
+
+        NeighborReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetTsfInformation().has_value(),
+                              true,
+                              "TSF survives combined");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetBearing().has_value(),
+                              true,
+                              "Bearing survives combined");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetWideBandwidthChannel().has_value(),
+                              true,
+                              "WBC survives combined");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetHtCapabilities().has_value(),
+                              true,
+                              "HT Cap survives combined");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetHtOperation().has_value(),
+                              true,
+                              "HT Op survives combined");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetVhtCapabilities().has_value(),
+                              true,
+                              "VHT Cap survives combined");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetVhtOperation().has_value(),
+                              true,
+                              "VHT Op survives combined");
+    }
+
+    // Test 20: HT/VHT absent by default
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+
+        NS_TEST_ASSERT_MSG_EQ(nre.GetHtCapabilities().has_value(),
+                              false,
+                              "HT Cap absent by default");
+        NS_TEST_ASSERT_MSG_EQ(nre.GetHtOperation().has_value(), false, "HT Op absent by default");
+        NS_TEST_ASSERT_MSG_EQ(nre.GetVhtCapabilities().has_value(),
+                              false,
+                              "VHT Cap absent by default");
+        NS_TEST_ASSERT_MSG_EQ(nre.GetVhtOperation().has_value(), false, "VHT Op absent by default");
+    }
+
+    // Test 21: Edge cases
     {
         // Max TSF offset
         NeighborReportElement nre;
