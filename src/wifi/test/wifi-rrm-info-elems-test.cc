@@ -581,7 +581,22 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(bearing->relativeHeight, INT16_MAX, "Max relative height");
     }
 
-    // Test 11: Bearing with zero relative height
+    // Test 11: Bearing with INT16_MIN relative height
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetBearing(0, 0, INT16_MIN);
+
+        TestHeaderSerialization(nre);
+
+        auto bearing = nre.GetBearing();
+        NS_TEST_ASSERT_MSG_EQ(bearing->relativeHeight, INT16_MIN, "Min relative height");
+    }
+
+    // Test 12: Bearing with zero relative height
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -596,7 +611,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(bearing->relativeHeight, 0, "Zero relative height");
     }
 
-    // Test 12: Wide Bandwidth Channel subelement round-trip
+    // Test 13: Wide Bandwidth Channel subelement round-trip
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -614,7 +629,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(wbc->centerFreqSegment1, 0, "Center freq seg 1");
     }
 
-    // Test 13: Wide Bandwidth Channel edge values
+    // Test 14: Wide Bandwidth Channel edge values
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -631,7 +646,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(wbc->centerFreqSegment1, 255, "Max center freq seg 1");
     }
 
-    // Test 14: Bearing + Wide Bandwidth Channel together
+    // Test 15: Bearing + Wide Bandwidth Channel together
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
@@ -649,7 +664,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(wbc.has_value(), true, "WBC present with Bearing");
     }
 
-    // Test 15: HT Capabilities subelement round-trip
+    // Test 16: HT Capabilities subelement round-trip
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -670,7 +685,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(result->GetSupportedChannelWidth(), 1, "HT channel width round-trip");
     }
 
-    // Test 16: HT Operation subelement round-trip
+    // Test 17: HT Operation subelement round-trip
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -690,7 +705,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(result->GetPrimaryChannel(), 6, "HT primary channel round-trip");
     }
 
-    // Test 17: VHT Capabilities subelement round-trip
+    // Test 18: VHT Capabilities subelement round-trip
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -710,7 +725,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(result->GetRxLdpc(), 1, "VHT LDPC round-trip");
     }
 
-    // Test 18: VHT Operation subelement round-trip
+    // Test 19: VHT Operation subelement round-trip
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -734,7 +749,7 @@ NeighborReportSubelementsTest::DoRun()
                               "VHT seg0 round-trip");
     }
 
-    // Test 19: All Tier 2 subelements together with Tier 1
+    // Test 20: All Tier 2 subelements together with Tier 1
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
@@ -794,7 +809,7 @@ NeighborReportSubelementsTest::DoRun()
                               "VHT Op survives combined");
     }
 
-    // Test 20: HT/VHT absent by default
+    // Test 21: HT/VHT absent by default
     {
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
@@ -812,7 +827,7 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(nre.GetVhtOperation().has_value(), false, "VHT Op absent by default");
     }
 
-    // Test 21: Edge cases
+    // Test 22: Edge cases
     {
         // Max TSF offset
         NeighborReportElement nre;
@@ -859,6 +874,97 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(nre4.GetVendorSpecificData()->size(),
                               200,
                               "Large vendor specific size");
+    }
+
+    // Test 23: Out-of-order IE-format subelements are deserialized correctly
+    {
+        // Serialize HT Capabilities and VHT Operation independently to get their raw bytes
+        HtCapabilities htCap;
+        htCap.SetLdpc(1);
+        htCap.SetSupportedChannelWidth(1);
+
+        VhtOperation vhtOp;
+        vhtOp.SetChannelWidth(1);
+        vhtOp.SetChannelCenterFrequencySegment0(42);
+
+        // Serialize each IE to get raw bytes
+        uint16_t htCapSize = htCap.GetSerializedSize(); // 28
+        uint16_t vhtOpSize = vhtOp.GetSerializedSize(); // 7
+
+        Buffer htCapBuf;
+        htCapBuf.AddAtStart(htCapSize);
+        htCap.Serialize(htCapBuf.Begin());
+
+        Buffer vhtOpBuf;
+        vhtOpBuf.AddAtStart(vhtOpSize);
+        vhtOp.Serialize(vhtOpBuf.Begin());
+
+        // Build manual buffer: fixed fields (13) + VHT Op (7) + HT Cap (28) = 48
+        // This is out-of-order: VHT Operation (ID 192) comes before HT Capabilities (ID 45)
+        uint16_t fixedFieldsSize = 13;
+        uint16_t totalInfoFieldSize = fixedFieldsSize + vhtOpSize + htCapSize;
+        uint16_t totalSize = 2 + totalInfoFieldSize; // ElemID + Length + info field
+
+        Buffer manualBuf;
+        manualBuf.AddAtStart(totalSize);
+        Buffer::Iterator it = manualBuf.Begin();
+
+        // Element header
+        it.WriteU8(52); // IE_NEIGHBOR_REPORT
+        it.WriteU8(static_cast<uint8_t>(totalInfoFieldSize));
+
+        // Fixed fields: BSSID + BSSIDInfo + OpClass + Channel + PhyType
+        // BSSID 00:11:22:33:44:55
+        it.WriteU8(0x00);
+        it.WriteU8(0x11);
+        it.WriteU8(0x22);
+        it.WriteU8(0x33);
+        it.WriteU8(0x44);
+        it.WriteU8(0x55);
+        it.WriteU32(0); // BSSIDInfo
+        it.WriteU8(81); // Operating class
+        it.WriteU8(6);  // Channel
+        it.WriteU8(7);  // PhyType
+
+        // VHT Operation first (out of order -- ID 192 before ID 45)
+        Buffer::Iterator vhtIt = vhtOpBuf.Begin();
+        for (uint16_t j = 0; j < vhtOpSize; j++)
+        {
+            it.WriteU8(vhtIt.ReadU8());
+        }
+
+        // HT Capabilities second
+        Buffer::Iterator htIt = htCapBuf.Begin();
+        for (uint16_t j = 0; j < htCapSize; j++)
+        {
+            it.WriteU8(htIt.ReadU8());
+        }
+
+        // Deserialize
+        NeighborReportElement deserialized;
+        deserialized.Deserialize(manualBuf.Begin());
+
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetBssid(),
+                              Mac48Address("00:11:22:33:44:55"),
+                              "BSSID after out-of-order IEs");
+        auto htResult = deserialized.GetHtCapabilities();
+        NS_TEST_ASSERT_MSG_EQ(htResult.has_value(),
+                              true,
+                              "HT Cap present after out-of-order deser");
+        NS_TEST_ASSERT_MSG_EQ(htResult->GetLdpc(), 1, "HT LDPC after out-of-order deser");
+        NS_TEST_ASSERT_MSG_EQ(htResult->GetSupportedChannelWidth(),
+                              1,
+                              "HT channel width after out-of-order deser");
+        auto vhtResult = deserialized.GetVhtOperation();
+        NS_TEST_ASSERT_MSG_EQ(vhtResult.has_value(),
+                              true,
+                              "VHT Op present after out-of-order deser");
+        NS_TEST_ASSERT_MSG_EQ(vhtResult->GetChannelWidth(),
+                              1,
+                              "VHT channel width after out-of-order deser");
+        NS_TEST_ASSERT_MSG_EQ(vhtResult->GetChannelCenterFrequencySegment0(),
+                              42,
+                              "VHT seg0 after out-of-order deser");
     }
 }
 

@@ -424,8 +424,9 @@ class NeighborReportElement : public WifiInformationElement
      */
     struct Bearing
     {
-        uint16_t bearing;       //!< Bearing in degrees, 0-359 (2 octets)
-        uint32_t distance;      //!< Distance in meters, IEEE 754 float bits (4 octets)
+        uint16_t bearing;  //!< Bearing in degrees, 0-359 (2 octets)
+        uint32_t distance; //!< Distance in meters, IEEE 754 binary32 stored as uint32_t (4 octets).
+                           //!< Caller must convert via std::bit_cast<uint32_t>(floatVal).
         int16_t relativeHeight; //!< Relative height in meters, signed (2 octets)
     };
 
@@ -498,7 +499,8 @@ class NeighborReportElement : public WifiInformationElement
     /**
      * @brief Set the Bearing subelement (ID 5).
      * @param bearing direction in degrees (0-359)
-     * @param distance distance in meters (IEEE 754 binary32 representation)
+     * @param distance distance in meters as IEEE 754 binary32 bits stored in uint32_t
+     *        (use std::bit_cast<uint32_t>(floatVal) to convert)
      * @param relativeHeight relative height in meters (signed)
      */
     void SetBearing(uint16_t bearing, uint32_t distance, int16_t relativeHeight);
