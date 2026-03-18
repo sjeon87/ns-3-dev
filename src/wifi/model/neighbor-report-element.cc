@@ -53,6 +53,209 @@ NeighborReportElement::GetBssidInfo() const
 }
 
 void
+NeighborReportElement::SetApReachability(uint8_t reachability)
+{
+    m_bssidInfo &= ~0x3;
+    m_bssidInfo |= (reachability & 0x3);
+}
+
+uint8_t
+NeighborReportElement::GetApReachability() const
+{
+    return m_bssidInfo & 0x3;
+}
+
+void
+NeighborReportElement::SetSecurity(bool security)
+{
+    if (security)
+    {
+        m_bssidInfo |= (1 << 2);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 2);
+    }
+}
+
+bool
+NeighborReportElement::GetSecurity() const
+{
+    return (m_bssidInfo & (1 << 2)) != 0;
+}
+
+void
+NeighborReportElement::SetKeyScope(bool keyScope)
+{
+    if (keyScope)
+    {
+        m_bssidInfo |= (1 << 3);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 3);
+    }
+}
+
+bool
+NeighborReportElement::GetKeyScope() const
+{
+    return (m_bssidInfo & (1 << 3)) != 0;
+}
+
+void
+NeighborReportElement::SetSpectrumManagement(bool spectrumMgmt)
+{
+    if (spectrumMgmt)
+    {
+        m_bssidInfo |= (1 << 4);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 4);
+    }
+}
+
+bool
+NeighborReportElement::GetSpectrumManagement() const
+{
+    return (m_bssidInfo & (1 << 4)) != 0;
+}
+
+void
+NeighborReportElement::SetQos(bool qos)
+{
+    if (qos)
+    {
+        m_bssidInfo |= (1 << 5);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 5);
+    }
+}
+
+bool
+NeighborReportElement::GetQos() const
+{
+    return (m_bssidInfo & (1 << 5)) != 0;
+}
+
+void
+NeighborReportElement::SetApsd(bool apsd)
+{
+    if (apsd)
+    {
+        m_bssidInfo |= (1 << 6);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 6);
+    }
+}
+
+bool
+NeighborReportElement::GetApsd() const
+{
+    return (m_bssidInfo & (1 << 6)) != 0;
+}
+
+void
+NeighborReportElement::SetRadioMeasurement(bool radioMeasurement)
+{
+    if (radioMeasurement)
+    {
+        m_bssidInfo |= (1 << 7);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 7);
+    }
+}
+
+bool
+NeighborReportElement::GetRadioMeasurement() const
+{
+    return (m_bssidInfo & (1 << 7)) != 0;
+}
+
+void
+NeighborReportElement::SetDelayedBlockAck(bool delayedBa)
+{
+    if (delayedBa)
+    {
+        m_bssidInfo |= (1 << 8);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 8);
+    }
+}
+
+bool
+NeighborReportElement::GetDelayedBlockAck() const
+{
+    return (m_bssidInfo & (1 << 8)) != 0;
+}
+
+void
+NeighborReportElement::SetImmediateBlockAck(bool immediateBa)
+{
+    if (immediateBa)
+    {
+        m_bssidInfo |= (1 << 9);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 9);
+    }
+}
+
+bool
+NeighborReportElement::GetImmediateBlockAck() const
+{
+    return (m_bssidInfo & (1 << 9)) != 0;
+}
+
+void
+NeighborReportElement::SetMobilityDomain(bool mobilityDomain)
+{
+    if (mobilityDomain)
+    {
+        m_bssidInfo |= (1 << 10);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 10);
+    }
+}
+
+bool
+NeighborReportElement::GetMobilityDomain() const
+{
+    return (m_bssidInfo & (1 << 10)) != 0;
+}
+
+void
+NeighborReportElement::SetHighThroughput(bool ht)
+{
+    if (ht)
+    {
+        m_bssidInfo |= (1 << 11);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1 << 11);
+    }
+}
+
+bool
+NeighborReportElement::GetHighThroughput() const
+{
+    return (m_bssidInfo & (1 << 11)) != 0;
+}
+
+void
 NeighborReportElement::SetOperatingClass(uint8_t operatingClass)
 {
     m_operatingClass = operatingClass;
