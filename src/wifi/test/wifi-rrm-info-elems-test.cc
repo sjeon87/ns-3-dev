@@ -802,6 +802,182 @@ TpcReportElementTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test serialization and deserialization of the Link Measurement Report header
+ * (IEEE 802.11-2024 Section 9.6.6.5)
+ */
+class LinkMeasurementReportTest : public HeaderSerializationTestCase
+{
+  public:
+    LinkMeasurementReportTest();
+
+  private:
+    void DoRun() override;
+};
+
+LinkMeasurementReportTest::LinkMeasurementReportTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Link Measurement Report header")
+{
+}
+
+void
+LinkMeasurementReportTest::DoRun()
+{
+    // Test 1: Basic round-trip
+    {
+        LinkMeasurementReportHeader hdr;
+        hdr.SetDialogToken(1);
+        hdr.SetTpcTransmitPower(20);
+        hdr.SetTpcLinkMargin(10);
+        hdr.SetRxAntennaId(1);
+        hdr.SetTxAntennaId(2);
+        hdr.SetRcpi(110);
+        hdr.SetRsni(50);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 1, "Dialog token round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTpcTransmitPower(), 20, "TPC tx power round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTpcLinkMargin(), 10, "TPC link margin round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRxAntennaId(), 1, "Rx antenna ID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTxAntennaId(), 2, "Tx antenna ID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRcpi(), 110, "RCPI round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRsni(), 50, "RSNI round-trip");
+    }
+
+    // Test 2: Negative TPC power values
+    {
+        LinkMeasurementReportHeader hdr;
+        hdr.SetDialogToken(42);
+        hdr.SetTpcTransmitPower(-15);
+        hdr.SetTpcLinkMargin(-3);
+        hdr.SetRxAntennaId(0);
+        hdr.SetTxAntennaId(0);
+        hdr.SetRcpi(100);
+        hdr.SetRsni(40);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTpcTransmitPower(),
+                              -15,
+                              "Negative TPC tx power round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTpcLinkMargin(),
+                              -3,
+                              "Negative TPC link margin round-trip");
+    }
+
+    // Test 3: RCPI edge values
+    {
+        // RCPI = 0: P < -109.5 dBm
+        LinkMeasurementReportHeader hdr;
+        hdr.SetDialogToken(1);
+        hdr.SetRcpi(0);
+        TestHeaderSerialization(hdr);
+
+        // RCPI = 220: P >= 0 dBm
+        hdr.SetRcpi(220);
+        TestHeaderSerialization(hdr);
+
+        // RCPI = 255: measurement not available
+        hdr.SetRcpi(255);
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRcpi(), 255, "RCPI 255 round-trip");
+    }
+
+    // Test 4: RSNI edge values
+    {
+        LinkMeasurementReportHeader hdr;
+        hdr.SetDialogToken(1);
+
+        hdr.SetRsni(0);
+        TestHeaderSerialization(hdr);
+
+        hdr.SetRsni(255);
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRsni(), 255, "RSNI 255 round-trip");
+    }
+
+    // Test 5: Antenna ID values
+    {
+        LinkMeasurementReportHeader hdr;
+        hdr.SetDialogToken(1);
+        hdr.SetRxAntennaId(255);
+        hdr.SetTxAntennaId(128);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRxAntennaId(), 255, "Max Rx antenna ID");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTxAntennaId(), 128, "Tx antenna ID 128");
+    }
+
+    // Test 6: Default construction round-trip
+    {
+        LinkMeasurementReportHeader hdr;
+        TestHeaderSerialization(hdr);
+    }
+
+    // Test 7: GetSerializedSize returns 9
+    {
+        LinkMeasurementReportHeader hdr;
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetSerializedSize(), 9, "Serialized size is 9 bytes");
+    }
+
+    // Test 8: TpcReport element accessor
+    {
+        LinkMeasurementReportHeader hdr;
+        TpcReportElement tpc;
+        tpc.SetTransmitPower(-20);
+        tpc.SetLinkMargin(15);
+        hdr.SetTpcReport(tpc);
+
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetTpcTransmitPower(), -20, "TPC power via element setter");
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetTpcLinkMargin(), 15, "TPC margin via element setter");
+
+        TestHeaderSerialization(hdr);
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -818,6 +994,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new NeighborReportSubelementsTest, TestCase::Duration::QUICK);
     AddTestCase(new LinkMeasurementRequestTest, TestCase::Duration::QUICK);
     AddTestCase(new TpcReportElementTest, TestCase::Duration::QUICK);
+    AddTestCase(new LinkMeasurementReportTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite
