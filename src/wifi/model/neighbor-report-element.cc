@@ -495,6 +495,18 @@ NeighborReportElement::GetBssTerminationDuration() const
 }
 
 void
+NeighborReportElement::SetBearing(uint16_t bearing, uint32_t distance, int16_t relativeHeight)
+{
+    m_bearing = Bearing{bearing, distance, relativeHeight};
+}
+
+std::optional<NeighborReportElement::Bearing>
+NeighborReportElement::GetBearing() const
+{
+    return m_bearing;
+}
+
+void
 NeighborReportElement::SetVendorSpecificData(std::vector<uint8_t> data)
 {
     NS_ASSERT_MSG(data.size() <= 255,
@@ -528,6 +540,10 @@ NeighborReportElement::GetInformationFieldSize() const
     if (m_bssTerminationDuration)
     {
         size += 2 + 10;
+    }
+    if (m_bearing)
+    {
+        size += 2 + 8; // ID + Length + Bearing(2) + Distance(4) + RelHeight(2)
     }
     if (m_vendorSpecific)
     {
@@ -571,6 +587,14 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
         start.WriteU8(10);
         start.WriteU64(m_bssTerminationDuration->terminationTsf);
         start.WriteU16(m_bssTerminationDuration->duration);
+    }
+    if (m_bearing)
+    {
+        start.WriteU8(5); // subelement ID
+        start.WriteU8(8); // length
+        start.WriteU16(m_bearing->bearing);
+        start.WriteU32(m_bearing->distance);
+        start.WriteU16(static_cast<uint16_t>(m_bearing->relativeHeight));
     }
     if (m_vendorSpecific)
     {
@@ -624,6 +648,13 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
             m_bssTerminationDuration = BssTerminationDuration{tsf, duration};
             break;
         }
+        case 5: { // Bearing
+            uint16_t bearing = i.ReadU16();
+            uint32_t distance = i.ReadU32();
+            int16_t relativeHeight = static_cast<int16_t>(i.ReadU16());
+            m_bearing = Bearing{bearing, distance, relativeHeight};
+            break;
+        }
         case 221: { // Vendor Specific
             std::vector<uint8_t> data(subelemLen);
             for (uint8_t j = 0; j < subelemLen; j++)
@@ -669,6 +700,11 @@ NeighborReportElement::Print(std::ostream& os) const
     {
         os << ", BssTermination(tsf=" << m_bssTerminationDuration->terminationTsf
            << ", dur=" << m_bssTerminationDuration->duration << ")";
+    }
+    if (m_bearing)
+    {
+        os << ", Bearing(deg=" << m_bearing->bearing << ", dist=0x" << std::hex
+           << m_bearing->distance << std::dec << ", height=" << m_bearing->relativeHeight << ")";
     }
     if (m_vendorSpecific)
     {

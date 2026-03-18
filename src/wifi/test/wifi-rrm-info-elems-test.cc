@@ -542,7 +542,57 @@ NeighborReportSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(*pref, 42, "Candidate pref value after unknown skip");
     }
 
-    // Test 9: Edge cases
+    // Test 9: Bearing subelement round-trip
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetBearing(180, 0x41200000, -5); // 180 deg, 10.0m (IEEE 754), -5m height
+
+        TestHeaderSerialization(nre);
+
+        auto bearing = nre.GetBearing();
+        NS_TEST_ASSERT_MSG_EQ(bearing.has_value(), true, "Bearing should be present");
+        NS_TEST_ASSERT_MSG_EQ(bearing->bearing, 180, "Bearing degrees");
+        NS_TEST_ASSERT_MSG_EQ(bearing->distance, 0x41200000, "Distance raw float");
+        NS_TEST_ASSERT_MSG_EQ(bearing->relativeHeight, -5, "Relative height");
+    }
+
+    // Test 10: Bearing edge values
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetBearing(359, 0xFFFFFFFF, INT16_MAX);
+
+        TestHeaderSerialization(nre);
+
+        auto bearing = nre.GetBearing();
+        NS_TEST_ASSERT_MSG_EQ(bearing->bearing, 359, "Max bearing degrees");
+        NS_TEST_ASSERT_MSG_EQ(bearing->distance, 0xFFFFFFFF, "Max distance");
+        NS_TEST_ASSERT_MSG_EQ(bearing->relativeHeight, INT16_MAX, "Max relative height");
+    }
+
+    // Test 11: Bearing with zero relative height
+    {
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        nre.SetBearing(0, 0, 0);
+
+        TestHeaderSerialization(nre);
+
+        auto bearing = nre.GetBearing();
+        NS_TEST_ASSERT_MSG_EQ(bearing->relativeHeight, 0, "Zero relative height");
+    }
+
+    // Test 12: Edge cases
     {
         // Max TSF offset
         NeighborReportElement nre;

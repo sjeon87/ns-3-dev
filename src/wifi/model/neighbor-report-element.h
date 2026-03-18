@@ -403,6 +403,16 @@ class NeighborReportElement : public WifiInformationElement
     };
 
     /**
+     * @brief Bearing subelement data (IEEE 802.11-2024 Figure 9-422, ID 5)
+     */
+    struct Bearing
+    {
+        uint16_t bearing;       //!< Bearing in degrees, 0-359 (2 octets)
+        uint32_t distance;      //!< Distance in meters, IEEE 754 float bits (4 octets)
+        int16_t relativeHeight; //!< Relative height in meters, signed (2 octets)
+    };
+
+    /**
      * @brief BSS Termination Duration subelement data (IEEE 802.11-2024 Table 9-212, ID 4)
      */
     struct BssTerminationDuration
@@ -459,6 +469,19 @@ class NeighborReportElement : public WifiInformationElement
     std::optional<BssTerminationDuration> GetBssTerminationDuration() const;
 
     /**
+     * @brief Set the Bearing subelement (ID 5).
+     * @param bearing direction in degrees (0-359)
+     * @param distance distance in meters (IEEE 754 binary32 representation)
+     * @param relativeHeight relative height in meters (signed)
+     */
+    void SetBearing(uint16_t bearing, uint32_t distance, int16_t relativeHeight);
+    /**
+     * @brief Get the Bearing subelement.
+     * @return the Bearing data if present
+     */
+    std::optional<Bearing> GetBearing() const;
+
+    /**
      * @brief Set the Vendor Specific subelement (ID 221).
      * @param data the vendor-specific data
      */
@@ -486,6 +509,7 @@ class NeighborReportElement : public WifiInformationElement
     std::optional<uint8_t> m_candidatePreference; //!< BSS Transition Candidate Preference (ID 3)
     std::optional<BssTerminationDuration>
         m_bssTerminationDuration;                         //!< BSS Termination Duration (ID 4)
+    std::optional<Bearing> m_bearing;                     //!< Bearing (ID 5)
     std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific (ID 221)
 };
 
