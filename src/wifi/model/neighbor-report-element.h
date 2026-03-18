@@ -40,12 +40,25 @@ namespace ns3
  *   - Condensed Country String (ID 2)
  *   - BSS Transition Candidate Preference (ID 3)
  *   - BSS Termination Duration (ID 4)
+ *   - Bearing (ID 5)
+ *   - Wide Bandwidth Channel (ID 6)
+ *   - HT Capabilities (ID 45)
+ *   - HT Operation (ID 61)
+ *   - VHT Capabilities (ID 191)
+ *   - VHT Operation (ID 192)
  *   - Vendor Specific (ID 221)
  *
- * @todo Add support for remaining subelements:
- *   - Measurement Pilot Transmission Information (ID 66)
- *   - RRM Enabled Capabilities (ID 70)
- *   - Multiple BSSID (ID 71)
+ * @todo Add Measurement Report subelement (ID 39, no ns-3 class)
+ * @todo Add Secondary Channel Offset subelement (ID 62, no ns-3 class)
+ * @todo Add Measurement Pilot Transmission subelement (ID 66, no ns-3 class)
+ * @todo Add RM Enabled Capabilities subelement (ID 70, no ns-3 class)
+ * @todo Add Multiple BSSID subelement (ID 71, no ns-3 class)
+ * @todo Add HE Capabilities subelement (ID 193, awaiting maintainer guidance)
+ * @todo Add HE Operation subelement (ID 194, awaiting maintainer guidance)
+ * @todo Add BSS Load subelement (ID 195, no ns-3 class)
+ * @todo Add HE BSS Load subelement (ID 196, no ns-3 class)
+ * @todo Add SSID subelement (ID 197, awaiting maintainer guidance)
+ * @todo Add HE 6 GHz Band Capabilities subelement (ID 198, awaiting maintainer guidance)
  */
 class NeighborReportElement : public WifiInformationElement
 {
