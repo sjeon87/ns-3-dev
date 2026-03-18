@@ -12,6 +12,8 @@
 #include "ns3/link-measurement.h"
 #include "ns3/log.h"
 #include "ns3/neighbor-report-element.h"
+#include "ns3/neighbor-report.h"
+#include "ns3/ssid.h"
 #include "ns3/tpc-report-element.h"
 #include "ns3/vht-capabilities.h"
 #include "ns3/vht-operation.h"
@@ -1403,6 +1405,143 @@ LinkMeasurementReportTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test serialization and deserialization of the Neighbor Report Request header
+ * (IEEE 802.11-2024 Section 9.6.6.6)
+ */
+class NeighborReportRequestTest : public HeaderSerializationTestCase
+{
+  public:
+    NeighborReportRequestTest();
+
+  private:
+    void DoRun() override;
+};
+
+NeighborReportRequestTest::NeighborReportRequestTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Neighbor Report Request header")
+{
+}
+
+void
+NeighborReportRequestTest::DoRun()
+{
+    // Test 1: Dialog token only (no SSID)
+    {
+        NeighborReportRequestHeader hdr;
+        hdr.SetDialogToken(1);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 1, "Dialog token round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.HasSsid(), false, "No SSID present");
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetSerializedSize(), 1, "Size is 1 byte without SSID");
+    }
+
+    // Test 2: Dialog token + SSID present
+    {
+        NeighborReportRequestHeader hdr;
+        hdr.SetDialogToken(42);
+        Ssid ssid("TestNetwork");
+        hdr.SetSsid(ssid);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 42, "Dialog token round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.HasSsid(), true, "SSID present");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetSsid()->IsEqual(ssid), true, "SSID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetSerializedSize(),
+                              1U + ssid.GetSerializedSize(),
+                              "Size is 1 + SSID IE size");
+    }
+
+    // Test 3: Dialog token + broadcast SSID
+    {
+        NeighborReportRequestHeader hdr;
+        hdr.SetDialogToken(10);
+        Ssid ssid;
+        hdr.SetSsid(ssid);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.HasSsid(), true, "Broadcast SSID present");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetSsid()->IsBroadcast(),
+                              true,
+                              "Broadcast SSID round-trip");
+    }
+
+    // Test 4: Edge -- dialog token 255
+    {
+        NeighborReportRequestHeader hdr;
+        hdr.SetDialogToken(255);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 255, "Max dialog token");
+    }
+
+    // Test 5: Default construction round-trip
+    {
+        NeighborReportRequestHeader hdr;
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 0, "Default dialog token is 0");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.HasSsid(), false, "Default has no SSID");
+    }
+
+    // Test 6: GetSerializedSize correctness
+    {
+        NeighborReportRequestHeader hdr;
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetSerializedSize(), 1, "1 byte without SSID");
+
+        Ssid ssid("MyNetwork");
+        hdr.SetSsid(ssid);
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetSerializedSize(),
+                              1U + ssid.GetSerializedSize(),
+                              "1 + SSID IE size with SSID");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -1420,6 +1559,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new LinkMeasurementRequestTest, TestCase::Duration::QUICK);
     AddTestCase(new TpcReportElementTest, TestCase::Duration::QUICK);
     AddTestCase(new LinkMeasurementReportTest, TestCase::Duration::QUICK);
+    AddTestCase(new NeighborReportRequestTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite
