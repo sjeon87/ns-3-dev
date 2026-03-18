@@ -92,6 +92,7 @@ set(source_files
     model/non-ht/erp-ofdm-ppdu.cc
     model/non-ht/ofdm-phy.cc
     model/non-ht/ofdm-ppdu.cc
+    model/link-measurement.cc
     model/neighbor-report-element.cc
     model/non-inheritance.cc
     model/originator-block-ack-agreement.cc
@@ -267,6 +268,7 @@ set(header_files
     model/non-ht/erp-ofdm-ppdu.h
     model/non-ht/ofdm-phy.h
     model/non-ht/ofdm-ppdu.h
+    model/link-measurement.h
     model/neighbor-report-element.h
     model/non-inheritance.h
     model/originator-block-ack-agreement.h

@@ -7,6 +7,7 @@
  */
 
 #include "ns3/header-serialization-test.h"
+#include "ns3/link-measurement.h"
 #include "ns3/log.h"
 #include "ns3/neighbor-report-element.h"
 
@@ -545,6 +546,129 @@ NeighborReportSubelementsTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test serialization and deserialization of the Link Measurement Request header
+ * (IEEE 802.11-2024 Section 9.6.6.4)
+ */
+class LinkMeasurementRequestTest : public HeaderSerializationTestCase
+{
+  public:
+    LinkMeasurementRequestTest();
+
+  private:
+    void DoRun() override;
+};
+
+LinkMeasurementRequestTest::LinkMeasurementRequestTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Link Measurement Request header")
+{
+}
+
+void
+LinkMeasurementRequestTest::DoRun()
+{
+    // Test 1: Basic round-trip
+    {
+        LinkMeasurementRequestHeader hdr;
+        hdr.SetDialogToken(1);
+        hdr.SetTransmitPowerUsed(20);
+        hdr.SetMaxTransmitPower(23);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 1, "Dialog token round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitPowerUsed(), 20, "Tx power round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMaxTransmitPower(), 23, "Max tx power round-trip");
+    }
+
+    // Test 2: Negative power values
+    {
+        LinkMeasurementRequestHeader hdr;
+        hdr.SetDialogToken(42);
+        hdr.SetTransmitPowerUsed(-10);
+        hdr.SetMaxTransmitPower(-127);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitPowerUsed(),
+                              -10,
+                              "Negative tx power round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMaxTransmitPower(),
+                              -127,
+                              "Negative max tx power round-trip");
+    }
+
+    // Test 3: Edge cases
+    {
+        LinkMeasurementRequestHeader hdr;
+        hdr.SetDialogToken(255);
+        hdr.SetTransmitPowerUsed(127);
+        hdr.SetMaxTransmitPower(-128);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 255, "Max dialog token");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitPowerUsed(), 127, "Max tx power");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMaxTransmitPower(), -128, "Min max tx power");
+    }
+
+    // Test 4: Zero max transmit power
+    {
+        LinkMeasurementRequestHeader hdr;
+        hdr.SetDialogToken(100);
+        hdr.SetTransmitPowerUsed(5);
+        hdr.SetMaxTransmitPower(0);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        LinkMeasurementRequestHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMaxTransmitPower(), 0, "Zero max tx power");
+    }
+
+    // Test 5: Default construction round-trip
+    {
+        LinkMeasurementRequestHeader hdr;
+        TestHeaderSerialization(hdr);
+    }
+
+    // Test 6: GetSerializedSize returns 3
+    {
+        LinkMeasurementRequestHeader hdr;
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetSerializedSize(), 3, "Serialized size is 3 bytes");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -559,6 +683,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new NeighborReportElementTest, TestCase::Duration::QUICK);
     AddTestCase(new BssidInfoFieldTest, TestCase::Duration::QUICK);
     AddTestCase(new NeighborReportSubelementsTest, TestCase::Duration::QUICK);
+    AddTestCase(new LinkMeasurementRequestTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite
