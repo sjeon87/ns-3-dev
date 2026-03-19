@@ -368,9 +368,25 @@ class RmEnabledCapabilities : public WifiInformationElement
     void SerializeInformationField(Buffer::Iterator start) const override;
     uint16_t DeserializeInformationField(Buffer::Iterator start, uint16_t length) override;
 
+    /**
+     * @param bitPos bit position in the 40-bit capability bitmap
+     * @return the value of the bit at the given position
+     */
     bool GetBit(uint8_t bitPos) const;
+    /**
+     * @param bitPos bit position in the 40-bit capability bitmap
+     * @param val the value to set
+     */
     void SetBit(uint8_t bitPos, bool val);
+    /**
+     * @param startBit starting bit position of the 3-bit field
+     * @return the 3-bit field value
+     */
     uint8_t Get3BitField(uint8_t startBit) const;
+    /**
+     * @param startBit starting bit position of the 3-bit field
+     * @param val the 3-bit value to set
+     */
     void Set3BitField(uint8_t startBit, uint8_t val);
 
     std::array<uint8_t, 5> m_capabilities{}; //!< RM Enabled Capabilities bitmap (Table 9-218)
