@@ -141,6 +141,9 @@ class MeasurementRequestElement : public WifiInformationElement
         uint8_t channelNumber{0};          //!< Channel Number (1 octet)
         uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
         uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+
+        std::optional<ChannelLoadReporting> channelLoadReporting; //!< Reporting subelement (ID 1)
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -163,6 +166,10 @@ class MeasurementRequestElement : public WifiInformationElement
         uint8_t channelNumber{0};          //!< Channel Number (1 octet)
         uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
         uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+
+        std::optional<NoiseHistogramReporting>
+            noiseHistogramReporting;                        //!< Reporting subelement (ID 1)
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -192,6 +199,12 @@ class MeasurementRequestElement : public WifiInformationElement
         uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
         uint8_t measurementMode{0};        //!< Measurement Mode (1 octet)
         Mac48Address bssid;                //!< BSSID (6 octets)
+
+        std::optional<Ssid> ssid;                           //!< SSID subelement (ID 0)
+        std::optional<BeaconReporting> beaconReporting;     //!< Reporting subelement (ID 1)
+        std::optional<uint8_t> reportingDetail;             //!< Reporting Detail subelement (ID 2)
+        std::vector<ApChannelReport> apChannelReports;      //!< AP Channel Reports (ID 51)
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -214,6 +227,8 @@ class MeasurementRequestElement : public WifiInformationElement
         uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
         uint8_t frameRequestType{0};       //!< Frame Request Type (1 octet)
         Mac48Address macAddress;           //!< MAC Address (6 octets)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -234,6 +249,8 @@ class MeasurementRequestElement : public WifiInformationElement
         uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
         uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
         uint8_t groupIdentity{0};          //!< Group Identity (1 octet)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -254,6 +271,9 @@ class MeasurementRequestElement : public WifiInformationElement
         };
 
         uint8_t locationSubject{0}; //!< Location Subject (1 octet)
+
+        std::optional<AzimuthRequest> azimuthRequest;       //!< Azimuth Request subelement (ID 1)
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -275,6 +295,8 @@ class MeasurementRequestElement : public WifiInformationElement
         Mac48Address peerStaAddress;       //!< Peer STA Address (6 octets)
         uint8_t trafficIdentifier{0};      //!< Traffic Identifier (1 octet)
         uint8_t bin0Range{0};              //!< Bin 0 Range (1 octet)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -294,6 +316,8 @@ class MeasurementRequestElement : public WifiInformationElement
         uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
         uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
         Mac48Address groupMacAddress;      //!< Group MAC Address (6 octets)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -315,6 +339,8 @@ class MeasurementRequestElement : public WifiInformationElement
         uint8_t civicLocationType{0};            //!< Civic Location Type (1 octet)
         uint8_t locationServiceIntervalUnits{0}; //!< Location Service Interval Units (1 octet)
         uint16_t locationServiceInterval{0};     //!< Location Service Interval (2 octets)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -335,6 +361,8 @@ class MeasurementRequestElement : public WifiInformationElement
         uint8_t locationSubject{0};              //!< Location Subject (1 octet)
         uint8_t locationServiceIntervalUnits{0}; //!< Location Service Interval Units (1 octet)
         uint16_t locationServiceInterval{0};     //!< Location Service Interval (2 octets)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -361,6 +389,8 @@ class MeasurementRequestElement : public WifiInformationElement
         uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
         uint16_t measurementDuration{0};  //!< Measurement Duration (2 octets)
         uint8_t numberOfTimeBlocks{0};    //!< Number of Time Blocks (1 octet)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -383,6 +413,8 @@ class MeasurementRequestElement : public WifiInformationElement
             0}; //!< Measurement Duration Per Direction (2 octets)
         uint8_t measurementMethodAndAntennaConfiguration{
             0}; //!< Method and Antenna Configuration (1 octet)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -405,6 +437,8 @@ class MeasurementRequestElement : public WifiInformationElement
             0};                                 //!< Measurement Duration Per Direction (2 octets)
         uint8_t measurementMethod{0};           //!< Measurement Method (1 octet)
         uint8_t directionalStatisticsBitmap{0}; //!< Directional Statistics Bitmap (1 octet)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -424,6 +458,9 @@ class MeasurementRequestElement : public WifiInformationElement
 
         uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
         uint8_t minimumApCount{0};         //!< Minimum AP Count (1 octet)
+
+        std::vector<NeighborReportElement> neighborReports; //!< Neighbor Report subelements (ID 52)
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -440,6 +477,8 @@ class MeasurementRequestElement : public WifiInformationElement
         };
 
         uint16_t pauseTime{0}; //!< Pause Time (2 octets)
+
+        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
 
     // --- Fixed header fields ---
