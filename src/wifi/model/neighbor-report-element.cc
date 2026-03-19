@@ -801,7 +801,7 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
         case 5: { // Bearing
             uint16_t bearing = i.ReadU16();
             uint32_t distance = i.ReadU32();
-            int16_t relativeHeight = static_cast<int16_t>(i.ReadU16());
+            auto relativeHeight = static_cast<int16_t>(i.ReadU16());
             m_bearing = Bearing{bearing, distance, relativeHeight};
             break;
         }
