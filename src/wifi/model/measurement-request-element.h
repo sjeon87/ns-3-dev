@@ -83,6 +83,365 @@ class MeasurementRequestElement : public WifiInformationElement
         std::vector<uint8_t> channelList; //!< Channel list
     };
 
+    /**
+     * @brief Measurement Type values (Table 9-136)
+     */
+    enum class MeasurementType : uint8_t
+    {
+        BASIC = 0,
+        CCA = 1,
+        RPI_HISTOGRAM = 2,
+        CHANNEL_LOAD = 3,
+        NOISE_HISTOGRAM = 4,
+        BEACON = 5,
+        FRAME = 6,
+        STA_STATISTICS = 7,
+        LCI = 8,
+        TRANSMIT_STREAM = 9,
+        MULTICAST_DIAGNOSTICS = 10,
+        LOCATION_CIVIC = 11,
+        LOCATION_IDENTIFIER = 12,
+        DIRECTIONAL_CHANNEL_QUALITY = 13,
+        DIRECTIONAL_MEASUREMENT = 14,
+        DIRECTIONAL_STATISTICS = 15,
+        FTM_RANGE = 16,
+        NEIGHBORING_DMG_APS = 17,
+        MEASUREMENT_PAUSE = 255,
+    };
+
+    /**
+     * @brief Request body for Basic/CCA/RPI Histogram measurements (Figures 9-243, 9-244, 9-245)
+     *
+     * Shared by types 0 (Basic), 1 (CCA), and 2 (RPI Histogram) which have identical layouts.
+     */
+    struct BasicRequestBody
+    {
+        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
+        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
+        uint16_t measurementDuration{0};  //!< Measurement Duration (2 octets)
+    };
+
+    /**
+     * @brief Request body for Channel Load measurement (Figure 9-246)
+     */
+    struct ChannelLoadRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Channel Load request (Table 9-137)
+         */
+        enum SubelementId : uint8_t
+        {
+            RESERVED = 0,
+            CHANNEL_LOAD_REPORTING = 1,
+            WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
+        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+    };
+
+    /**
+     * @brief Request body for Noise Histogram measurement (Figure 9-248)
+     */
+    struct NoiseHistogramRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Noise Histogram request (Table 9-139)
+         */
+        enum SubelementId : uint8_t
+        {
+            RESERVED = 0,
+            NOISE_HISTOGRAM_REPORTING = 1,
+            WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
+        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+    };
+
+    /**
+     * @brief Request body for Beacon measurement (Figure 9-250)
+     */
+    struct BeaconRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Beacon request (Table 9-142)
+         */
+        enum SubelementId : uint8_t
+        {
+            SSID = 0,
+            BEACON_REPORTING = 1,
+            REPORTING_DETAIL = 2,
+            REQUEST = 10,
+            EXTENDED_REQUEST = 11,
+            AP_CHANNEL_REPORT = 51,
+            WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
+            LAST_BEACON_REPORT_INDICATION_REQUEST = 164,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
+        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+        uint8_t measurementMode{0};        //!< Measurement Mode (1 octet)
+        Mac48Address bssid;                //!< BSSID (6 octets)
+    };
+
+    /**
+     * @brief Request body for Frame measurement (Figure 9-252)
+     */
+    struct FrameRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Frame request (Table 9-145)
+         */
+        enum SubelementId : uint8_t
+        {
+            WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
+        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+        uint8_t frameRequestType{0};       //!< Frame Request Type (1 octet)
+        Mac48Address macAddress;           //!< MAC Address (6 octets)
+    };
+
+    /**
+     * @brief Request body for STA Statistics measurement (Figure 9-253)
+     */
+    struct StaStatisticsRequestBody
+    {
+        /**
+         * @brief Subelement IDs for STA Statistics request (Table 9-147)
+         */
+        enum SubelementId : uint8_t
+        {
+            TRIGGERED_REPORTING = 1,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        Mac48Address peerMacAddress;       //!< Peer MAC Address (6 octets)
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+        uint8_t groupIdentity{0};          //!< Group Identity (1 octet)
+    };
+
+    /**
+     * @brief Request body for LCI measurement (Figure 9-260)
+     */
+    struct LciRequestBody
+    {
+        /**
+         * @brief Subelement IDs for LCI request (Table 9-149)
+         */
+        enum SubelementId : uint8_t
+        {
+            AZIMUTH_REQUEST = 1,
+            ORIGINATOR_REQUESTING_STA_MAC_ADDRESS = 2,
+            TARGET_MAC_ADDRESS = 3,
+            MAXIMUM_AGE = 4,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t locationSubject{0}; //!< Location Subject (1 octet)
+    };
+
+    /**
+     * @brief Request body for Transmit Stream measurement (Figure 9-266)
+     */
+    struct TransmitStreamRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Transmit Stream request (Table 9-150)
+         */
+        enum SubelementId : uint8_t
+        {
+            TRIGGERED_REPORTING = 1,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+        Mac48Address peerStaAddress;       //!< Peer STA Address (6 octets)
+        uint8_t trafficIdentifier{0};      //!< Traffic Identifier (1 octet)
+        uint8_t bin0Range{0};              //!< Bin 0 Range (1 octet)
+    };
+
+    /**
+     * @brief Request body for Multicast Diagnostics measurement (Figure 9-273)
+     */
+    struct MulticastDiagnosticsRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Multicast Diagnostics request (Table 9-153)
+         */
+        enum SubelementId : uint8_t
+        {
+            MULTICAST_TRIGGERED_REPORTING = 1,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+        Mac48Address groupMacAddress;      //!< Group MAC Address (6 octets)
+    };
+
+    /**
+     * @brief Request body for Location Civic measurement (Figure 9-276)
+     */
+    struct LocationCivicRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Location Civic request (Table 9-156)
+         */
+        enum SubelementId : uint8_t
+        {
+            ORIGINATOR_REQUESTING_STA_MAC_ADDRESS = 1,
+            TARGET_MAC_ADDRESS = 2,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t locationSubject{0};              //!< Location Subject (1 octet)
+        uint8_t civicLocationType{0};            //!< Civic Location Type (1 octet)
+        uint8_t locationServiceIntervalUnits{0}; //!< Location Service Interval Units (1 octet)
+        uint16_t locationServiceInterval{0};     //!< Location Service Interval (2 octets)
+    };
+
+    /**
+     * @brief Request body for Location Identifier measurement (Figure 9-277)
+     */
+    struct LocationIdentifierRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Location Identifier request (Table 9-157)
+         */
+        enum SubelementId : uint8_t
+        {
+            ORIGINATOR_REQUESTING_STA_MAC_ADDRESS = 1,
+            TARGET_MAC_ADDRESS = 2,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t locationSubject{0};              //!< Location Subject (1 octet)
+        uint8_t locationServiceIntervalUnits{0}; //!< Location Service Interval Units (1 octet)
+        uint16_t locationServiceInterval{0};     //!< Location Service Interval (2 octets)
+    };
+
+    /**
+     * @brief Request body for Directional Channel Quality measurement (Figure 9-278)
+     */
+    struct DirectionalChannelQualityRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Directional Channel Quality request (Table 9-158)
+         */
+        enum SubelementId : uint8_t
+        {
+            DIRECTIONAL_CHANNEL_QUALITY_REPORTING = 1,
+            MEASUREMENT_CONFIGURATION = 2,
+            EXTENDED_MEASUREMENT_CONFIGURATION = 3,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t operatingClass{0};        //!< Operating Class (1 octet)
+        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
+        uint8_t aid{0};                   //!< AID (1 octet)
+        uint8_t reserved{0};              //!< Reserved (1 octet)
+        uint8_t measurementMethod{0};     //!< Measurement Method (1 octet)
+        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
+        uint16_t measurementDuration{0};  //!< Measurement Duration (2 octets)
+        uint8_t numberOfTimeBlocks{0};    //!< Number of Time Blocks (1 octet)
+    };
+
+    /**
+     * @brief Request body for Directional Measurement (Figure 9-284)
+     */
+    struct DirectionalMeasurementRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Directional Measurement request (Table 9-160)
+         */
+        enum SubelementId : uint8_t
+        {
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t operatingClass{0};        //!< Operating Class (1 octet)
+        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
+        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
+        uint16_t measurementDurationPerDirection{
+            0}; //!< Measurement Duration Per Direction (2 octets)
+        uint8_t measurementMethodAndAntennaConfiguration{
+            0}; //!< Method and Antenna Configuration (1 octet)
+    };
+
+    /**
+     * @brief Request body for Directional Statistics measurement (Figure 9-286)
+     */
+    struct DirectionalStatisticsRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Directional Statistics request (Table 9-161)
+         */
+        enum SubelementId : uint8_t
+        {
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint8_t operatingClass{0};        //!< Operating Class (1 octet)
+        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
+        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
+        uint16_t measurementDurationPerDirection{
+            0};                                 //!< Measurement Duration Per Direction (2 octets)
+        uint8_t measurementMethod{0};           //!< Measurement Method (1 octet)
+        uint8_t directionalStatisticsBitmap{0}; //!< Directional Statistics Bitmap (1 octet)
+    };
+
+    /**
+     * @brief Request body for FTM Range measurement (Figure 9-288)
+     */
+    struct FtmRangeRequestBody
+    {
+        /**
+         * @brief Subelement IDs for FTM Range request (Table 9-162)
+         */
+        enum SubelementId : uint8_t
+        {
+            MAXIMUM_AGE = 4,
+            NEIGHBOR_REPORT = 52,
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
+        uint8_t minimumApCount{0};         //!< Minimum AP Count (1 octet)
+    };
+
+    /**
+     * @brief Request body for Measurement Pause (Figure 9-272)
+     */
+    struct MeasurementPauseRequestBody
+    {
+        /**
+         * @brief Subelement IDs for Measurement Pause request (Table 9-152)
+         */
+        enum SubelementId : uint8_t
+        {
+            VENDOR_SPECIFIC = 221,
+        };
+
+        uint16_t pauseTime{0}; //!< Pause Time (2 octets)
+    };
+
     // --- Fixed header fields ---
 
     /**
