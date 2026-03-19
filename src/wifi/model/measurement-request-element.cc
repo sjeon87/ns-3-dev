@@ -249,7 +249,7 @@ SerializeSsidSubelement(Buffer::Iterator& start, const std::optional<Ssid>& ssid
     if (ssid)
     {
         uint32_t ssidSerSize = ssid->GetSerializedSize();
-        uint16_t ssidInfoLen = static_cast<uint16_t>(ssidSerSize - 2);
+        auto ssidInfoLen = static_cast<uint16_t>(ssidSerSize - 2);
         start.WriteU8(0); // subelement ID
         start.WriteU8(static_cast<uint8_t>(ssidInfoLen));
         Buffer ssidBuf;
@@ -271,7 +271,7 @@ SerializeNeighborReports(Buffer::Iterator& start,
     for (const auto& nre : neighborReports)
     {
         uint32_t nreSerSize = nre.GetSerializedSize();
-        uint16_t nreInfoSize = static_cast<uint16_t>(nreSerSize - 2);
+        auto nreInfoSize = static_cast<uint16_t>(nreSerSize - 2);
         Buffer nreBuf;
         nreBuf.AddAtStart(nreSerSize);
         nre.Serialize(nreBuf.Begin());
@@ -347,8 +347,8 @@ MeasurementRequestElement::GetInformationFieldSize() const
             }
             else if constexpr (std::is_same_v<T, FrameRequestBody>)
             {
-                size += 13; // OpClass(1)+Ch(1)+Rand(2)+Dur(2)+FReqType(1)+MAC(6)
-                size += VendorSpecificSize(body.vendorSpecific);
+                // OpClass(1)+Ch(1)+Rand(2)+Dur(2)+FReqType(1)+MAC(6)
+                size += 13 + VendorSpecificSize(body.vendorSpecific);
             }
             else if constexpr (std::is_same_v<T, StaStatisticsRequestBody>)
             {
