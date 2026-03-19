@@ -1542,6 +1542,216 @@ NeighborReportRequestTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test serialization and deserialization of the Neighbor Report Response header
+ * (IEEE 802.11-2024 Section 9.6.6.7)
+ */
+class NeighborReportResponseTest : public HeaderSerializationTestCase
+{
+  public:
+    NeighborReportResponseTest();
+
+  private:
+    void DoRun() override;
+};
+
+NeighborReportResponseTest::NeighborReportResponseTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Neighbor Report Response header")
+{
+}
+
+void
+NeighborReportResponseTest::DoRun()
+{
+    // Test 1: Empty response (dialog token only, zero elements)
+    {
+        NeighborReportResponseHeader hdr;
+        hdr.SetDialogToken(1);
+
+        NS_TEST_EXPECT_MSG_EQ(hdr.GetSerializedSize(), 1, "Empty response is 1 byte");
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportResponseHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 1, "Dialog token round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements().size(),
+                              0,
+                              "No elements present");
+    }
+
+    // Test 2: Single NeighborReportElement round-trip
+    {
+        NeighborReportResponseHeader hdr;
+        hdr.SetDialogToken(42);
+
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetBssidInfo(0x0000001F);
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        hdr.AddNeighborReportElement(nre);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportResponseHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 42, "Dialog token round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements().size(),
+                              1,
+                              "One element present");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements()[0].GetBssid(),
+                              Mac48Address("00:11:22:33:44:55"),
+                              "BSSID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements()[0].GetOperatingClass(),
+                              81,
+                              "Operating class round-trip");
+    }
+
+    // Test 3: Multiple elements (3) round-trip
+    {
+        NeighborReportResponseHeader hdr;
+        hdr.SetDialogToken(10);
+
+        for (uint8_t idx = 0; idx < 3; idx++)
+        {
+            NeighborReportElement nre;
+            nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+            nre.SetOperatingClass(115);
+            nre.SetChannelNumber(36 + idx * 4);
+            nre.SetPhyType(8);
+            hdr.AddNeighborReportElement(nre);
+        }
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportResponseHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements().size(),
+                              3,
+                              "Three elements present");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements()[0].GetChannelNumber(),
+                              36,
+                              "Element 0 channel");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements()[1].GetChannelNumber(),
+                              40,
+                              "Element 1 channel");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements()[2].GetChannelNumber(),
+                              44,
+                              "Element 2 channel");
+    }
+
+    // Test 4: Dialog token = 0 (unsolicited)
+    {
+        NeighborReportResponseHeader hdr;
+        hdr.SetDialogToken(0);
+
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        nre.SetOperatingClass(81);
+        nre.SetChannelNumber(6);
+        nre.SetPhyType(7);
+        hdr.AddNeighborReportElement(nre);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportResponseHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 0, "Unsolicited dialog token = 0");
+    }
+
+    // Test 5: Dialog token = 255 edge case
+    {
+        NeighborReportResponseHeader hdr;
+        hdr.SetDialogToken(255);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportResponseHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 255, "Max dialog token");
+    }
+
+    // Test 6: Default construction round-trip
+    {
+        NeighborReportResponseHeader hdr;
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportResponseHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 0, "Default dialog token is 0");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements().size(),
+                              0,
+                              "Default has no elements");
+    }
+
+    // Test 7: Element with subelements (TSF Info) survives through response header
+    {
+        NeighborReportResponseHeader hdr;
+        hdr.SetDialogToken(7);
+
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+        nre.SetBssidInfo(0x00000FFF);
+        nre.SetOperatingClass(115);
+        nre.SetChannelNumber(36);
+        nre.SetPhyType(8);
+        nre.SetTsfInformation(1000, 100);
+        hdr.AddNeighborReportElement(nre);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        NeighborReportResponseHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportElements().size(),
+                              1,
+                              "One element with subelements");
+        auto tsf = deserialized.GetNeighborReportElements()[0].GetTsfInformation();
+        NS_TEST_ASSERT_MSG_EQ(tsf.has_value(), true, "TSF survives through response header");
+        NS_TEST_ASSERT_MSG_EQ(tsf->tsfOffset, 1000, "TSF offset survives");
+        NS_TEST_ASSERT_MSG_EQ(tsf->beaconInterval, 100, "Beacon interval survives");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -1560,6 +1770,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new TpcReportElementTest, TestCase::Duration::QUICK);
     AddTestCase(new LinkMeasurementReportTest, TestCase::Duration::QUICK);
     AddTestCase(new NeighborReportRequestTest, TestCase::Duration::QUICK);
+    AddTestCase(new NeighborReportResponseTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite
