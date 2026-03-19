@@ -2142,6 +2142,39 @@ MeasurementRequestElementTest::DoRun()
 
     // Test 1: Size assertions per measurement type (no optional subelements)
     {
+        // Type 0 -- Basic: Channel(1) + StartTime(8) + Duration(2) = 11
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(0);
+            elem.SetChannelNumber(6);
+            elem.SetMeasurementStartTime(0);
+            elem.SetMeasurementDuration(200);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "Basic size");
+        }
+
+        // Type 1 -- CCA: Channel(1) + StartTime(8) + Duration(2) = 11
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(1);
+            elem.SetChannelNumber(6);
+            elem.SetMeasurementStartTime(0);
+            elem.SetMeasurementDuration(200);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "CCA size");
+        }
+
+        // Type 2 -- RPI Histogram: Channel(1) + StartTime(8) + Duration(2) = 11
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(2);
+            elem.SetChannelNumber(6);
+            elem.SetMeasurementStartTime(0);
+            elem.SetMeasurementDuration(200);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "RPI Histogram size");
+        }
+
         // Type 3 -- Channel Load: OpClass(1) + Channel(1) + RandInterval(2) + Duration(2) = 6
         {
             MeasurementRequestElement elem;
@@ -2334,6 +2367,39 @@ MeasurementRequestElementTest::DoRun()
 
     // Test 2: Round-trip serialization for each type with populated fields
     {
+        // Basic
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(0);
+            elem.SetChannelNumber(11);
+            elem.SetMeasurementStartTime(123456789);
+            elem.SetMeasurementDuration(1000);
+            TestHeaderSerialization(elem);
+        }
+
+        // CCA
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(2);
+            elem.SetMeasurementType(1);
+            elem.SetChannelNumber(36);
+            elem.SetMeasurementStartTime(0);
+            elem.SetMeasurementDuration(500);
+            TestHeaderSerialization(elem);
+        }
+
+        // RPI Histogram
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(3);
+            elem.SetMeasurementType(2);
+            elem.SetChannelNumber(1);
+            elem.SetMeasurementStartTime(999999);
+            elem.SetMeasurementDuration(2000);
+            TestHeaderSerialization(elem);
+        }
+
         // Channel Load
         {
             MeasurementRequestElement elem;
@@ -2518,6 +2584,75 @@ MeasurementRequestElementTest::DoRun()
 
     // Test 3: Field value assertions after deserialization for representative types
     {
+        // Basic
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(0);
+            elem.SetChannelNumber(11);
+            elem.SetMeasurementStartTime(123456789);
+            elem.SetMeasurementDuration(1000);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 1, "Basic token");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 0, "Basic type");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetChannelNumber(), 11, "Basic channel");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementStartTime(),
+                                  123456789,
+                                  "Basic start time");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementDuration(), 1000, "Basic duration");
+        }
+
+        // CCA
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(2);
+            elem.SetMeasurementType(1);
+            elem.SetChannelNumber(36);
+            elem.SetMeasurementStartTime(0);
+            elem.SetMeasurementDuration(500);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 1, "CCA type");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetChannelNumber(), 36, "CCA channel");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementStartTime(), 0, "CCA start time");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementDuration(), 500, "CCA duration");
+        }
+
+        // RPI Histogram
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(3);
+            elem.SetMeasurementType(2);
+            elem.SetChannelNumber(1);
+            elem.SetMeasurementStartTime(999999);
+            elem.SetMeasurementDuration(2000);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 2, "RPI type");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetChannelNumber(), 1, "RPI channel");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementStartTime(), 999999, "RPI start time");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementDuration(), 2000, "RPI duration");
+        }
+
         // Channel Load
         {
             MeasurementRequestElement elem;
@@ -3190,6 +3325,154 @@ MeasurementRequestSubelementsTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(vs->size(), 3, "Vendor Specific size");
         NS_TEST_ASSERT_MSG_EQ((*vs)[0], 0xAA, "VS byte 0");
         NS_TEST_ASSERT_MSG_EQ((*vs)[2], 0xCC, "VS byte 2");
+    }
+
+    // Test 10: Noise Histogram with Reporting subelement (ID 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(10);
+        elem.SetMeasurementType(4);
+        elem.SetOperatingClass(115);
+        elem.SetChannelNumber(36);
+        elem.SetRandomizationInterval(100);
+        elem.SetMeasurementDuration(200);
+        elem.SetNoiseHistogramReporting(2, 200);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto reporting = deserialized.GetNoiseHistogramReporting();
+        NS_TEST_ASSERT_MSG_EQ(reporting.has_value(), true, "NH Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(reporting->reportingCondition, 2, "NH Reporting condition");
+        NS_TEST_ASSERT_MSG_EQ(reporting->anpiReferenceValue, 200, "NH Reporting ANPI ref");
+    }
+
+    // Test 11: Beacon with Beacon Reporting subelement (ID 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(11);
+        elem.SetMeasurementType(5);
+        elem.SetOperatingClass(81);
+        elem.SetChannelNumber(6);
+        elem.SetRandomizationInterval(100);
+        elem.SetMeasurementDuration(200);
+        elem.SetBeaconMeasurementMode(0);
+        elem.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        elem.SetBeaconReporting(5, 180);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto reporting = deserialized.GetBeaconReporting();
+        NS_TEST_ASSERT_MSG_EQ(reporting.has_value(), true, "Beacon Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(reporting->reportingCondition, 5, "Beacon Reporting condition");
+        NS_TEST_ASSERT_MSG_EQ(reporting->thresholdOffsetReference,
+                              180,
+                              "Beacon Reporting threshold");
+    }
+
+    // Test 12: Multiple AP Channel Report subelements
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(12);
+        elem.SetMeasurementType(5);
+        elem.SetOperatingClass(81);
+        elem.SetChannelNumber(6);
+        elem.SetRandomizationInterval(100);
+        elem.SetMeasurementDuration(200);
+        elem.SetBeaconMeasurementMode(0);
+        elem.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        elem.AddApChannelReport(81, {1, 6, 11});
+        elem.AddApChannelReport(115, {36, 40, 44, 48});
+        elem.AddApChannelReport(124, {149, 153, 157, 161, 165});
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto reports = deserialized.GetApChannelReports();
+        NS_TEST_ASSERT_MSG_EQ(reports.size(), 3, "3 AP Channel Reports");
+
+        NS_TEST_ASSERT_MSG_EQ(reports[0].operatingClass, 81, "APChRep 0 opclass");
+        NS_TEST_ASSERT_MSG_EQ(reports[0].channelList.size(), 3, "APChRep 0 count");
+        NS_TEST_ASSERT_MSG_EQ(reports[0].channelList[0], 1, "APChRep 0 ch0");
+        NS_TEST_ASSERT_MSG_EQ(reports[0].channelList[2], 11, "APChRep 0 ch2");
+
+        NS_TEST_ASSERT_MSG_EQ(reports[1].operatingClass, 115, "APChRep 1 opclass");
+        NS_TEST_ASSERT_MSG_EQ(reports[1].channelList.size(), 4, "APChRep 1 count");
+
+        NS_TEST_ASSERT_MSG_EQ(reports[2].operatingClass, 124, "APChRep 2 opclass");
+        NS_TEST_ASSERT_MSG_EQ(reports[2].channelList.size(), 5, "APChRep 2 count");
+        NS_TEST_ASSERT_MSG_EQ(reports[2].channelList[4], 165, "APChRep 2 ch4");
+    }
+
+    // Test 13: Multiple FTM Range Neighbor Report subelements
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(13);
+        elem.SetMeasurementType(16);
+        elem.SetRandomizationInterval(100);
+        elem.SetMinimumApCount(3);
+
+        NeighborReportElement nre1;
+        nre1.SetBssid(Mac48Address("aa:bb:cc:dd:ee:01"));
+        nre1.SetOperatingClass(115);
+        nre1.SetChannelNumber(36);
+        nre1.SetPhyType(8);
+        elem.AddFtmRangeNeighborReport(nre1);
+
+        NeighborReportElement nre2;
+        nre2.SetBssid(Mac48Address("aa:bb:cc:dd:ee:02"));
+        nre2.SetOperatingClass(115);
+        nre2.SetChannelNumber(40);
+        nre2.SetPhyType(8);
+        elem.AddFtmRangeNeighborReport(nre2);
+
+        NeighborReportElement nre3;
+        nre3.SetBssid(Mac48Address("aa:bb:cc:dd:ee:03"));
+        nre3.SetOperatingClass(81);
+        nre3.SetChannelNumber(6);
+        nre3.SetPhyType(7);
+        elem.AddFtmRangeNeighborReport(nre3);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto neighbors = deserialized.GetFtmRangeNeighborReports();
+        NS_TEST_ASSERT_MSG_EQ(neighbors.size(), 3, "3 FTM Range neighbors");
+        NS_TEST_ASSERT_MSG_EQ(neighbors[0].GetBssid(),
+                              Mac48Address("aa:bb:cc:dd:ee:01"),
+                              "FTM NRE 0 BSSID");
+        NS_TEST_ASSERT_MSG_EQ(neighbors[1].GetBssid(),
+                              Mac48Address("aa:bb:cc:dd:ee:02"),
+                              "FTM NRE 1 BSSID");
+        NS_TEST_ASSERT_MSG_EQ(neighbors[2].GetBssid(),
+                              Mac48Address("aa:bb:cc:dd:ee:03"),
+                              "FTM NRE 2 BSSID");
+        NS_TEST_ASSERT_MSG_EQ(neighbors[2].GetChannelNumber(), 6, "FTM NRE 2 channel");
     }
 }
 
