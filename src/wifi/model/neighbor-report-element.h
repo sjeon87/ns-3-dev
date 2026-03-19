@@ -69,20 +69,20 @@ class NeighborReportElement : public WifiInformationElement
     void Print(std::ostream& os) const override;
 
     /**
-     * Set the BSSID of the neighboring AP.
+     * @brief Set the BSSID of the neighboring AP.
      *
      * @param bssid the BSSID
      */
     void SetBssid(Mac48Address bssid);
     /**
-     * Get the BSSID of the neighboring AP.
+     * @brief Get the BSSID of the neighboring AP.
      *
      * @return the BSSID
      */
     Mac48Address GetBssid() const;
 
     /**
-     * Set the BSSID Information field.
+     * @brief Set the BSSID Information field.
      * This 4-octet field contains capability and reachability
      * information about the neighboring AP (see IEEE 802.11-2024
      * Figure 9-417).
@@ -91,7 +91,7 @@ class NeighborReportElement : public WifiInformationElement
      */
     void SetBssidInfo(uint32_t info);
     /**
-     * Get the BSSID Information field.
+     * @brief Get the BSSID Information field.
      *
      * @return the BSSID Information field value
      */
@@ -368,7 +368,7 @@ class NeighborReportElement : public WifiInformationElement
     bool GetDmgPositioning() const;
 
     /**
-     * Set the Operating Class field.
+     * @brief Set the Operating Class field.
      * Indicates the operating class of the neighboring AP
      * as defined in Annex E of IEEE 802.11-2024.
      *
@@ -376,27 +376,27 @@ class NeighborReportElement : public WifiInformationElement
      */
     void SetOperatingClass(uint8_t operatingClass);
     /**
-     * Get the Operating Class field.
+     * @brief Get the Operating Class field.
      *
      * @return the operating class
      */
     uint8_t GetOperatingClass() const;
 
     /**
-     * Set the Channel Number field.
+     * @brief Set the Channel Number field.
      *
      * @param channel the channel number
      */
     void SetChannelNumber(uint8_t channel);
     /**
-     * Get the Channel Number field.
+     * @brief Get the Channel Number field.
      *
      * @return the channel number
      */
     uint8_t GetChannelNumber() const;
 
     /**
-     * Set the PHY Type field.
+     * @brief Set the PHY Type field.
      * Indicates the PHY type of the neighboring AP
      * (see IEEE 802.11-2024 Table 9-176).
      *
@@ -404,7 +404,7 @@ class NeighborReportElement : public WifiInformationElement
      */
     void SetPhyType(uint8_t phyType);
     /**
-     * Get the PHY Type field.
+     * @brief Get the PHY Type field.
      *
      * @return the PHY type
      */
