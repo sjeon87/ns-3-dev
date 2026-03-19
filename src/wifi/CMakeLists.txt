@@ -92,6 +92,12 @@ set(source_files
     model/non-ht/erp-ofdm-ppdu.cc
     model/non-ht/ofdm-phy.cc
     model/non-ht/ofdm-ppdu.cc
+    model/link-measurement.cc
+    model/measurement-request-element.cc
+    model/neighbor-report.cc
+    model/neighbor-report-element.cc
+    model/rm-enabled-capabilities.cc
+    model/tpc-report-element.cc
     model/non-inheritance.cc
     model/originator-block-ack-agreement.cc
     model/phy-entity.cc
@@ -266,6 +272,12 @@ set(header_files
     model/non-ht/erp-ofdm-ppdu.h
     model/non-ht/ofdm-phy.h
     model/non-ht/ofdm-ppdu.h
+    model/link-measurement.h
+    model/measurement-request-element.h
+    model/neighbor-report.h
+    model/neighbor-report-element.h
+    model/rm-enabled-capabilities.h
+    model/tpc-report-element.h
     model/non-inheritance.h
     model/originator-block-ack-agreement.h
     model/phy-entity.h
@@ -415,6 +427,7 @@ build_lib(
     test/wifi-non-ht-dup-test.cc
     test/wifi-phy-mu-mimo-test.cc
     test/wifi-operating-channel-test.cc
+    test/wifi-rrm-info-elems-test.cc
     test/wifi-tx-stats-helper-test.cc
   GENERATE_EXPORT_HEADER
 )
