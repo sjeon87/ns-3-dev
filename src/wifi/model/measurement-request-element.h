@@ -624,10 +624,100 @@ class MeasurementRequestElement : public WifiInformationElement
     MeasurementRequestBody m_body;       //!< Type-specific request body
 };
 
+namespace detail
+{
+
+/**
+ * @brief Map a body struct type to its MeasurementType value.
+ *
+ * BasicRequestBody is excluded because it is shared by types 0/1/2;
+ * the caller must set m_measurementType explicitly for those.
+ */
+template <typename T>
+constexpr uint8_t
+MeasurementTypeFor()
+{
+    if constexpr (std::is_same_v<T, MeasurementRequestElement::ChannelLoadRequestBody>)
+    {
+        return 3;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::NoiseHistogramRequestBody>)
+    {
+        return 4;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::BeaconRequestBody>)
+    {
+        return 5;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::FrameRequestBody>)
+    {
+        return 6;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::StaStatisticsRequestBody>)
+    {
+        return 7;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::LciRequestBody>)
+    {
+        return 8;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::TransmitStreamRequestBody>)
+    {
+        return 9;
+    }
+    else if constexpr (std::is_same_v<T,
+                                      MeasurementRequestElement::MulticastDiagnosticsRequestBody>)
+    {
+        return 10;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::LocationCivicRequestBody>)
+    {
+        return 11;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::LocationIdentifierRequestBody>)
+    {
+        return 12;
+    }
+    else if constexpr (std::is_same_v<
+                           T,
+                           MeasurementRequestElement::DirectionalChannelQualityRequestBody>)
+    {
+        return 13;
+    }
+    else if constexpr (std::is_same_v<T,
+                                      MeasurementRequestElement::DirectionalMeasurementRequestBody>)
+    {
+        return 14;
+    }
+    else if constexpr (std::is_same_v<T,
+                                      MeasurementRequestElement::DirectionalStatisticsRequestBody>)
+    {
+        return 15;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::FtmRangeRequestBody>)
+    {
+        return 16;
+    }
+    else if constexpr (std::is_same_v<T, MeasurementRequestElement::MeasurementPauseRequestBody>)
+    {
+        return 255;
+    }
+    else
+    {
+        static_assert(!std::is_same_v<T, T>, "Unrecognized body type for MeasurementTypeFor");
+    }
+}
+
+} // namespace detail
+
 template <typename T>
 void
 MeasurementRequestElement::SetBody(const T& body)
 {
+    if constexpr (!std::is_same_v<T, BasicRequestBody>)
+    {
+        m_measurementType = detail::MeasurementTypeFor<T>();
+    }
     m_body = body;
 }
 

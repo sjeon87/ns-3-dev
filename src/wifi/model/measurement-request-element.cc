@@ -732,7 +732,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
         body.operatingClass = i.ReadU8();
         body.channelNumber = i.ReadU8();
         body.aid = i.ReadU8();
-        i.ReadU8(); // Reserved
+        body.reserved = i.ReadU8();
         body.measurementMethod = i.ReadU8();
         body.measurementStartTime = i.ReadU64();
         body.measurementDuration = i.ReadU16();
@@ -815,7 +815,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 Buffer ssidBuf;
                 ssidBuf.AddAtStart(2 + subelemLen);
                 Buffer::Iterator ssidIter = ssidBuf.Begin();
-                ssidIter.WriteU8(0); // IE_SSID
+                ssidIter.WriteU8(IE_SSID);
                 ssidIter.WriteU8(subelemLen);
                 for (uint8_t j = 0; j < subelemLen; j++)
                 {
@@ -900,7 +900,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 Buffer nreBuf;
                 nreBuf.AddAtStart(2 + subelemLen);
                 Buffer::Iterator nreIter = nreBuf.Begin();
-                nreIter.WriteU8(52); // IE_NEIGHBOR_REPORT
+                nreIter.WriteU8(IE_NEIGHBOR_REPORT);
                 nreIter.WriteU8(subelemLen);
                 for (uint8_t j = 0; j < subelemLen; j++)
                 {

@@ -3568,6 +3568,87 @@ MeasurementRequestSubelementsTest::DoRun()
                               "FTM NRE 2 BSSID");
         NS_TEST_ASSERT_MSG_EQ(b.neighborReports[2].GetChannelNumber(), 6, "FTM NRE 2 channel");
     }
+
+    // Test 14: SetBody auto-syncs m_measurementType (validates Fix 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(14);
+        ChannelLoadBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
+        elem.SetBody(body);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 3, "SetBody auto-sets type to 3");
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                              3,
+                              "Auto-synced type survives round-trip");
+        auto& b = deserialized.GetBody<ChannelLoadBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting.has_value(),
+                              true,
+                              "CL Reporting present after auto-sync");
+        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting->channelLoadReferenceValue,
+                              128,
+                              "CL Reporting ref value after auto-sync");
+    }
+
+    // Test 15: SetBody auto-syncs for all non-Basic types
+    {
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetBody(NoiseHistogramBody{});
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 4, "SetBody auto-sets NH type");
+            TestHeaderSerialization(elem);
+        }
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            BeaconBody body;
+            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 5, "SetBody auto-sets Beacon type");
+            TestHeaderSerialization(elem);
+        }
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            LciBody body;
+            body.locationSubject = 1;
+            body.azimuthRequest = MeasurementRequestElement::AzimuthRequest{9, 1};
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 8, "SetBody auto-sets LCI type");
+            TestHeaderSerialization(elem);
+        }
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            FtmBody body;
+            body.randomizationInterval = 100;
+            body.minimumApCount = 1;
+            NeighborReportElement nre;
+            nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+            nre.SetOperatingClass(115);
+            nre.SetChannelNumber(36);
+            nre.SetPhyType(8);
+            body.neighborReports.push_back(nre);
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 16, "SetBody auto-sets FTM type");
+            TestHeaderSerialization(elem);
+        }
+    }
 }
 
 /**
