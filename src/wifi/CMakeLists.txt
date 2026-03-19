@@ -94,6 +94,7 @@ set(source_files
     model/non-ht/ofdm-ppdu.cc
     model/measurement-report-element.cc
     model/measurement-request-element.cc
+    model/radio-measurement-report.cc
     model/radio-measurement-request.cc
     model/neighbor-report-element.cc
     model/rm-enabled-capabilities.cc
@@ -274,6 +275,7 @@ set(header_files
     model/non-ht/ofdm-ppdu.h
     model/measurement-report-element.h
     model/measurement-request-element.h
+    model/radio-measurement-report.h
     model/radio-measurement-request.h
     model/neighbor-report-element.h
     model/rm-enabled-capabilities.h
