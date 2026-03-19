@@ -10,6 +10,7 @@
 #include "ns3/ht-capabilities.h"
 #include "ns3/ht-operation.h"
 #include "ns3/log.h"
+#include "ns3/measurement-report-element.h"
 #include "ns3/measurement-request-element.h"
 #include "ns3/neighbor-report-element.h"
 #include "ns3/rm-enabled-capabilities.h"
@@ -1460,6 +1461,273 @@ RmEnabledCapabilitiesTest::DoRun()
         RmEnabledCapabilities elem;
         elem.SetLinkMeasurement(true);
         elem.SetNeighborReport(true);
+
+        std::ostringstream oss;
+        elem.Print(oss);
+        NS_TEST_EXPECT_MSG_EQ(oss.str().empty(), false, "Print output is non-empty");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
+ * @brief Test serialization and deserialization of the Measurement Report element
+ * (IEEE 802.11-2024 Section 9.4.2.20, IE 39) with Beacon Report body (Section 9.4.2.20.7)
+ */
+class MeasurementReportElementTest : public HeaderSerializationTestCase
+{
+  public:
+    MeasurementReportElementTest();
+
+  private:
+    void DoRun() override;
+};
+
+MeasurementReportElementTest::MeasurementReportElementTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Measurement Report element")
+{
+}
+
+void
+MeasurementReportElementTest::DoRun()
+{
+    // Test 1: Beacon report round-trip with all fixed fields populated
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(42);
+        elem.SetMeasurementType(MeasurementReportType::BEACON);
+
+        BeaconReport br;
+        br.SetOperatingClass(81);
+        br.SetChannelNumber(6);
+        br.SetActualMeasurementStartTime(0x0102030405060708ULL);
+        br.SetMeasurementDuration(100);
+        br.SetReportedFrameInformation(7, true);
+        br.SetRcpi(220);
+        br.SetRsni(50);
+        br.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        br.SetAntennaId(1);
+        br.SetParentTsf(0xDEADBEEF);
+        elem.SetBeaconReport(br);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 42, "Token round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                              static_cast<uint8_t>(MeasurementReportType::BEACON),
+                              "Type round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLate(), false, "Late is false");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetIncapable(), false, "Incapable is false");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRefused(), false, "Refused is false");
+
+        auto report = deserialized.GetBeaconReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Beacon report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 81, "OpClass round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelNumber(), 6, "Channel round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetActualMeasurementStartTime(),
+                              0x0102030405060708ULL,
+                              "Start time round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), 100, "Duration round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetCondensedPhyType(), 7, "PHY type round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetReportedFrameType(), true, "Frame type round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetRcpi(), 220, "RCPI round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetRsni(), 50, "RSNI round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetBssid(),
+                              Mac48Address("00:11:22:33:44:55"),
+                              "BSSID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAntennaId(), 1, "Antenna ID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetParentTsf(), 0xDEADBEEF, "Parent TSF round-trip");
+    }
+
+    // Test 2: Default construction round-trip
+    {
+        MeasurementReportElement elem;
+        TestHeaderSerialization(elem);
+    }
+
+    // Test 3: Mode=Late, report body absent, serialized size = 2 + 3 = 5
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        elem.SetLate(true);
+        elem.SetMeasurementType(MeasurementReportType::BEACON);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 5, "Late mode size = 5");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetLate(), true, "Late getter");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLate(), true, "Late survives round-trip");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconReport().has_value(),
+                              false,
+                              "No beacon report when Late");
+    }
+
+    // Test 4: Mode=Incapable
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(2);
+        elem.SetIncapable(true);
+        elem.SetMeasurementType(MeasurementReportType::BEACON);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 5, "Incapable mode size = 5");
+        TestHeaderSerialization(elem);
+    }
+
+    // Test 5: Mode=Refused
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(3);
+        elem.SetRefused(true);
+        elem.SetMeasurementType(MeasurementReportType::BEACON);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 5, "Refused mode size = 5");
+        TestHeaderSerialization(elem);
+    }
+
+    // Test 6: Reported Frame Information bit-field accessors
+    {
+        BeaconReport br;
+
+        // PHY type 0, frame type false (default)
+        br.SetReportedFrameInformation(0, false);
+        NS_TEST_EXPECT_MSG_EQ(br.GetCondensedPhyType(), 0, "PHY type 0");
+        NS_TEST_EXPECT_MSG_EQ(br.GetReportedFrameType(), false, "Frame type false");
+
+        // PHY type 127 (max 7-bit), frame type true
+        br.SetReportedFrameInformation(127, true);
+        NS_TEST_EXPECT_MSG_EQ(br.GetCondensedPhyType(), 127, "PHY type 127");
+        NS_TEST_EXPECT_MSG_EQ(br.GetReportedFrameType(), true, "Frame type true");
+
+        // PHY type 64, frame type false
+        br.SetReportedFrameInformation(64, false);
+        NS_TEST_EXPECT_MSG_EQ(br.GetCondensedPhyType(), 64, "PHY type 64");
+        NS_TEST_EXPECT_MSG_EQ(br.GetReportedFrameType(), false, "Frame type false with 64");
+    }
+
+    // Test 7: Edge values
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(255);
+        elem.SetMeasurementType(MeasurementReportType::BEACON);
+
+        BeaconReport br;
+        br.SetOperatingClass(255);
+        br.SetChannelNumber(255);
+        br.SetActualMeasurementStartTime(UINT64_MAX);
+        br.SetMeasurementDuration(UINT16_MAX);
+        br.SetReportedFrameInformation(127, true);
+        br.SetRcpi(255);
+        br.SetRsni(255);
+        br.SetBssid(Mac48Address("00:00:00:00:00:00"));
+        br.SetAntennaId(255);
+        br.SetParentTsf(UINT32_MAX);
+        elem.SetBeaconReport(br);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+        auto report = deserialized.GetBeaconReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Edge beacon report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 255, "Max OpClass");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelNumber(), 255, "Max Channel");
+        NS_TEST_EXPECT_MSG_EQ(report->GetActualMeasurementStartTime(),
+                              UINT64_MAX,
+                              "Max start time");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), UINT16_MAX, "Max duration");
+        NS_TEST_EXPECT_MSG_EQ(report->GetRcpi(), 255, "Max RCPI");
+        NS_TEST_EXPECT_MSG_EQ(report->GetRsni(), 255, "Max RSNI");
+        NS_TEST_EXPECT_MSG_EQ(report->GetBssid(), Mac48Address("00:00:00:00:00:00"), "Zero BSSID");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAntennaId(), 255, "Max Antenna ID");
+        NS_TEST_EXPECT_MSG_EQ(report->GetParentTsf(), UINT32_MAX, "Max Parent TSF");
+    }
+
+    // Test 8: GetSerializedSize correctness: 2 (IE header) + 3 (common) + 26 (beacon) = 31
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        elem.SetMeasurementType(MeasurementReportType::BEACON);
+
+        BeaconReport br;
+        br.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+        elem.SetBeaconReport(br);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 31, "Beacon report total size = 31");
+    }
+
+    // Test 9: Only one mode bit can be set at a time (spec: Figure 9-290)
+    {
+        MeasurementReportElement elem;
+        elem.SetLate(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetLate(), true, "Late set");
+
+        // Clear late, then set incapable
+        elem.SetLate(false);
+        elem.SetIncapable(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetLate(), false, "Late cleared");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetIncapable(), true, "Incapable set");
+
+        // Clear incapable, then set refused
+        elem.SetIncapable(false);
+        elem.SetRefused(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetIncapable(), false, "Incapable cleared");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetRefused(), true, "Refused set");
+    }
+
+    // Test 10: Unknown measurement type on deserialize yields no beacon report
+    {
+        // Manually build buffer with type=3 (CHANNEL_LOAD) and some body bytes
+        // IE header (2) + token(1) + mode(1) + type(1) + fake body(4) = 9
+        Buffer buf;
+        buf.AddAtStart(9);
+        Buffer::Iterator it = buf.Begin();
+        it.WriteU8(39); // IE_MEASUREMENT_REPORT
+        it.WriteU8(7);  // length = 7
+        it.WriteU8(1);  // token
+        it.WriteU8(0);  // mode = 0 (no mode bits)
+        it.WriteU8(3);  // type = CHANNEL_LOAD (unsupported body)
+        it.WriteU8(0xAA);
+        it.WriteU8(0xBB);
+        it.WriteU8(0xCC);
+        it.WriteU8(0xDD);
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 1, "Token from unknown type");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 3, "Type preserved");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconReport().has_value(),
+                              false,
+                              "No beacon report for unknown type");
+    }
+
+    // Test 11: Print output smoke test
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(10);
+        elem.SetMeasurementType(MeasurementReportType::BEACON);
+        BeaconReport br;
+        br.SetBssid(Mac48Address("00:11:22:33:44:55"));
+        elem.SetBeaconReport(br);
 
         std::ostringstream oss;
         elem.Print(oss);
@@ -3158,6 +3426,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new NeighborReportSubelementsTest, TestCase::Duration::QUICK);
     AddTestCase(new TpcReportElementTest, TestCase::Duration::QUICK);
     AddTestCase(new RmEnabledCapabilitiesTest, TestCase::Duration::QUICK);
+    AddTestCase(new MeasurementReportElementTest, TestCase::Duration::QUICK);
     AddTestCase(new MeasurementRequestElementTest, TestCase::Duration::QUICK);
     AddTestCase(new MeasurementRequestModeTest, TestCase::Duration::QUICK);
     AddTestCase(new MeasurementRequestSubelementsTest, TestCase::Duration::QUICK);
