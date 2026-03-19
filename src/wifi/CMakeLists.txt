@@ -92,6 +92,7 @@ set(source_files
     model/non-ht/erp-ofdm-ppdu.cc
     model/non-ht/ofdm-phy.cc
     model/non-ht/ofdm-ppdu.cc
+    model/measurement-request-element.cc
     model/neighbor-report-element.cc
     model/rm-enabled-capabilities.cc
     model/tpc-report-element.cc
@@ -269,6 +270,7 @@ set(header_files
     model/non-ht/erp-ofdm-ppdu.h
     model/non-ht/ofdm-phy.h
     model/non-ht/ofdm-ppdu.h
+    model/measurement-request-element.h
     model/neighbor-report-element.h
     model/rm-enabled-capabilities.h
     model/tpc-report-element.h

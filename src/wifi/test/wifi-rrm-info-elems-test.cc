@@ -10,6 +10,7 @@
 #include "ns3/ht-capabilities.h"
 #include "ns3/ht-operation.h"
 #include "ns3/log.h"
+#include "ns3/measurement-request-element.h"
 #include "ns3/neighbor-report-element.h"
 #include "ns3/rm-enabled-capabilities.h"
 #include "ns3/tpc-report-element.h"
@@ -1470,6 +1471,1544 @@ RmEnabledCapabilitiesTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test serialization and deserialization of the Measurement Request element
+ * (IEEE 802.11-2024 Section 9.4.2.19, IE 38)
+ */
+class MeasurementRequestElementTest : public HeaderSerializationTestCase
+{
+  public:
+    MeasurementRequestElementTest();
+
+  private:
+    void DoRun() override;
+};
+
+MeasurementRequestElementTest::MeasurementRequestElementTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Measurement Request elements")
+{
+}
+
+void
+MeasurementRequestElementTest::DoRun()
+{
+    using BasicBody = MeasurementRequestElement::BasicRequestBody;
+    using ChannelLoadBody = MeasurementRequestElement::ChannelLoadRequestBody;
+    using NoiseHistogramBody = MeasurementRequestElement::NoiseHistogramRequestBody;
+    using BeaconBody = MeasurementRequestElement::BeaconRequestBody;
+    using FrameBody = MeasurementRequestElement::FrameRequestBody;
+    using StaStatsBody = MeasurementRequestElement::StaStatisticsRequestBody;
+    using LciBody = MeasurementRequestElement::LciRequestBody;
+    using TxStreamBody = MeasurementRequestElement::TransmitStreamRequestBody;
+    using MulticastBody = MeasurementRequestElement::MulticastDiagnosticsRequestBody;
+    using LocCivicBody = MeasurementRequestElement::LocationCivicRequestBody;
+    using LocIdBody = MeasurementRequestElement::LocationIdentifierRequestBody;
+    using DirChQBody = MeasurementRequestElement::DirectionalChannelQualityRequestBody;
+    using DirMeasBody = MeasurementRequestElement::DirectionalMeasurementRequestBody;
+    using DirStatsBody = MeasurementRequestElement::DirectionalStatisticsRequestBody;
+    using FtmBody = MeasurementRequestElement::FtmRangeRequestBody;
+    using PauseBody = MeasurementRequestElement::MeasurementPauseRequestBody;
+
+    // IE header (2) + token (1) + mode (1) + type (1) = 5 fixed bytes
+
+    // Test 1: Size assertions per measurement type (no optional subelements)
+    {
+        // Type 0 -- Basic: Channel(1) + StartTime(8) + Duration(2) = 11
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(0);
+            elem.SetBody(BasicBody{6, 0, 200});
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "Basic size");
+        }
+
+        // Type 1 -- CCA: Channel(1) + StartTime(8) + Duration(2) = 11
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(1);
+            elem.SetBody(BasicBody{6, 0, 200});
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "CCA size");
+        }
+
+        // Type 2 -- RPI Histogram: Channel(1) + StartTime(8) + Duration(2) = 11
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(2);
+            elem.SetBody(BasicBody{6, 0, 200});
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "RPI Histogram size");
+        }
+
+        // Type 3 -- Channel Load: OpClass(1) + Channel(1) + RandInterval(2) + Duration(2) = 6
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(3);
+            ChannelLoadBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 11, "Channel Load size");
+        }
+
+        // Type 4 -- Noise Histogram: same layout as Channel Load = 6
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(4);
+            NoiseHistogramBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 11, "Noise Histogram size");
+        }
+
+        // Type 5 -- Beacon: OpClass(1) + Channel(1) + RandInterval(2) + Duration(2) + Mode(1) +
+        //           BSSID(6) = 13
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(5);
+            BeaconBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.measurementMode = 0;
+            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 18, "Beacon size");
+        }
+
+        // Type 6 -- Frame: OpClass(1) + Channel(1) + RandInterval(2) + Duration(2) +
+        //           FrameReqType(1) + MAC(6) = 13
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(6);
+            FrameBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.frameRequestType = 1;
+            body.macAddress = Mac48Address("00:11:22:33:44:55");
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 18, "Frame size");
+        }
+
+        // Type 7 -- STA Statistics: PeerMAC(6) + RandInterval(2) + Duration(2) + GroupID(1) = 11
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(7);
+            StaStatsBody body;
+            body.peerMacAddress = Mac48Address("00:11:22:33:44:55");
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.groupIdentity = 0;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "STA Statistics size");
+        }
+
+        // Type 8 -- LCI: LocationSubject(1) = 1
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(8);
+            LciBody body;
+            body.locationSubject = 0;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 6, "LCI size");
+        }
+
+        // Type 9 -- Transmit Stream: RandInterval(2) + Duration(2) + PeerSTA(6) + TID(1) +
+        //           Bin0Range(1) = 12
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(9);
+            TxStreamBody body;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.peerStaAddress = Mac48Address("00:11:22:33:44:55");
+            body.trafficIdentifier = 0;
+            body.bin0Range = 10;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 17, "Transmit Stream size");
+        }
+
+        // Type 10 -- Multicast Diagnostics: RandInterval(2) + Duration(2) + GroupMAC(6) = 10
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(10);
+            MulticastBody body;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.groupMacAddress = Mac48Address("01:00:5e:00:00:01");
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 15, "Multicast Diagnostics size");
+        }
+
+        // Type 11 -- Location Civic
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(11);
+            elem.SetBody(LocCivicBody{});
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 10, "Location Civic size");
+        }
+
+        // Type 12 -- Location Identifier
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(12);
+            elem.SetBody(LocIdBody{});
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 9, "Location Identifier size");
+        }
+
+        // Type 13 -- Directional Channel Quality
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(13);
+            DirChQBody body;
+            body.operatingClass = 1;
+            body.channelNumber = 1;
+            body.aid = 1;
+            body.measurementDuration = 100;
+            body.numberOfTimeBlocks = 1;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 21, "Directional ChQ size");
+        }
+
+        // Type 14 -- Directional Measurement
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(14);
+            DirMeasBody body;
+            body.operatingClass = 1;
+            body.channelNumber = 1;
+            body.measurementDurationPerDirection = 100;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 18, "Directional Measurement size");
+        }
+
+        // Type 15 -- Directional Statistics
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(15);
+            DirStatsBody body;
+            body.operatingClass = 1;
+            body.channelNumber = 1;
+            body.measurementDurationPerDirection = 100;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 19, "Directional Statistics size");
+        }
+
+        // Type 16 -- FTM Range: RandInterval(2) + MinAPCount(1) = 3
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(16);
+            FtmBody body;
+            body.randomizationInterval = 100;
+            body.minimumApCount = 1;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 8, "FTM Range size");
+        }
+
+        // Type 255 -- Measurement Pause: PauseTime(2) = 2
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(255);
+            PauseBody body;
+            body.pauseTime = 100;
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 7, "Measurement Pause size");
+        }
+    }
+
+    // Test 2: Round-trip serialization for each type with populated fields
+    {
+        // Basic
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(0);
+            elem.SetBody(BasicBody{11, 123456789, 1000});
+            TestHeaderSerialization(elem);
+        }
+
+        // CCA
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(2);
+            elem.SetMeasurementType(1);
+            elem.SetBody(BasicBody{36, 0, 500});
+            TestHeaderSerialization(elem);
+        }
+
+        // RPI Histogram
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(3);
+            elem.SetMeasurementType(2);
+            elem.SetBody(BasicBody{1, 999999, 2000});
+            TestHeaderSerialization(elem);
+        }
+
+        // Channel Load
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(10);
+            elem.SetMeasurementType(3);
+            ChannelLoadBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 500;
+            body.measurementDuration = 1000;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Noise Histogram
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(20);
+            elem.SetMeasurementType(4);
+            NoiseHistogramBody body;
+            body.operatingClass = 115;
+            body.channelNumber = 36;
+            body.randomizationInterval = 200;
+            body.measurementDuration = 500;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Beacon
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(30);
+            elem.SetMeasurementType(5);
+            BeaconBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.measurementMode = 1;
+            body.bssid = Mac48Address("aa:bb:cc:dd:ee:ff");
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Frame
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(40);
+            elem.SetMeasurementType(6);
+            FrameBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 11;
+            body.randomizationInterval = 300;
+            body.measurementDuration = 400;
+            body.frameRequestType = 1;
+            body.macAddress = Mac48Address("00:11:22:33:44:55");
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // STA Statistics
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(50);
+            elem.SetMeasurementType(7);
+            StaStatsBody body;
+            body.peerMacAddress = Mac48Address("aa:bb:cc:dd:ee:ff");
+            body.randomizationInterval = 100;
+            body.measurementDuration = 600;
+            body.groupIdentity = 10;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // LCI
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(60);
+            elem.SetMeasurementType(8);
+            LciBody body;
+            body.locationSubject = 1;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Transmit Stream
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(70);
+            elem.SetMeasurementType(9);
+            TxStreamBody body;
+            body.randomizationInterval = 50;
+            body.measurementDuration = 100;
+            body.peerStaAddress = Mac48Address("00:11:22:33:44:55");
+            body.trafficIdentifier = 4;
+            body.bin0Range = 20;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Multicast Diagnostics
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(80);
+            elem.SetMeasurementType(10);
+            MulticastBody body;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.groupMacAddress = Mac48Address("01:00:5e:00:00:01");
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Location Civic
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(90);
+            elem.SetMeasurementType(11);
+            LocCivicBody body;
+            body.locationSubject = 1;
+            body.locationServiceIntervalUnits = 1;
+            body.locationServiceInterval = 60;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Location Identifier
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(100);
+            elem.SetMeasurementType(12);
+            LocIdBody body;
+            body.locationServiceIntervalUnits = 2;
+            body.locationServiceInterval = 24;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Directional Channel Quality
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(110);
+            elem.SetMeasurementType(13);
+            DirChQBody body;
+            body.operatingClass = 1;
+            body.channelNumber = 1;
+            body.aid = 5;
+            body.measurementMethod = 1;
+            body.measurementStartTime = 1000;
+            body.measurementDuration = 200;
+            body.numberOfTimeBlocks = 4;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Directional Measurement
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(120);
+            elem.SetMeasurementType(14);
+            DirMeasBody body;
+            body.operatingClass = 1;
+            body.channelNumber = 1;
+            body.measurementDurationPerDirection = 100;
+            body.measurementMethodAndAntennaConfiguration = 0x09;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Directional Statistics
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(130);
+            elem.SetMeasurementType(15);
+            DirStatsBody body;
+            body.operatingClass = 1;
+            body.channelNumber = 1;
+            body.measurementDurationPerDirection = 100;
+            body.measurementMethod = 2;
+            body.directionalStatisticsBitmap = 0x0F;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // FTM Range
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(140);
+            elem.SetMeasurementType(16);
+            FtmBody body;
+            body.randomizationInterval = 100;
+            body.minimumApCount = 3;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Measurement Pause
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(150);
+            elem.SetMeasurementType(255);
+            PauseBody body;
+            body.pauseTime = 5000;
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+    }
+
+    // Test 3: Field value assertions after deserialization for representative types
+    {
+        // Basic
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(0);
+            elem.SetBody(BasicBody{11, 123456789, 1000});
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 1, "Basic token");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 0, "Basic type");
+            auto& b = deserialized.GetBody<BasicBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 11, "Basic channel");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 123456789, "Basic start time");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 1000, "Basic duration");
+        }
+
+        // CCA
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(2);
+            elem.SetMeasurementType(1);
+            elem.SetBody(BasicBody{36, 0, 500});
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 1, "CCA type");
+            auto& b = deserialized.GetBody<BasicBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 36, "CCA channel");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 0, "CCA start time");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 500, "CCA duration");
+        }
+
+        // RPI Histogram
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(3);
+            elem.SetMeasurementType(2);
+            elem.SetBody(BasicBody{1, 999999, 2000});
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 2, "RPI type");
+            auto& b = deserialized.GetBody<BasicBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 1, "RPI channel");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 999999, "RPI start time");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 2000, "RPI duration");
+        }
+
+        // Channel Load
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(42);
+            elem.SetMeasurementType(3);
+            ChannelLoadBody body;
+            body.operatingClass = 115;
+            body.channelNumber = 36;
+            body.randomizationInterval = 1234;
+            body.measurementDuration = 5678;
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 42, "CL token");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 3, "CL type");
+            auto& b = deserialized.GetBody<ChannelLoadBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.operatingClass, 115, "CL opclass");
+            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 36, "CL channel");
+            NS_TEST_EXPECT_MSG_EQ(b.randomizationInterval, 1234, "CL rand interval");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 5678, "CL duration");
+        }
+
+        // Beacon
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(7);
+            elem.SetMeasurementType(5);
+            BeaconBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 0;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            body.measurementMode = 2;
+            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            auto& b = deserialized.GetBody<BeaconBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.measurementMode, 2, "Beacon mode");
+            NS_TEST_EXPECT_MSG_EQ(b.bssid,
+                                  Mac48Address("ff:ff:ff:ff:ff:ff"),
+                                  "Beacon wildcard BSSID");
+        }
+
+        // LCI
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(99);
+            elem.SetMeasurementType(8);
+            LciBody body;
+            body.locationSubject = 2;
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            auto& b = deserialized.GetBody<LciBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.locationSubject, 2, "LCI location subject");
+        }
+
+        // STA Statistics
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(55);
+            elem.SetMeasurementType(7);
+            StaStatsBody body;
+            body.peerMacAddress = Mac48Address("aa:bb:cc:dd:ee:ff");
+            body.randomizationInterval = 300;
+            body.measurementDuration = 600;
+            body.groupIdentity = 16;
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            auto& b = deserialized.GetBody<StaStatsBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.peerMacAddress,
+                                  Mac48Address("aa:bb:cc:dd:ee:ff"),
+                                  "STA Stats peer MAC");
+            NS_TEST_EXPECT_MSG_EQ(b.groupIdentity, 16, "STA Stats group ID");
+        }
+
+        // Transmit Stream
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(77);
+            elem.SetMeasurementType(9);
+            TxStreamBody body;
+            body.randomizationInterval = 50;
+            body.measurementDuration = 100;
+            body.peerStaAddress = Mac48Address("00:11:22:33:44:55");
+            body.trafficIdentifier = 7;
+            body.bin0Range = 30;
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            auto& b = deserialized.GetBody<TxStreamBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.peerStaAddress,
+                                  Mac48Address("00:11:22:33:44:55"),
+                                  "TxStream peer STA");
+            NS_TEST_EXPECT_MSG_EQ(b.trafficIdentifier, 7, "TxStream TID");
+            NS_TEST_EXPECT_MSG_EQ(b.bin0Range, 30, "TxStream bin0 range");
+        }
+    }
+
+    // Test 4: Default-constructed element round-trip
+    {
+        MeasurementRequestElement elem;
+        TestHeaderSerialization(elem);
+    }
+
+    // Test 5: Edge values
+    {
+        // Max token (255)
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(255);
+            elem.SetMeasurementType(3);
+            ChannelLoadBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 100;
+            body.measurementDuration = 200;
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 255, "Max token");
+        }
+
+        // Max randomization interval (0xFFFF) and max duration (0xFFFF)
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(3);
+            ChannelLoadBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            body.randomizationInterval = 0xFFFF;
+            body.measurementDuration = 0xFFFF;
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            auto& b = deserialized.GetBody<ChannelLoadBody>();
+            NS_TEST_EXPECT_MSG_EQ(b.randomizationInterval, 0xFFFF, "Max rand interval");
+            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 0xFFFF, "Max duration");
+        }
+
+        // Wildcard BSSID in Beacon request
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementType(5);
+            BeaconBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 255;
+            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            elem.SetBody(body);
+            TestHeaderSerialization(elem);
+        }
+
+        // Measurement mode = 0 (all bits clear)
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetMeasurementRequestMode(0);
+            elem.SetMeasurementType(3);
+            ChannelLoadBody body;
+            body.operatingClass = 81;
+            body.channelNumber = 6;
+            elem.SetBody(body);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementRequestMode(),
+                                  0,
+                                  "Mode zero round-trip");
+        }
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
+ * @brief Test Measurement Request Mode bitmap accessors
+ * (IEEE 802.11-2024 Figure 9-242)
+ */
+class MeasurementRequestModeTest : public TestCase
+{
+  public:
+    MeasurementRequestModeTest();
+
+  private:
+    void DoRun() override;
+};
+
+MeasurementRequestModeTest::MeasurementRequestModeTest()
+    : TestCase("Check Measurement Request Mode bitmap accessors")
+{
+}
+
+void
+MeasurementRequestModeTest::DoRun()
+{
+    // Test 1: Individual bit setters produce correct raw value
+    {
+        MeasurementRequestElement elem;
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetParallel(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x01, 1, "Parallel B0");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetEnable(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x02, 2, "Enable B1");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetRequest(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x04, 4, "Request B2");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetReport(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x08, 8, "Report B3");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetDurationMandatory(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x10,
+                              0x10,
+                              "DurationMandatory B4");
+    }
+
+    // Test 2: Each bit in isolation produces correct raw value
+    {
+        MeasurementRequestElement elem;
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetParallel(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode(), 0x01, "Only Parallel set");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetEnable(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode(), 0x02, "Only Enable set");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetRequest(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode(), 0x04, "Only Request set");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetReport(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode(), 0x08, "Only Report set");
+
+        elem.SetMeasurementRequestMode(0);
+        elem.SetDurationMandatory(true);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode(), 0x10, "Only DurationMandatory set");
+    }
+
+    // Test 3: Raw value to individual getters
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementRequestMode(0x1F); // all 5 bits set
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetParallel(), true, "Parallel from 0x1F");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetEnable(), true, "Enable from 0x1F");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetRequest(), true, "Request from 0x1F");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetReport(), true, "Report from 0x1F");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetDurationMandatory(), true, "DurationMandatory from 0x1F");
+
+        elem.SetMeasurementRequestMode(0x00);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetParallel(), false, "Parallel from 0x00");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetEnable(), false, "Enable from 0x00");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetRequest(), false, "Request from 0x00");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetReport(), false, "Report from 0x00");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetDurationMandatory(), false, "DurationMandatory from 0x00");
+    }
+
+    // Test 4: Reserved bits (B5-B7) are zeroed
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementRequestMode(0xFF); // set all bits including reserved
+        // Reserved bits should be masked out
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0xE0,
+                              0,
+                              "Reserved bits B5-B7 zeroed");
+    }
+
+    // Test 5: Combined mode values matching Table 9-135 semantics
+    {
+        // Enable=0: standard measurement request (Request and Report are reserved)
+        {
+            MeasurementRequestElement elem;
+            elem.SetEnable(false);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetEnable(), false, "Enable=0 standard request");
+        }
+
+        // Enable=1, Req=0, Rep=0: stop requests/reports
+        {
+            MeasurementRequestElement elem;
+            elem.SetEnable(true);
+            elem.SetRequest(false);
+            elem.SetReport(false);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x0E,
+                                  0x02,
+                                  "Enable=1 Req=0 Rep=0");
+        }
+
+        // Enable=1, Req=1, Rep=0: accept requests, stop reports
+        {
+            MeasurementRequestElement elem;
+            elem.SetEnable(true);
+            elem.SetRequest(true);
+            elem.SetReport(false);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x0E,
+                                  0x06,
+                                  "Enable=1 Req=1 Rep=0");
+        }
+
+        // Enable=1, Req=0, Rep=1: stop requests, accept reports
+        {
+            MeasurementRequestElement elem;
+            elem.SetEnable(true);
+            elem.SetRequest(false);
+            elem.SetReport(true);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x0E,
+                                  0x0A,
+                                  "Enable=1 Req=0 Rep=1");
+        }
+
+        // Enable=1, Req=1, Rep=1: accept both
+        {
+            MeasurementRequestElement elem;
+            elem.SetEnable(true);
+            elem.SetRequest(true);
+            elem.SetReport(true);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementRequestMode() & 0x0E,
+                                  0x0E,
+                                  "Enable=1 Req=1 Rep=1");
+        }
+    }
+
+    // Test 6: Mode bitmap survives serialization round-trip
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(1);
+        elem.SetMeasurementType(3);
+        MeasurementRequestElement::ChannelLoadRequestBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        elem.SetBody(body);
+        elem.SetParallel(true);
+        elem.SetDurationMandatory(true);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetParallel(), true, "Parallel survives serde");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetEnable(), false, "Enable false survives serde");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRequest(), false, "Request false survives serde");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetReport(), false, "Report false survives serde");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDurationMandatory(),
+                              true,
+                              "DurationMandatory survives serde");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
+ * @brief Test optional subelements of the Measurement Request element
+ * (IEEE 802.11-2024 Section 9.4.2.19)
+ */
+class MeasurementRequestSubelementsTest : public HeaderSerializationTestCase
+{
+  public:
+    MeasurementRequestSubelementsTest();
+
+  private:
+    void DoRun() override;
+};
+
+MeasurementRequestSubelementsTest::MeasurementRequestSubelementsTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of Measurement Request subelements")
+{
+}
+
+void
+MeasurementRequestSubelementsTest::DoRun()
+{
+    using ChannelLoadBody = MeasurementRequestElement::ChannelLoadRequestBody;
+    using NoiseHistogramBody = MeasurementRequestElement::NoiseHistogramRequestBody;
+    using BeaconBody = MeasurementRequestElement::BeaconRequestBody;
+    using LciBody = MeasurementRequestElement::LciRequestBody;
+    using FtmBody = MeasurementRequestElement::FtmRangeRequestBody;
+    using ApChannelReport = MeasurementRequestElement::ApChannelReport;
+
+    // Test 1: Channel Load with Reporting subelement (ID 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(1);
+        elem.SetMeasurementType(3);
+        ChannelLoadBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<ChannelLoadBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting.has_value(), true, "CL Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting->reportingCondition,
+                              1,
+                              "CL Reporting condition");
+        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting->channelLoadReferenceValue,
+                              128,
+                              "CL Reporting reference value");
+    }
+
+    // Test 2: Beacon with SSID subelement (ID 0)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(2);
+        elem.SetMeasurementType(5);
+        BeaconBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.measurementMode = 1;
+        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.ssid = Ssid("TestNetwork");
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<BeaconBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.ssid.has_value(), true, "Beacon SSID present");
+        NS_TEST_ASSERT_MSG_EQ(b.ssid->IsEqual(Ssid("TestNetwork")), true, "Beacon SSID value");
+    }
+
+    // Test 3: Beacon with Reporting Detail subelement (ID 2)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(3);
+        elem.SetMeasurementType(5);
+        BeaconBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.reportingDetail = 2;
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<BeaconBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.reportingDetail.has_value(), true, "Reporting Detail present");
+        NS_TEST_ASSERT_MSG_EQ(*b.reportingDetail, 2, "Reporting Detail value");
+    }
+
+    // Test 4: Beacon with AP Channel Report subelement (ID 51)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(4);
+        elem.SetMeasurementType(5);
+        BeaconBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.apChannelReports.push_back(ApChannelReport{115, {36, 40, 44, 48}});
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<BeaconBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports.empty(), false, "AP Channel Report present");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].operatingClass,
+                              115,
+                              "AP Channel Report opclass");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList.size(),
+                              4,
+                              "AP Channel Report channel count");
+    }
+
+    // Test 5: LCI with Azimuth Request subelement (ID 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(5);
+        elem.SetMeasurementType(8);
+        LciBody body;
+        body.locationSubject = 1;
+        body.azimuthRequest = MeasurementRequestElement::AzimuthRequest{9, 1};
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<LciBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.azimuthRequest.has_value(), true, "Azimuth Request present");
+        NS_TEST_ASSERT_MSG_EQ(b.azimuthRequest->azimuthResolution, 9, "Azimuth resolution");
+        NS_TEST_ASSERT_MSG_EQ(b.azimuthRequest->azimuthType, 1, "Azimuth type");
+    }
+
+    // Test 6: FTM Range with Neighbor Report subelement (ID 52)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(6);
+        elem.SetMeasurementType(16);
+        FtmBody body;
+        body.randomizationInterval = 100;
+        body.minimumApCount = 1;
+        NeighborReportElement nre;
+        nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+        nre.SetOperatingClass(115);
+        nre.SetChannelNumber(36);
+        nre.SetPhyType(8);
+        body.neighborReports.push_back(nre);
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<FtmBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.neighborReports.size(), 1, "FTM Range neighbor count");
+        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[0].GetBssid(),
+                              Mac48Address("aa:bb:cc:dd:ee:ff"),
+                              "FTM Range neighbor BSSID");
+    }
+
+    // Test 7: Multiple subelements on a single request
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(7);
+        elem.SetMeasurementType(5);
+        BeaconBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.measurementMode = 1;
+        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.ssid = Ssid("MultiTest");
+        body.reportingDetail = 1;
+        body.apChannelReports.push_back(ApChannelReport{81, {1, 6, 11}});
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<BeaconBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.ssid.has_value(), true, "SSID survives multi-subelement");
+        NS_TEST_ASSERT_MSG_EQ(b.reportingDetail.has_value(),
+                              true,
+                              "ReportingDetail survives multi-subelement");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports.empty(),
+                              false,
+                              "AP Channel Report survives multi-subelement");
+    }
+
+    // Test 8: Size changes correctly when subelements added
+    {
+        MeasurementRequestElement base;
+        base.SetMeasurementToken(1);
+        base.SetMeasurementType(3);
+        ChannelLoadBody baseBody;
+        baseBody.operatingClass = 81;
+        baseBody.channelNumber = 6;
+        baseBody.randomizationInterval = 100;
+        baseBody.measurementDuration = 200;
+        base.SetBody(baseBody);
+
+        uint32_t baseSize = base.GetSerializedSize();
+
+        MeasurementRequestElement withSubelem;
+        withSubelem.SetMeasurementToken(1);
+        withSubelem.SetMeasurementType(3);
+        ChannelLoadBody subBody;
+        subBody.operatingClass = 81;
+        subBody.channelNumber = 6;
+        subBody.randomizationInterval = 100;
+        subBody.measurementDuration = 200;
+        subBody.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
+        withSubelem.SetBody(subBody);
+
+        uint32_t withSubelemSize = withSubelem.GetSerializedSize();
+
+        // Reporting subelement: ID(1) + Len(1) + Condition(1) + RefValue(1) = 4
+        NS_TEST_EXPECT_MSG_EQ(withSubelemSize, baseSize + 4, "Size increases by subelement size");
+    }
+
+    // Test 9: Vendor Specific subelement (ID 221) round-trip on Channel Load type
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(9);
+        elem.SetMeasurementType(3);
+        ChannelLoadBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.vendorSpecific = std::vector<uint8_t>{0xAA, 0xBB, 0xCC};
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<ChannelLoadBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.vendorSpecific.has_value(), true, "Vendor Specific present");
+        NS_TEST_ASSERT_MSG_EQ(b.vendorSpecific->size(), 3, "Vendor Specific size");
+        NS_TEST_ASSERT_MSG_EQ((*b.vendorSpecific)[0], 0xAA, "VS byte 0");
+        NS_TEST_ASSERT_MSG_EQ((*b.vendorSpecific)[2], 0xCC, "VS byte 2");
+    }
+
+    // Test 10: Noise Histogram with Reporting subelement (ID 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(10);
+        elem.SetMeasurementType(4);
+        NoiseHistogramBody body;
+        body.operatingClass = 115;
+        body.channelNumber = 36;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.noiseHistogramReporting = MeasurementRequestElement::NoiseHistogramReporting{2, 200};
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<NoiseHistogramBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.noiseHistogramReporting.has_value(), true, "NH Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(b.noiseHistogramReporting->reportingCondition,
+                              2,
+                              "NH Reporting condition");
+        NS_TEST_ASSERT_MSG_EQ(b.noiseHistogramReporting->anpiReferenceValue,
+                              200,
+                              "NH Reporting ANPI ref");
+    }
+
+    // Test 11: Beacon with Beacon Reporting subelement (ID 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(11);
+        elem.SetMeasurementType(5);
+        BeaconBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.beaconReporting = MeasurementRequestElement::BeaconReporting{5, 180};
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<BeaconBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.beaconReporting.has_value(), true, "Beacon Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(b.beaconReporting->reportingCondition,
+                              5,
+                              "Beacon Reporting condition");
+        NS_TEST_ASSERT_MSG_EQ(b.beaconReporting->thresholdOffsetReference,
+                              180,
+                              "Beacon Reporting threshold");
+    }
+
+    // Test 12: Multiple AP Channel Report subelements
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(12);
+        elem.SetMeasurementType(5);
+        BeaconBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.apChannelReports.push_back(ApChannelReport{81, {1, 6, 11}});
+        body.apChannelReports.push_back(ApChannelReport{115, {36, 40, 44, 48}});
+        body.apChannelReports.push_back(ApChannelReport{124, {149, 153, 157, 161, 165}});
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<BeaconBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports.size(), 3, "3 AP Channel Reports");
+
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].operatingClass, 81, "APChRep 0 opclass");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList.size(), 3, "APChRep 0 count");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList[0], 1, "APChRep 0 ch0");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList[2], 11, "APChRep 0 ch2");
+
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[1].operatingClass, 115, "APChRep 1 opclass");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[1].channelList.size(), 4, "APChRep 1 count");
+
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[2].operatingClass, 124, "APChRep 2 opclass");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[2].channelList.size(), 5, "APChRep 2 count");
+        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[2].channelList[4], 165, "APChRep 2 ch4");
+    }
+
+    // Test 13: Multiple FTM Range Neighbor Report subelements
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(13);
+        elem.SetMeasurementType(16);
+        FtmBody body;
+        body.randomizationInterval = 100;
+        body.minimumApCount = 3;
+
+        NeighborReportElement nre1;
+        nre1.SetBssid(Mac48Address("aa:bb:cc:dd:ee:01"));
+        nre1.SetOperatingClass(115);
+        nre1.SetChannelNumber(36);
+        nre1.SetPhyType(8);
+        body.neighborReports.push_back(nre1);
+
+        NeighborReportElement nre2;
+        nre2.SetBssid(Mac48Address("aa:bb:cc:dd:ee:02"));
+        nre2.SetOperatingClass(115);
+        nre2.SetChannelNumber(40);
+        nre2.SetPhyType(8);
+        body.neighborReports.push_back(nre2);
+
+        NeighborReportElement nre3;
+        nre3.SetBssid(Mac48Address("aa:bb:cc:dd:ee:03"));
+        nre3.SetOperatingClass(81);
+        nre3.SetChannelNumber(6);
+        nre3.SetPhyType(7);
+        body.neighborReports.push_back(nre3);
+
+        elem.SetBody(body);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        auto& b = deserialized.GetBody<FtmBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.neighborReports.size(), 3, "3 FTM Range neighbors");
+        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[0].GetBssid(),
+                              Mac48Address("aa:bb:cc:dd:ee:01"),
+                              "FTM NRE 0 BSSID");
+        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[1].GetBssid(),
+                              Mac48Address("aa:bb:cc:dd:ee:02"),
+                              "FTM NRE 1 BSSID");
+        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[2].GetBssid(),
+                              Mac48Address("aa:bb:cc:dd:ee:03"),
+                              "FTM NRE 2 BSSID");
+        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[2].GetChannelNumber(), 6, "FTM NRE 2 channel");
+    }
+
+    // Test 14: SetBody auto-syncs m_measurementType (validates Fix 1)
+    {
+        MeasurementRequestElement elem;
+        elem.SetMeasurementToken(14);
+        ChannelLoadBody body;
+        body.operatingClass = 81;
+        body.channelNumber = 6;
+        body.randomizationInterval = 100;
+        body.measurementDuration = 200;
+        body.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
+        elem.SetBody(body);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 3, "SetBody auto-sets type to 3");
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementRequestElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                              3,
+                              "Auto-synced type survives round-trip");
+        auto& b = deserialized.GetBody<ChannelLoadBody>();
+        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting.has_value(),
+                              true,
+                              "CL Reporting present after auto-sync");
+        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting->channelLoadReferenceValue,
+                              128,
+                              "CL Reporting ref value after auto-sync");
+    }
+
+    // Test 15: SetBody auto-syncs for all non-Basic types
+    {
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            elem.SetBody(NoiseHistogramBody{});
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 4, "SetBody auto-sets NH type");
+            TestHeaderSerialization(elem);
+        }
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            BeaconBody body;
+            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 5, "SetBody auto-sets Beacon type");
+            TestHeaderSerialization(elem);
+        }
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            LciBody body;
+            body.locationSubject = 1;
+            body.azimuthRequest = MeasurementRequestElement::AzimuthRequest{9, 1};
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 8, "SetBody auto-sets LCI type");
+            TestHeaderSerialization(elem);
+        }
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(1);
+            FtmBody body;
+            body.randomizationInterval = 100;
+            body.minimumApCount = 1;
+            NeighborReportElement nre;
+            nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
+            nre.SetOperatingClass(115);
+            nre.SetChannelNumber(36);
+            nre.SetPhyType(8);
+            body.neighborReports.push_back(nre);
+            elem.SetBody(body);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 16, "SetBody auto-sets FTM type");
+            TestHeaderSerialization(elem);
+        }
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -1486,6 +3025,9 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new NeighborReportSubelementsTest, TestCase::Duration::QUICK);
     AddTestCase(new TpcReportElementTest, TestCase::Duration::QUICK);
     AddTestCase(new RmEnabledCapabilitiesTest, TestCase::Duration::QUICK);
+    AddTestCase(new MeasurementRequestElementTest, TestCase::Duration::QUICK);
+    AddTestCase(new MeasurementRequestModeTest, TestCase::Duration::QUICK);
+    AddTestCase(new MeasurementRequestSubelementsTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite
