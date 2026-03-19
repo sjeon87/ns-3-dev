@@ -1016,49 +1016,6 @@ class MeasurementRequestElement : public WifiInformationElement
     uint8_t m_measurementRequestMode{0}; //!< Measurement Request Mode (1 octet, B0-B4 defined)
     uint8_t m_measurementType{0};        //!< Measurement Type (1 octet)
     MeasurementRequestBody m_body;       //!< Type-specific request body
-
-    // Type-specific body fields
-    uint8_t m_operatingClass{0};         //!< Operating Class (types 3,4,5,6,13,14,15)
-    uint8_t m_channelNumber{0};          //!< Channel Number (types 0,1,2,3,4,5,6,13,14,15)
-    uint16_t m_randomizationInterval{0}; //!< Randomization Interval (types 3,4,5,6,7,9,10,16)
-    uint16_t m_measurementDuration{
-        0}; //!< Measurement Duration (types 0,1,2,3,4,5,6,7,9,10,13,14,15)
-
-    uint8_t m_beaconMeasurementMode{0};        //!< Beacon Measurement Reporting Mode (type 5)
-    Mac48Address m_bssid;                      //!< BSSID (type 5)
-    uint8_t m_frameRequestType{0};             //!< Frame Request Type (type 6)
-    Mac48Address m_macAddress;                 //!< MAC Address (type 6)
-    Mac48Address m_peerMacAddress;             //!< Peer MAC Address (type 7)
-    uint8_t m_groupIdentity{0};                //!< Group Identity (type 7)
-    uint8_t m_locationSubject{0};              //!< Location Subject (types 8,11,12)
-    Mac48Address m_peerStaAddress;             //!< Peer STA Address (type 9)
-    uint8_t m_trafficIdentifier{0};            //!< Traffic Identifier (type 9)
-    uint8_t m_bin0Range{0};                    //!< Bin 0 Range (type 9)
-    Mac48Address m_groupMacAddress;            //!< Group MAC Address (type 10)
-    uint8_t m_civicLocationType{0};            //!< Civic Location Type (type 11)
-    uint8_t m_locationServiceIntervalUnits{0}; //!< Location Service Interval Units (types 11,12)
-    uint16_t m_locationServiceInterval{0};     //!< Location Service Interval (types 11,12)
-    uint8_t m_aid{0};                          //!< AID (type 13)
-    uint8_t m_measurementMethod{0};            //!< Measurement Method (types 13,15)
-    uint64_t m_measurementStartTime{0};        //!< Measurement Start Time (types 0,1,2,13,14,15)
-    uint8_t m_numberOfTimeBlocks{0};           //!< Number of Time Blocks (type 13)
-    uint8_t m_measurementMethodAndAntennaConfiguration{0}; //!< Method and Antenna Config (type 14)
-    uint8_t m_directionalStatisticsBitmap{0}; //!< Directional Statistics Bitmap (type 15)
-    uint8_t m_minimumApCount{0};              //!< Minimum AP Count (type 16)
-    uint16_t m_pauseTime{0};                  //!< Pause Time (type 255)
-
-    // Optional subelements
-    std::optional<ChannelLoadReporting>
-        m_channelLoadReporting; //!< Channel Load Reporting (ID 1, type 3)
-    std::optional<NoiseHistogramReporting>
-        m_noiseHistogramReporting;                    //!< Noise Histogram Reporting (ID 1, type 4)
-    std::optional<BeaconReporting> m_beaconReporting; //!< Beacon Reporting (ID 1, type 5)
-    std::optional<Ssid> m_beaconSsid;                 //!< Beacon SSID subelement (ID 0)
-    std::optional<uint8_t> m_beaconReportingDetail;   //!< Beacon Reporting Detail (ID 2)
-    std::vector<ApChannelReport> m_apChannelReports;  //!< AP Channel Reports (ID 51)
-    std::optional<AzimuthRequest> m_azimuthRequest;   //!< Azimuth Request (ID 1, type 8)
-    std::vector<NeighborReportElement> m_ftmRangeNeighborReports;   //!< FTM Range NREs (ID 52)
-    std::optional<std::vector<uint8_t>> m_vendorSpecificSubelement; //!< Vendor Specific (ID 221)
 };
 
 template <typename T>

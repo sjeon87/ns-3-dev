@@ -17,6 +17,7 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("MeasurementRequestElement");
 
 MeasurementRequestElement::MeasurementRequestElement()
+    : m_body(BasicRequestBody{})
 {
 }
 
@@ -56,6 +57,62 @@ void
 MeasurementRequestElement::SetMeasurementType(uint8_t type)
 {
     m_measurementType = type;
+    switch (type)
+    {
+    case 0:
+    case 1:
+    case 2:
+        m_body = BasicRequestBody{};
+        break;
+    case 3:
+        m_body = ChannelLoadRequestBody{};
+        break;
+    case 4:
+        m_body = NoiseHistogramRequestBody{};
+        break;
+    case 5:
+        m_body = BeaconRequestBody{};
+        break;
+    case 6:
+        m_body = FrameRequestBody{};
+        break;
+    case 7:
+        m_body = StaStatisticsRequestBody{};
+        break;
+    case 8:
+        m_body = LciRequestBody{};
+        break;
+    case 9:
+        m_body = TransmitStreamRequestBody{};
+        break;
+    case 10:
+        m_body = MulticastDiagnosticsRequestBody{};
+        break;
+    case 11:
+        m_body = LocationCivicRequestBody{};
+        break;
+    case 12:
+        m_body = LocationIdentifierRequestBody{};
+        break;
+    case 13:
+        m_body = DirectionalChannelQualityRequestBody{};
+        break;
+    case 14:
+        m_body = DirectionalMeasurementRequestBody{};
+        break;
+    case 15:
+        m_body = DirectionalStatisticsRequestBody{};
+        break;
+    case 16:
+        m_body = FtmRangeRequestBody{};
+        break;
+    case 255:
+        m_body = MeasurementPauseRequestBody{};
+        break;
+    default:
+        m_body = std::monostate{};
+        break;
+    }
 }
 
 uint8_t
@@ -161,429 +218,848 @@ MeasurementRequestElement::GetDurationMandatory() const
     return (m_measurementRequestMode & 0x10) != 0;
 }
 
-// --- Type-specific body field accessors ---
+// --- Type-specific body field accessors (facade over variant) ---
 
 void
 MeasurementRequestElement::SetOperatingClass(uint8_t operatingClass)
 {
-    m_operatingClass = operatingClass;
+    switch (m_measurementType)
+    {
+    case 3:
+        std::get<ChannelLoadRequestBody>(m_body).operatingClass = operatingClass;
+        break;
+    case 4:
+        std::get<NoiseHistogramRequestBody>(m_body).operatingClass = operatingClass;
+        break;
+    case 5:
+        std::get<BeaconRequestBody>(m_body).operatingClass = operatingClass;
+        break;
+    case 6:
+        std::get<FrameRequestBody>(m_body).operatingClass = operatingClass;
+        break;
+    case 13:
+        std::get<DirectionalChannelQualityRequestBody>(m_body).operatingClass = operatingClass;
+        break;
+    case 14:
+        std::get<DirectionalMeasurementRequestBody>(m_body).operatingClass = operatingClass;
+        break;
+    case 15:
+        std::get<DirectionalStatisticsRequestBody>(m_body).operatingClass = operatingClass;
+        break;
+    default:
+        break;
+    }
 }
 
 uint8_t
 MeasurementRequestElement::GetOperatingClass() const
 {
-    return m_operatingClass;
+    switch (m_measurementType)
+    {
+    case 3:
+        return std::get<ChannelLoadRequestBody>(m_body).operatingClass;
+    case 4:
+        return std::get<NoiseHistogramRequestBody>(m_body).operatingClass;
+    case 5:
+        return std::get<BeaconRequestBody>(m_body).operatingClass;
+    case 6:
+        return std::get<FrameRequestBody>(m_body).operatingClass;
+    case 13:
+        return std::get<DirectionalChannelQualityRequestBody>(m_body).operatingClass;
+    case 14:
+        return std::get<DirectionalMeasurementRequestBody>(m_body).operatingClass;
+    case 15:
+        return std::get<DirectionalStatisticsRequestBody>(m_body).operatingClass;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetChannelNumber(uint8_t channel)
 {
-    m_channelNumber = channel;
+    switch (m_measurementType)
+    {
+    case 0:
+    case 1:
+    case 2:
+        std::get<BasicRequestBody>(m_body).channelNumber = channel;
+        break;
+    case 3:
+        std::get<ChannelLoadRequestBody>(m_body).channelNumber = channel;
+        break;
+    case 4:
+        std::get<NoiseHistogramRequestBody>(m_body).channelNumber = channel;
+        break;
+    case 5:
+        std::get<BeaconRequestBody>(m_body).channelNumber = channel;
+        break;
+    case 6:
+        std::get<FrameRequestBody>(m_body).channelNumber = channel;
+        break;
+    case 13:
+        std::get<DirectionalChannelQualityRequestBody>(m_body).channelNumber = channel;
+        break;
+    case 14:
+        std::get<DirectionalMeasurementRequestBody>(m_body).channelNumber = channel;
+        break;
+    case 15:
+        std::get<DirectionalStatisticsRequestBody>(m_body).channelNumber = channel;
+        break;
+    default:
+        break;
+    }
 }
 
 uint8_t
 MeasurementRequestElement::GetChannelNumber() const
 {
-    return m_channelNumber;
+    switch (m_measurementType)
+    {
+    case 0:
+    case 1:
+    case 2:
+        return std::get<BasicRequestBody>(m_body).channelNumber;
+    case 3:
+        return std::get<ChannelLoadRequestBody>(m_body).channelNumber;
+    case 4:
+        return std::get<NoiseHistogramRequestBody>(m_body).channelNumber;
+    case 5:
+        return std::get<BeaconRequestBody>(m_body).channelNumber;
+    case 6:
+        return std::get<FrameRequestBody>(m_body).channelNumber;
+    case 13:
+        return std::get<DirectionalChannelQualityRequestBody>(m_body).channelNumber;
+    case 14:
+        return std::get<DirectionalMeasurementRequestBody>(m_body).channelNumber;
+    case 15:
+        return std::get<DirectionalStatisticsRequestBody>(m_body).channelNumber;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetRandomizationInterval(uint16_t interval)
 {
-    m_randomizationInterval = interval;
+    switch (m_measurementType)
+    {
+    case 3:
+        std::get<ChannelLoadRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    case 4:
+        std::get<NoiseHistogramRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    case 5:
+        std::get<BeaconRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    case 6:
+        std::get<FrameRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    case 7:
+        std::get<StaStatisticsRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    case 9:
+        std::get<TransmitStreamRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    case 10:
+        std::get<MulticastDiagnosticsRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    case 16:
+        std::get<FtmRangeRequestBody>(m_body).randomizationInterval = interval;
+        break;
+    default:
+        break;
+    }
 }
 
 uint16_t
 MeasurementRequestElement::GetRandomizationInterval() const
 {
-    return m_randomizationInterval;
+    switch (m_measurementType)
+    {
+    case 3:
+        return std::get<ChannelLoadRequestBody>(m_body).randomizationInterval;
+    case 4:
+        return std::get<NoiseHistogramRequestBody>(m_body).randomizationInterval;
+    case 5:
+        return std::get<BeaconRequestBody>(m_body).randomizationInterval;
+    case 6:
+        return std::get<FrameRequestBody>(m_body).randomizationInterval;
+    case 7:
+        return std::get<StaStatisticsRequestBody>(m_body).randomizationInterval;
+    case 9:
+        return std::get<TransmitStreamRequestBody>(m_body).randomizationInterval;
+    case 10:
+        return std::get<MulticastDiagnosticsRequestBody>(m_body).randomizationInterval;
+    case 16:
+        return std::get<FtmRangeRequestBody>(m_body).randomizationInterval;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetMeasurementDuration(uint16_t duration)
 {
-    m_measurementDuration = duration;
+    switch (m_measurementType)
+    {
+    case 0:
+    case 1:
+    case 2:
+        std::get<BasicRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 3:
+        std::get<ChannelLoadRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 4:
+        std::get<NoiseHistogramRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 5:
+        std::get<BeaconRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 6:
+        std::get<FrameRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 7:
+        std::get<StaStatisticsRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 9:
+        std::get<TransmitStreamRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 10:
+        std::get<MulticastDiagnosticsRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 13:
+        std::get<DirectionalChannelQualityRequestBody>(m_body).measurementDuration = duration;
+        break;
+    case 14:
+        std::get<DirectionalMeasurementRequestBody>(m_body).measurementDurationPerDirection =
+            duration;
+        break;
+    case 15:
+        std::get<DirectionalStatisticsRequestBody>(m_body).measurementDurationPerDirection =
+            duration;
+        break;
+    default:
+        break;
+    }
 }
 
 uint16_t
 MeasurementRequestElement::GetMeasurementDuration() const
 {
-    return m_measurementDuration;
+    switch (m_measurementType)
+    {
+    case 0:
+    case 1:
+    case 2:
+        return std::get<BasicRequestBody>(m_body).measurementDuration;
+    case 3:
+        return std::get<ChannelLoadRequestBody>(m_body).measurementDuration;
+    case 4:
+        return std::get<NoiseHistogramRequestBody>(m_body).measurementDuration;
+    case 5:
+        return std::get<BeaconRequestBody>(m_body).measurementDuration;
+    case 6:
+        return std::get<FrameRequestBody>(m_body).measurementDuration;
+    case 7:
+        return std::get<StaStatisticsRequestBody>(m_body).measurementDuration;
+    case 9:
+        return std::get<TransmitStreamRequestBody>(m_body).measurementDuration;
+    case 10:
+        return std::get<MulticastDiagnosticsRequestBody>(m_body).measurementDuration;
+    case 13:
+        return std::get<DirectionalChannelQualityRequestBody>(m_body).measurementDuration;
+    case 14:
+        return std::get<DirectionalMeasurementRequestBody>(m_body).measurementDurationPerDirection;
+    case 15:
+        return std::get<DirectionalStatisticsRequestBody>(m_body).measurementDurationPerDirection;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetBeaconMeasurementMode(uint8_t mode)
 {
-    m_beaconMeasurementMode = mode;
+    std::get<BeaconRequestBody>(m_body).measurementMode = mode;
 }
 
 uint8_t
 MeasurementRequestElement::GetBeaconMeasurementMode() const
 {
-    return m_beaconMeasurementMode;
+    return std::get<BeaconRequestBody>(m_body).measurementMode;
 }
 
 void
 MeasurementRequestElement::SetBssid(Mac48Address bssid)
 {
-    m_bssid = bssid;
+    std::get<BeaconRequestBody>(m_body).bssid = bssid;
 }
 
 Mac48Address
 MeasurementRequestElement::GetBssid() const
 {
-    return m_bssid;
+    return std::get<BeaconRequestBody>(m_body).bssid;
 }
 
 void
 MeasurementRequestElement::SetFrameRequestType(uint8_t frameRequestType)
 {
-    m_frameRequestType = frameRequestType;
+    std::get<FrameRequestBody>(m_body).frameRequestType = frameRequestType;
 }
 
 uint8_t
 MeasurementRequestElement::GetFrameRequestType() const
 {
-    return m_frameRequestType;
+    return std::get<FrameRequestBody>(m_body).frameRequestType;
 }
 
 void
 MeasurementRequestElement::SetMacAddress(Mac48Address macAddress)
 {
-    m_macAddress = macAddress;
+    std::get<FrameRequestBody>(m_body).macAddress = macAddress;
 }
 
 Mac48Address
 MeasurementRequestElement::GetMacAddress() const
 {
-    return m_macAddress;
+    return std::get<FrameRequestBody>(m_body).macAddress;
 }
 
 void
 MeasurementRequestElement::SetPeerMacAddress(Mac48Address peerMacAddress)
 {
-    m_peerMacAddress = peerMacAddress;
+    std::get<StaStatisticsRequestBody>(m_body).peerMacAddress = peerMacAddress;
 }
 
 Mac48Address
 MeasurementRequestElement::GetPeerMacAddress() const
 {
-    return m_peerMacAddress;
+    return std::get<StaStatisticsRequestBody>(m_body).peerMacAddress;
 }
 
 void
 MeasurementRequestElement::SetGroupIdentity(uint8_t groupIdentity)
 {
-    m_groupIdentity = groupIdentity;
+    std::get<StaStatisticsRequestBody>(m_body).groupIdentity = groupIdentity;
 }
 
 uint8_t
 MeasurementRequestElement::GetGroupIdentity() const
 {
-    return m_groupIdentity;
+    return std::get<StaStatisticsRequestBody>(m_body).groupIdentity;
 }
 
 void
 MeasurementRequestElement::SetLocationSubject(uint8_t locationSubject)
 {
-    m_locationSubject = locationSubject;
+    switch (m_measurementType)
+    {
+    case 8:
+        std::get<LciRequestBody>(m_body).locationSubject = locationSubject;
+        break;
+    case 11:
+        std::get<LocationCivicRequestBody>(m_body).locationSubject = locationSubject;
+        break;
+    case 12:
+        std::get<LocationIdentifierRequestBody>(m_body).locationSubject = locationSubject;
+        break;
+    default:
+        break;
+    }
 }
 
 uint8_t
 MeasurementRequestElement::GetLocationSubject() const
 {
-    return m_locationSubject;
+    switch (m_measurementType)
+    {
+    case 8:
+        return std::get<LciRequestBody>(m_body).locationSubject;
+    case 11:
+        return std::get<LocationCivicRequestBody>(m_body).locationSubject;
+    case 12:
+        return std::get<LocationIdentifierRequestBody>(m_body).locationSubject;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetPeerStaAddress(Mac48Address peerStaAddress)
 {
-    m_peerStaAddress = peerStaAddress;
+    std::get<TransmitStreamRequestBody>(m_body).peerStaAddress = peerStaAddress;
 }
 
 Mac48Address
 MeasurementRequestElement::GetPeerStaAddress() const
 {
-    return m_peerStaAddress;
+    return std::get<TransmitStreamRequestBody>(m_body).peerStaAddress;
 }
 
 void
 MeasurementRequestElement::SetTrafficIdentifier(uint8_t tid)
 {
-    m_trafficIdentifier = tid;
+    std::get<TransmitStreamRequestBody>(m_body).trafficIdentifier = tid;
 }
 
 uint8_t
 MeasurementRequestElement::GetTrafficIdentifier() const
 {
-    return m_trafficIdentifier;
+    return std::get<TransmitStreamRequestBody>(m_body).trafficIdentifier;
 }
 
 void
 MeasurementRequestElement::SetBin0Range(uint8_t bin0Range)
 {
-    m_bin0Range = bin0Range;
+    std::get<TransmitStreamRequestBody>(m_body).bin0Range = bin0Range;
 }
 
 uint8_t
 MeasurementRequestElement::GetBin0Range() const
 {
-    return m_bin0Range;
+    return std::get<TransmitStreamRequestBody>(m_body).bin0Range;
 }
 
 void
 MeasurementRequestElement::SetGroupMacAddress(Mac48Address groupMacAddress)
 {
-    m_groupMacAddress = groupMacAddress;
+    std::get<MulticastDiagnosticsRequestBody>(m_body).groupMacAddress = groupMacAddress;
 }
 
 Mac48Address
 MeasurementRequestElement::GetGroupMacAddress() const
 {
-    return m_groupMacAddress;
+    return std::get<MulticastDiagnosticsRequestBody>(m_body).groupMacAddress;
 }
 
 void
 MeasurementRequestElement::SetCivicLocationType(uint8_t civicLocationType)
 {
-    m_civicLocationType = civicLocationType;
+    std::get<LocationCivicRequestBody>(m_body).civicLocationType = civicLocationType;
 }
 
 uint8_t
 MeasurementRequestElement::GetCivicLocationType() const
 {
-    return m_civicLocationType;
+    return std::get<LocationCivicRequestBody>(m_body).civicLocationType;
 }
 
 void
 MeasurementRequestElement::SetLocationServiceIntervalUnits(uint8_t units)
 {
-    m_locationServiceIntervalUnits = units;
+    switch (m_measurementType)
+    {
+    case 11:
+        std::get<LocationCivicRequestBody>(m_body).locationServiceIntervalUnits = units;
+        break;
+    case 12:
+        std::get<LocationIdentifierRequestBody>(m_body).locationServiceIntervalUnits = units;
+        break;
+    default:
+        break;
+    }
 }
 
 uint8_t
 MeasurementRequestElement::GetLocationServiceIntervalUnits() const
 {
-    return m_locationServiceIntervalUnits;
+    switch (m_measurementType)
+    {
+    case 11:
+        return std::get<LocationCivicRequestBody>(m_body).locationServiceIntervalUnits;
+    case 12:
+        return std::get<LocationIdentifierRequestBody>(m_body).locationServiceIntervalUnits;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetLocationServiceInterval(uint16_t interval)
 {
-    m_locationServiceInterval = interval;
+    switch (m_measurementType)
+    {
+    case 11:
+        std::get<LocationCivicRequestBody>(m_body).locationServiceInterval = interval;
+        break;
+    case 12:
+        std::get<LocationIdentifierRequestBody>(m_body).locationServiceInterval = interval;
+        break;
+    default:
+        break;
+    }
 }
 
 uint16_t
 MeasurementRequestElement::GetLocationServiceInterval() const
 {
-    return m_locationServiceInterval;
+    switch (m_measurementType)
+    {
+    case 11:
+        return std::get<LocationCivicRequestBody>(m_body).locationServiceInterval;
+    case 12:
+        return std::get<LocationIdentifierRequestBody>(m_body).locationServiceInterval;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetAid(uint8_t aid)
 {
-    m_aid = aid;
+    std::get<DirectionalChannelQualityRequestBody>(m_body).aid = aid;
 }
 
 uint8_t
 MeasurementRequestElement::GetAid() const
 {
-    return m_aid;
+    return std::get<DirectionalChannelQualityRequestBody>(m_body).aid;
 }
 
 void
 MeasurementRequestElement::SetMeasurementMethod(uint8_t method)
 {
-    m_measurementMethod = method;
+    switch (m_measurementType)
+    {
+    case 13:
+        std::get<DirectionalChannelQualityRequestBody>(m_body).measurementMethod = method;
+        break;
+    case 15:
+        std::get<DirectionalStatisticsRequestBody>(m_body).measurementMethod = method;
+        break;
+    default:
+        break;
+    }
 }
 
 uint8_t
 MeasurementRequestElement::GetMeasurementMethod() const
 {
-    return m_measurementMethod;
+    switch (m_measurementType)
+    {
+    case 13:
+        return std::get<DirectionalChannelQualityRequestBody>(m_body).measurementMethod;
+    case 15:
+        return std::get<DirectionalStatisticsRequestBody>(m_body).measurementMethod;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetMeasurementStartTime(uint64_t startTime)
 {
-    m_measurementStartTime = startTime;
+    switch (m_measurementType)
+    {
+    case 0:
+    case 1:
+    case 2:
+        std::get<BasicRequestBody>(m_body).measurementStartTime = startTime;
+        break;
+    case 13:
+        std::get<DirectionalChannelQualityRequestBody>(m_body).measurementStartTime = startTime;
+        break;
+    case 14:
+        std::get<DirectionalMeasurementRequestBody>(m_body).measurementStartTime = startTime;
+        break;
+    case 15:
+        std::get<DirectionalStatisticsRequestBody>(m_body).measurementStartTime = startTime;
+        break;
+    default:
+        break;
+    }
 }
 
 uint64_t
 MeasurementRequestElement::GetMeasurementStartTime() const
 {
-    return m_measurementStartTime;
+    switch (m_measurementType)
+    {
+    case 0:
+    case 1:
+    case 2:
+        return std::get<BasicRequestBody>(m_body).measurementStartTime;
+    case 13:
+        return std::get<DirectionalChannelQualityRequestBody>(m_body).measurementStartTime;
+    case 14:
+        return std::get<DirectionalMeasurementRequestBody>(m_body).measurementStartTime;
+    case 15:
+        return std::get<DirectionalStatisticsRequestBody>(m_body).measurementStartTime;
+    default:
+        return 0;
+    }
 }
 
 void
 MeasurementRequestElement::SetNumberOfTimeBlocks(uint8_t numberOfTimeBlocks)
 {
-    m_numberOfTimeBlocks = numberOfTimeBlocks;
+    std::get<DirectionalChannelQualityRequestBody>(m_body).numberOfTimeBlocks = numberOfTimeBlocks;
 }
 
 uint8_t
 MeasurementRequestElement::GetNumberOfTimeBlocks() const
 {
-    return m_numberOfTimeBlocks;
+    return std::get<DirectionalChannelQualityRequestBody>(m_body).numberOfTimeBlocks;
 }
 
 void
 MeasurementRequestElement::SetMeasurementMethodAndAntennaConfiguration(uint8_t value)
 {
-    m_measurementMethodAndAntennaConfiguration = value;
+    std::get<DirectionalMeasurementRequestBody>(m_body).measurementMethodAndAntennaConfiguration =
+        value;
 }
 
 uint8_t
 MeasurementRequestElement::GetMeasurementMethodAndAntennaConfiguration() const
 {
-    return m_measurementMethodAndAntennaConfiguration;
+    return std::get<DirectionalMeasurementRequestBody>(m_body)
+        .measurementMethodAndAntennaConfiguration;
 }
 
 void
 MeasurementRequestElement::SetDirectionalStatisticsBitmap(uint8_t bitmap)
 {
-    m_directionalStatisticsBitmap = bitmap;
+    std::get<DirectionalStatisticsRequestBody>(m_body).directionalStatisticsBitmap = bitmap;
 }
 
 uint8_t
 MeasurementRequestElement::GetDirectionalStatisticsBitmap() const
 {
-    return m_directionalStatisticsBitmap;
+    return std::get<DirectionalStatisticsRequestBody>(m_body).directionalStatisticsBitmap;
 }
 
 void
 MeasurementRequestElement::SetMinimumApCount(uint8_t minApCount)
 {
-    m_minimumApCount = minApCount;
+    std::get<FtmRangeRequestBody>(m_body).minimumApCount = minApCount;
 }
 
 uint8_t
 MeasurementRequestElement::GetMinimumApCount() const
 {
-    return m_minimumApCount;
+    return std::get<FtmRangeRequestBody>(m_body).minimumApCount;
 }
 
 void
 MeasurementRequestElement::SetPauseTime(uint16_t pauseTime)
 {
-    m_pauseTime = pauseTime;
+    std::get<MeasurementPauseRequestBody>(m_body).pauseTime = pauseTime;
 }
 
 uint16_t
 MeasurementRequestElement::GetPauseTime() const
 {
-    return m_pauseTime;
+    return std::get<MeasurementPauseRequestBody>(m_body).pauseTime;
 }
 
-// --- Optional subelement accessors ---
+// --- Optional subelement accessors (facade over variant) ---
 
 void
 MeasurementRequestElement::SetChannelLoadReporting(uint8_t condition, uint8_t channelLoadRefValue)
 {
-    m_channelLoadReporting = ChannelLoadReporting{condition, channelLoadRefValue};
+    std::get<ChannelLoadRequestBody>(m_body).channelLoadReporting =
+        ChannelLoadReporting{condition, channelLoadRefValue};
 }
 
 std::optional<MeasurementRequestElement::ChannelLoadReporting>
 MeasurementRequestElement::GetChannelLoadReporting() const
 {
-    return m_channelLoadReporting;
+    return std::get<ChannelLoadRequestBody>(m_body).channelLoadReporting;
 }
 
 void
 MeasurementRequestElement::SetNoiseHistogramReporting(uint8_t condition, uint8_t anpiRefValue)
 {
-    m_noiseHistogramReporting = NoiseHistogramReporting{condition, anpiRefValue};
+    std::get<NoiseHistogramRequestBody>(m_body).noiseHistogramReporting =
+        NoiseHistogramReporting{condition, anpiRefValue};
 }
 
 std::optional<MeasurementRequestElement::NoiseHistogramReporting>
 MeasurementRequestElement::GetNoiseHistogramReporting() const
 {
-    return m_noiseHistogramReporting;
+    return std::get<NoiseHistogramRequestBody>(m_body).noiseHistogramReporting;
 }
 
 void
 MeasurementRequestElement::SetBeaconReporting(uint8_t condition, uint8_t thresholdOffsetRef)
 {
-    m_beaconReporting = BeaconReporting{condition, thresholdOffsetRef};
+    std::get<BeaconRequestBody>(m_body).beaconReporting =
+        BeaconReporting{condition, thresholdOffsetRef};
 }
 
 std::optional<MeasurementRequestElement::BeaconReporting>
 MeasurementRequestElement::GetBeaconReporting() const
 {
-    return m_beaconReporting;
+    return std::get<BeaconRequestBody>(m_body).beaconReporting;
 }
 
 void
 MeasurementRequestElement::SetBeaconSsid(Ssid ssid)
 {
-    m_beaconSsid = ssid;
+    std::get<BeaconRequestBody>(m_body).ssid = ssid;
 }
 
 std::optional<Ssid>
 MeasurementRequestElement::GetBeaconSsid() const
 {
-    return m_beaconSsid;
+    return std::get<BeaconRequestBody>(m_body).ssid;
 }
 
 void
 MeasurementRequestElement::SetBeaconReportingDetail(uint8_t detail)
 {
-    m_beaconReportingDetail = detail;
+    std::get<BeaconRequestBody>(m_body).reportingDetail = detail;
 }
 
 std::optional<uint8_t>
 MeasurementRequestElement::GetBeaconReportingDetail() const
 {
-    return m_beaconReportingDetail;
+    return std::get<BeaconRequestBody>(m_body).reportingDetail;
 }
 
 void
 MeasurementRequestElement::AddApChannelReport(uint8_t opClass, std::vector<uint8_t> channels)
 {
-    m_apChannelReports.push_back(ApChannelReport{opClass, std::move(channels)});
+    std::get<BeaconRequestBody>(m_body).apChannelReports.push_back(
+        ApChannelReport{opClass, std::move(channels)});
 }
 
 std::vector<MeasurementRequestElement::ApChannelReport>
 MeasurementRequestElement::GetApChannelReports() const
 {
-    return m_apChannelReports;
+    return std::get<BeaconRequestBody>(m_body).apChannelReports;
 }
 
 void
 MeasurementRequestElement::SetAzimuthRequest(uint8_t resolution, uint8_t type)
 {
-    m_azimuthRequest = AzimuthRequest{resolution, type};
+    std::get<LciRequestBody>(m_body).azimuthRequest = AzimuthRequest{resolution, type};
 }
 
 std::optional<MeasurementRequestElement::AzimuthRequest>
 MeasurementRequestElement::GetAzimuthRequest() const
 {
-    return m_azimuthRequest;
+    return std::get<LciRequestBody>(m_body).azimuthRequest;
 }
 
 void
 MeasurementRequestElement::AddFtmRangeNeighborReport(const NeighborReportElement& nre)
 {
-    m_ftmRangeNeighborReports.push_back(nre);
+    std::get<FtmRangeRequestBody>(m_body).neighborReports.push_back(nre);
 }
 
 std::vector<NeighborReportElement>
 MeasurementRequestElement::GetFtmRangeNeighborReports() const
 {
-    return m_ftmRangeNeighborReports;
+    return std::get<FtmRangeRequestBody>(m_body).neighborReports;
 }
 
 void
 MeasurementRequestElement::SetVendorSpecificSubelement(std::vector<uint8_t> data)
 {
-    m_vendorSpecificSubelement = std::move(data);
+    std::visit(
+        [&data](auto& body) {
+            using T = std::decay_t<decltype(body)>;
+            if constexpr (!std::is_same_v<T, std::monostate> &&
+                          !std::is_same_v<T, BasicRequestBody>)
+            {
+                body.vendorSpecific = std::move(data);
+            }
+        },
+        m_body);
 }
 
 std::optional<std::vector<uint8_t>>
 MeasurementRequestElement::GetVendorSpecificSubelement() const
 {
-    return m_vendorSpecificSubelement;
+    return std::visit(
+        [](const auto& body) -> std::optional<std::vector<uint8_t>> {
+            using T = std::decay_t<decltype(body)>;
+            if constexpr (!std::is_same_v<T, std::monostate> &&
+                          !std::is_same_v<T, BasicRequestBody>)
+            {
+                return body.vendorSpecific;
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        },
+        m_body);
 }
+
+// --- Subelement serialization helpers ---
+
+namespace
+{
+
+uint16_t
+VendorSpecificSize(const std::optional<std::vector<uint8_t>>& vs)
+{
+    return vs ? static_cast<uint16_t>(2 + vs->size()) : 0;
+}
+
+void
+SerializeVendorSpecific(Buffer::Iterator& start, const std::optional<std::vector<uint8_t>>& vs)
+{
+    if (vs)
+    {
+        start.WriteU8(221);
+        start.WriteU8(static_cast<uint8_t>(vs->size()));
+        for (auto byte : *vs)
+        {
+            start.WriteU8(byte);
+        }
+    }
+}
+
+void
+SerializeSsidSubelement(Buffer::Iterator& start, const std::optional<Ssid>& ssid)
+{
+    if (ssid)
+    {
+        uint32_t ssidSerSize = ssid->GetSerializedSize();
+        uint16_t ssidInfoLen = static_cast<uint16_t>(ssidSerSize - 2);
+        start.WriteU8(0); // subelement ID
+        start.WriteU8(static_cast<uint8_t>(ssidInfoLen));
+        Buffer ssidBuf;
+        ssidBuf.AddAtStart(ssidSerSize);
+        ssid->Serialize(ssidBuf.Begin());
+        Buffer::Iterator ssidIter = ssidBuf.Begin();
+        ssidIter.Next(2); // skip IE Element ID and Length
+        for (uint16_t j = 0; j < ssidInfoLen; j++)
+        {
+            start.WriteU8(ssidIter.ReadU8());
+        }
+    }
+}
+
+void
+SerializeNeighborReports(Buffer::Iterator& start,
+                         const std::vector<NeighborReportElement>& neighborReports)
+{
+    for (const auto& nre : neighborReports)
+    {
+        uint32_t nreSerSize = nre.GetSerializedSize();
+        uint16_t nreInfoSize = static_cast<uint16_t>(nreSerSize - 2);
+        Buffer nreBuf;
+        nreBuf.AddAtStart(nreSerSize);
+        nre.Serialize(nreBuf.Begin());
+        start.WriteU8(52); // subelement ID
+        start.WriteU8(static_cast<uint8_t>(nreInfoSize));
+        Buffer::Iterator nreIter = nreBuf.Begin();
+        nreIter.Next(2); // skip IE Element ID and Length
+        for (uint16_t j = 0; j < nreInfoSize; j++)
+        {
+            start.WriteU8(nreIter.ReadU8());
+        }
+    }
+}
+
+} // anonymous namespace
 
 // --- WifiInformationElement overrides ---
 
@@ -592,107 +1068,126 @@ MeasurementRequestElement::GetInformationFieldSize() const
 {
     uint16_t size = 3; // token(1) + mode(1) + type(1)
 
-    switch (m_measurementType)
-    {
-    case 0:         // Basic
-    case 1:         // CCA
-    case 2:         // RPI Histogram
-        size += 11; // Channel(1) + StartTime(8) + Duration(2)
-        break;
-    case 3:        // Channel Load
-    case 4:        // Noise Histogram
-        size += 6; // OpClass(1) + Channel(1) + RandInterval(2) + Duration(2)
-        break;
-    case 5:         // Beacon
-        size += 13; // OpClass(1) + Channel(1) + RandInterval(2) + Duration(2) + Mode(1) + BSSID(6)
-        break;
-    case 6:         // Frame
-        size += 13; // OpClass(1) + Channel(1) + RandInterval(2) + Duration(2) + FrameReqType(1) +
-                    // MAC(6)
-        break;
-    case 7:         // STA Statistics
-        size += 11; // PeerMAC(6) + RandInterval(2) + Duration(2) + GroupID(1)
-        break;
-    case 8:        // LCI
-        size += 1; // LocationSubject(1)
-        break;
-    case 9:         // Transmit Stream
-        size += 12; // RandInterval(2) + Duration(2) + PeerSTA(6) + TID(1) + Bin0Range(1)
-        break;
-    case 10:        // Multicast Diagnostics
-        size += 10; // RandInterval(2) + Duration(2) + GroupMAC(6)
-        break;
-    case 11:       // Location Civic
-        size += 5; // LocSubject(1) + CivicType(1) + ServiceUnits(1) + ServiceInterval(2)
-        break;
-    case 12:       // Location Identifier
-        size += 4; // LocSubject(1) + ServiceUnits(1) + ServiceInterval(2)
-        break;
-    case 13:        // Directional Channel Quality
-        size += 16; // OpClass(1) + Channel(1) + AID(1) + Reserved(1) + Method(1) + StartTime(8) +
-                    // Duration(2) + TimeBlocks(1)
-        break;
-    case 14: // Directional Measurement
-        size +=
-            13; // OpClass(1) + Channel(1) + StartTime(8) + Duration(2) + MethodAndAntennaConfig(1)
-        break;
-    case 15: // Directional Statistics
-        size +=
-            14; // OpClass(1) + Channel(1) + StartTime(8) + Duration(2) + Method(1) + StatsBitmap(1)
-        break;
-    case 16:       // FTM Range
-        size += 3; // RandInterval(2) + MinAPCount(1)
-        break;
-    case 255:      // Measurement Pause
-        size += 2; // PauseTime(2)
-        break;
-    default:
-        break;
-    }
-
-    // Subelement sizes (type-scoped)
-    if (m_measurementType == 3 && m_channelLoadReporting)
-    {
-        size += 4; // ID(1) + Len(1) + Condition(1) + ChannelLoadRefValue(1)
-    }
-    if (m_measurementType == 4 && m_noiseHistogramReporting)
-    {
-        size += 4; // ID(1) + Len(1) + Condition(1) + ANPIRefValue(1)
-    }
-    if (m_measurementType == 5 && m_beaconSsid)
-    {
-        size += 2 + (m_beaconSsid->GetSerializedSize() - 2); // ID(1) + Len(1) + SSID bytes
-    }
-    if (m_measurementType == 5 && m_beaconReporting)
-    {
-        size += 4; // ID(1) + Len(1) + Condition(1) + ThresholdOffsetRef(1)
-    }
-    if (m_measurementType == 5 && m_beaconReportingDetail)
-    {
-        size += 3; // ID(1) + Len(1) + Detail(1)
-    }
-    if (m_measurementType == 5)
-    {
-        for (const auto& report : m_apChannelReports)
-        {
-            size += 2 + 1 + report.channelList.size(); // ID(1) + Len(1) + OpClass(1) + channels
-        }
-    }
-    if (m_measurementType == 8 && m_azimuthRequest)
-    {
-        size += 3; // ID(1) + Len(1) + AzimuthRequestField(1)
-    }
-    if (m_measurementType == 16)
-    {
-        for (const auto& nre : m_ftmRangeNeighborReports)
-        {
-            size += 2 + (nre.GetSerializedSize() - 2); // ID(1) + Len(1) + NRE info field
-        }
-    }
-    if (m_vendorSpecificSubelement)
-    {
-        size += 2 + m_vendorSpecificSubelement->size();
-    }
+    std::visit(
+        [&size](const auto& body) {
+            using T = std::decay_t<decltype(body)>;
+            if constexpr (std::is_same_v<T, std::monostate>)
+            {
+                // no body
+            }
+            else if constexpr (std::is_same_v<T, BasicRequestBody>)
+            {
+                size += 11; // Channel(1) + StartTime(8) + Duration(2)
+            }
+            else if constexpr (std::is_same_v<T, ChannelLoadRequestBody>)
+            {
+                size += 6; // OpClass(1) + Channel(1) + RandInterval(2) + Duration(2)
+                if (body.channelLoadReporting)
+                {
+                    size += 4;
+                }
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, NoiseHistogramRequestBody>)
+            {
+                size += 6;
+                if (body.noiseHistogramReporting)
+                {
+                    size += 4;
+                }
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, BeaconRequestBody>)
+            {
+                size += 13; // OpClass(1)+Ch(1)+Rand(2)+Dur(2)+Mode(1)+BSSID(6)
+                if (body.ssid)
+                {
+                    size += 2 + (body.ssid->GetSerializedSize() - 2);
+                }
+                if (body.beaconReporting)
+                {
+                    size += 4;
+                }
+                if (body.reportingDetail)
+                {
+                    size += 3;
+                }
+                for (const auto& report : body.apChannelReports)
+                {
+                    size += static_cast<uint16_t>(2 + 1 + report.channelList.size());
+                }
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, FrameRequestBody>)
+            {
+                size += 13; // OpClass(1)+Ch(1)+Rand(2)+Dur(2)+FReqType(1)+MAC(6)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, StaStatisticsRequestBody>)
+            {
+                size += 11; // PeerMAC(6)+Rand(2)+Dur(2)+GroupID(1)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, LciRequestBody>)
+            {
+                size += 1; // LocationSubject(1)
+                if (body.azimuthRequest)
+                {
+                    size += 3;
+                }
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, TransmitStreamRequestBody>)
+            {
+                size += 12; // Rand(2)+Dur(2)+PeerSTA(6)+TID(1)+Bin0Range(1)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, MulticastDiagnosticsRequestBody>)
+            {
+                size += 10; // Rand(2)+Dur(2)+GroupMAC(6)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, LocationCivicRequestBody>)
+            {
+                size += 5; // LocSubject(1)+CivicType(1)+ServiceUnits(1)+ServiceInterval(2)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, LocationIdentifierRequestBody>)
+            {
+                size += 4; // LocSubject(1)+ServiceUnits(1)+ServiceInterval(2)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, DirectionalChannelQualityRequestBody>)
+            {
+                size += 16; // OpClass(1)+Ch(1)+AID(1)+Rsv(1)+Method(1)+Start(8)+Dur(2)+Blocks(1)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, DirectionalMeasurementRequestBody>)
+            {
+                size += 13; // OpClass(1)+Ch(1)+Start(8)+Dur(2)+MethodAntenna(1)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, DirectionalStatisticsRequestBody>)
+            {
+                size += 14; // OpClass(1)+Ch(1)+Start(8)+Dur(2)+Method(1)+Bitmap(1)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, FtmRangeRequestBody>)
+            {
+                size += 3; // Rand(2)+MinAPCount(1)
+                for (const auto& nre : body.neighborReports)
+                {
+                    size += static_cast<uint16_t>(2 + (nre.GetSerializedSize() - 2));
+                }
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, MeasurementPauseRequestBody>)
+            {
+                size += 2; // PauseTime(2)
+                size += VendorSpecificSize(body.vendorSpecific);
+            }
+        },
+        m_body);
 
     return size;
 }
@@ -704,202 +1199,190 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
     start.WriteU8(m_measurementRequestMode);
     start.WriteU8(m_measurementType);
 
-    switch (m_measurementType)
-    {
-    case 0: // Basic
-    case 1: // CCA
-    case 2: // RPI Histogram
-        start.WriteU8(m_channelNumber);
-        start.WriteU64(m_measurementStartTime);
-        start.WriteU16(m_measurementDuration);
-        break;
-    case 3: // Channel Load
-    case 4: // Noise Histogram
-        start.WriteU8(m_operatingClass);
-        start.WriteU8(m_channelNumber);
-        start.WriteU16(m_randomizationInterval);
-        start.WriteU16(m_measurementDuration);
-        break;
-    case 5: // Beacon
-        start.WriteU8(m_operatingClass);
-        start.WriteU8(m_channelNumber);
-        start.WriteU16(m_randomizationInterval);
-        start.WriteU16(m_measurementDuration);
-        start.WriteU8(m_beaconMeasurementMode);
-        WriteTo(start, m_bssid);
-        break;
-    case 6: // Frame
-        start.WriteU8(m_operatingClass);
-        start.WriteU8(m_channelNumber);
-        start.WriteU16(m_randomizationInterval);
-        start.WriteU16(m_measurementDuration);
-        start.WriteU8(m_frameRequestType);
-        WriteTo(start, m_macAddress);
-        break;
-    case 7: // STA Statistics
-        WriteTo(start, m_peerMacAddress);
-        start.WriteU16(m_randomizationInterval);
-        start.WriteU16(m_measurementDuration);
-        start.WriteU8(m_groupIdentity);
-        break;
-    case 8: // LCI
-        start.WriteU8(m_locationSubject);
-        break;
-    case 9: // Transmit Stream
-        start.WriteU16(m_randomizationInterval);
-        start.WriteU16(m_measurementDuration);
-        WriteTo(start, m_peerStaAddress);
-        start.WriteU8(m_trafficIdentifier);
-        start.WriteU8(m_bin0Range);
-        break;
-    case 10: // Multicast Diagnostics
-        start.WriteU16(m_randomizationInterval);
-        start.WriteU16(m_measurementDuration);
-        WriteTo(start, m_groupMacAddress);
-        break;
-    case 11: // Location Civic
-        start.WriteU8(m_locationSubject);
-        start.WriteU8(m_civicLocationType);
-        start.WriteU8(m_locationServiceIntervalUnits);
-        start.WriteU16(m_locationServiceInterval);
-        break;
-    case 12: // Location Identifier
-        start.WriteU8(m_locationSubject);
-        start.WriteU8(m_locationServiceIntervalUnits);
-        start.WriteU16(m_locationServiceInterval);
-        break;
-    case 13: // Directional Channel Quality
-        start.WriteU8(m_operatingClass);
-        start.WriteU8(m_channelNumber);
-        start.WriteU8(m_aid);
-        start.WriteU8(0); // Reserved
-        start.WriteU8(m_measurementMethod);
-        start.WriteU64(m_measurementStartTime);
-        start.WriteU16(m_measurementDuration);
-        start.WriteU8(m_numberOfTimeBlocks);
-        break;
-    case 14: // Directional Measurement
-        start.WriteU8(m_operatingClass);
-        start.WriteU8(m_channelNumber);
-        start.WriteU64(m_measurementStartTime);
-        start.WriteU16(m_measurementDuration);
-        start.WriteU8(m_measurementMethodAndAntennaConfiguration);
-        break;
-    case 15: // Directional Statistics
-        start.WriteU8(m_operatingClass);
-        start.WriteU8(m_channelNumber);
-        start.WriteU64(m_measurementStartTime);
-        start.WriteU16(m_measurementDuration);
-        start.WriteU8(m_measurementMethod);
-        start.WriteU8(m_directionalStatisticsBitmap);
-        break;
-    case 16: // FTM Range
-        start.WriteU16(m_randomizationInterval);
-        start.WriteU8(m_minimumApCount);
-        break;
-    case 255: // Measurement Pause
-        start.WriteU16(m_pauseTime);
-        break;
-    default:
-        break;
-    }
-
-    // Serialize subelements, guarded by measurement type.
-    // Subelement IDs are type-scoped, so only write subelements valid for this type.
-    if (m_measurementType == 5 && m_beaconSsid)
-    {
-        uint32_t ssidSerSize = m_beaconSsid->GetSerializedSize();
-        uint16_t ssidInfoLen = static_cast<uint16_t>(ssidSerSize - 2);
-        start.WriteU8(0); // subelement ID
-        start.WriteU8(static_cast<uint8_t>(ssidInfoLen));
-        Buffer ssidBuf;
-        ssidBuf.AddAtStart(ssidSerSize);
-        m_beaconSsid->Serialize(ssidBuf.Begin());
-        Buffer::Iterator ssidIter = ssidBuf.Begin();
-        ssidIter.Next(2); // skip IE Element ID and Length
-        for (uint16_t j = 0; j < ssidInfoLen; j++)
-        {
-            start.WriteU8(ssidIter.ReadU8());
-        }
-    }
-    if (m_measurementType == 3 && m_channelLoadReporting)
-    {
-        start.WriteU8(1); // subelement ID
-        start.WriteU8(2); // length
-        start.WriteU8(m_channelLoadReporting->reportingCondition);
-        start.WriteU8(m_channelLoadReporting->channelLoadReferenceValue);
-    }
-    if (m_measurementType == 5 && m_beaconReporting)
-    {
-        start.WriteU8(1); // subelement ID
-        start.WriteU8(2); // length
-        start.WriteU8(m_beaconReporting->reportingCondition);
-        start.WriteU8(m_beaconReporting->thresholdOffsetReference);
-    }
-    if (m_measurementType == 4 && m_noiseHistogramReporting)
-    {
-        start.WriteU8(1); // subelement ID
-        start.WriteU8(2); // length
-        start.WriteU8(m_noiseHistogramReporting->reportingCondition);
-        start.WriteU8(m_noiseHistogramReporting->anpiReferenceValue);
-    }
-    if (m_measurementType == 8 && m_azimuthRequest)
-    {
-        start.WriteU8(1); // subelement ID
-        start.WriteU8(1); // length
-        uint8_t field = (m_azimuthRequest->azimuthResolution & 0x0F) |
-                        ((m_azimuthRequest->azimuthType & 0x01) << 4);
-        start.WriteU8(field);
-    }
-    if (m_measurementType == 5 && m_beaconReportingDetail)
-    {
-        start.WriteU8(2); // subelement ID
-        start.WriteU8(1); // length
-        start.WriteU8(*m_beaconReportingDetail);
-    }
-    if (m_measurementType == 5)
-    {
-        for (const auto& report : m_apChannelReports)
-        {
-            start.WriteU8(51); // subelement ID
-            start.WriteU8(static_cast<uint8_t>(1 + report.channelList.size()));
-            start.WriteU8(report.operatingClass);
-            for (auto ch : report.channelList)
+    std::visit(
+        [&start](const auto& body) {
+            using T = std::decay_t<decltype(body)>;
+            if constexpr (std::is_same_v<T, std::monostate>)
             {
-                start.WriteU8(ch);
+                // no body
             }
-        }
-    }
-    if (m_measurementType == 16)
-    {
-        for (const auto& nre : m_ftmRangeNeighborReports)
-        {
-            // Serialize the full NRE (IE header + info field) to a temp buffer,
-            // then write subelement ID + length + info field bytes
-            uint32_t nreSerSize = nre.GetSerializedSize();
-            uint16_t nreInfoSize = static_cast<uint16_t>(nreSerSize - 2); // subtract IE header
-            Buffer nreBuf;
-            nreBuf.AddAtStart(nreSerSize);
-            nre.Serialize(nreBuf.Begin());
-            start.WriteU8(52); // subelement ID
-            start.WriteU8(static_cast<uint8_t>(nreInfoSize));
-            Buffer::Iterator nreIter = nreBuf.Begin();
-            nreIter.Next(2); // skip IE Element ID and Length
-            for (uint16_t j = 0; j < nreInfoSize; j++)
+            else if constexpr (std::is_same_v<T, BasicRequestBody>)
             {
-                start.WriteU8(nreIter.ReadU8());
+                start.WriteU8(body.channelNumber);
+                start.WriteU64(body.measurementStartTime);
+                start.WriteU16(body.measurementDuration);
             }
-        }
-    }
-    if (m_vendorSpecificSubelement)
-    {
-        start.WriteU8(221);
-        start.WriteU8(static_cast<uint8_t>(m_vendorSpecificSubelement->size()));
-        for (auto byte : *m_vendorSpecificSubelement)
-        {
-            start.WriteU8(byte);
-        }
-    }
+            else if constexpr (std::is_same_v<T, ChannelLoadRequestBody>)
+            {
+                start.WriteU8(body.operatingClass);
+                start.WriteU8(body.channelNumber);
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU16(body.measurementDuration);
+                if (body.channelLoadReporting)
+                {
+                    start.WriteU8(1);
+                    start.WriteU8(2);
+                    start.WriteU8(body.channelLoadReporting->reportingCondition);
+                    start.WriteU8(body.channelLoadReporting->channelLoadReferenceValue);
+                }
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, NoiseHistogramRequestBody>)
+            {
+                start.WriteU8(body.operatingClass);
+                start.WriteU8(body.channelNumber);
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU16(body.measurementDuration);
+                if (body.noiseHistogramReporting)
+                {
+                    start.WriteU8(1);
+                    start.WriteU8(2);
+                    start.WriteU8(body.noiseHistogramReporting->reportingCondition);
+                    start.WriteU8(body.noiseHistogramReporting->anpiReferenceValue);
+                }
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, BeaconRequestBody>)
+            {
+                start.WriteU8(body.operatingClass);
+                start.WriteU8(body.channelNumber);
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU16(body.measurementDuration);
+                start.WriteU8(body.measurementMode);
+                WriteTo(start, body.bssid);
+                SerializeSsidSubelement(start, body.ssid);
+                if (body.beaconReporting)
+                {
+                    start.WriteU8(1);
+                    start.WriteU8(2);
+                    start.WriteU8(body.beaconReporting->reportingCondition);
+                    start.WriteU8(body.beaconReporting->thresholdOffsetReference);
+                }
+                if (body.reportingDetail)
+                {
+                    start.WriteU8(2);
+                    start.WriteU8(1);
+                    start.WriteU8(*body.reportingDetail);
+                }
+                for (const auto& report : body.apChannelReports)
+                {
+                    start.WriteU8(51);
+                    start.WriteU8(static_cast<uint8_t>(1 + report.channelList.size()));
+                    start.WriteU8(report.operatingClass);
+                    for (auto ch : report.channelList)
+                    {
+                        start.WriteU8(ch);
+                    }
+                }
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, FrameRequestBody>)
+            {
+                start.WriteU8(body.operatingClass);
+                start.WriteU8(body.channelNumber);
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU16(body.measurementDuration);
+                start.WriteU8(body.frameRequestType);
+                WriteTo(start, body.macAddress);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, StaStatisticsRequestBody>)
+            {
+                WriteTo(start, body.peerMacAddress);
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU16(body.measurementDuration);
+                start.WriteU8(body.groupIdentity);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, LciRequestBody>)
+            {
+                start.WriteU8(body.locationSubject);
+                if (body.azimuthRequest)
+                {
+                    start.WriteU8(1);
+                    start.WriteU8(1);
+                    uint8_t field = (body.azimuthRequest->azimuthResolution & 0x0F) |
+                                    ((body.azimuthRequest->azimuthType & 0x01) << 4);
+                    start.WriteU8(field);
+                }
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, TransmitStreamRequestBody>)
+            {
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU16(body.measurementDuration);
+                WriteTo(start, body.peerStaAddress);
+                start.WriteU8(body.trafficIdentifier);
+                start.WriteU8(body.bin0Range);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, MulticastDiagnosticsRequestBody>)
+            {
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU16(body.measurementDuration);
+                WriteTo(start, body.groupMacAddress);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, LocationCivicRequestBody>)
+            {
+                start.WriteU8(body.locationSubject);
+                start.WriteU8(body.civicLocationType);
+                start.WriteU8(body.locationServiceIntervalUnits);
+                start.WriteU16(body.locationServiceInterval);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, LocationIdentifierRequestBody>)
+            {
+                start.WriteU8(body.locationSubject);
+                start.WriteU8(body.locationServiceIntervalUnits);
+                start.WriteU16(body.locationServiceInterval);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, DirectionalChannelQualityRequestBody>)
+            {
+                start.WriteU8(body.operatingClass);
+                start.WriteU8(body.channelNumber);
+                start.WriteU8(body.aid);
+                start.WriteU8(body.reserved);
+                start.WriteU8(body.measurementMethod);
+                start.WriteU64(body.measurementStartTime);
+                start.WriteU16(body.measurementDuration);
+                start.WriteU8(body.numberOfTimeBlocks);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, DirectionalMeasurementRequestBody>)
+            {
+                start.WriteU8(body.operatingClass);
+                start.WriteU8(body.channelNumber);
+                start.WriteU64(body.measurementStartTime);
+                start.WriteU16(body.measurementDurationPerDirection);
+                start.WriteU8(body.measurementMethodAndAntennaConfiguration);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, DirectionalStatisticsRequestBody>)
+            {
+                start.WriteU8(body.operatingClass);
+                start.WriteU8(body.channelNumber);
+                start.WriteU64(body.measurementStartTime);
+                start.WriteU16(body.measurementDurationPerDirection);
+                start.WriteU8(body.measurementMethod);
+                start.WriteU8(body.directionalStatisticsBitmap);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, FtmRangeRequestBody>)
+            {
+                start.WriteU16(body.randomizationInterval);
+                start.WriteU8(body.minimumApCount);
+                SerializeNeighborReports(start, body.neighborReports);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+            else if constexpr (std::is_same_v<T, MeasurementPauseRequestBody>)
+            {
+                start.WriteU16(body.pauseTime);
+                SerializeVendorSpecific(start, body.vendorSpecific);
+            }
+        },
+        m_body);
 }
 
 uint16_t
@@ -912,123 +1395,163 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
 
     uint16_t bytesRead = 3;
 
+    // Initialize variant for the type, then populate body fields
+    SetMeasurementType(m_measurementType);
+
     switch (m_measurementType)
     {
-    case 0: // Basic
-    case 1: // CCA
-    case 2: // RPI Histogram
-        m_channelNumber = i.ReadU8();
-        m_measurementStartTime = i.ReadU64();
-        m_measurementDuration = i.ReadU16();
+    case 0:
+    case 1:
+    case 2: {
+        auto& body = std::get<BasicRequestBody>(m_body);
+        body.channelNumber = i.ReadU8();
+        body.measurementStartTime = i.ReadU64();
+        body.measurementDuration = i.ReadU16();
         bytesRead += 11;
         break;
-    case 3: // Channel Load
-    case 4: // Noise Histogram
-        m_operatingClass = i.ReadU8();
-        m_channelNumber = i.ReadU8();
-        m_randomizationInterval = i.ReadU16();
-        m_measurementDuration = i.ReadU16();
+    }
+    case 3: {
+        auto& body = std::get<ChannelLoadRequestBody>(m_body);
+        body.operatingClass = i.ReadU8();
+        body.channelNumber = i.ReadU8();
+        body.randomizationInterval = i.ReadU16();
+        body.measurementDuration = i.ReadU16();
         bytesRead += 6;
         break;
-    case 5: // Beacon
-        m_operatingClass = i.ReadU8();
-        m_channelNumber = i.ReadU8();
-        m_randomizationInterval = i.ReadU16();
-        m_measurementDuration = i.ReadU16();
-        m_beaconMeasurementMode = i.ReadU8();
-        ReadFrom(i, m_bssid);
+    }
+    case 4: {
+        auto& body = std::get<NoiseHistogramRequestBody>(m_body);
+        body.operatingClass = i.ReadU8();
+        body.channelNumber = i.ReadU8();
+        body.randomizationInterval = i.ReadU16();
+        body.measurementDuration = i.ReadU16();
+        bytesRead += 6;
+        break;
+    }
+    case 5: {
+        auto& body = std::get<BeaconRequestBody>(m_body);
+        body.operatingClass = i.ReadU8();
+        body.channelNumber = i.ReadU8();
+        body.randomizationInterval = i.ReadU16();
+        body.measurementDuration = i.ReadU16();
+        body.measurementMode = i.ReadU8();
+        ReadFrom(i, body.bssid);
         bytesRead += 13;
         break;
-    case 6: // Frame
-        m_operatingClass = i.ReadU8();
-        m_channelNumber = i.ReadU8();
-        m_randomizationInterval = i.ReadU16();
-        m_measurementDuration = i.ReadU16();
-        m_frameRequestType = i.ReadU8();
-        ReadFrom(i, m_macAddress);
+    }
+    case 6: {
+        auto& body = std::get<FrameRequestBody>(m_body);
+        body.operatingClass = i.ReadU8();
+        body.channelNumber = i.ReadU8();
+        body.randomizationInterval = i.ReadU16();
+        body.measurementDuration = i.ReadU16();
+        body.frameRequestType = i.ReadU8();
+        ReadFrom(i, body.macAddress);
         bytesRead += 13;
         break;
-    case 7: // STA Statistics
-        ReadFrom(i, m_peerMacAddress);
-        m_randomizationInterval = i.ReadU16();
-        m_measurementDuration = i.ReadU16();
-        m_groupIdentity = i.ReadU8();
+    }
+    case 7: {
+        auto& body = std::get<StaStatisticsRequestBody>(m_body);
+        ReadFrom(i, body.peerMacAddress);
+        body.randomizationInterval = i.ReadU16();
+        body.measurementDuration = i.ReadU16();
+        body.groupIdentity = i.ReadU8();
         bytesRead += 11;
         break;
-    case 8: // LCI
-        m_locationSubject = i.ReadU8();
+    }
+    case 8: {
+        auto& body = std::get<LciRequestBody>(m_body);
+        body.locationSubject = i.ReadU8();
         bytesRead += 1;
         break;
-    case 9: // Transmit Stream
-        m_randomizationInterval = i.ReadU16();
-        m_measurementDuration = i.ReadU16();
-        ReadFrom(i, m_peerStaAddress);
-        m_trafficIdentifier = i.ReadU8();
-        m_bin0Range = i.ReadU8();
+    }
+    case 9: {
+        auto& body = std::get<TransmitStreamRequestBody>(m_body);
+        body.randomizationInterval = i.ReadU16();
+        body.measurementDuration = i.ReadU16();
+        ReadFrom(i, body.peerStaAddress);
+        body.trafficIdentifier = i.ReadU8();
+        body.bin0Range = i.ReadU8();
         bytesRead += 12;
         break;
-    case 10: // Multicast Diagnostics
-        m_randomizationInterval = i.ReadU16();
-        m_measurementDuration = i.ReadU16();
-        ReadFrom(i, m_groupMacAddress);
+    }
+    case 10: {
+        auto& body = std::get<MulticastDiagnosticsRequestBody>(m_body);
+        body.randomizationInterval = i.ReadU16();
+        body.measurementDuration = i.ReadU16();
+        ReadFrom(i, body.groupMacAddress);
         bytesRead += 10;
         break;
-    case 11: // Location Civic
-        m_locationSubject = i.ReadU8();
-        m_civicLocationType = i.ReadU8();
-        m_locationServiceIntervalUnits = i.ReadU8();
-        m_locationServiceInterval = i.ReadU16();
+    }
+    case 11: {
+        auto& body = std::get<LocationCivicRequestBody>(m_body);
+        body.locationSubject = i.ReadU8();
+        body.civicLocationType = i.ReadU8();
+        body.locationServiceIntervalUnits = i.ReadU8();
+        body.locationServiceInterval = i.ReadU16();
         bytesRead += 5;
         break;
-    case 12: // Location Identifier
-        m_locationSubject = i.ReadU8();
-        m_locationServiceIntervalUnits = i.ReadU8();
-        m_locationServiceInterval = i.ReadU16();
+    }
+    case 12: {
+        auto& body = std::get<LocationIdentifierRequestBody>(m_body);
+        body.locationSubject = i.ReadU8();
+        body.locationServiceIntervalUnits = i.ReadU8();
+        body.locationServiceInterval = i.ReadU16();
         bytesRead += 4;
         break;
-    case 13: // Directional Channel Quality
-        m_operatingClass = i.ReadU8();
-        m_channelNumber = i.ReadU8();
-        m_aid = i.ReadU8();
+    }
+    case 13: {
+        auto& body = std::get<DirectionalChannelQualityRequestBody>(m_body);
+        body.operatingClass = i.ReadU8();
+        body.channelNumber = i.ReadU8();
+        body.aid = i.ReadU8();
         i.ReadU8(); // Reserved
-        m_measurementMethod = i.ReadU8();
-        m_measurementStartTime = i.ReadU64();
-        m_measurementDuration = i.ReadU16();
-        m_numberOfTimeBlocks = i.ReadU8();
+        body.measurementMethod = i.ReadU8();
+        body.measurementStartTime = i.ReadU64();
+        body.measurementDuration = i.ReadU16();
+        body.numberOfTimeBlocks = i.ReadU8();
         bytesRead += 16;
         break;
-    case 14: // Directional Measurement
-        m_operatingClass = i.ReadU8();
-        m_channelNumber = i.ReadU8();
-        m_measurementStartTime = i.ReadU64();
-        m_measurementDuration = i.ReadU16();
-        m_measurementMethodAndAntennaConfiguration = i.ReadU8();
+    }
+    case 14: {
+        auto& body = std::get<DirectionalMeasurementRequestBody>(m_body);
+        body.operatingClass = i.ReadU8();
+        body.channelNumber = i.ReadU8();
+        body.measurementStartTime = i.ReadU64();
+        body.measurementDurationPerDirection = i.ReadU16();
+        body.measurementMethodAndAntennaConfiguration = i.ReadU8();
         bytesRead += 13;
         break;
-    case 15: // Directional Statistics
-        m_operatingClass = i.ReadU8();
-        m_channelNumber = i.ReadU8();
-        m_measurementStartTime = i.ReadU64();
-        m_measurementDuration = i.ReadU16();
-        m_measurementMethod = i.ReadU8();
-        m_directionalStatisticsBitmap = i.ReadU8();
+    }
+    case 15: {
+        auto& body = std::get<DirectionalStatisticsRequestBody>(m_body);
+        body.operatingClass = i.ReadU8();
+        body.channelNumber = i.ReadU8();
+        body.measurementStartTime = i.ReadU64();
+        body.measurementDurationPerDirection = i.ReadU16();
+        body.measurementMethod = i.ReadU8();
+        body.directionalStatisticsBitmap = i.ReadU8();
         bytesRead += 14;
         break;
-    case 16: // FTM Range
-        m_randomizationInterval = i.ReadU16();
-        m_minimumApCount = i.ReadU8();
+    }
+    case 16: {
+        auto& body = std::get<FtmRangeRequestBody>(m_body);
+        body.randomizationInterval = i.ReadU16();
+        body.minimumApCount = i.ReadU8();
         bytesRead += 3;
         break;
-    case 255: // Measurement Pause
-        m_pauseTime = i.ReadU16();
+    }
+    case 255: {
+        auto& body = std::get<MeasurementPauseRequestBody>(m_body);
+        body.pauseTime = i.ReadU16();
         bytesRead += 2;
         break;
+    }
     default:
         break;
     }
 
-    // Parse subelements from remaining bytes.
-    // Subelement IDs are scoped per measurement type, so dispatch on (type, ID).
+    // Parse subelements from remaining bytes
     while (bytesRead < length)
     {
         uint8_t subelemId = i.ReadU8();
@@ -1039,18 +1562,26 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
 
         if (subelemId == 221)
         {
-            // Vendor Specific -- valid for all types
             std::vector<uint8_t> data(subelemLen);
             for (uint8_t j = 0; j < subelemLen; j++)
             {
                 data[j] = i.ReadU8();
             }
-            m_vendorSpecificSubelement = std::move(data);
+            std::visit(
+                [&data](auto& body) {
+                    using T = std::decay_t<decltype(body)>;
+                    if constexpr (!std::is_same_v<T, std::monostate> &&
+                                  !std::is_same_v<T, BasicRequestBody>)
+                    {
+                        body.vendorSpecific = std::move(data);
+                    }
+                },
+                m_body);
             handled = true;
         }
         else if (m_measurementType == 5)
         {
-            // Beacon subelements
+            auto& body = std::get<BeaconRequestBody>(m_body);
             switch (subelemId)
             {
             case 0: { // SSID
@@ -1065,19 +1596,19 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 }
                 Ssid ssid;
                 ssid.Deserialize(ssidBuf.Begin());
-                m_beaconSsid = ssid;
+                body.ssid = ssid;
                 handled = true;
                 break;
             }
             case 1: { // Beacon Reporting
                 uint8_t condition = i.ReadU8();
                 uint8_t thresholdOffsetRef = i.ReadU8();
-                m_beaconReporting = BeaconReporting{condition, thresholdOffsetRef};
+                body.beaconReporting = BeaconReporting{condition, thresholdOffsetRef};
                 handled = true;
                 break;
             }
             case 2: { // Reporting Detail
-                m_beaconReportingDetail = i.ReadU8();
+                body.reportingDetail = i.ReadU8();
                 handled = true;
                 break;
             }
@@ -1093,7 +1624,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 {
                     channels[j] = i.ReadU8();
                 }
-                m_apChannelReports.push_back(ApChannelReport{opClass, std::move(channels)});
+                body.apChannelReports.push_back(ApChannelReport{opClass, std::move(channels)});
                 handled = true;
                 break;
             }
@@ -1103,44 +1634,42 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
         }
         else if (m_measurementType == 8)
         {
-            // LCI subelements
             if (subelemId == 1)
             {
-                // Azimuth Request
+                auto& body = std::get<LciRequestBody>(m_body);
                 uint8_t field = i.ReadU8();
-                m_azimuthRequest = AzimuthRequest{static_cast<uint8_t>(field & 0x0F),
-                                                  static_cast<uint8_t>((field >> 4) & 0x01)};
+                body.azimuthRequest = AzimuthRequest{static_cast<uint8_t>(field & 0x0F),
+                                                     static_cast<uint8_t>((field >> 4) & 0x01)};
                 handled = true;
             }
         }
         else if (m_measurementType == 3)
         {
-            // Channel Load subelements
             if (subelemId == 1)
             {
+                auto& body = std::get<ChannelLoadRequestBody>(m_body);
                 uint8_t condition = i.ReadU8();
                 uint8_t refValue = i.ReadU8();
-                m_channelLoadReporting = ChannelLoadReporting{condition, refValue};
+                body.channelLoadReporting = ChannelLoadReporting{condition, refValue};
                 handled = true;
             }
         }
         else if (m_measurementType == 4)
         {
-            // Noise Histogram subelements
             if (subelemId == 1)
             {
+                auto& body = std::get<NoiseHistogramRequestBody>(m_body);
                 uint8_t condition = i.ReadU8();
                 uint8_t refValue = i.ReadU8();
-                m_noiseHistogramReporting = NoiseHistogramReporting{condition, refValue};
+                body.noiseHistogramReporting = NoiseHistogramReporting{condition, refValue};
                 handled = true;
             }
         }
         else if (m_measurementType == 16)
         {
-            // FTM Range subelements
             if (subelemId == 52)
             {
-                // Neighbor Report
+                auto& body = std::get<FtmRangeRequestBody>(m_body);
                 Buffer nreBuf;
                 nreBuf.AddAtStart(2 + subelemLen);
                 Buffer::Iterator nreIter = nreBuf.Begin();
@@ -1152,14 +1681,13 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 }
                 NeighborReportElement nre;
                 nre.Deserialize(nreBuf.Begin());
-                m_ftmRangeNeighborReports.push_back(nre);
+                body.neighborReports.push_back(nre);
                 handled = true;
             }
         }
 
         if (!handled)
         {
-            // Unknown subelement for this type, skip
             for (uint8_t j = 0; j < subelemLen; j++)
             {
                 i.ReadU8();
