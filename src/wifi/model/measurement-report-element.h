@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025
+ * Copyright (c) 2026
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
