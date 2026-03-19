@@ -16,6 +16,7 @@
 #include "ns3/mac48-address.h"
 
 #include <optional>
+#include <variant>
 #include <vector>
 
 namespace ns3
@@ -480,6 +481,43 @@ class MeasurementRequestElement : public WifiInformationElement
 
         std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
     };
+
+    /**
+     * @brief Variant holding the type-specific request body
+     */
+    using MeasurementRequestBody = std::variant<std::monostate,
+                                                BasicRequestBody,
+                                                ChannelLoadRequestBody,
+                                                NoiseHistogramRequestBody,
+                                                BeaconRequestBody,
+                                                FrameRequestBody,
+                                                StaStatisticsRequestBody,
+                                                LciRequestBody,
+                                                TransmitStreamRequestBody,
+                                                MulticastDiagnosticsRequestBody,
+                                                LocationCivicRequestBody,
+                                                LocationIdentifierRequestBody,
+                                                DirectionalChannelQualityRequestBody,
+                                                DirectionalMeasurementRequestBody,
+                                                DirectionalStatisticsRequestBody,
+                                                FtmRangeRequestBody,
+                                                MeasurementPauseRequestBody>;
+
+    /**
+     * @brief Set the type-specific request body.
+     * @tparam T the body struct type
+     * @param body the body to set
+     */
+    template <typename T>
+    void SetBody(const T& body);
+
+    /**
+     * @brief Get the type-specific request body.
+     * @tparam T the body struct type
+     * @return const reference to the body
+     */
+    template <typename T>
+    const T& GetBody() const;
 
     // --- Fixed header fields ---
 
@@ -977,6 +1015,7 @@ class MeasurementRequestElement : public WifiInformationElement
     uint8_t m_measurementToken{0};       //!< Measurement Token (1 octet)
     uint8_t m_measurementRequestMode{0}; //!< Measurement Request Mode (1 octet, B0-B4 defined)
     uint8_t m_measurementType{0};        //!< Measurement Type (1 octet)
+    MeasurementRequestBody m_body;       //!< Type-specific request body
 
     // Type-specific body fields
     uint8_t m_operatingClass{0};         //!< Operating Class (types 3,4,5,6,13,14,15)
@@ -1021,6 +1060,20 @@ class MeasurementRequestElement : public WifiInformationElement
     std::vector<NeighborReportElement> m_ftmRangeNeighborReports;   //!< FTM Range NREs (ID 52)
     std::optional<std::vector<uint8_t>> m_vendorSpecificSubelement; //!< Vendor Specific (ID 221)
 };
+
+template <typename T>
+void
+MeasurementRequestElement::SetBody(const T& body)
+{
+    m_body = body;
+}
+
+template <typename T>
+const T&
+MeasurementRequestElement::GetBody() const
+{
+    return std::get<T>(m_body);
+}
 
 } // namespace ns3
 
