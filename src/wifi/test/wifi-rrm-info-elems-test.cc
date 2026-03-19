@@ -2962,7 +2962,9 @@ MeasurementRequestSubelementsTest::DoRun()
         auto reporting = deserialized.GetChannelLoadReporting();
         NS_TEST_ASSERT_MSG_EQ(reporting.has_value(), true, "CL Reporting present");
         NS_TEST_ASSERT_MSG_EQ(reporting->reportingCondition, 1, "CL Reporting condition");
-        NS_TEST_ASSERT_MSG_EQ(reporting->referenceValue, 128, "CL Reporting reference value");
+        NS_TEST_ASSERT_MSG_EQ(reporting->channelLoadReferenceValue,
+                              128,
+                              "CL Reporting reference value");
     }
 
     // Test 2: Beacon with SSID subelement (ID 0)

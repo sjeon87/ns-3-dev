@@ -93,6 +93,7 @@ set(source_files
     model/non-ht/ofdm-phy.cc
     model/non-ht/ofdm-ppdu.cc
     model/link-measurement.cc
+    model/measurement-request-element.cc
     model/neighbor-report.cc
     model/neighbor-report-element.cc
     model/rm-enabled-capabilities.cc
@@ -272,6 +273,7 @@ set(header_files
     model/non-ht/ofdm-phy.h
     model/non-ht/ofdm-ppdu.h
     model/link-measurement.h
+    model/measurement-request-element.h
     model/neighbor-report.h
     model/neighbor-report-element.h
     model/rm-enabled-capabilities.h
