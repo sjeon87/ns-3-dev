@@ -13,12 +13,14 @@
 #include "ns3/log.h"
 #include "ns3/neighbor-report-element.h"
 #include "ns3/neighbor-report.h"
+#include "ns3/rm-enabled-capabilities.h"
 #include "ns3/ssid.h"
 #include "ns3/tpc-report-element.h"
 #include "ns3/vht-capabilities.h"
 #include "ns3/vht-operation.h"
 
 #include <array>
+#include <sstream>
 #include <vector>
 
 using namespace ns3;
@@ -1752,6 +1754,368 @@ NeighborReportResponseTest::DoRun()
  * @ingroup wifi-test
  * @ingroup tests
  *
+ * @brief Test serialization and deserialization of the RM Enabled Capabilities element
+ * (IEEE 802.11-2024 Section 9.4.2.43, IE 70)
+ */
+class RmEnabledCapabilitiesTest : public HeaderSerializationTestCase
+{
+  public:
+    RmEnabledCapabilitiesTest();
+
+  private:
+    void DoRun() override;
+};
+
+RmEnabledCapabilitiesTest::RmEnabledCapabilitiesTest()
+    : HeaderSerializationTestCase(
+          "Check serialization and deserialization of RM Enabled Capabilities element")
+{
+}
+
+void
+RmEnabledCapabilitiesTest::DoRun()
+{
+    // Test 1: Default construction round-trip
+    {
+        RmEnabledCapabilities elem;
+        TestHeaderSerialization(elem);
+    }
+
+    // Test 2: GetSerializedSize returns 7 (IE ID 1 + Length 1 + 5 payload)
+    {
+        RmEnabledCapabilities elem;
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 7, "Serialized size is 7 bytes");
+    }
+
+    // Test 3: Individual boolean setters/getters -- each bit in isolation
+    {
+        struct BoolCase
+        {
+            const char* name;
+            void (RmEnabledCapabilities::*setter)(bool);
+            bool (RmEnabledCapabilities::*getter)() const;
+        };
+
+        std::vector<BoolCase> cases = {
+            {"LinkMeasurement",
+             &RmEnabledCapabilities::SetLinkMeasurement,
+             &RmEnabledCapabilities::GetLinkMeasurement},
+            {"NeighborReport",
+             &RmEnabledCapabilities::SetNeighborReport,
+             &RmEnabledCapabilities::GetNeighborReport},
+            {"ParallelMeasurements",
+             &RmEnabledCapabilities::SetParallelMeasurements,
+             &RmEnabledCapabilities::GetParallelMeasurements},
+            {"RepeatedMeasurements",
+             &RmEnabledCapabilities::SetRepeatedMeasurements,
+             &RmEnabledCapabilities::GetRepeatedMeasurements},
+            {"BeaconPassiveMeasurement",
+             &RmEnabledCapabilities::SetBeaconPassiveMeasurement,
+             &RmEnabledCapabilities::GetBeaconPassiveMeasurement},
+            {"BeaconActiveMeasurement",
+             &RmEnabledCapabilities::SetBeaconActiveMeasurement,
+             &RmEnabledCapabilities::GetBeaconActiveMeasurement},
+            {"BeaconTableMeasurement",
+             &RmEnabledCapabilities::SetBeaconTableMeasurement,
+             &RmEnabledCapabilities::GetBeaconTableMeasurement},
+            {"BeaconMeasurementReportingConditions",
+             &RmEnabledCapabilities::SetBeaconMeasurementReportingConditions,
+             &RmEnabledCapabilities::GetBeaconMeasurementReportingConditions},
+            {"FrameMeasurement",
+             &RmEnabledCapabilities::SetFrameMeasurement,
+             &RmEnabledCapabilities::GetFrameMeasurement},
+            {"ChannelLoadMeasurement",
+             &RmEnabledCapabilities::SetChannelLoadMeasurement,
+             &RmEnabledCapabilities::GetChannelLoadMeasurement},
+            {"NoiseHistogramMeasurement",
+             &RmEnabledCapabilities::SetNoiseHistogramMeasurement,
+             &RmEnabledCapabilities::GetNoiseHistogramMeasurement},
+            {"StatisticsMeasurement",
+             &RmEnabledCapabilities::SetStatisticsMeasurement,
+             &RmEnabledCapabilities::GetStatisticsMeasurement},
+            {"LciMeasurement",
+             &RmEnabledCapabilities::SetLciMeasurement,
+             &RmEnabledCapabilities::GetLciMeasurement},
+            {"LciAzimuth",
+             &RmEnabledCapabilities::SetLciAzimuth,
+             &RmEnabledCapabilities::GetLciAzimuth},
+            {"TransmitStreamCategoryMeasurement",
+             &RmEnabledCapabilities::SetTransmitStreamCategoryMeasurement,
+             &RmEnabledCapabilities::GetTransmitStreamCategoryMeasurement},
+            {"TriggeredTransmitStreamCategoryMeasurement",
+             &RmEnabledCapabilities::SetTriggeredTransmitStreamCategoryMeasurement,
+             &RmEnabledCapabilities::GetTriggeredTransmitStreamCategoryMeasurement},
+            {"ApChannelReport",
+             &RmEnabledCapabilities::SetApChannelReport,
+             &RmEnabledCapabilities::GetApChannelReport},
+            {"RmMib", &RmEnabledCapabilities::SetRmMib, &RmEnabledCapabilities::GetRmMib},
+            {"MeasurementPilotTransmissionInformation",
+             &RmEnabledCapabilities::SetMeasurementPilotTransmissionInformation,
+             &RmEnabledCapabilities::GetMeasurementPilotTransmissionInformation},
+            {"NeighborReportTsfOffset",
+             &RmEnabledCapabilities::SetNeighborReportTsfOffset,
+             &RmEnabledCapabilities::GetNeighborReportTsfOffset},
+            {"RcpiMeasurement",
+             &RmEnabledCapabilities::SetRcpiMeasurement,
+             &RmEnabledCapabilities::GetRcpiMeasurement},
+            {"RsniMeasurement",
+             &RmEnabledCapabilities::SetRsniMeasurement,
+             &RmEnabledCapabilities::GetRsniMeasurement},
+            {"BssAverageAccessDelay",
+             &RmEnabledCapabilities::SetBssAverageAccessDelay,
+             &RmEnabledCapabilities::GetBssAverageAccessDelay},
+            {"BssAvailableAdmissionCapacity",
+             &RmEnabledCapabilities::SetBssAvailableAdmissionCapacity,
+             &RmEnabledCapabilities::GetBssAvailableAdmissionCapacity},
+            {"Antenna", &RmEnabledCapabilities::SetAntenna, &RmEnabledCapabilities::GetAntenna},
+            {"FtmRangeReport",
+             &RmEnabledCapabilities::SetFtmRangeReport,
+             &RmEnabledCapabilities::GetFtmRangeReport},
+            {"CivicLocationMeasurement",
+             &RmEnabledCapabilities::SetCivicLocationMeasurement,
+             &RmEnabledCapabilities::GetCivicLocationMeasurement},
+        };
+
+        for (const auto& tc : cases)
+        {
+            RmEnabledCapabilities elem;
+            (elem.*tc.setter)(true);
+            NS_TEST_EXPECT_MSG_EQ((elem.*tc.getter)(), true, tc.name << " getter after set");
+
+            (elem.*tc.setter)(false);
+            NS_TEST_EXPECT_MSG_EQ((elem.*tc.getter)(), false, tc.name << " getter after clear");
+        }
+    }
+
+    // Test 4: Setting one bit does not affect another
+    {
+        RmEnabledCapabilities elem;
+        elem.SetLinkMeasurement(true);
+        elem.SetNeighborReport(true);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetLinkMeasurement(), true, "LinkMeasurement stays set");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetNeighborReport(), true, "NeighborReport stays set");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetParallelMeasurements(), false, "ParallelMeasurements unset");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetBeaconPassiveMeasurement(),
+                              false,
+                              "BeaconPassive unaffected");
+
+        elem.SetLinkMeasurement(false);
+        NS_TEST_EXPECT_MSG_EQ(elem.GetLinkMeasurement(), false, "LinkMeasurement cleared");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetNeighborReport(), true, "NeighborReport unaffected");
+    }
+
+    // Test 5: 3-bit field accessors -- all values 0-7
+    {
+        for (uint8_t val = 0; val <= 7; val++)
+        {
+            RmEnabledCapabilities elem;
+            elem.SetOperatingChannelMaxMeasurementDuration(val);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetOperatingChannelMaxMeasurementDuration(),
+                                  val,
+                                  "OperatingChannelMaxMeasurementDuration=" << +val);
+        }
+        for (uint8_t val = 0; val <= 7; val++)
+        {
+            RmEnabledCapabilities elem;
+            elem.SetNonoperatingChannelMaxMeasurementDuration(val);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetNonoperatingChannelMaxMeasurementDuration(),
+                                  val,
+                                  "NonoperatingChannelMaxMeasurementDuration=" << +val);
+        }
+        for (uint8_t val = 0; val <= 7; val++)
+        {
+            RmEnabledCapabilities elem;
+            elem.SetMeasurementPilotCapability(val);
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementPilotCapability(),
+                                  val,
+                                  "MeasurementPilotCapability=" << +val);
+        }
+    }
+
+    // Test 6: 3-bit fields are independent of each other and of boolean bits
+    {
+        RmEnabledCapabilities elem;
+        elem.SetOperatingChannelMaxMeasurementDuration(5);
+        elem.SetNonoperatingChannelMaxMeasurementDuration(3);
+        elem.SetMeasurementPilotCapability(7);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetOperatingChannelMaxMeasurementDuration(),
+                              5,
+                              "OperatingChannel after setting all three");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetNonoperatingChannelMaxMeasurementDuration(),
+                              3,
+                              "NonoperatingChannel after setting all three");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementPilotCapability(),
+                              7,
+                              "MeasurementPilot after setting all three");
+
+        // Boolean bits adjacent to the 3-bit fields should be unaffected
+        NS_TEST_EXPECT_MSG_EQ(elem.GetApChannelReport(), false, "ApChannelReport unaffected");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetRmMib(), false, "RmMib unaffected");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementPilotTransmissionInformation(),
+                              false,
+                              "MeasurementPilotTransmissionInfo unaffected");
+    }
+
+    // Test 7: All capabilities set -- serialize, deserialize, verify all survive
+    {
+        RmEnabledCapabilities elem;
+        elem.SetLinkMeasurement(true);
+        elem.SetNeighborReport(true);
+        elem.SetParallelMeasurements(true);
+        elem.SetRepeatedMeasurements(true);
+        elem.SetBeaconPassiveMeasurement(true);
+        elem.SetBeaconActiveMeasurement(true);
+        elem.SetBeaconTableMeasurement(true);
+        elem.SetBeaconMeasurementReportingConditions(true);
+        elem.SetFrameMeasurement(true);
+        elem.SetChannelLoadMeasurement(true);
+        elem.SetNoiseHistogramMeasurement(true);
+        elem.SetStatisticsMeasurement(true);
+        elem.SetLciMeasurement(true);
+        elem.SetLciAzimuth(true);
+        elem.SetTransmitStreamCategoryMeasurement(true);
+        elem.SetTriggeredTransmitStreamCategoryMeasurement(true);
+        elem.SetApChannelReport(true);
+        elem.SetRmMib(true);
+        elem.SetOperatingChannelMaxMeasurementDuration(7);
+        elem.SetNonoperatingChannelMaxMeasurementDuration(7);
+        elem.SetMeasurementPilotCapability(7);
+        elem.SetMeasurementPilotTransmissionInformation(true);
+        elem.SetNeighborReportTsfOffset(true);
+        elem.SetRcpiMeasurement(true);
+        elem.SetRsniMeasurement(true);
+        elem.SetBssAverageAccessDelay(true);
+        elem.SetBssAvailableAdmissionCapacity(true);
+        elem.SetAntenna(true);
+        elem.SetFtmRangeReport(true);
+        elem.SetCivicLocationMeasurement(true);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        RmEnabledCapabilities deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLinkMeasurement(), true, "LinkMeasurement survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReport(), true, "NeighborReport survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetParallelMeasurements(),
+                              true,
+                              "ParallelMeasurements survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRepeatedMeasurements(),
+                              true,
+                              "RepeatedMeasurements survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconPassiveMeasurement(),
+                              true,
+                              "BeaconPassive survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconActiveMeasurement(),
+                              true,
+                              "BeaconActive survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconTableMeasurement(),
+                              true,
+                              "BeaconTable survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconMeasurementReportingConditions(),
+                              true,
+                              "BeaconReportingConditions survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetFrameMeasurement(),
+                              true,
+                              "FrameMeasurement survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetChannelLoadMeasurement(),
+                              true,
+                              "ChannelLoad survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNoiseHistogramMeasurement(),
+                              true,
+                              "NoiseHistogram survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetStatisticsMeasurement(), true, "Statistics survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLciMeasurement(), true, "LCI survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetLciAzimuth(), true, "LciAzimuth survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTransmitStreamCategoryMeasurement(),
+                              true,
+                              "TransmitStreamCategory survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetTriggeredTransmitStreamCategoryMeasurement(),
+                              true,
+                              "TriggeredTransmitStreamCategory survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetApChannelReport(), true, "ApChannelReport survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRmMib(), true, "RmMib survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetOperatingChannelMaxMeasurementDuration(),
+                              7,
+                              "OperatingChannelMax survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNonoperatingChannelMaxMeasurementDuration(),
+                              7,
+                              "NonoperatingChannelMax survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementPilotCapability(),
+                              7,
+                              "MeasurementPilotCapability survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementPilotTransmissionInformation(),
+                              true,
+                              "MeasurementPilotTransmissionInfo survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNeighborReportTsfOffset(),
+                              true,
+                              "NeighborReportTsfOffset survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRcpiMeasurement(), true, "Rcpi survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetRsniMeasurement(), true, "Rsni survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBssAverageAccessDelay(),
+                              true,
+                              "BssAverageAccessDelay survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBssAvailableAdmissionCapacity(),
+                              true,
+                              "BssAvailableAdmissionCapacity survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetAntenna(), true, "Antenna survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetFtmRangeReport(), true, "FtmRangeReport survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetCivicLocationMeasurement(),
+                              true,
+                              "CivicLocation survives");
+    }
+
+    // Test 8: Reserved bits (36-39) stay zero after round-trip
+    {
+        // Build a buffer with bits 36-39 set in the 5th payload byte
+        // IE ID (1) + Length (1) + 5 payload bytes = 7 total
+        Buffer buf;
+        buf.AddAtStart(7);
+        Buffer::Iterator it = buf.Begin();
+        it.WriteU8(70); // IE_RM_ENABLED_CAPACITIES
+        it.WriteU8(5);  // Length
+        it.WriteU8(0xFF);
+        it.WriteU8(0xFF);
+        it.WriteU8(0xFF);
+        it.WriteU8(0xFF);
+        it.WriteU8(0xFF); // bits 32-39: bits 36-39 are reserved
+
+        RmEnabledCapabilities deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        // Re-serialize and verify reserved bits (36-39) of byte 4 are zeroed
+        Buffer out;
+        out.AddAtStart(deserialized.GetSerializedSize());
+        deserialized.Serialize(out.Begin());
+
+        Buffer::Iterator outIt = out.Begin();
+        outIt.Next(6); // skip IE ID, Length, bytes 0-3
+        uint8_t byte4 = outIt.ReadU8();
+        NS_TEST_EXPECT_MSG_EQ((byte4 >> 4), 0, "Reserved bits 36-39 are zero");
+    }
+
+    // Test 9: Print output smoke test
+    {
+        RmEnabledCapabilities elem;
+        elem.SetLinkMeasurement(true);
+        elem.SetNeighborReport(true);
+
+        std::ostringstream oss;
+        elem.Print(oss);
+        NS_TEST_EXPECT_MSG_EQ(oss.str().empty(), false, "Print output is non-empty");
+    }
+}
+
+/**
+ * @ingroup wifi-test
+ * @ingroup tests
+ *
  * @brief Test suite for IEEE 802.11k Radio Resource Management information elements
  */
 class WifiRrmInfoElemsTestSuite : public TestSuite
@@ -1771,6 +2135,7 @@ WifiRrmInfoElemsTestSuite::WifiRrmInfoElemsTestSuite()
     AddTestCase(new LinkMeasurementReportTest, TestCase::Duration::QUICK);
     AddTestCase(new NeighborReportRequestTest, TestCase::Duration::QUICK);
     AddTestCase(new NeighborReportResponseTest, TestCase::Duration::QUICK);
+    AddTestCase(new RmEnabledCapabilitiesTest, TestCase::Duration::QUICK);
 }
 
 static WifiRrmInfoElemsTestSuite g_wifiRrmInfoElemsTestSuite; ///< the test suite
