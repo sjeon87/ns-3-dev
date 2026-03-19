@@ -94,6 +94,7 @@ set(source_files
     model/non-ht/ofdm-ppdu.cc
     model/measurement-report-element.cc
     model/measurement-request-element.cc
+    model/radio-measurement-request.cc
     model/neighbor-report-element.cc
     model/rm-enabled-capabilities.cc
     model/tpc-report-element.cc
@@ -273,6 +274,7 @@ set(header_files
     model/non-ht/ofdm-ppdu.h
     model/measurement-report-element.h
     model/measurement-request-element.h
+    model/radio-measurement-request.h
     model/neighbor-report-element.h
     model/rm-enabled-capabilities.h
     model/tpc-report-element.h
@@ -425,6 +427,7 @@ build_lib(
     test/wifi-non-ht-dup-test.cc
     test/wifi-phy-mu-mimo-test.cc
     test/wifi-operating-channel-test.cc
+    test/wifi-rrm-action-frames-test.cc
     test/wifi-rrm-info-elems-test.cc
     test/wifi-tx-stats-helper-test.cc
   GENERATE_EXPORT_HEADER
