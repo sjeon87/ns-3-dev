@@ -223,12 +223,20 @@ MeasurementRequestElement::GetDurationMandatory() const
 namespace
 {
 
+/**
+ * @param vs optional vendor specific data
+ * @return serialized size of vendor specific subelement, or 0 if absent
+ */
 uint16_t
 VendorSpecificSize(const std::optional<std::vector<uint8_t>>& vs)
 {
     return vs ? static_cast<uint16_t>(2 + vs->size()) : 0;
 }
 
+/**
+ * @param start buffer iterator to write to
+ * @param vs optional vendor specific data to serialize
+ */
 void
 SerializeVendorSpecific(Buffer::Iterator& start, const std::optional<std::vector<uint8_t>>& vs)
 {
@@ -243,6 +251,10 @@ SerializeVendorSpecific(Buffer::Iterator& start, const std::optional<std::vector
     }
 }
 
+/**
+ * @param start buffer iterator to write to
+ * @param ssid optional SSID to serialize as subelement
+ */
 void
 SerializeSsidSubelement(Buffer::Iterator& start, const std::optional<Ssid>& ssid)
 {
@@ -264,6 +276,10 @@ SerializeSsidSubelement(Buffer::Iterator& start, const std::optional<Ssid>& ssid
     }
 }
 
+/**
+ * @param start buffer iterator to write to
+ * @param neighborReports neighbor report elements to serialize as subelements
+ */
 void
 SerializeNeighborReports(Buffer::Iterator& start,
                          const std::vector<NeighborReportElement>& neighborReports)
