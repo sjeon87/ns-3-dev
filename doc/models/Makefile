@@ -132,6 +132,8 @@ SOURCEFIGS = \
 	$(SRC)/internet/doc/routing-specialization.dia \
 	$(SRC)/internet/doc/global-routing-limitation.dia \
 	$(SRC)/internet/doc/figures/tcp-state-machine.png \
+	$(SRC)/internet/doc/figures/tcp-documentation-restructuring.png \
+	$(SRC)/internet/doc/figures/tcp-congestion-state-machine.png \
 	$(SRC)/internet/doc/figures/fack-cwnd.png \
 	$(SRC)/internet/doc/figures/fack-inflight.png \
 	$(SRC)/internet/doc/figures/fack-packetDrops.png \

@@ -6,41 +6,28 @@ TCP models in ns-3
 
 This chapter describes the TCP models available in |ns3|.
 
-Overview of support for TCP
-***************************
+This figure shows the organization of TCP components in ns-3, including
+congestion control, loss detection, and loss recovery along with their
+associated mechanisms and algorithms.
 
-|ns3| was written to support multiple TCP implementations. The implementations
-inherit from a few common header classes in the ``src/network`` directory, so that
-user code can swap out implementations with minimal changes to the scripts.
+----------
 
-There are three important abstract base classes:
+**Structure of TCP model documentation in ns-3**
 
-* class :cpp:class:`TcpSocket`: This is defined in
-  ``src/internet/model/tcp-socket.{cc,h}``. This class exists for hosting TcpSocket
-  attributes that can be reused across different implementations. For instance,
-  the attribute ``InitialCwnd`` can be used for any of the implementations
-  that derive from class :cpp:class:`TcpSocket`.
-* class :cpp:class:`TcpSocketFactory`: This is used by the layer-4 protocol
-  instance to create TCP sockets of the right type.
-* class :cpp:class:`TcpCongestionOps`: This supports different variants of
-  congestion control-- a key topic of simulation-based TCP research.
+.. _fig-tcp-documentation-restructuring:
 
-There are presently two active implementations of TCP available for |ns3|.
+.. figure:: figures/tcp-documentation-restructuring.png
+   :align: center
 
-* a natively implemented TCP for ns-3
-* support for kernel implementations via `Direct Code Execution (DCE) <https://www.nsnam.org/overview/projects/direct-code-execution/>`__
+   Structure of TCP model documentation in ns-3
 
-Direct Code Execution is limited in its support for newer kernels; at
-present, only Linux kernel 4.4 is supported.  However, the TCP implementations
-in kernel 4.4 can still be used for ns-3 validation or for specialized
-simulation use cases.
+----------
 
-It should also be mentioned that various ways of combining virtual machines
-with |ns3| makes available also some additional TCP implementations, but
-those are out of scope for this chapter.
+Model history and Acknowledgments
+*********************************
 
 ns-3 TCP
-********
+++++++++
 
 In brief, the native |ns3| TCP model supports a full bidirectional TCP with
 connection setup and close logic. Several congestion control algorithms
@@ -109,6 +96,44 @@ For an academic peer-reviewed paper on the SACK implementation in ns-3,
 please refer to:
 
 * Natale Patriciello. 2017. A SACK-based Conservative Loss Recovery Algorithm for ns-3 TCP: a Linux-inspired Proposal. In Proceedings of the Workshop on ns-3 (WNS3 '17). ACM, New York, NY, USA, 1-8. (https://dl.acm.org/citation.cfm?id=3067666)
+
+
+Overview of implementation
+**************************
+
+|ns3| was written to support multiple TCP implementations. The implementations
+inherit from a few common header classes in the ``src/network`` directory, so that
+user code can swap out implementations with minimal changes to the scripts.
+
+There are three important abstract base classes:
+
+* class :cpp:class:`TcpSocket`: This is defined in
+  ``src/internet/model/tcp-socket.{cc,h}``. This class exists for hosting TcpSocket
+  attributes that can be reused across different implementations. For instance,
+  the attribute ``InitialCwnd`` can be used for any of the implementations
+  that derive from class :cpp:class:`TcpSocket`.
+* class :cpp:class:`TcpSocketFactory`: This is used by the layer-4 protocol
+  instance to create TCP sockets of the right type.
+* class :cpp:class:`TcpCongestionOps`: This supports different variants of
+  congestion control-- a key topic of simulation-based TCP research.
+
+There are presently two active implementations of TCP available for |ns3|.
+
+* a natively implemented TCP for ns-3
+* support for kernel implementations via `Direct Code Execution (DCE) <https://www.nsnam.org/overview/projects/direct-code-execution/>`__
+
+Direct Code Execution is limited in its support for newer kernels; at
+present, only Linux kernel 4.4 is supported.  However, the TCP implementations
+in kernel 4.4 can still be used for ns-3 validation or for specialized
+simulation use cases.
+
+It should also be mentioned that various ways of combining virtual machines
+with |ns3| makes available also some additional TCP implementations, but
+those are out of scope for this chapter.
+
+
+Architecture
+************
 
 Usage
 +++++
@@ -193,7 +218,7 @@ refer to the source code of your preferred application to discover how and when
 it creates the socket.
 
 TCP Socket interaction and interface with Application layer
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 In the following there is an analysis on the public interface of the TCP socket,
 and how it can be used to interact with the socket itself. An analysis of the
@@ -377,6 +402,35 @@ callback as well.
   FIN_WAIT_1 or FIN_WAIT_2 the socket receive a in-sequence FIN (that can carry
   data).
 
+
+Congestion Control
+******************
+
+The design of this state machine is taken from Linux v4.0, but it has been
+maintained in the Linux mainline from ages. It basically avoids to maintain
+a lot of boolean variables, and it allows to check the transitions from
+different algorithm in a cleaner way.
+
+These states represent the situation from a congestion control point of view:
+in fact, apart the CA_OPEN state, the other states represent a situation in
+which there is a congestion, and different actions should be taken, depending
+on the case.
+
+----------
+
+**TCP Congestion Control State Machine**
+
+.. _fig-tcp-congestion-state-machine:
+
+.. figure:: figures/tcp-congestion-state-machine.png
+   :align: center
+
+   TCP Congestion Control State Machine
+
+In ns-3 we are fully compliant with the state machine depicted in
+Figure :ref:`fig-tcp-congestion-state-machine`.
+
+----------
 
 Congestion Control Algorithms
 +++++++++++++++++++++++++++++
@@ -1155,6 +1209,40 @@ Here's an example of the ``SetRateOps`` method in ``TcpBbr``:
 
 This setup makes the code more organized and reflects how Linux TCP handles the ``appLimited`` state, where it's managed within the TCP socket and updated by rate operations.
 
+Delivery Rate Estimation
+++++++++++++++++++++++++
+Current TCP implementation measures the approximate value of the delivery rate of
+inflight data based on Delivery Rate Estimation.
+
+As high level idea, keep in mind that the algorithm keeps track of 2 variables:
+
+1. `delivered`: Total amount of data delivered so far.
+
+2. `deliveredStamp`: Last time `delivered` was updated.
+
+When a packet is transmitted, the value of `delivered (d0)` and `deliveredStamp (t0)`
+is stored in its respective TcpTxItem.
+
+When an acknowledgement comes for this packet, the value of `delivered` and `deliveredStamp`
+is updated to `d1` and `t1` in the same TcpTxItem.
+
+After processing the acknowledgement, the rate sample is calculated and then passed
+to a congestion avoidance algorithm:
+
+.. math:: delivery_rate = (d1 - d0)/(t1 - t0)
+
+
+The implementation to estimate delivery rate is a joint work between TcpTxBuffer and TcpRateOps.
+For more information, please take a look at their Doxygen documentation.
+
+The implementation follows the Internet draft (Delivery Rate Estimation):
+https://tools.ietf.org/html/draft-cheng-iccrg-delivery-rate-estimation-00
+
+Current limitations
++++++++++++++++++++
+
+* TcpCongestionOps interface does not contain every possible Linux operation.
+
 Support for Explicit Congestion Notification (ECN)
 ++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1196,7 +1284,7 @@ The following are some important ECN parameters::
   UseEcn_t               m_useEcn {Off};         //!< Socket ECN capability
 
 Enabling ECN
-^^^^^^^^^^^^
+++++++++++++
 
 By default, support for ECN is disabled in TCP sockets. To enable, change
 the value of the attribute ``ns3::TcpSocketBase::UseEcn`` to ``On``.
@@ -1317,6 +1405,28 @@ The following issues are yet to be addressed:
 3. Support for separately handling the enabling of ECN on the incoming and
    outgoing TCP sessions (e.g. a TCP may perform ECN echoing but not set the
    ECT codepoints on its outbound data segments).
+
+Alternative Backoff with ECN (ABE)
+++++++++++++++++++++++++++++++++++
+
+RFC 8511 recommends using an alternate ``m_betaEcn`` for calculation of the
+ssthresh  when the congestion control algorithm detects congestion using ECN.
+There is an  attribute ``ns3::TcpSocketBase::UseAbe`` which can be set to true
+to enable this feature. When enabled, the congestion control algorithm
+(NewReno or CUBIC) will use the ``m_betaEcn`` value to calculate the ssthresh when
+congestion is detected using ECN. The default value of ``m_betaEcn`` is set to
+0.85 for CUBIC and 0.7 for NewReno as recommended by the RFC, but can be changed
+using the attribute ``ns3::TcpNewReno::BetaEcn`` for NewReno or using
+``ns3::TcpCubic::BetaEcn`` for CUBIC.
+
+For example, to enable ABE for NewReno, you can set the attribute as follows:
+::
+
+  Config::SetDefault("ns3::TcpSocketBase::UseAbe", BooleanValue(true));
+  Config::SetDefault("ns3::TcpNewReno::BetaEcn", DoubleValue(0.7));
+
+
+More information (RFC): https://tools.ietf.org/html/rfc8511
 
 Support for Dynamic Pacing
 ++++++++++++++++++++++++++
@@ -1608,6 +1718,91 @@ RTT), and it is called each time an ACK is received.
 CwndEvent is used in case the algorithm needs the state of socket during different
 congestion window event.
 
+Loss Detection
+**************
+
+The following loss detection mechanisms are supported in ns-3 TCP. Packet loss is
+primarily detected using duplicate acknowledgments (DupAck-based detection) and
+retransmission timeout (RTO). These mechanisms are responsible for identifying
+packet loss events and triggering the appropriate loss recovery algorithms.
+
+RTO
++++
+
+TCP employs a retransmission timer to ensure reliable data delivery in scenarios
+where acknowledgments are not received from the remote peer. The duration of this
+timer is referred to as the Retransmission Timeout (RTO). The computation of RTO
+follows the algorithm specified in RFC 6298.
+
+To estimate the RTO, the TCP sender maintains the following state variables:
+
+* SRTT: Smoothed Round-Trip Time
+* RTTVAR: Round-Trip Time variation
+
+The RTO is derived as a function of measured Round-Trip Time (RTT) samples.
+
+Upon obtaining the first RTT measurement R, the sender initializes the variables as follows:
+
+.. math::
+
+   \begin{aligned}
+   SRTT &= R \\
+   RTTVAR &= \frac{R}{2} \\
+   RTO &= SRTT + \max(G, K \cdot RTTVAR)
+   \end{aligned}
+
+where G is the clock granularity and K is a constant factor (commonly set to 4).
+
+For each subsequent RTT measurement R, the sender updates the state variables as follows:
+
+.. math::
+
+   \begin{aligned}
+   RTTVAR &= (1 - \beta)\,RTTVAR + \beta\,|SRTT - R| \\
+   SRTT &= (1 - \alpha)\,SRTT + \alpha\,R \\
+   RTO &= SRTT + \max(G, K \cdot RTTVAR)
+   \end{aligned}
+
+where alpha and beta are smoothing factors, typically set to 1/8 and 1/4 respectively.
+
+After computation, the RTO value is constrained as follows:
+
+* If RTO < 1 second, it MUST be rounded up to 1 second.
+* A maximum bound MAY be enforced, provided it is at least 60 seconds.
+
+Upon expiration of the retransmission timer, the sender applies Binary Exponential Backoff,
+as specified in RFC 6298:
+
+.. math::
+
+   RTO = RTO * 2
+
+This doubling continues for consecutive retransmission timeouts, allowing TCP to adapt to
+persistent network congestion or packet loss.
+
+The RTO estimation and management in ns-3 is implemented within the TCP socket layer.
+
+* The core functionality resides in the class :cpp:class:`TcpSocketBase` (located in ``src/internet/model/tcp-socket-base.{cc,h}``).
+* The state variables required for RTO computation are maintained in: :cpp:class:`TcpSocketState` (``src/internet/model/tcp-socket-state.h``), including: :cpp:member:`TcpSocketState::m_srtt`, :cpp:member:`TcpSocketState::m_rttvar`, and :cpp:member:`TcpSocketState::m_rto`.
+
+Fast Retransmit
++++++++++++++++
+
+TCP employs the Fast Retransmit algorithm to detect and recover from packet loss
+without waiting for the RTO to expire. This mechanism relies on the reception of
+duplicate acknowledgments (DupAck) from the receiver. TCP receiver sends an immediate
+duplicate ACK when an out-of-order segment arrives to inform the sender that a
+segment was received out-of-order and which sequence number is expected. The sender
+infers segment loss based on the arrival of three consecutive duplicate ACKs, without
+any intervening ACK that advances sender’s unacknowledged sequence number (SND.UNA) according to RFC 5681.
+
+The Fast Retransmit mechanism is implemented within the TCP socket layer in ns-3.
+
+* The core logic resides in the class :cpp:class:`TcpSocketBase` (located in ``src/internet/model/tcp-socket-base.{cc,h}``).
+* Detection of duplicate ACKs and triggering of fast retransmit is handled as part of ACK processing in: :cpp:func:`TcpSocketBase::ProcessAck`.
+* The actual retransmission of the lost segment is performed using: :cpp:func:`TcpSocketBase::DoRetransmit`.
+* The tracking of duplicate ACK count is maintained using internal state variables such as: :cpp:member:`TcpSocketBase::m_dupAckCount`.
+
 TCP SACK and non-SACK
 +++++++++++++++++++++
 To avoid code duplication and the effort of maintaining two different versions
@@ -1806,14 +2001,15 @@ This confirms that FACK successfully decouples data recovery from congestion con
 More information (paper): https://dl.acm.org/citation.cfm?id=248181
 
 
-Loss Recovery Algorithms
-++++++++++++++++++++++++
+Loss Recovery
+*************
 The following loss recovery algorithms are supported in ns-3 TCP.  The current
 default (as of ns-3.32 release) is Proportional Rate Reduction (PRR), while
 the default for ns-3.31 and earlier was Classic Recovery.
 
 Classic Recovery
-^^^^^^^^^^^^^^^^
+++++++++++++++++
+
 Classic Recovery refers to the combination of NewReno algorithm described in
 RFC 6582 along with SACK based loss recovery algorithm mentioned in RFC 6675.
 SACK based loss recovery is used when sender and receiver support SACK options.
@@ -1834,7 +2030,8 @@ on arrival of every ACK when NewReno is used. The congestion window is kept
 same when SACK based loss recovery is used.
 
 Proportional Rate Reduction
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
++++++++++++++++++++++++++++
+
 Proportional Rate Reduction (PRR) is a loss recovery algorithm described in
 RFC 6937 and currently used in Linux. The design of PRR helps in avoiding
 excess window adjustments and aims to keep the congestion window as close as
@@ -1911,27 +2108,6 @@ More information (paper): https://dl.acm.org/citation.cfm?id=2068832
 
 More information (RFC): https://tools.ietf.org/html/rfc6937
 
-Alternative Backoff with ECN (ABE)
-++++++++++++++++++++++++++++++++++
-
-RFC 8511 recommends using an alternate ``m_betaEcn`` for calculation of the
-ssthresh  when the congestion control algorithm detects congestion using ECN.
-There is an  attribute ``ns3::TcpSocketBase::UseAbe`` which can be set to true
-to enable this feature. When enabled, the congestion control algorithm
-(NewReno or CUBIC) will use the ``m_betaEcn`` value to calculate the ssthresh when
-congestion is detected using ECN. The default value of ``m_betaEcn`` is set to
-0.85 for CUBIC and 0.7 for NewReno as recommended by the RFC, but can be changed
-using the attribute ``ns3::TcpNewReno::BetaEcn`` for NewReno or using
-``ns3::TcpCubic::BetaEcn`` for CUBIC.
-
-For example, to enable ABE for NewReno, you can set the attribute as follows:
-::
-
-  Config::SetDefault("ns3::TcpSocketBase::UseAbe", BooleanValue(true));
-  Config::SetDefault("ns3::TcpNewReno::BetaEcn", DoubleValue(0.7));
-
-
-More information (RFC): https://tools.ietf.org/html/rfc8511
 
 Adding a new loss recovery algorithm in ns-3
 ++++++++++++++++++++++++++++++++++++++++++++
@@ -1963,44 +2139,10 @@ ExitRecovery is called just prior to exiting recovery phase in order to perform 
 required congestion window adjustments. UpdateBytesSent is used to keep track of
 bytes sent and is called whenever a data packet is sent during recovery phase.
 
-Delivery Rate Estimation
-++++++++++++++++++++++++
-Current TCP implementation measures the approximate value of the delivery rate of
-inflight data based on Delivery Rate Estimation.
-
-As high level idea, keep in mind that the algorithm keeps track of 2 variables:
-
-1. `delivered`: Total amount of data delivered so far.
-
-2. `deliveredStamp`: Last time `delivered` was updated.
-
-When a packet is transmitted, the value of `delivered (d0)` and `deliveredStamp (t0)`
-is stored in its respective TcpTxItem.
-
-When an acknowledgement comes for this packet, the value of `delivered` and `deliveredStamp`
-is updated to `d1` and `t1` in the same TcpTxItem.
-
-After processing the acknowledgement, the rate sample is calculated and then passed
-to a congestion avoidance algorithm:
-
-.. math:: delivery_rate = (d1 - d0)/(t1 - t0)
-
-
-The implementation to estimate delivery rate is a joint work between TcpTxBuffer and TcpRateOps.
-For more information, please take a look at their Doxygen documentation.
-
-The implementation follows the Internet draft (Delivery Rate Estimation):
-https://tools.ietf.org/html/draft-cheng-iccrg-delivery-rate-estimation-00
-
-Current limitations
-+++++++++++++++++++
-
-* TcpCongestionOps interface does not contain every possible Linux operation
-
 .. _Writing-tcp-tests:
 
 Writing TCP tests
-+++++++++++++++++
+*****************
 
 The TCP subsystem supports automated test
 cases on both socket functions and congestion control algorithms. To show
