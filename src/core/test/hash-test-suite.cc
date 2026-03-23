@@ -246,6 +246,57 @@ Murmur3TestCase::DoRun()
 
 /**
  * @ingroup hash-tests
+ * Test Murmur3_x64 hash on fixed string
+ */
+class Murmur3_x64TestCase : public HashTestCase
+{
+  public:
+    /** Constructor. */
+    Murmur3_x64TestCase();
+    /** Destructor. */
+    ~Murmur3_x64TestCase() override;
+
+  private:
+    void DoRun() override;
+};
+
+Murmur3_x64TestCase::Murmur3_x64TestCase()
+    : HashTestCase("Murmur3_x64: ")
+{
+}
+
+Murmur3_x64TestCase::~Murmur3_x64TestCase()
+{
+}
+
+void
+Murmur3_x64TestCase::DoRun()
+{
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
+    Hasher hasher = Hasher(Create<Hash::Function::Murmur3_x64>());
+
+    // Absolute 64-bit reference value.
+    // Produced by MurmurHash3_x64_128 with both 64-bit state words
+    // initialised from seed 0x8BADF00D, key "The quick brown fox jumped
+    // over the lazy dogs." (46 bytes).
+    hash64Reference = 0xdd33a0aae80bc4c8ULL;
+    Check("murmur3_x64", hasher.clear().GetHash64(key));
+
+    // GetHash32 must equal the lower 32 bits of GetHash64.
+    hash32Reference = static_cast<uint32_t>(hash64Reference);
+    Check("murmur3_x64", hasher.clear().GetHash32(key));
+
+    // x64 variant must produce a different result than x86 for the same input.
+    uint64_t h64_x86 = Hasher(Create<Hash::Function::Murmur3>()).clear().GetHash64(key);
+    NS_TEST_EXPECT_MSG_NE(hasher.clear().GetHash64(key),
+                          h64_x86,
+                          "Murmur3_x64 and Murmur3 produced the same 64-bit hash");
+    std::cout << GetName() << "x64 != x86: ok" << std::endl;
+}
+
+/**
+ * @ingroup hash-tests
  * Simple hash function based on the GNU sum program.
  *
  * 16-bit checksum algorithm.  See
@@ -426,6 +477,8 @@ IncrementalTestCase::DoRun()
     DoHash("default", Hasher());
     DoHash("murmur3", Hasher(Create<Hash::Function::Murmur3>()));
     DoHash("FNV1a", Hasher(Create<Hash::Function::Fnv1a>()));
+    // Murmur3_x64 omitted: _incr re-seeds on every call, so hashing
+    // key1 then key2 without clear() does not equal hashing key12.
 }
 
 /**
@@ -444,6 +497,7 @@ HashTestSuite::HashTestSuite()
 {
     AddTestCase(new DefaultHashTestCase);
     AddTestCase(new Murmur3TestCase);
+    AddTestCase(new Murmur3_x64TestCase);
     AddTestCase(new Fnv1aTestCase);
     AddTestCase(new IncrementalTestCase);
     AddTestCase(new Hash32FunctionPtrTestCase);

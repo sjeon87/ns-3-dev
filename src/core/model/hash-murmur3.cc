@@ -490,7 +490,6 @@ static void MurmurHash3_x64_128_incr ( const void * key,
    ((uint64_t *)out)[0] = h1;
    ((uint64_t *)out)[1] = h2;
  }
- 
 /**
  * Finalisation for Murmur3 x64 hashing.
  *
