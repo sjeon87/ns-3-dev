@@ -290,6 +290,148 @@ class NoiseHistogramReport
 };
 
 /**
+ * @brief Frame Report Entry (IEEE 802.11-2024 Figure 9-302)
+ * @ingroup wifi
+ *
+ * Each entry is 19 bytes and describes frames received from a single transmitter.
+ */
+class FrameReportEntry
+{
+  public:
+    /**
+     * @brief Get the serialized size of a frame report entry.
+     * @return 19 bytes
+     */
+    uint16_t GetSerializedSize() const;
+
+    /**
+     * @brief Serialize the frame report entry.
+     * @param start the buffer iterator
+     */
+    void Serialize(Buffer::Iterator& start) const;
+
+    /**
+     * @brief Deserialize the frame report entry.
+     * @param start the buffer iterator
+     * @return number of bytes read
+     */
+    uint16_t Deserialize(Buffer::Iterator& start);
+
+    /** @brief Set the Transmitter Address field. @param addr the MAC address */
+    void SetTransmitterAddress(Mac48Address addr);
+    /** @brief Get the Transmitter Address field. @return the MAC address */
+    Mac48Address GetTransmitterAddress() const;
+
+    /** @brief Set the BSSID field. @param bssid the MAC address */
+    void SetBssid(Mac48Address bssid);
+    /** @brief Get the BSSID field. @return the MAC address */
+    Mac48Address GetBssid() const;
+
+    /** @brief Set the PHY Type field. @param phyType the value */
+    void SetPhyType(uint8_t phyType);
+    /** @brief Get the PHY Type field. @return the value */
+    uint8_t GetPhyType() const;
+
+    /** @brief Set the Average RCPI field. @param rcpi the value */
+    void SetAverageRcpi(uint8_t rcpi);
+    /** @brief Get the Average RCPI field. @return the value */
+    uint8_t GetAverageRcpi() const;
+
+    /** @brief Set the Last RSNI field. @param rsni the value */
+    void SetLastRsni(uint8_t rsni);
+    /** @brief Get the Last RSNI field. @return the value */
+    uint8_t GetLastRsni() const;
+
+    /** @brief Set the Last RCPI field. @param rcpi the value */
+    void SetLastRcpi(uint8_t rcpi);
+    /** @brief Get the Last RCPI field. @return the value */
+    uint8_t GetLastRcpi() const;
+
+    /** @brief Set the Antenna ID field. @param antennaId the value */
+    void SetAntennaId(uint8_t antennaId);
+    /** @brief Get the Antenna ID field. @return the value */
+    uint8_t GetAntennaId() const;
+
+    /** @brief Set the Frame Count field. @param count the value */
+    void SetFrameCount(uint16_t count);
+    /** @brief Get the Frame Count field. @return the value */
+    uint16_t GetFrameCount() const;
+
+  private:
+    Mac48Address m_transmitterAddress; //!< Transmitter Address (6 octets)
+    Mac48Address m_bssid;              //!< BSSID (6 octets)
+    uint8_t m_phyType{0};              //!< PHY Type (1 octet)
+    uint8_t m_averageRcpi{0};          //!< Average RCPI (1 octet)
+    uint8_t m_lastRsni{0};             //!< Last RSNI (1 octet)
+    uint8_t m_lastRcpi{0};             //!< Last RCPI (1 octet)
+    uint8_t m_antennaId{0};            //!< Antenna ID (1 octet)
+    uint16_t m_frameCount{0};          //!< Frame Count (2 octets)
+};
+
+/**
+ * @brief Frame Report body (IEEE 802.11-2024 Section 9.4.2.20.8, Figure 9-300)
+ * @ingroup wifi
+ *
+ * Fixed fields (12 bytes) plus an optional Frame Count Report subelement
+ * (ID 1, Table 9-169) containing zero or more FrameReportEntry fields.
+ */
+class FrameReport
+{
+  public:
+    /**
+     * @brief Get the serialized size of the frame report body.
+     * @return size in bytes
+     */
+    uint16_t GetSerializedSize() const;
+
+    /**
+     * @brief Serialize the frame report body.
+     * @param start the buffer iterator
+     */
+    void Serialize(Buffer::Iterator& start) const;
+
+    /**
+     * @brief Deserialize the frame report body.
+     * @param start the buffer iterator
+     * @param length total bytes available for the report body
+     * @return number of bytes read
+     */
+    uint16_t Deserialize(Buffer::Iterator& start, uint16_t length);
+
+    /** @brief Set the Operating Class field. @param operatingClass the value */
+    void SetOperatingClass(uint8_t operatingClass);
+    /** @brief Get the Operating Class field. @return the value */
+    uint8_t GetOperatingClass() const;
+
+    /** @brief Set the Channel Number field. @param channel the value */
+    void SetChannelNumber(uint8_t channel);
+    /** @brief Get the Channel Number field. @return the value */
+    uint8_t GetChannelNumber() const;
+
+    /** @brief Set the Actual Measurement Start Time field. @param startTime the TSF value */
+    void SetActualMeasurementStartTime(uint64_t startTime);
+    /** @brief Get the Actual Measurement Start Time field. @return the TSF value */
+    uint64_t GetActualMeasurementStartTime() const;
+
+    /** @brief Set the Measurement Duration field. @param duration duration in TUs */
+    void SetMeasurementDuration(uint16_t duration);
+    /** @brief Get the Measurement Duration field. @return duration in TUs */
+    uint16_t GetMeasurementDuration() const;
+
+    /** @brief Add a Frame Report Entry. @param entry the entry to add */
+    void AddFrameReportEntry(const FrameReportEntry& entry);
+    /** @brief Get the Frame Report Entries. @return vector of entries */
+    const std::vector<FrameReportEntry>& GetFrameReportEntries() const;
+
+  private:
+    uint8_t m_operatingClass{0};              //!< Operating Class (1 octet)
+    uint8_t m_channelNumber{0};               //!< Channel Number (1 octet)
+    uint64_t m_actualMeasurementStartTime{0}; //!< Actual Measurement Start Time (8 octets)
+    uint16_t m_measurementDuration{0};        //!< Measurement Duration (2 octets)
+    std::vector<FrameReportEntry> m_frameReportEntries; //!< Frame Report Entries
+};
+
+/**
  * @brief STA Statistics Report body (IEEE 802.11-2024 Section 9.4.2.20.9, Figure 9-303)
  * @ingroup wifi
  *
@@ -353,8 +495,8 @@ class StaStatisticsReport
  *
  * Carries measurement results. The report body type is determined by
  * the Measurement Type field. Currently Beacon (type 5), Channel Load
- * (type 3), Noise Histogram (type 4), and STA Statistics (type 7)
- * reports are supported. Unsupported types or mode-bit-set reports have no body.
+ * (type 3), Noise Histogram (type 4), Frame (type 6), and STA Statistics
+ * (type 7) reports are supported. Unsupported types or mode-bit-set reports have no body.
  */
 class MeasurementReportElement : public WifiInformationElement
 {
@@ -437,6 +579,18 @@ class MeasurementReportElement : public WifiInformationElement
      */
     std::optional<StaStatisticsReport> GetStaStatisticsReport() const;
 
+    /**
+     * @brief Set the Frame Report body.
+     * Also sets Measurement Type to FRAME.
+     * @param report the FrameReport
+     */
+    void SetFrameReport(const FrameReport& report);
+    /**
+     * @brief Get the Frame Report body if present.
+     * @return the FrameReport if type is FRAME and no mode bits are set
+     */
+    std::optional<FrameReport> GetFrameReport() const;
+
   private:
     uint16_t GetInformationFieldSize() const override;
     void SerializeInformationField(Buffer::Iterator start) const override;
@@ -456,6 +610,7 @@ class MeasurementReportElement : public WifiInformationElement
                  BeaconReport,
                  ChannelLoadReport,
                  NoiseHistogramReport,
+                 FrameReport,
                  StaStatisticsReport>
         m_report; //!< Report body
 };

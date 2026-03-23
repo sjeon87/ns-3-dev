@@ -547,6 +547,176 @@ RadioMeasurementReportTest::DoRun()
                               false,
                               "No STA Stats body when Incapable");
     }
+
+    // Test 10: Frame Report with zero entries (fixed fields only)
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(20);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+
+        FrameReport body;
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetActualMeasurementStartTime(500000);
+        body.SetMeasurementDuration(100);
+        elem.SetFrameReport(body);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 20, "Frame Report dialog token");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetMeasurementReportElements().size(),
+                              1,
+                              "One Frame Report element");
+        const auto& desElem10 = deserialized.GetMeasurementReportElements()[0];
+        NS_TEST_EXPECT_MSG_EQ(desElem10.GetMeasurementType(),
+                              static_cast<uint8_t>(MeasurementReportType::FRAME),
+                              "Type is FRAME");
+        auto frameOpt = desElem10.GetFrameReport();
+        NS_TEST_ASSERT_MSG_EQ(frameOpt.has_value(), true, "Frame report present");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetOperatingClass(), 81, "OpClass round-trip");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetChannelNumber(), 6, "Channel round-trip");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetActualMeasurementStartTime(),
+                              500000,
+                              "StartTime round-trip");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetMeasurementDuration(), 100, "Duration round-trip");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetFrameReportEntries().size(), 0, "Zero entries");
+    }
+
+    // Test 11: Frame Report with one entry, full field verification
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(21);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(2);
+
+        FrameReport body;
+        body.SetOperatingClass(115);
+        body.SetChannelNumber(36);
+        body.SetActualMeasurementStartTime(123456789);
+        body.SetMeasurementDuration(200);
+
+        FrameReportEntry entry;
+        entry.SetTransmitterAddress(Mac48Address("aa:bb:cc:dd:ee:ff"));
+        entry.SetBssid(Mac48Address("11:22:33:44:55:66"));
+        entry.SetPhyType(6);
+        entry.SetAverageRcpi(80);
+        entry.SetLastRsni(40);
+        entry.SetLastRcpi(85);
+        entry.SetAntennaId(2);
+        entry.SetFrameCount(1500);
+        body.AddFrameReportEntry(entry);
+        elem.SetFrameReport(body);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        const auto& desElem11 = deserialized.GetMeasurementReportElements()[0];
+        auto frameOpt = desElem11.GetFrameReport();
+        NS_TEST_ASSERT_MSG_EQ(frameOpt.has_value(), true, "Frame report present");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetOperatingClass(), 115, "OpClass");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetChannelNumber(), 36, "Channel");
+        NS_TEST_ASSERT_MSG_EQ(frameOpt->GetFrameReportEntries().size(), 1, "One entry");
+        const auto& e = frameOpt->GetFrameReportEntries()[0];
+        NS_TEST_EXPECT_MSG_EQ(e.GetTransmitterAddress(),
+                              Mac48Address("aa:bb:cc:dd:ee:ff"),
+                              "TA round-trip");
+        NS_TEST_EXPECT_MSG_EQ(e.GetBssid(), Mac48Address("11:22:33:44:55:66"), "BSSID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(e.GetPhyType(), 6, "PHY type round-trip");
+        NS_TEST_EXPECT_MSG_EQ(e.GetAverageRcpi(), 80, "Avg RCPI round-trip");
+        NS_TEST_EXPECT_MSG_EQ(e.GetLastRsni(), 40, "Last RSNI round-trip");
+        NS_TEST_EXPECT_MSG_EQ(e.GetLastRcpi(), 85, "Last RCPI round-trip");
+        NS_TEST_EXPECT_MSG_EQ(e.GetAntennaId(), 2, "Antenna ID round-trip");
+        NS_TEST_EXPECT_MSG_EQ(e.GetFrameCount(), 1500, "Frame count round-trip");
+    }
+
+    // Test 12: Frame Report with multiple entries
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(22);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(3);
+
+        FrameReport body;
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(1);
+        body.SetActualMeasurementStartTime(0);
+        body.SetMeasurementDuration(500);
+
+        for (uint8_t j = 0; j < 3; j++)
+        {
+            FrameReportEntry entry;
+            entry.SetTransmitterAddress(Mac48Address("00:00:00:00:00:01"));
+            entry.SetBssid(Mac48Address("00:00:00:00:00:02"));
+            entry.SetPhyType(j);
+            entry.SetAverageRcpi(50 + j);
+            entry.SetLastRsni(30 + j);
+            entry.SetLastRcpi(55 + j);
+            entry.SetAntennaId(j + 1);
+            entry.SetFrameCount(100 * (j + 1));
+            body.AddFrameReportEntry(entry);
+        }
+        elem.SetFrameReport(body);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        const auto& desElem12 = deserialized.GetMeasurementReportElements()[0];
+        auto frameOpt = desElem12.GetFrameReport();
+        NS_TEST_ASSERT_MSG_EQ(frameOpt.has_value(), true, "Frame report present");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetFrameReportEntries().size(), 3, "Three entries");
+        NS_TEST_EXPECT_MSG_EQ(frameOpt->GetFrameReportEntries()[2].GetFrameCount(),
+                              300,
+                              "Third entry frame count");
+    }
+
+    // Test 13: Frame Report with Refused mode bit -- no body
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(23);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(4);
+        elem.SetRefused(true);
+        elem.SetMeasurementType(MeasurementReportType::FRAME);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        const auto& desElem13 = deserialized.GetMeasurementReportElements()[0];
+        NS_TEST_EXPECT_MSG_EQ(desElem13.GetRefused(), true, "Refused set for Frame Report");
+        NS_TEST_EXPECT_MSG_EQ(desElem13.GetFrameReport().has_value(),
+                              false,
+                              "No Frame body when Refused");
+    }
 }
 
 /**

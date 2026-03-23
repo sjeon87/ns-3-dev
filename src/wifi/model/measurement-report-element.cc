@@ -395,6 +395,277 @@ NoiseHistogramReport::GetIpiDensity(uint8_t level) const
     return m_ipiDensities[level];
 }
 
+// --- FrameReportEntry ---
+
+uint16_t
+FrameReportEntry::GetSerializedSize() const
+{
+    return 19;
+}
+
+void
+FrameReportEntry::Serialize(Buffer::Iterator& start) const
+{
+    WriteTo(start, m_transmitterAddress);
+    WriteTo(start, m_bssid);
+    start.WriteU8(m_phyType);
+    start.WriteU8(m_averageRcpi);
+    start.WriteU8(m_lastRsni);
+    start.WriteU8(m_lastRcpi);
+    start.WriteU8(m_antennaId);
+    start.WriteU16(m_frameCount);
+}
+
+uint16_t
+FrameReportEntry::Deserialize(Buffer::Iterator& start)
+{
+    ReadFrom(start, m_transmitterAddress);
+    ReadFrom(start, m_bssid);
+    m_phyType = start.ReadU8();
+    m_averageRcpi = start.ReadU8();
+    m_lastRsni = start.ReadU8();
+    m_lastRcpi = start.ReadU8();
+    m_antennaId = start.ReadU8();
+    m_frameCount = start.ReadU16();
+    return 19;
+}
+
+void
+FrameReportEntry::SetTransmitterAddress(Mac48Address addr)
+{
+    m_transmitterAddress = addr;
+}
+
+Mac48Address
+FrameReportEntry::GetTransmitterAddress() const
+{
+    return m_transmitterAddress;
+}
+
+void
+FrameReportEntry::SetBssid(Mac48Address bssid)
+{
+    m_bssid = bssid;
+}
+
+Mac48Address
+FrameReportEntry::GetBssid() const
+{
+    return m_bssid;
+}
+
+void
+FrameReportEntry::SetPhyType(uint8_t phyType)
+{
+    m_phyType = phyType;
+}
+
+uint8_t
+FrameReportEntry::GetPhyType() const
+{
+    return m_phyType;
+}
+
+void
+FrameReportEntry::SetAverageRcpi(uint8_t rcpi)
+{
+    m_averageRcpi = rcpi;
+}
+
+uint8_t
+FrameReportEntry::GetAverageRcpi() const
+{
+    return m_averageRcpi;
+}
+
+void
+FrameReportEntry::SetLastRsni(uint8_t rsni)
+{
+    m_lastRsni = rsni;
+}
+
+uint8_t
+FrameReportEntry::GetLastRsni() const
+{
+    return m_lastRsni;
+}
+
+void
+FrameReportEntry::SetLastRcpi(uint8_t rcpi)
+{
+    m_lastRcpi = rcpi;
+}
+
+uint8_t
+FrameReportEntry::GetLastRcpi() const
+{
+    return m_lastRcpi;
+}
+
+void
+FrameReportEntry::SetAntennaId(uint8_t antennaId)
+{
+    m_antennaId = antennaId;
+}
+
+uint8_t
+FrameReportEntry::GetAntennaId() const
+{
+    return m_antennaId;
+}
+
+void
+FrameReportEntry::SetFrameCount(uint16_t count)
+{
+    m_frameCount = count;
+}
+
+uint16_t
+FrameReportEntry::GetFrameCount() const
+{
+    return m_frameCount;
+}
+
+// --- FrameReport ---
+
+uint16_t
+FrameReport::GetSerializedSize() const
+{
+    uint16_t size = 12;
+    if (!m_frameReportEntries.empty())
+    {
+        size += 2 + static_cast<uint16_t>(m_frameReportEntries.size()) * 19;
+    }
+    return size;
+}
+
+void
+FrameReport::Serialize(Buffer::Iterator& start) const
+{
+    start.WriteU8(m_operatingClass);
+    start.WriteU8(m_channelNumber);
+    start.WriteU64(m_actualMeasurementStartTime);
+    start.WriteU16(m_measurementDuration);
+    if (!m_frameReportEntries.empty())
+    {
+        NS_ASSERT_MSG(
+            m_frameReportEntries.size() <= 13,
+            "Frame Count Report subelement Length is 1 octet, max 13 entries (13*19=247)");
+        start.WriteU8(1); // Frame Count Report subelement ID
+        start.WriteU8(static_cast<uint8_t>(m_frameReportEntries.size() * 19));
+        for (const auto& entry : m_frameReportEntries)
+        {
+            FrameReportEntry e = entry;
+            e.Serialize(start);
+        }
+    }
+}
+
+uint16_t
+FrameReport::Deserialize(Buffer::Iterator& start, uint16_t length)
+{
+    m_operatingClass = start.ReadU8();
+    m_channelNumber = start.ReadU8();
+    m_actualMeasurementStartTime = start.ReadU64();
+    m_measurementDuration = start.ReadU16();
+    uint16_t bytesRead = 12;
+
+    while (bytesRead + 2 <= length)
+    {
+        uint8_t subId = start.ReadU8();
+        uint8_t subLen = start.ReadU8();
+        bytesRead += 2;
+        if (subId == 1)
+        {
+            uint16_t remaining = subLen;
+            while (remaining >= 19)
+            {
+                FrameReportEntry entry;
+                entry.Deserialize(start);
+                m_frameReportEntries.push_back(entry);
+                remaining -= 19;
+                bytesRead += 19;
+            }
+            // Skip any leftover bytes in this subelement
+            for (uint16_t j = 0; j < remaining; j++)
+            {
+                start.ReadU8();
+                bytesRead++;
+            }
+        }
+        else
+        {
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                start.ReadU8();
+                bytesRead++;
+            }
+        }
+    }
+
+    return bytesRead;
+}
+
+void
+FrameReport::SetOperatingClass(uint8_t operatingClass)
+{
+    m_operatingClass = operatingClass;
+}
+
+uint8_t
+FrameReport::GetOperatingClass() const
+{
+    return m_operatingClass;
+}
+
+void
+FrameReport::SetChannelNumber(uint8_t channel)
+{
+    m_channelNumber = channel;
+}
+
+uint8_t
+FrameReport::GetChannelNumber() const
+{
+    return m_channelNumber;
+}
+
+void
+FrameReport::SetActualMeasurementStartTime(uint64_t startTime)
+{
+    m_actualMeasurementStartTime = startTime;
+}
+
+uint64_t
+FrameReport::GetActualMeasurementStartTime() const
+{
+    return m_actualMeasurementStartTime;
+}
+
+void
+FrameReport::SetMeasurementDuration(uint16_t duration)
+{
+    m_measurementDuration = duration;
+}
+
+uint16_t
+FrameReport::GetMeasurementDuration() const
+{
+    return m_measurementDuration;
+}
+
+void
+FrameReport::AddFrameReportEntry(const FrameReportEntry& entry)
+{
+    m_frameReportEntries.push_back(entry);
+}
+
+const std::vector<FrameReportEntry>&
+FrameReport::GetFrameReportEntries() const
+{
+    return m_frameReportEntries;
+}
+
 // --- StaStatisticsReport ---
 
 uint16_t
@@ -662,6 +933,23 @@ MeasurementReportElement::GetStaStatisticsReport() const
     return std::nullopt;
 }
 
+void
+MeasurementReportElement::SetFrameReport(const FrameReport& report)
+{
+    m_measurementType = static_cast<uint8_t>(MeasurementReportType::FRAME);
+    m_report = report;
+}
+
+std::optional<FrameReport>
+MeasurementReportElement::GetFrameReport() const
+{
+    if (std::holds_alternative<FrameReport>(m_report))
+    {
+        return std::get<FrameReport>(m_report);
+    }
+    return std::nullopt;
+}
+
 bool
 MeasurementReportElement::HasModeSet() const
 {
@@ -685,6 +973,10 @@ MeasurementReportElement::GetInformationFieldSize() const
         else if (std::holds_alternative<NoiseHistogramReport>(m_report))
         {
             size += std::get<NoiseHistogramReport>(m_report).GetSerializedSize();
+        }
+        else if (std::holds_alternative<FrameReport>(m_report))
+        {
+            size += std::get<FrameReport>(m_report).GetSerializedSize();
         }
         else if (std::holds_alternative<StaStatisticsReport>(m_report))
         {
@@ -717,6 +1009,11 @@ MeasurementReportElement::SerializeInformationField(Buffer::Iterator start) cons
         {
             NoiseHistogramReport nhr = std::get<NoiseHistogramReport>(m_report);
             nhr.Serialize(start);
+        }
+        else if (std::holds_alternative<FrameReport>(m_report))
+        {
+            FrameReport fr = std::get<FrameReport>(m_report);
+            fr.Serialize(start);
         }
         else if (std::holds_alternative<StaStatisticsReport>(m_report))
         {
@@ -755,6 +1052,12 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
             NoiseHistogramReport nhr;
             bytesRead += nhr.Deserialize(i);
             m_report = nhr;
+        }
+        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::FRAME))
+        {
+            FrameReport fr;
+            bytesRead += fr.Deserialize(i, length - bytesRead);
+            m_report = fr;
         }
         else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::STA_STATISTICS))
         {
@@ -837,6 +1140,15 @@ MeasurementReportElement::Print(std::ostream& os) const
             os << +nhr.GetIpiDensity(j);
         }
         os << "]]";
+    }
+    else if (std::holds_alternative<FrameReport>(m_report))
+    {
+        const auto& fr = std::get<FrameReport>(m_report);
+        os << ", FrameReport=[OpClass=" << +fr.GetOperatingClass()
+           << ", Channel=" << +fr.GetChannelNumber()
+           << ", StartTime=" << fr.GetActualMeasurementStartTime()
+           << ", Duration=" << fr.GetMeasurementDuration()
+           << ", Entries=" << fr.GetFrameReportEntries().size() << "]";
     }
     else if (std::holds_alternative<StaStatisticsReport>(m_report))
     {
