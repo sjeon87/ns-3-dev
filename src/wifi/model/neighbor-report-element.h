@@ -671,6 +671,34 @@ class NeighborReportElement : public WifiInformationElement
     void SerializeInformationField(Buffer::Iterator start) const override;
     uint16_t DeserializeInformationField(Buffer::Iterator start, uint16_t length) override;
 
+    /**
+     * @brief Bit positions within the BSSID Information field (IEEE 802.11-2024 Figure 9-417)
+     */
+    enum class BssidInfoBit : uint8_t
+    {
+        SECURITY = 2,
+        KEY_SCOPE = 3,
+        SPECTRUM_MANAGEMENT = 4,
+        QOS = 5,
+        APSD = 6,
+        RADIO_MEASUREMENT = 7,
+        MOBILITY_DOMAIN = 10,
+        HIGH_THROUGHPUT = 11,
+        VERY_HIGH_THROUGHPUT = 12,
+        FTM = 13,
+        HIGH_EFFICIENCY = 14,
+        ER_BSS = 15,
+        COLOCATED_AP = 16,
+        UNSOLICITED_PROBE_RESPONSES_ACTIVE = 17,
+        MEMBER_OF_ESS_WITH_2G_OR_5G_COLOCATED_AP = 18,
+        OCT_SUPPORTED_WITH_REPORTING_AP = 19,
+        COLOCATED_WITH_6G_AP = 20,
+        DMG_POSITIONING = 22,
+    };
+
+    void SetBit(BssidInfoBit bit, bool val);
+    bool GetBit(BssidInfoBit bit) const;
+
     Mac48Address m_bssid;     //!< BSSID (6 octets)
     uint32_t m_bssidInfo;     //!< BSSID Information (4 octets)
     uint8_t m_operatingClass; //!< Operating Class (1 octet)

@@ -44,6 +44,26 @@ NeighborReportElement::GetBssid() const
 }
 
 void
+NeighborReportElement::SetBit(BssidInfoBit bit, bool val)
+{
+    auto pos = static_cast<uint8_t>(bit);
+    if (val)
+    {
+        m_bssidInfo |= (1U << pos);
+    }
+    else
+    {
+        m_bssidInfo &= ~(1U << pos);
+    }
+}
+
+bool
+NeighborReportElement::GetBit(BssidInfoBit bit) const
+{
+    return (m_bssidInfo & (1U << static_cast<uint8_t>(bit))) != 0;
+}
+
+void
 NeighborReportElement::SetBssidInfo(uint32_t info)
 {
     m_bssidInfo = info;
@@ -71,343 +91,217 @@ NeighborReportElement::GetApReachability() const
 void
 NeighborReportElement::SetSecurity(bool security)
 {
-    if (security)
-    {
-        m_bssidInfo |= (1 << 2);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 2);
-    }
+    SetBit(BssidInfoBit::SECURITY, security);
 }
 
 bool
 NeighborReportElement::GetSecurity() const
 {
-    return (m_bssidInfo & (1 << 2)) != 0;
+    return GetBit(BssidInfoBit::SECURITY);
 }
 
 void
 NeighborReportElement::SetKeyScope(bool keyScope)
 {
-    if (keyScope)
-    {
-        m_bssidInfo |= (1 << 3);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 3);
-    }
+    SetBit(BssidInfoBit::KEY_SCOPE, keyScope);
 }
 
 bool
 NeighborReportElement::GetKeyScope() const
 {
-    return (m_bssidInfo & (1 << 3)) != 0;
+    return GetBit(BssidInfoBit::KEY_SCOPE);
 }
 
 void
 NeighborReportElement::SetSpectrumManagement(bool spectrumMgmt)
 {
-    if (spectrumMgmt)
-    {
-        m_bssidInfo |= (1 << 4);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 4);
-    }
+    SetBit(BssidInfoBit::SPECTRUM_MANAGEMENT, spectrumMgmt);
 }
 
 bool
 NeighborReportElement::GetSpectrumManagement() const
 {
-    return (m_bssidInfo & (1 << 4)) != 0;
+    return GetBit(BssidInfoBit::SPECTRUM_MANAGEMENT);
 }
 
 void
 NeighborReportElement::SetQos(bool qos)
 {
-    if (qos)
-    {
-        m_bssidInfo |= (1 << 5);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 5);
-    }
+    SetBit(BssidInfoBit::QOS, qos);
 }
 
 bool
 NeighborReportElement::GetQos() const
 {
-    return (m_bssidInfo & (1 << 5)) != 0;
+    return GetBit(BssidInfoBit::QOS);
 }
 
 void
 NeighborReportElement::SetApsd(bool apsd)
 {
-    if (apsd)
-    {
-        m_bssidInfo |= (1 << 6);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 6);
-    }
+    SetBit(BssidInfoBit::APSD, apsd);
 }
 
 bool
 NeighborReportElement::GetApsd() const
 {
-    return (m_bssidInfo & (1 << 6)) != 0;
+    return GetBit(BssidInfoBit::APSD);
 }
 
 void
 NeighborReportElement::SetRadioMeasurement(bool radioMeasurement)
 {
-    if (radioMeasurement)
-    {
-        m_bssidInfo |= (1 << 7);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 7);
-    }
+    SetBit(BssidInfoBit::RADIO_MEASUREMENT, radioMeasurement);
 }
 
 bool
 NeighborReportElement::GetRadioMeasurement() const
 {
-    return (m_bssidInfo & (1 << 7)) != 0;
+    return GetBit(BssidInfoBit::RADIO_MEASUREMENT);
 }
 
 void
 NeighborReportElement::SetMobilityDomain(bool mobilityDomain)
 {
-    if (mobilityDomain)
-    {
-        m_bssidInfo |= (1 << 10);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 10);
-    }
+    SetBit(BssidInfoBit::MOBILITY_DOMAIN, mobilityDomain);
 }
 
 bool
 NeighborReportElement::GetMobilityDomain() const
 {
-    return (m_bssidInfo & (1 << 10)) != 0;
+    return GetBit(BssidInfoBit::MOBILITY_DOMAIN);
 }
 
 void
 NeighborReportElement::SetHighThroughput(bool ht)
 {
-    if (ht)
-    {
-        m_bssidInfo |= (1 << 11);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 11);
-    }
+    SetBit(BssidInfoBit::HIGH_THROUGHPUT, ht);
 }
 
 bool
 NeighborReportElement::GetHighThroughput() const
 {
-    return (m_bssidInfo & (1 << 11)) != 0;
+    return GetBit(BssidInfoBit::HIGH_THROUGHPUT);
 }
 
 void
 NeighborReportElement::SetVeryHighThroughput(bool vht)
 {
-    if (vht)
-    {
-        m_bssidInfo |= (1 << 12);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 12);
-    }
+    SetBit(BssidInfoBit::VERY_HIGH_THROUGHPUT, vht);
 }
 
 bool
 NeighborReportElement::GetVeryHighThroughput() const
 {
-    return (m_bssidInfo & (1 << 12)) != 0;
+    return GetBit(BssidInfoBit::VERY_HIGH_THROUGHPUT);
 }
 
 void
 NeighborReportElement::SetFtm(bool ftm)
 {
-    if (ftm)
-    {
-        m_bssidInfo |= (1 << 13);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 13);
-    }
+    SetBit(BssidInfoBit::FTM, ftm);
 }
 
 bool
 NeighborReportElement::GetFtm() const
 {
-    return (m_bssidInfo & (1 << 13)) != 0;
+    return GetBit(BssidInfoBit::FTM);
 }
 
 void
 NeighborReportElement::SetHighEfficiency(bool he)
 {
-    if (he)
-    {
-        m_bssidInfo |= (1 << 14);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 14);
-    }
+    SetBit(BssidInfoBit::HIGH_EFFICIENCY, he);
 }
 
 bool
 NeighborReportElement::GetHighEfficiency() const
 {
-    return (m_bssidInfo & (1 << 14)) != 0;
+    return GetBit(BssidInfoBit::HIGH_EFFICIENCY);
 }
 
 void
 NeighborReportElement::SetErBss(bool erBss)
 {
-    if (erBss)
-    {
-        m_bssidInfo |= (1 << 15);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 15);
-    }
+    SetBit(BssidInfoBit::ER_BSS, erBss);
 }
 
 bool
 NeighborReportElement::GetErBss() const
 {
-    return (m_bssidInfo & (1 << 15)) != 0;
+    return GetBit(BssidInfoBit::ER_BSS);
 }
 
 void
 NeighborReportElement::SetColocatedAp(bool colocatedAp)
 {
-    if (colocatedAp)
-    {
-        m_bssidInfo |= (1 << 16);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 16);
-    }
+    SetBit(BssidInfoBit::COLOCATED_AP, colocatedAp);
 }
 
 bool
 NeighborReportElement::GetColocatedAp() const
 {
-    return (m_bssidInfo & (1 << 16)) != 0;
+    return GetBit(BssidInfoBit::COLOCATED_AP);
 }
 
 void
 NeighborReportElement::SetUnsolicitedProbeResponsesActive(bool active)
 {
-    if (active)
-    {
-        m_bssidInfo |= (1 << 17);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 17);
-    }
+    SetBit(BssidInfoBit::UNSOLICITED_PROBE_RESPONSES_ACTIVE, active);
 }
 
 bool
 NeighborReportElement::GetUnsolicitedProbeResponsesActive() const
 {
-    return (m_bssidInfo & (1 << 17)) != 0;
+    return GetBit(BssidInfoBit::UNSOLICITED_PROBE_RESPONSES_ACTIVE);
 }
 
 void
 NeighborReportElement::SetMemberOfEssWith2gOr5gColocatedAp(bool member)
 {
-    if (member)
-    {
-        m_bssidInfo |= (1 << 18);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 18);
-    }
+    SetBit(BssidInfoBit::MEMBER_OF_ESS_WITH_2G_OR_5G_COLOCATED_AP, member);
 }
 
 bool
 NeighborReportElement::GetMemberOfEssWith2gOr5gColocatedAp() const
 {
-    return (m_bssidInfo & (1 << 18)) != 0;
+    return GetBit(BssidInfoBit::MEMBER_OF_ESS_WITH_2G_OR_5G_COLOCATED_AP);
 }
 
 void
 NeighborReportElement::SetOctSupportedWithReportingAp(bool oct)
 {
-    if (oct)
-    {
-        m_bssidInfo |= (1 << 19);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 19);
-    }
+    SetBit(BssidInfoBit::OCT_SUPPORTED_WITH_REPORTING_AP, oct);
 }
 
 bool
 NeighborReportElement::GetOctSupportedWithReportingAp() const
 {
-    return (m_bssidInfo & (1 << 19)) != 0;
+    return GetBit(BssidInfoBit::OCT_SUPPORTED_WITH_REPORTING_AP);
 }
 
 void
 NeighborReportElement::SetColocatedWith6gAp(bool colocated6g)
 {
-    if (colocated6g)
-    {
-        m_bssidInfo |= (1 << 20);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 20);
-    }
+    SetBit(BssidInfoBit::COLOCATED_WITH_6G_AP, colocated6g);
 }
 
 bool
 NeighborReportElement::GetColocatedWith6gAp() const
 {
-    return (m_bssidInfo & (1 << 20)) != 0;
+    return GetBit(BssidInfoBit::COLOCATED_WITH_6G_AP);
 }
 
 void
 NeighborReportElement::SetDmgPositioning(bool dmg)
 {
-    if (dmg)
-    {
-        m_bssidInfo |= (1 << 22);
-    }
-    else
-    {
-        m_bssidInfo &= ~(1 << 22);
-    }
+    SetBit(BssidInfoBit::DMG_POSITIONING, dmg);
 }
 
 bool
 NeighborReportElement::GetDmgPositioning() const
 {
-    return (m_bssidInfo & (1 << 22)) != 0;
+    return GetBit(BssidInfoBit::DMG_POSITIONING);
 }
 
 void
