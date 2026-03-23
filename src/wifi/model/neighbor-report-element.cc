@@ -449,43 +449,44 @@ NeighborReportElement::GetPhyType() const
 uint16_t
 NeighborReportElement::TsfInformation::GetSerializedSize() const
 {
-    return 6;
+    return SUBELEMENT_HEADER_SIZE + sizeof(tsfOffset) + sizeof(beaconInterval);
 }
 
 uint16_t
 NeighborReportElement::CondensedCountryString::GetSerializedSize() const
 {
-    return 4;
+    return SUBELEMENT_HEADER_SIZE + sizeof(c1) + sizeof(c2);
 }
 
 uint16_t
 NeighborReportElement::CandidatePreference::GetSerializedSize() const
 {
-    return 3;
+    return SUBELEMENT_HEADER_SIZE + sizeof(preference);
 }
 
 uint16_t
 NeighborReportElement::BssTerminationDuration::GetSerializedSize() const
 {
-    return 12;
+    return SUBELEMENT_HEADER_SIZE + sizeof(terminationTsf) + sizeof(duration);
 }
 
 uint16_t
 NeighborReportElement::Bearing::GetSerializedSize() const
 {
-    return 10;
+    return SUBELEMENT_HEADER_SIZE + sizeof(bearing) + sizeof(distance) + sizeof(relativeHeight);
 }
 
 uint16_t
 NeighborReportElement::WideBandwidthChannel::GetSerializedSize() const
 {
-    return 5;
+    return SUBELEMENT_HEADER_SIZE + sizeof(channelWidth) + sizeof(centerFreqSegment0) +
+           sizeof(centerFreqSegment1);
 }
 
 uint16_t
 NeighborReportElement::VendorSpecificData::GetSerializedSize() const
 {
-    return 2 + static_cast<uint16_t>(data.size());
+    return SUBELEMENT_HEADER_SIZE + static_cast<uint16_t>(data.size());
 }
 
 void
@@ -627,7 +628,8 @@ NeighborReportElement::GetVendorSpecificData() const
 uint16_t
 NeighborReportElement::GetInformationFieldSize() const
 {
-    uint16_t size = 13;
+    uint16_t size = 6 /* BSSID (Mac48Address) */ + sizeof(m_bssidInfo) + sizeof(m_operatingClass) +
+                    sizeof(m_channelNumber) + sizeof(m_phyType);
     if (m_tsfInfo)
     {
         size += m_tsfInfo->GetSerializedSize();
@@ -687,34 +689,36 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     if (m_tsfInfo)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::TSF_INFORMATION));
-        start.WriteU8(4); // length
+        start.WriteU8(sizeof(m_tsfInfo->tsfOffset) + sizeof(m_tsfInfo->beaconInterval));
         start.WriteU16(m_tsfInfo->tsfOffset);
         start.WriteU16(m_tsfInfo->beaconInterval);
     }
     if (m_condensedCountryString)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::CONDENSED_COUNTRY_STRING));
-        start.WriteU8(2);
+        start.WriteU8(sizeof(m_condensedCountryString->c1) + sizeof(m_condensedCountryString->c2));
         start.WriteU8(static_cast<uint8_t>(m_condensedCountryString->c1));
         start.WriteU8(static_cast<uint8_t>(m_condensedCountryString->c2));
     }
     if (m_candidatePreference)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::BSS_TRANSITION_CANDIDATE_PREFERENCE));
-        start.WriteU8(1);
+        start.WriteU8(sizeof(m_candidatePreference->preference));
         start.WriteU8(m_candidatePreference->preference);
     }
     if (m_bssTerminationDuration)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::BSS_TERMINATION_DURATION));
-        start.WriteU8(10); // length
+        start.WriteU8(sizeof(m_bssTerminationDuration->terminationTsf) +
+                      sizeof(m_bssTerminationDuration->duration));
         start.WriteU64(m_bssTerminationDuration->terminationTsf);
         start.WriteU16(m_bssTerminationDuration->duration);
     }
     if (m_bearing)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::BEARING));
-        start.WriteU8(8); // length
+        start.WriteU8(sizeof(m_bearing->bearing) + sizeof(m_bearing->distance) +
+                      sizeof(m_bearing->relativeHeight));
         start.WriteU16(m_bearing->bearing);
         start.WriteU32(m_bearing->distance);
         start.WriteU16(static_cast<uint16_t>(m_bearing->relativeHeight));
@@ -722,7 +726,9 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     if (m_wideBandwidth)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL));
-        start.WriteU8(3); // length
+        start.WriteU8(sizeof(m_wideBandwidth->channelWidth) +
+                      sizeof(m_wideBandwidth->centerFreqSegment0) +
+                      sizeof(m_wideBandwidth->centerFreqSegment1));
         start.WriteU8(m_wideBandwidth->channelWidth);
         start.WriteU8(m_wideBandwidth->centerFreqSegment0);
         start.WriteU8(m_wideBandwidth->centerFreqSegment1);
@@ -764,7 +770,8 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
     m_channelNumber = i.ReadU8();
     m_phyType = i.ReadU8();
 
-    uint16_t bytesRead = 13;
+    uint16_t bytesRead = 6 /* BSSID (Mac48Address) */ + sizeof(m_bssidInfo) +
+                         sizeof(m_operatingClass) + sizeof(m_channelNumber) + sizeof(m_phyType);
     while (bytesRead < length)
     {
         uint8_t subelemId = i.PeekU8();
