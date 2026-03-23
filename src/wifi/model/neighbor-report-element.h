@@ -11,6 +11,7 @@
 
 #include "ht/ht-capabilities.h"
 #include "ht/ht-operation.h"
+#include "rm-enabled-capabilities.h"
 #include "vht/vht-capabilities.h"
 #include "vht/vht-operation.h"
 #include "wifi-information-element.h"
@@ -50,7 +51,6 @@ namespace ns3
  * @todo Add Measurement Report subelement (ID 39, no ns-3 class)
  * @todo Add Secondary Channel Offset subelement (ID 62, no ns-3 class)
  * @todo Add Measurement Pilot Transmission subelement (ID 66, no ns-3 class)
- * @todo Wire RmEnabledCapabilities as a subelement (ID 70)
  * @todo Add Multiple BSSID subelement (ID 71, no ns-3 class)
  * @todo Add HE Capabilities subelement (ID 193, awaiting maintainer guidance)
  * @todo Add HE Operation subelement (ID 194, awaiting maintainer guidance)
@@ -656,6 +656,17 @@ class NeighborReportElement : public WifiInformationElement
     std::optional<VhtOperation> GetVhtOperation() const;
 
     /**
+     * @brief Set the RM Enabled Capabilities subelement (ID 70).
+     * @param rmEnabledCapabilities the RM Enabled Capabilities element
+     */
+    void SetRmEnabledCapabilities(const RmEnabledCapabilities& rmEnabledCapabilities);
+    /**
+     * @brief Get the RM Enabled Capabilities subelement.
+     * @return the RM Enabled Capabilities if present
+     */
+    std::optional<RmEnabledCapabilities> GetRmEnabledCapabilities() const;
+
+    /**
      * @brief Set the Vendor Specific subelement (ID 221).
      * @param data the vendor-specific data
      */
@@ -716,9 +727,11 @@ class NeighborReportElement : public WifiInformationElement
     std::optional<WideBandwidthChannel> m_wideBandwidth; //!< Wide Bandwidth Channel (ID 6)
     std::optional<HtCapabilities> m_htCapabilities;      //!< HT Capabilities (ID 45)
     std::optional<HtOperation> m_htOperation;            //!< HT Operation (ID 61)
-    std::optional<VhtCapabilities> m_vhtCapabilities;    //!< VHT Capabilities (ID 191)
-    std::optional<VhtOperation> m_vhtOperation;          //!< VHT Operation (ID 192)
-    std::optional<VendorSpecificData> m_vendorSpecific;  //!< Vendor Specific (ID 221)
+    std::optional<RmEnabledCapabilities>
+        m_rmEnabledCapabilities;                        //!< RM Enabled Capabilities (ID 70)
+    std::optional<VhtCapabilities> m_vhtCapabilities;   //!< VHT Capabilities (ID 191)
+    std::optional<VhtOperation> m_vhtOperation;         //!< VHT Operation (ID 192)
+    std::optional<VendorSpecificData> m_vendorSpecific; //!< Vendor Specific (ID 221)
 };
 
 } // namespace ns3
