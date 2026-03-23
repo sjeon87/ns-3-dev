@@ -379,6 +379,14 @@ class FrameReport
 {
   public:
     /**
+     * @brief Subelement IDs for Frame Report (IEEE 802.11-2024 Table 9-169)
+     */
+    enum SubelementId : uint8_t
+    {
+        FRAME_COUNT_REPORT = 1,
+    };
+
+    /**
      * @brief Get the serialized size of the frame report body.
      * @return size in bytes
      */

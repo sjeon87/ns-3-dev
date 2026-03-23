@@ -551,7 +551,7 @@ FrameReport::Serialize(Buffer::Iterator& start) const
         NS_ASSERT_MSG(
             m_frameReportEntries.size() <= 13,
             "Frame Count Report subelement Length is 1 octet, max 13 entries (13*19=247)");
-        start.WriteU8(1); // Frame Count Report subelement ID
+        start.WriteU8(FRAME_COUNT_REPORT);
         start.WriteU8(static_cast<uint8_t>(m_frameReportEntries.size() * 19));
         for (const auto& entry : m_frameReportEntries)
         {
@@ -575,7 +575,7 @@ FrameReport::Deserialize(Buffer::Iterator& start, uint16_t length)
         uint8_t subId = start.ReadU8();
         uint8_t subLen = start.ReadU8();
         bytesRead += 2;
-        if (subId == 1)
+        if (subId == FRAME_COUNT_REPORT)
         {
             uint16_t remaining = subLen;
             while (remaining >= 19)
