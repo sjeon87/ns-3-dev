@@ -637,70 +637,71 @@ template <typename T>
 constexpr uint8_t
 MeasurementTypeFor()
 {
+    using MT = MeasurementRequestElement::MeasurementType;
     if constexpr (std::is_same_v<T, MeasurementRequestElement::ChannelLoadRequestBody>)
     {
-        return 3;
+        return static_cast<uint8_t>(MT::CHANNEL_LOAD);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::NoiseHistogramRequestBody>)
     {
-        return 4;
+        return static_cast<uint8_t>(MT::NOISE_HISTOGRAM);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::BeaconRequestBody>)
     {
-        return 5;
+        return static_cast<uint8_t>(MT::BEACON);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::FrameRequestBody>)
     {
-        return 6;
+        return static_cast<uint8_t>(MT::FRAME);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::StaStatisticsRequestBody>)
     {
-        return 7;
+        return static_cast<uint8_t>(MT::STA_STATISTICS);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::LciRequestBody>)
     {
-        return 8;
+        return static_cast<uint8_t>(MT::LCI);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::TransmitStreamRequestBody>)
     {
-        return 9;
+        return static_cast<uint8_t>(MT::TRANSMIT_STREAM);
     }
     else if constexpr (std::is_same_v<T,
                                       MeasurementRequestElement::MulticastDiagnosticsRequestBody>)
     {
-        return 10;
+        return static_cast<uint8_t>(MT::MULTICAST_DIAGNOSTICS);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::LocationCivicRequestBody>)
     {
-        return 11;
+        return static_cast<uint8_t>(MT::LOCATION_CIVIC);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::LocationIdentifierRequestBody>)
     {
-        return 12;
+        return static_cast<uint8_t>(MT::LOCATION_IDENTIFIER);
     }
     else if constexpr (std::is_same_v<
                            T,
                            MeasurementRequestElement::DirectionalChannelQualityRequestBody>)
     {
-        return 13;
+        return static_cast<uint8_t>(MT::DIRECTIONAL_CHANNEL_QUALITY);
     }
     else if constexpr (std::is_same_v<T,
                                       MeasurementRequestElement::DirectionalMeasurementRequestBody>)
     {
-        return 14;
+        return static_cast<uint8_t>(MT::DIRECTIONAL_MEASUREMENT);
     }
     else if constexpr (std::is_same_v<T,
                                       MeasurementRequestElement::DirectionalStatisticsRequestBody>)
     {
-        return 15;
+        return static_cast<uint8_t>(MT::DIRECTIONAL_STATISTICS);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::FtmRangeRequestBody>)
     {
-        return 16;
+        return static_cast<uint8_t>(MT::FTM_RANGE);
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::MeasurementPauseRequestBody>)
     {
-        return 255;
+        return static_cast<uint8_t>(MT::MEASUREMENT_PAUSE);
     }
     else
     {
