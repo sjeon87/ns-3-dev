@@ -418,9 +418,16 @@ void MurmurHash3_x86_128_fin ( const std::size_t len,
 }
 
 //-----------------------------------------------------------------------------
-/** \copydoc MurmurHash3_x86_32() */
-void MurmurHash3_x64_128 ( const void * key, const std::size_t len,
-                           const uint32_t seed, void * out )
+/**
+ * @brief Initial x64 Murmur3 hash.
+ *
+ * @note Does not accumulate state across calls; always re-initialises
+ * h1/h2 from \c seed.
+ */
+static void MurmurHash3_x64_128_incr ( const void * key,
+                                       const std::size_t len,
+                                       const uint32_t seed,
+                                       void * out )
 {
   const uint8_t * data = (const uint8_t*)key;
   const std::size_t nblocks = len / 16;  //PDB: was const int nblocks
@@ -479,6 +486,23 @@ void MurmurHash3_x64_128 ( const void * key, const std::size_t len,
   case  1: k1 ^= uint64_t(tail[ 0]) << 0;
            k1 *= c1; k1  = rotl64(k1,31); k1 *= c2; h1 ^= k1;
   };
+
+   ((uint64_t *)out)[0] = h1;
+   ((uint64_t *)out)[1] = h2;
+ }
+ 
+/**
+ * Finalisation for Murmur3 x64 hashing.
+ *
+ * Applies length mixing and fmix avalanche.
+ */
+static void MurmurHash3_x64_128_fin ( const std::size_t len,
+                                      const uint64_t * seeds,
+                                      void * out )
+{
+
+   uint64_t h1 = seeds[0];
+   uint64_t h2 = seeds[1];
 
   //----------
   // finalization
