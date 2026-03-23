@@ -446,6 +446,48 @@ NeighborReportElement::GetPhyType() const
     return m_phyType;
 }
 
+uint16_t
+NeighborReportElement::TsfInformation::GetSerializedSize() const
+{
+    return 6;
+}
+
+uint16_t
+NeighborReportElement::CondensedCountryString::GetSerializedSize() const
+{
+    return 4;
+}
+
+uint16_t
+NeighborReportElement::CandidatePreference::GetSerializedSize() const
+{
+    return 3;
+}
+
+uint16_t
+NeighborReportElement::BssTerminationDuration::GetSerializedSize() const
+{
+    return 12;
+}
+
+uint16_t
+NeighborReportElement::Bearing::GetSerializedSize() const
+{
+    return 10;
+}
+
+uint16_t
+NeighborReportElement::WideBandwidthChannel::GetSerializedSize() const
+{
+    return 5;
+}
+
+uint16_t
+NeighborReportElement::VendorSpecificData::GetSerializedSize() const
+{
+    return 2 + static_cast<uint16_t>(data.size());
+}
+
 void
 NeighborReportElement::SetTsfInformation(uint16_t tsfOffset, uint16_t beaconInterval)
 {
@@ -461,10 +503,10 @@ NeighborReportElement::GetTsfInformation() const
 void
 NeighborReportElement::SetCondensedCountryString(char c1, char c2)
 {
-    m_condensedCountryString = std::array<char, 2>{c1, c2};
+    m_condensedCountryString = CondensedCountryString{c1, c2};
 }
 
-std::optional<std::array<char, 2>>
+std::optional<NeighborReportElement::CondensedCountryString>
 NeighborReportElement::GetCondensedCountryString() const
 {
     return m_condensedCountryString;
@@ -473,10 +515,10 @@ NeighborReportElement::GetCondensedCountryString() const
 void
 NeighborReportElement::SetCandidatePreference(uint8_t preference)
 {
-    m_candidatePreference = preference;
+    m_candidatePreference = CandidatePreference{preference};
 }
 
-std::optional<uint8_t>
+std::optional<NeighborReportElement::CandidatePreference>
 NeighborReportElement::GetCandidatePreference() const
 {
     return m_candidatePreference;
@@ -573,10 +615,10 @@ NeighborReportElement::SetVendorSpecificData(std::vector<uint8_t> data)
 {
     NS_ASSERT_MSG(data.size() <= 255,
                   "Vendor specific data exceeds subelement length field (max 255 bytes)");
-    m_vendorSpecific = std::move(data);
+    m_vendorSpecific = VendorSpecificData{std::move(data)};
 }
 
-const std::optional<std::vector<uint8_t>>&
+std::optional<NeighborReportElement::VendorSpecificData>
 NeighborReportElement::GetVendorSpecificData() const
 {
     return m_vendorSpecific;
@@ -585,31 +627,30 @@ NeighborReportElement::GetVendorSpecificData() const
 uint16_t
 NeighborReportElement::GetInformationFieldSize() const
 {
-    uint16_t size =
-        13; // BSSID (6) + BSSID Info (4) + Operating Class (1) + Channel (1) + PHY Type (1)
+    uint16_t size = 13;
     if (m_tsfInfo)
     {
-        size += 2 + 4; // ID + Length + 4 bytes data
+        size += m_tsfInfo->GetSerializedSize();
     }
     if (m_condensedCountryString)
     {
-        size += 2 + 2;
+        size += m_condensedCountryString->GetSerializedSize();
     }
     if (m_candidatePreference)
     {
-        size += 2 + 1;
+        size += m_candidatePreference->GetSerializedSize();
     }
     if (m_bssTerminationDuration)
     {
-        size += 2 + 10;
+        size += m_bssTerminationDuration->GetSerializedSize();
     }
     if (m_bearing)
     {
-        size += 2 + 8; // ID + Length + Bearing(2) + Distance(4) + RelHeight(2)
+        size += m_bearing->GetSerializedSize();
     }
     if (m_wideBandwidth)
     {
-        size += 2 + 3; // ID + Length + ChWidth(1) + Seg0(1) + Seg1(1)
+        size += m_wideBandwidth->GetSerializedSize();
     }
     if (m_htCapabilities)
     {
@@ -629,7 +670,7 @@ NeighborReportElement::GetInformationFieldSize() const
     }
     if (m_vendorSpecific)
     {
-        size += 2 + m_vendorSpecific->size();
+        size += m_vendorSpecific->GetSerializedSize();
     }
     return size;
 }
@@ -653,15 +694,15 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     if (m_condensedCountryString)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::CONDENSED_COUNTRY_STRING));
-        start.WriteU8(2); // length
-        start.WriteU8(static_cast<uint8_t>((*m_condensedCountryString)[0]));
-        start.WriteU8(static_cast<uint8_t>((*m_condensedCountryString)[1]));
+        start.WriteU8(2);
+        start.WriteU8(static_cast<uint8_t>(m_condensedCountryString->c1));
+        start.WriteU8(static_cast<uint8_t>(m_condensedCountryString->c2));
     }
     if (m_candidatePreference)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::BSS_TRANSITION_CANDIDATE_PREFERENCE));
-        start.WriteU8(1); // length
-        start.WriteU8(*m_candidatePreference);
+        start.WriteU8(1);
+        start.WriteU8(m_candidatePreference->preference);
     }
     if (m_bssTerminationDuration)
     {
@@ -705,8 +746,8 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     if (m_vendorSpecific)
     {
         start.WriteU8(static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC));
-        start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->size()));
-        for (auto byte : *m_vendorSpecific)
+        start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->data.size()));
+        for (auto byte : m_vendorSpecific->data)
         {
             start.WriteU8(byte);
         }
@@ -785,11 +826,11 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
         case static_cast<uint8_t>(SubelementId::CONDENSED_COUNTRY_STRING): {
             char c1 = static_cast<char>(i.ReadU8());
             char c2 = static_cast<char>(i.ReadU8());
-            m_condensedCountryString = std::array<char, 2>{c1, c2};
+            m_condensedCountryString = CondensedCountryString{c1, c2};
             break;
         }
         case static_cast<uint8_t>(SubelementId::BSS_TRANSITION_CANDIDATE_PREFERENCE): {
-            m_candidatePreference = i.ReadU8();
+            m_candidatePreference = CandidatePreference{i.ReadU8()};
             break;
         }
         case static_cast<uint8_t>(SubelementId::BSS_TERMINATION_DURATION): {
@@ -813,12 +854,12 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
             break;
         }
         case static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC): {
-            std::vector<uint8_t> data(subelemLen);
+            std::vector<uint8_t> vsData(subelemLen);
             for (uint8_t j = 0; j < subelemLen; j++)
             {
-                data[j] = i.ReadU8();
+                vsData[j] = i.ReadU8();
             }
-            m_vendorSpecific = std::move(data);
+            m_vendorSpecific = VendorSpecificData{std::move(vsData)};
             break;
         }
         default: // Unknown subelement, skip
@@ -847,11 +888,11 @@ NeighborReportElement::Print(std::ostream& os) const
     }
     if (m_condensedCountryString)
     {
-        os << ", Country=" << (*m_condensedCountryString)[0] << (*m_condensedCountryString)[1];
+        os << ", Country=" << m_condensedCountryString->c1 << m_condensedCountryString->c2;
     }
     if (m_candidatePreference)
     {
-        os << ", CandPref=" << +(*m_candidatePreference);
+        os << ", CandPref=" << +m_candidatePreference->preference;
     }
     if (m_bssTerminationDuration)
     {
@@ -887,7 +928,7 @@ NeighborReportElement::Print(std::ostream& os) const
     }
     if (m_vendorSpecific)
     {
-        os << ", VendorSpecific(" << m_vendorSpecific->size() << " bytes)";
+        os << ", VendorSpecific(" << m_vendorSpecific->data.size() << " bytes)";
     }
     os << "]";
 }

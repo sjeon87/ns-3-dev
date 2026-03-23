@@ -17,7 +17,6 @@
 
 #include "ns3/mac48-address.h"
 
-#include <array>
 #include <optional>
 #include <vector>
 
@@ -63,6 +62,11 @@ namespace ns3
 class NeighborReportElement : public WifiInformationElement
 {
   public:
+    /**
+     * @brief Size of the subelement header (1-byte ID + 1-byte Length)
+     */
+    static constexpr uint16_t SUBELEMENT_HEADER_SIZE = 2;
+
     /**
      * @brief Subelement IDs for Neighbor Report (IEEE 802.11-2024 Table 9-212)
      */
@@ -431,6 +435,57 @@ class NeighborReportElement : public WifiInformationElement
     {
         uint16_t tsfOffset;      //!< TSF Offset (2 octets)
         uint16_t beaconInterval; //!< Beacon Interval (2 octets)
+
+        /**
+         * @brief Get the serialized size including subelement header.
+         * @return the serialized size in bytes
+         */
+        uint16_t GetSerializedSize() const;
+    };
+
+    /**
+     * @brief Condensed Country String subelement data (IEEE 802.11-2024 Table 9-212, ID 2)
+     */
+    struct CondensedCountryString
+    {
+        char c1; //!< First country character (1 octet)
+        char c2; //!< Second country character (1 octet)
+
+        /**
+         * @brief Get the serialized size including subelement header.
+         * @return the serialized size in bytes
+         */
+        uint16_t GetSerializedSize() const;
+    };
+
+    /**
+     * @brief BSS Transition Candidate Preference subelement data
+     *        (IEEE 802.11-2024 Table 9-212, ID 3)
+     */
+    struct CandidatePreference
+    {
+        uint8_t preference; //!< Preference value 0-255 (1 octet)
+
+        /**
+         * @brief Get the serialized size including subelement header.
+         * @return the serialized size in bytes
+         */
+        uint16_t GetSerializedSize() const;
+    };
+
+    /**
+     * @brief BSS Termination Duration subelement data (IEEE 802.11-2024 Table 9-212, ID 4)
+     */
+    struct BssTerminationDuration
+    {
+        uint64_t terminationTsf; //!< BSS Termination TSF (8 octets)
+        uint16_t duration;       //!< Duration (2 octets)
+
+        /**
+         * @brief Get the serialized size including subelement header.
+         * @return the serialized size in bytes
+         */
+        uint16_t GetSerializedSize() const;
     };
 
     /**
@@ -442,6 +497,12 @@ class NeighborReportElement : public WifiInformationElement
         uint32_t distance; //!< Distance in meters, IEEE 754 binary32 stored as uint32_t (4 octets).
                            //!< Caller must convert via std::bit_cast<uint32_t>(floatVal).
         int16_t relativeHeight; //!< Relative height in meters, signed (2 octets)
+
+        /**
+         * @brief Get the serialized size including subelement header.
+         * @return the serialized size in bytes
+         */
+        uint16_t GetSerializedSize() const;
     };
 
     /**
@@ -452,15 +513,26 @@ class NeighborReportElement : public WifiInformationElement
         uint8_t channelWidth;       //!< Channel Width (1 octet)
         uint8_t centerFreqSegment0; //!< Channel Center Frequency Segment 0 (1 octet)
         uint8_t centerFreqSegment1; //!< Channel Center Frequency Segment 1 (1 octet)
+
+        /**
+         * @brief Get the serialized size including subelement header.
+         * @return the serialized size in bytes
+         */
+        uint16_t GetSerializedSize() const;
     };
 
     /**
-     * @brief BSS Termination Duration subelement data (IEEE 802.11-2024 Table 9-212, ID 4)
+     * @brief Vendor Specific subelement data (IEEE 802.11-2024 Table 9-212, ID 221)
      */
-    struct BssTerminationDuration
+    struct VendorSpecificData
     {
-        uint64_t terminationTsf; //!< BSS Termination TSF (8 octets)
-        uint16_t duration;       //!< Duration (2 octets)
+        std::vector<uint8_t> data; //!< Vendor-specific payload
+
+        /**
+         * @brief Get the serialized size including subelement header.
+         * @return the serialized size in bytes
+         */
+        uint16_t GetSerializedSize() const;
     };
 
     /**
@@ -483,9 +555,9 @@ class NeighborReportElement : public WifiInformationElement
     void SetCondensedCountryString(char c1, char c2);
     /**
      * @brief Get the Condensed Country String subelement.
-     * @return the two-character country string if present
+     * @return the Condensed Country String if present
      */
-    std::optional<std::array<char, 2>> GetCondensedCountryString() const;
+    std::optional<CondensedCountryString> GetCondensedCountryString() const;
 
     /**
      * @brief Set the BSS Transition Candidate Preference subelement (ID 3).
@@ -494,9 +566,9 @@ class NeighborReportElement : public WifiInformationElement
     void SetCandidatePreference(uint8_t preference);
     /**
      * @brief Get the BSS Transition Candidate Preference subelement.
-     * @return the preference value if present
+     * @return the Candidate Preference if present
      */
-    std::optional<uint8_t> GetCandidatePreference() const;
+    std::optional<CandidatePreference> GetCandidatePreference() const;
 
     /**
      * @brief Set the BSS Termination Duration subelement (ID 4).
@@ -590,9 +662,9 @@ class NeighborReportElement : public WifiInformationElement
     void SetVendorSpecificData(std::vector<uint8_t> data);
     /**
      * @brief Get the Vendor Specific subelement.
-     * @return the vendor-specific data if present
+     * @return the Vendor Specific data if present
      */
-    const std::optional<std::vector<uint8_t>>& GetVendorSpecificData() const;
+    std::optional<VendorSpecificData> GetVendorSpecificData() const;
 
   private:
     uint16_t GetInformationFieldSize() const override;
@@ -606,18 +678,19 @@ class NeighborReportElement : public WifiInformationElement
     uint8_t m_phyType;        //!< PHY Type (1 octet)
 
     std::optional<TsfInformation> m_tsfInfo; //!< TSF Information (ID 1)
-    std::optional<std::array<char, 2>>
-        m_condensedCountryString;                 //!< Condensed Country String (ID 2)
-    std::optional<uint8_t> m_candidatePreference; //!< BSS Transition Candidate Preference (ID 3)
+    std::optional<CondensedCountryString>
+        m_condensedCountryString; //!< Condensed Country String (ID 2)
+    std::optional<CandidatePreference>
+        m_candidatePreference; //!< BSS Transition Candidate Preference (ID 3)
     std::optional<BssTerminationDuration>
-        m_bssTerminationDuration;                         //!< BSS Termination Duration (ID 4)
-    std::optional<Bearing> m_bearing;                     //!< Bearing (ID 5)
-    std::optional<WideBandwidthChannel> m_wideBandwidth;  //!< Wide Bandwidth Channel (ID 6)
-    std::optional<HtCapabilities> m_htCapabilities;       //!< HT Capabilities (ID 45)
-    std::optional<HtOperation> m_htOperation;             //!< HT Operation (ID 61)
-    std::optional<VhtCapabilities> m_vhtCapabilities;     //!< VHT Capabilities (ID 191)
-    std::optional<VhtOperation> m_vhtOperation;           //!< VHT Operation (ID 192)
-    std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific (ID 221)
+        m_bssTerminationDuration;                        //!< BSS Termination Duration (ID 4)
+    std::optional<Bearing> m_bearing;                    //!< Bearing (ID 5)
+    std::optional<WideBandwidthChannel> m_wideBandwidth; //!< Wide Bandwidth Channel (ID 6)
+    std::optional<HtCapabilities> m_htCapabilities;      //!< HT Capabilities (ID 45)
+    std::optional<HtOperation> m_htOperation;            //!< HT Operation (ID 61)
+    std::optional<VhtCapabilities> m_vhtCapabilities;    //!< VHT Capabilities (ID 191)
+    std::optional<VhtOperation> m_vhtOperation;          //!< VHT Operation (ID 192)
+    std::optional<VendorSpecificData> m_vendorSpecific;  //!< Vendor Specific (ID 221)
 };
 
 } // namespace ns3

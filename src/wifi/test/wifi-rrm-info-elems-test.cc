@@ -17,7 +17,6 @@
 #include "ns3/vht-capabilities.h"
 #include "ns3/vht-operation.h"
 
-#include <array>
 #include <sstream>
 #include <vector>
 
@@ -362,8 +361,8 @@ NeighborReportSubelementsTest::DoRun()
 
         auto cc = nre.GetCondensedCountryString();
         NS_TEST_ASSERT_MSG_EQ(cc.has_value(), true, "Country string should be present");
-        NS_TEST_ASSERT_MSG_EQ((*cc)[0], 'U', "Country char 1");
-        NS_TEST_ASSERT_MSG_EQ((*cc)[1], 'S', "Country char 2");
+        NS_TEST_ASSERT_MSG_EQ(cc->c1, 'U', "Country char 1");
+        NS_TEST_ASSERT_MSG_EQ(cc->c2, 'S', "Country char 2");
     }
 
     // Test 3: BSS Transition Candidate Preference subelement round-trip
@@ -379,7 +378,7 @@ NeighborReportSubelementsTest::DoRun()
 
         auto pref = nre.GetCandidatePreference();
         NS_TEST_ASSERT_MSG_EQ(pref.has_value(), true, "Candidate pref should be present");
-        NS_TEST_ASSERT_MSG_EQ(*pref, 200, "Candidate preference value");
+        NS_TEST_ASSERT_MSG_EQ(pref->preference, 200, "Candidate preference value");
     }
 
     // Test 4: BSS Termination Duration subelement round-trip
@@ -412,9 +411,9 @@ NeighborReportSubelementsTest::DoRun()
 
         auto vs = nre.GetVendorSpecificData();
         NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "Vendor specific should be present");
-        NS_TEST_ASSERT_MSG_EQ(vs->size(), 4, "Vendor specific size");
-        NS_TEST_ASSERT_MSG_EQ((*vs)[0], 0xAA, "Vendor byte 0");
-        NS_TEST_ASSERT_MSG_EQ((*vs)[3], 0xDD, "Vendor byte 3");
+        NS_TEST_ASSERT_MSG_EQ(vs->data.size(), 4, "Vendor specific size");
+        NS_TEST_ASSERT_MSG_EQ(vs->data[0], 0xAA, "Vendor byte 0");
+        NS_TEST_ASSERT_MSG_EQ(vs->data[3], 0xDD, "Vendor byte 3");
     }
 
     // Test 6: All subelements together
@@ -448,12 +447,12 @@ NeighborReportSubelementsTest::DoRun()
 
         auto cc = deserialized.GetCondensedCountryString();
         NS_TEST_ASSERT_MSG_EQ(cc.has_value(), true, "Country survives all-together");
-        NS_TEST_ASSERT_MSG_EQ((*cc)[0], 'G', "Country c1 all-together");
-        NS_TEST_ASSERT_MSG_EQ((*cc)[1], 'B', "Country c2 all-together");
+        NS_TEST_ASSERT_MSG_EQ(cc->c1, 'G', "Country c1 all-together");
+        NS_TEST_ASSERT_MSG_EQ(cc->c2, 'B', "Country c2 all-together");
 
         auto pref = deserialized.GetCandidatePreference();
         NS_TEST_ASSERT_MSG_EQ(pref.has_value(), true, "Pref survives all-together");
-        NS_TEST_ASSERT_MSG_EQ(*pref, 150, "Pref value all-together");
+        NS_TEST_ASSERT_MSG_EQ(pref->preference, 150, "Pref value all-together");
 
         auto term = deserialized.GetBssTerminationDuration();
         NS_TEST_ASSERT_MSG_EQ(term.has_value(), true, "Term survives all-together");
@@ -462,7 +461,7 @@ NeighborReportSubelementsTest::DoRun()
 
         auto vs = deserialized.GetVendorSpecificData();
         NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS survives all-together");
-        NS_TEST_ASSERT_MSG_EQ(vs->size(), 2, "VS size all-together");
+        NS_TEST_ASSERT_MSG_EQ(vs->data.size(), 2, "VS size all-together");
     }
 
     // Test 7: No subelements (fixed-only) still works and size is 13
@@ -545,7 +544,7 @@ NeighborReportSubelementsTest::DoRun()
                               "BSSIDInfo after unknown skip");
         auto pref = deserialized.GetCandidatePreference();
         NS_TEST_ASSERT_MSG_EQ(pref.has_value(), true, "Candidate pref parsed after unknown skip");
-        NS_TEST_ASSERT_MSG_EQ(*pref, 42, "Candidate pref value after unknown skip");
+        NS_TEST_ASSERT_MSG_EQ(pref->preference, 42, "Candidate pref value after unknown skip");
     }
 
     // Test 9: Bearing subelement round-trip
@@ -852,7 +851,9 @@ NeighborReportSubelementsTest::DoRun()
         nre2.SetPhyType(7);
         nre2.SetCandidatePreference(255);
         TestHeaderSerialization(nre2);
-        NS_TEST_ASSERT_MSG_EQ(*nre2.GetCandidatePreference(), 255, "Max candidate preference");
+        NS_TEST_ASSERT_MSG_EQ(nre2.GetCandidatePreference()->preference,
+                              255,
+                              "Max candidate preference");
 
         // Empty vendor specific data
         NeighborReportElement nre3;
@@ -862,7 +863,9 @@ NeighborReportSubelementsTest::DoRun()
         nre3.SetPhyType(7);
         nre3.SetVendorSpecificData({});
         TestHeaderSerialization(nre3);
-        NS_TEST_ASSERT_MSG_EQ(nre3.GetVendorSpecificData()->empty(), true, "Empty vendor specific");
+        NS_TEST_ASSERT_MSG_EQ(nre3.GetVendorSpecificData()->data.empty(),
+                              true,
+                              "Empty vendor specific");
 
         // Large vendor specific data
         NeighborReportElement nre4;
@@ -873,7 +876,7 @@ NeighborReportSubelementsTest::DoRun()
         std::vector<uint8_t> largeData(200, 0x42);
         nre4.SetVendorSpecificData(largeData);
         TestHeaderSerialization(nre4);
-        NS_TEST_ASSERT_MSG_EQ(nre4.GetVendorSpecificData()->size(),
+        NS_TEST_ASSERT_MSG_EQ(nre4.GetVendorSpecificData()->data.size(),
                               200,
                               "Large vendor specific size");
     }
