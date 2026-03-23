@@ -16,6 +16,7 @@
 #include <array>
 #include <optional>
 #include <variant>
+#include <vector>
 
 namespace ns3
 {
@@ -289,13 +290,71 @@ class NoiseHistogramReport
 };
 
 /**
+ * @brief STA Statistics Report body (IEEE 802.11-2024 Section 9.4.2.20.9, Figure 9-303)
+ * @ingroup wifi
+ *
+ * Fixed fields: Measurement Duration (2 octets), Group Identity (1 octet),
+ * Statistics Group Data (variable, size determined by Group Identity per Table 9-170).
+ * Optional subelements (Table 9-171) are not yet implemented.
+ */
+class StaStatisticsReport
+{
+  public:
+    /**
+     * @brief Get the serialized size of the STA Statistics report body.
+     * @return size in bytes (3 + statistics group data length)
+     */
+    uint16_t GetSerializedSize() const;
+
+    /**
+     * @brief Serialize the STA Statistics report body.
+     * @param start the buffer iterator
+     */
+    void Serialize(Buffer::Iterator& start) const;
+
+    /**
+     * @brief Deserialize the STA Statistics report body.
+     * @param start the buffer iterator
+     * @return number of bytes read
+     */
+    uint16_t Deserialize(Buffer::Iterator& start);
+
+    /** @brief Set the Measurement Duration field. @param duration duration in TUs */
+    void SetMeasurementDuration(uint16_t duration);
+    /** @brief Get the Measurement Duration field. @return duration in TUs */
+    uint16_t GetMeasurementDuration() const;
+
+    /** @brief Set the Group Identity field. @param groupIdentity the value (Table 9-170) */
+    void SetGroupIdentity(uint8_t groupIdentity);
+    /** @brief Get the Group Identity field. @return the value */
+    uint8_t GetGroupIdentity() const;
+
+    /** @brief Set the Statistics Group Data field. @param data raw counter bytes */
+    void SetStatisticsGroupData(const std::vector<uint8_t>& data);
+    /** @brief Get the Statistics Group Data field. @return raw counter bytes */
+    const std::vector<uint8_t>& GetStatisticsGroupData() const;
+
+    /**
+     * @brief Get the expected Statistics Group Data size for a given Group Identity.
+     * @param groupIdentity the Group Identity value
+     * @return expected size in bytes, or 0 if reserved/unknown
+     */
+    static uint16_t GetExpectedGroupDataSize(uint8_t groupIdentity);
+
+  private:
+    uint16_t m_measurementDuration{0};          //!< Measurement Duration (2 octets)
+    uint8_t m_groupIdentity{0};                 //!< Group Identity (1 octet)
+    std::vector<uint8_t> m_statisticsGroupData; //!< Statistics Group Data (variable)
+};
+
+/**
  * @brief The Measurement Report element (IEEE 802.11-2024 Section 9.4.2.20, IE 39)
  * @ingroup wifi
  *
  * Carries measurement results. The report body type is determined by
  * the Measurement Type field. Currently Beacon (type 5), Channel Load
- * (type 3), and Noise Histogram (type 4) reports are supported.
- * Unsupported types or mode-bit-set reports have no body.
+ * (type 3), Noise Histogram (type 4), and STA Statistics (type 7)
+ * reports are supported. Unsupported types or mode-bit-set reports have no body.
  */
 class MeasurementReportElement : public WifiInformationElement
 {
@@ -366,6 +425,18 @@ class MeasurementReportElement : public WifiInformationElement
      */
     std::optional<NoiseHistogramReport> GetNoiseHistogramReport() const;
 
+    /**
+     * @brief Set the STA Statistics Report body.
+     * Also sets Measurement Type to STA_STATISTICS.
+     * @param report the StaStatisticsReport
+     */
+    void SetStaStatisticsReport(const StaStatisticsReport& report);
+    /**
+     * @brief Get the STA Statistics Report body if present.
+     * @return the StaStatisticsReport if type is STA_STATISTICS and no mode bits are set
+     */
+    std::optional<StaStatisticsReport> GetStaStatisticsReport() const;
+
   private:
     uint16_t GetInformationFieldSize() const override;
     void SerializeInformationField(Buffer::Iterator start) const override;
@@ -381,7 +452,11 @@ class MeasurementReportElement : public WifiInformationElement
     uint8_t m_measurementReportMode{0}; //!< Measurement Report Mode (1 octet)
     uint8_t m_measurementType{0};       //!< Measurement Type (1 octet)
 
-    std::variant<std::monostate, BeaconReport, ChannelLoadReport, NoiseHistogramReport>
+    std::variant<std::monostate,
+                 BeaconReport,
+                 ChannelLoadReport,
+                 NoiseHistogramReport,
+                 StaStatisticsReport>
         m_report; //!< Report body
 };
 

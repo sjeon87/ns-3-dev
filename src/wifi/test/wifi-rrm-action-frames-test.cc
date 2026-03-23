@@ -409,6 +409,144 @@ RadioMeasurementReportTest::DoRun()
                               false,
                               "No body when Incapable");
     }
+
+    // Test 6: STA Statistics report -- Group 0 (dot11Counters, 28 bytes) round-trip
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(10);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(3);
+
+        StaStatisticsReport body;
+        body.SetMeasurementDuration(500);
+        body.SetGroupIdentity(0);
+        // 28 bytes: 7 x Counter32, fill with sequential values
+        std::vector<uint8_t> data(28, 0);
+        for (uint8_t i = 0; i < 28; i++)
+        {
+            data[i] = i + 1;
+        }
+        body.SetStatisticsGroupData(data);
+        elem.SetStaStatisticsReport(body);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetDialogToken(), 10, "STA Stats dialog token");
+        NS_TEST_ASSERT_MSG_EQ(deserialized.GetMeasurementReportElements().size(),
+                              1,
+                              "One STA Stats element");
+        const auto& desElem6 = deserialized.GetMeasurementReportElements()[0];
+        NS_TEST_EXPECT_MSG_EQ(desElem6.GetMeasurementToken(), 3, "STA Stats element token");
+        NS_TEST_EXPECT_MSG_EQ(desElem6.GetMeasurementType(),
+                              static_cast<uint8_t>(MeasurementReportType::STA_STATISTICS),
+                              "Type is STA_STATISTICS");
+        auto staOpt = desElem6.GetStaStatisticsReport();
+        NS_TEST_ASSERT_MSG_EQ(staOpt.has_value(), true, "STA Stats report present");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetMeasurementDuration(), 500, "Duration round-trip");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetGroupIdentity(), 0, "Group Identity round-trip");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData().size(), 28, "Group 0 data size");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[0], 1, "First data byte");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[27], 28, "Last data byte");
+    }
+
+    // Test 7: STA Statistics report -- Group 1 (dot11MACStatistics, 24 bytes) round-trip
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(11);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(4);
+
+        StaStatisticsReport body;
+        body.SetMeasurementDuration(0); // current values
+        body.SetGroupIdentity(1);
+        std::vector<uint8_t> data(24, 0xAB);
+        body.SetStatisticsGroupData(data);
+        elem.SetStaStatisticsReport(body);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        const auto& desElem7 = deserialized.GetMeasurementReportElements()[0];
+        auto staOpt = desElem7.GetStaStatisticsReport();
+        NS_TEST_ASSERT_MSG_EQ(staOpt.has_value(), true, "Group 1 report present");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetMeasurementDuration(), 0, "Duration 0 = current values");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetGroupIdentity(), 1, "Group 1 identity");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData().size(), 24, "Group 1 data size");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[0], 0xAB, "Group 1 data byte");
+    }
+
+    // Test 8: STA Statistics report -- Group 10 (BSSAverageAccessDelay, 8 bytes) round-trip
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(12);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(5);
+
+        StaStatisticsReport body;
+        body.SetMeasurementDuration(1000);
+        body.SetGroupIdentity(10);
+        std::vector<uint8_t> data = {50, 30, 40, 10, 20, 0x00, 0x0A, 80};
+        body.SetStatisticsGroupData(data);
+        elem.SetStaStatisticsReport(body);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        const auto& desElem8 = deserialized.GetMeasurementReportElements()[0];
+        auto staOpt = desElem8.GetStaStatisticsReport();
+        NS_TEST_ASSERT_MSG_EQ(staOpt.has_value(), true, "Group 10 report present");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetGroupIdentity(), 10, "Group 10 identity");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData().size(), 8, "Group 10 data size");
+        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[0], 50, "AP avg access delay");
+    }
+
+    // Test 9: STA Statistics report with Incapable mode bit -- no body
+    {
+        RadioMeasurementReportHeader hdr;
+        hdr.SetDialogToken(13);
+
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(6);
+        elem.SetIncapable(true);
+        elem.SetMeasurementType(MeasurementReportType::STA_STATISTICS);
+        hdr.AddMeasurementReportElement(elem);
+
+        TestHeaderSerialization(hdr);
+
+        Buffer buf;
+        buf.AddAtStart(hdr.GetSerializedSize());
+        hdr.Serialize(buf.Begin());
+
+        RadioMeasurementReportHeader deserialized;
+        deserialized.Deserialize(buf.Begin());
+        const auto& desElem9 = deserialized.GetMeasurementReportElements()[0];
+        NS_TEST_EXPECT_MSG_EQ(desElem9.GetIncapable(), true, "Incapable set for STA Stats");
+        NS_TEST_EXPECT_MSG_EQ(desElem9.GetStaStatisticsReport().has_value(),
+                              false,
+                              "No STA Stats body when Incapable");
+    }
 }
 
 /**

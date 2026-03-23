@@ -395,6 +395,110 @@ NoiseHistogramReport::GetIpiDensity(uint8_t level) const
     return m_ipiDensities[level];
 }
 
+// --- StaStatisticsReport ---
+
+uint16_t
+StaStatisticsReport::GetExpectedGroupDataSize(uint8_t groupIdentity)
+{
+    switch (groupIdentity)
+    {
+    case 0:
+        return 28;
+    case 1:
+        return 24;
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+        return 52;
+    case 10:
+        return 8;
+    case 11:
+        return 40;
+    case 12:
+    case 13:
+    case 14:
+        return 36;
+    case 15:
+        return 20;
+    case 16:
+        return 28;
+    default:
+        return 0;
+    }
+}
+
+uint16_t
+StaStatisticsReport::GetSerializedSize() const
+{
+    return 3 + static_cast<uint16_t>(m_statisticsGroupData.size());
+}
+
+void
+StaStatisticsReport::Serialize(Buffer::Iterator& start) const
+{
+    start.WriteU16(m_measurementDuration);
+    start.WriteU8(m_groupIdentity);
+    for (const auto& byte : m_statisticsGroupData)
+    {
+        start.WriteU8(byte);
+    }
+}
+
+uint16_t
+StaStatisticsReport::Deserialize(Buffer::Iterator& start)
+{
+    m_measurementDuration = start.ReadU16();
+    m_groupIdentity = start.ReadU8();
+    uint16_t dataSize = GetExpectedGroupDataSize(m_groupIdentity);
+    m_statisticsGroupData.resize(dataSize);
+    for (uint16_t i = 0; i < dataSize; i++)
+    {
+        m_statisticsGroupData[i] = start.ReadU8();
+    }
+    return 3 + dataSize;
+}
+
+void
+StaStatisticsReport::SetMeasurementDuration(uint16_t duration)
+{
+    m_measurementDuration = duration;
+}
+
+uint16_t
+StaStatisticsReport::GetMeasurementDuration() const
+{
+    return m_measurementDuration;
+}
+
+void
+StaStatisticsReport::SetGroupIdentity(uint8_t groupIdentity)
+{
+    m_groupIdentity = groupIdentity;
+}
+
+uint8_t
+StaStatisticsReport::GetGroupIdentity() const
+{
+    return m_groupIdentity;
+}
+
+void
+StaStatisticsReport::SetStatisticsGroupData(const std::vector<uint8_t>& data)
+{
+    m_statisticsGroupData = data;
+}
+
+const std::vector<uint8_t>&
+StaStatisticsReport::GetStatisticsGroupData() const
+{
+    return m_statisticsGroupData;
+}
+
 // --- MeasurementReportElement ---
 
 WifiInformationElementId
@@ -541,6 +645,23 @@ MeasurementReportElement::GetNoiseHistogramReport() const
     return std::nullopt;
 }
 
+void
+MeasurementReportElement::SetStaStatisticsReport(const StaStatisticsReport& report)
+{
+    m_measurementType = static_cast<uint8_t>(MeasurementReportType::STA_STATISTICS);
+    m_report = report;
+}
+
+std::optional<StaStatisticsReport>
+MeasurementReportElement::GetStaStatisticsReport() const
+{
+    if (std::holds_alternative<StaStatisticsReport>(m_report))
+    {
+        return std::get<StaStatisticsReport>(m_report);
+    }
+    return std::nullopt;
+}
+
 bool
 MeasurementReportElement::HasModeSet() const
 {
@@ -564,6 +685,10 @@ MeasurementReportElement::GetInformationFieldSize() const
         else if (std::holds_alternative<NoiseHistogramReport>(m_report))
         {
             size += std::get<NoiseHistogramReport>(m_report).GetSerializedSize();
+        }
+        else if (std::holds_alternative<StaStatisticsReport>(m_report))
+        {
+            size += std::get<StaStatisticsReport>(m_report).GetSerializedSize();
         }
     }
     return size;
@@ -592,6 +717,11 @@ MeasurementReportElement::SerializeInformationField(Buffer::Iterator start) cons
         {
             NoiseHistogramReport nhr = std::get<NoiseHistogramReport>(m_report);
             nhr.Serialize(start);
+        }
+        else if (std::holds_alternative<StaStatisticsReport>(m_report))
+        {
+            StaStatisticsReport ssr = std::get<StaStatisticsReport>(m_report);
+            ssr.Serialize(start);
         }
     }
 }
@@ -625,6 +755,12 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
             NoiseHistogramReport nhr;
             bytesRead += nhr.Deserialize(i);
             m_report = nhr;
+        }
+        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::STA_STATISTICS))
+        {
+            StaStatisticsReport ssr;
+            bytesRead += ssr.Deserialize(i);
+            m_report = ssr;
         }
         else
         {
@@ -701,6 +837,13 @@ MeasurementReportElement::Print(std::ostream& os) const
             os << +nhr.GetIpiDensity(j);
         }
         os << "]]";
+    }
+    else if (std::holds_alternative<StaStatisticsReport>(m_report))
+    {
+        const auto& ssr = std::get<StaStatisticsReport>(m_report);
+        os << ", StaStatisticsReport=[Duration=" << ssr.GetMeasurementDuration()
+           << ", GroupId=" << +ssr.GetGroupIdentity()
+           << ", DataSize=" << ssr.GetStatisticsGroupData().size() << "]";
     }
     os << "]";
 }
