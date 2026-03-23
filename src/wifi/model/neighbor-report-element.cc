@@ -17,7 +17,7 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("NeighborReportElement");
 
 NeighborReportElement::NeighborReportElement()
-    : m_bssid(Mac48Address()),
+    : m_bssid(),
       m_bssidInfo(0),
       m_operatingClass(0),
       m_channelNumber(0),
