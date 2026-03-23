@@ -270,6 +270,131 @@ ChannelLoadReport::GetChannelLoad() const
     return m_channelLoad;
 }
 
+// --- NoiseHistogramReport ---
+
+uint16_t
+NoiseHistogramReport::GetSerializedSize() const
+{
+    return 25;
+}
+
+void
+NoiseHistogramReport::Serialize(Buffer::Iterator& start) const
+{
+    start.WriteU8(m_operatingClass);
+    start.WriteU8(m_channelNumber);
+    start.WriteU64(m_actualMeasurementStartTime);
+    start.WriteU16(m_measurementDuration);
+    start.WriteU8(m_antennaId);
+    start.WriteU8(m_anpi);
+    for (uint8_t i = 0; i < 11; i++)
+    {
+        start.WriteU8(m_ipiDensities[i]);
+    }
+}
+
+uint16_t
+NoiseHistogramReport::Deserialize(Buffer::Iterator& start)
+{
+    m_operatingClass = start.ReadU8();
+    m_channelNumber = start.ReadU8();
+    m_actualMeasurementStartTime = start.ReadU64();
+    m_measurementDuration = start.ReadU16();
+    m_antennaId = start.ReadU8();
+    m_anpi = start.ReadU8();
+    for (uint8_t i = 0; i < 11; i++)
+    {
+        m_ipiDensities[i] = start.ReadU8();
+    }
+    return 25;
+}
+
+void
+NoiseHistogramReport::SetOperatingClass(uint8_t operatingClass)
+{
+    m_operatingClass = operatingClass;
+}
+
+uint8_t
+NoiseHistogramReport::GetOperatingClass() const
+{
+    return m_operatingClass;
+}
+
+void
+NoiseHistogramReport::SetChannelNumber(uint8_t channel)
+{
+    m_channelNumber = channel;
+}
+
+uint8_t
+NoiseHistogramReport::GetChannelNumber() const
+{
+    return m_channelNumber;
+}
+
+void
+NoiseHistogramReport::SetActualMeasurementStartTime(uint64_t startTime)
+{
+    m_actualMeasurementStartTime = startTime;
+}
+
+uint64_t
+NoiseHistogramReport::GetActualMeasurementStartTime() const
+{
+    return m_actualMeasurementStartTime;
+}
+
+void
+NoiseHistogramReport::SetMeasurementDuration(uint16_t duration)
+{
+    m_measurementDuration = duration;
+}
+
+uint16_t
+NoiseHistogramReport::GetMeasurementDuration() const
+{
+    return m_measurementDuration;
+}
+
+void
+NoiseHistogramReport::SetAntennaId(uint8_t antennaId)
+{
+    m_antennaId = antennaId;
+}
+
+uint8_t
+NoiseHistogramReport::GetAntennaId() const
+{
+    return m_antennaId;
+}
+
+void
+NoiseHistogramReport::SetAnpi(uint8_t anpi)
+{
+    m_anpi = anpi;
+}
+
+uint8_t
+NoiseHistogramReport::GetAnpi() const
+{
+    return m_anpi;
+}
+
+void
+NoiseHistogramReport::SetIpiDensity(uint8_t level, uint8_t density)
+{
+    NS_ASSERT_MSG(level <= 10, "IPI level must be 0-10");
+    m_ipiDensities[level] = density;
+}
+
+uint8_t
+NoiseHistogramReport::GetIpiDensity(uint8_t level) const
+{
+    NS_ASSERT_MSG(level <= 10, "IPI level must be 0-10");
+    return m_ipiDensities[level];
+}
+
 // --- MeasurementReportElement ---
 
 WifiInformationElementId
@@ -399,6 +524,23 @@ MeasurementReportElement::GetChannelLoadReport() const
     return std::nullopt;
 }
 
+void
+MeasurementReportElement::SetNoiseHistogramReport(const NoiseHistogramReport& report)
+{
+    m_measurementType = static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM);
+    m_report = report;
+}
+
+std::optional<NoiseHistogramReport>
+MeasurementReportElement::GetNoiseHistogramReport() const
+{
+    if (std::holds_alternative<NoiseHistogramReport>(m_report))
+    {
+        return std::get<NoiseHistogramReport>(m_report);
+    }
+    return std::nullopt;
+}
+
 bool
 MeasurementReportElement::HasModeSet() const
 {
@@ -418,6 +560,10 @@ MeasurementReportElement::GetInformationFieldSize() const
         else if (std::holds_alternative<ChannelLoadReport>(m_report))
         {
             size += std::get<ChannelLoadReport>(m_report).GetSerializedSize();
+        }
+        else if (std::holds_alternative<NoiseHistogramReport>(m_report))
+        {
+            size += std::get<NoiseHistogramReport>(m_report).GetSerializedSize();
         }
     }
     return size;
@@ -441,6 +587,11 @@ MeasurementReportElement::SerializeInformationField(Buffer::Iterator start) cons
         {
             ChannelLoadReport clr = std::get<ChannelLoadReport>(m_report);
             clr.Serialize(start);
+        }
+        else if (std::holds_alternative<NoiseHistogramReport>(m_report))
+        {
+            NoiseHistogramReport nhr = std::get<NoiseHistogramReport>(m_report);
+            nhr.Serialize(start);
         }
     }
 }
@@ -468,6 +619,12 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
             ChannelLoadReport clr;
             bytesRead += clr.Deserialize(i);
             m_report = clr;
+        }
+        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM))
+        {
+            NoiseHistogramReport nhr;
+            bytesRead += nhr.Deserialize(i);
+            m_report = nhr;
         }
         else
         {
@@ -526,6 +683,24 @@ MeasurementReportElement::Print(std::ostream& os) const
            << ", StartTime=" << clr.GetActualMeasurementStartTime()
            << ", Duration=" << clr.GetMeasurementDuration()
            << ", ChannelLoad=" << +clr.GetChannelLoad() << "]";
+    }
+    else if (std::holds_alternative<NoiseHistogramReport>(m_report))
+    {
+        const auto& nhr = std::get<NoiseHistogramReport>(m_report);
+        os << ", NoiseHistogramReport=[OpClass=" << +nhr.GetOperatingClass()
+           << ", Channel=" << +nhr.GetChannelNumber()
+           << ", StartTime=" << nhr.GetActualMeasurementStartTime()
+           << ", Duration=" << nhr.GetMeasurementDuration() << ", AntennaId=" << +nhr.GetAntennaId()
+           << ", ANPI=" << +nhr.GetAnpi() << ", IPI=[";
+        for (uint8_t j = 0; j <= 10; j++)
+        {
+            if (j > 0)
+            {
+                os << ",";
+            }
+            os << +nhr.GetIpiDensity(j);
+        }
+        os << "]]";
     }
     os << "]";
 }

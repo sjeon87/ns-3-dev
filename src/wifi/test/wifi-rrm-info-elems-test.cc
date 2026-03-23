@@ -1865,6 +1865,160 @@ MeasurementReportElementTest::DoRun()
                               std::string::npos,
                               "Print contains ChannelLoad");
     }
+
+    // Test 17: Noise Histogram report round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(7);
+
+        NoiseHistogramReport nhr;
+        nhr.SetOperatingClass(81);
+        nhr.SetChannelNumber(6);
+        nhr.SetActualMeasurementStartTime(0x0001020304050607ULL);
+        nhr.SetMeasurementDuration(1000);
+        nhr.SetAntennaId(1);
+        nhr.SetAnpi(200);
+        for (uint8_t i = 0; i <= 10; i++)
+        {
+            nhr.SetIpiDensity(i, i * 20);
+        }
+        elem.SetNoiseHistogramReport(nhr);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
+                              static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM),
+                              "Type auto-set to NOISE_HISTOGRAM");
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 7, "NH token");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                              static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM),
+                              "NH type");
+        auto report = deserialized.GetNoiseHistogramReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "NH report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 81, "NH opclass");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelNumber(), 6, "NH channel");
+        NS_TEST_EXPECT_MSG_EQ(report->GetActualMeasurementStartTime(),
+                              0x0001020304050607ULL,
+                              "NH start time");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), 1000, "NH duration");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAntennaId(), 1, "NH antenna id");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAnpi(), 200, "NH ANPI");
+        for (uint8_t i = 0; i <= 10; i++)
+        {
+            NS_TEST_EXPECT_MSG_EQ(report->GetIpiDensity(i), i * 20, "NH IPI " << +i << " density");
+        }
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconReport().has_value(),
+                              false,
+                              "No beacon report for NH type");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetChannelLoadReport().has_value(),
+                              false,
+                              "No CL report for NH type");
+    }
+
+    // Test 18: Noise Histogram report edge values
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(255);
+
+        NoiseHistogramReport nhr;
+        nhr.SetOperatingClass(255);
+        nhr.SetChannelNumber(255);
+        nhr.SetActualMeasurementStartTime(UINT64_MAX);
+        nhr.SetMeasurementDuration(UINT16_MAX);
+        nhr.SetAntennaId(255);
+        nhr.SetAnpi(255);
+        for (uint8_t i = 0; i <= 10; i++)
+        {
+            nhr.SetIpiDensity(i, 255);
+        }
+        elem.SetNoiseHistogramReport(nhr);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+        auto report = deserialized.GetNoiseHistogramReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Edge NH report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 255, "Max NH OpClass");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelNumber(), 255, "Max NH Channel");
+        NS_TEST_EXPECT_MSG_EQ(report->GetActualMeasurementStartTime(),
+                              UINT64_MAX,
+                              "Max NH start time");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), UINT16_MAX, "Max NH duration");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAntennaId(), 255, "Max NH antenna id");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAnpi(), 255, "Max NH ANPI");
+        for (uint8_t i = 0; i <= 10; i++)
+        {
+            NS_TEST_EXPECT_MSG_EQ(report->GetIpiDensity(i), 255, "Max NH IPI " << +i);
+        }
+    }
+
+    // Test 19: Noise Histogram GetSerializedSize = 2 (IE hdr) + 3 (common) + 25 (NH body) = 30
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+
+        NoiseHistogramReport nhr;
+        elem.SetNoiseHistogramReport(nhr);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(),
+                              30,
+                              "Noise Histogram report total size = 30");
+    }
+
+    // Test 20: Mode bit set with NOISE_HISTOGRAM type -- no body serialized
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        elem.SetIncapable(true);
+        elem.SetMeasurementType(MeasurementReportType::NOISE_HISTOGRAM);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 5, "Incapable NH mode size = 5");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetIncapable(), true, "Incapable survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetNoiseHistogramReport().has_value(),
+                              false,
+                              "No NH body when mode set");
+    }
+
+    // Test 21: Print output smoke test for Noise Histogram
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(30);
+
+        NoiseHistogramReport nhr;
+        nhr.SetOperatingClass(81);
+        nhr.SetChannelNumber(6);
+        nhr.SetAnpi(150);
+        elem.SetNoiseHistogramReport(nhr);
+
+        std::ostringstream oss;
+        elem.Print(oss);
+        std::string output = oss.str();
+        NS_TEST_EXPECT_MSG_EQ(output.empty(), false, "NH print output is non-empty");
+        NS_TEST_EXPECT_MSG_NE(output.find("NoiseHistogram"),
+                              std::string::npos,
+                              "Print contains NoiseHistogram");
+    }
 }
 
 /**
