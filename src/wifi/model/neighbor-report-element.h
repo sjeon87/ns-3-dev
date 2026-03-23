@@ -63,6 +63,20 @@ namespace ns3
 class NeighborReportElement : public WifiInformationElement
 {
   public:
+    /**
+     * @brief Subelement IDs for Neighbor Report (IEEE 802.11-2024 Table 9-212)
+     */
+    enum class SubelementId : uint8_t
+    {
+        TSF_INFORMATION = 1,
+        CONDENSED_COUNTRY_STRING = 2,
+        BSS_TRANSITION_CANDIDATE_PREFERENCE = 3,
+        BSS_TERMINATION_DURATION = 4,
+        BEARING = 5,
+        WIDE_BANDWIDTH_CHANNEL = 6,
+        VENDOR_SPECIFIC = 221,
+    };
+
     NeighborReportElement();
 
     WifiInformationElementId ElementId() const override;
