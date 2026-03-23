@@ -1693,9 +1693,118 @@ MeasurementReportElementTest::DoRun()
         NS_TEST_EXPECT_MSG_EQ(elem.GetRefused(), true, "Refused set");
     }
 
-    // Test 10: Unknown measurement type on deserialize yields no beacon report
+    // Test 10: Channel Load report round-trip
     {
-        // Manually build buffer with type=3 (CHANNEL_LOAD) and some body bytes
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(5);
+
+        ChannelLoadReport clr;
+        clr.SetOperatingClass(81);
+        clr.SetChannelNumber(6);
+        clr.SetActualMeasurementStartTime(0x0001020304050607ULL);
+        clr.SetMeasurementDuration(1000);
+        clr.SetChannelLoad(128);
+        elem.SetChannelLoadReport(clr);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
+                              static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD),
+                              "Type auto-set to CHANNEL_LOAD");
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 5, "CL token");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                              static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD),
+                              "CL type");
+        auto report = deserialized.GetChannelLoadReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "CL report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 81, "CL opclass");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelNumber(), 6, "CL channel");
+        NS_TEST_EXPECT_MSG_EQ(report->GetActualMeasurementStartTime(),
+                              0x0001020304050607ULL,
+                              "CL start time");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), 1000, "CL duration");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelLoad(), 128, "CL load");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconReport().has_value(),
+                              false,
+                              "No beacon report for CL type");
+    }
+
+    // Test 11: Channel Load report edge values
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(255);
+
+        ChannelLoadReport clr;
+        clr.SetOperatingClass(255);
+        clr.SetChannelNumber(255);
+        clr.SetActualMeasurementStartTime(UINT64_MAX);
+        clr.SetMeasurementDuration(UINT16_MAX);
+        clr.SetChannelLoad(255);
+        elem.SetChannelLoadReport(clr);
+
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+        auto report = deserialized.GetChannelLoadReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Edge CL report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 255, "Max OpClass");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelNumber(), 255, "Max Channel");
+        NS_TEST_EXPECT_MSG_EQ(report->GetActualMeasurementStartTime(),
+                              UINT64_MAX,
+                              "Max start time");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), UINT16_MAX, "Max duration");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelLoad(), 255, "Max load");
+    }
+
+    // Test 12: Channel Load GetSerializedSize = 2 (IE hdr) + 3 (common) + 13 (CL body) = 18
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+
+        ChannelLoadReport clr;
+        elem.SetChannelLoadReport(clr);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 18, "Channel Load report total size = 18");
+    }
+
+    // Test 13: Mode bit set with CHANNEL_LOAD type -- no body serialized
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        elem.SetIncapable(true);
+        elem.SetMeasurementType(MeasurementReportType::CHANNEL_LOAD);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 5, "Incapable CL mode size = 5");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+
+        MeasurementReportElement deserialized;
+        deserialized.Deserialize(buf.Begin());
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetIncapable(), true, "Incapable survives");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetChannelLoadReport().has_value(),
+                              false,
+                              "No CL body when mode set");
+    }
+
+    // Test 14: Unknown measurement type on deserialize yields no report body
+    {
+        // Use type=7 (STA_STATISTICS, genuinely unsupported)
         // IE header (2) + token(1) + mode(1) + type(1) + fake body(4) = 9
         Buffer buf;
         buf.AddAtStart(9);
@@ -1704,7 +1813,7 @@ MeasurementReportElementTest::DoRun()
         it.WriteU8(7);  // length = 7
         it.WriteU8(1);  // token
         it.WriteU8(0);  // mode = 0 (no mode bits)
-        it.WriteU8(3);  // type = CHANNEL_LOAD (unsupported body)
+        it.WriteU8(7);  // type = STA_STATISTICS (unsupported body)
         it.WriteU8(0xAA);
         it.WriteU8(0xBB);
         it.WriteU8(0xCC);
@@ -1714,13 +1823,16 @@ MeasurementReportElementTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 1, "Token from unknown type");
-        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 3, "Type preserved");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 7, "Type preserved");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconReport().has_value(),
                               false,
                               "No beacon report for unknown type");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetChannelLoadReport().has_value(),
+                              false,
+                              "No CL report for unknown type");
     }
 
-    // Test 11: Print output smoke test
+    // Test 15: Print output smoke test (beacon and channel load)
     {
         MeasurementReportElement elem;
         elem.SetMeasurementToken(10);
@@ -1731,7 +1843,27 @@ MeasurementReportElementTest::DoRun()
 
         std::ostringstream oss;
         elem.Print(oss);
-        NS_TEST_EXPECT_MSG_EQ(oss.str().empty(), false, "Print output is non-empty");
+        NS_TEST_EXPECT_MSG_EQ(oss.str().empty(), false, "Beacon print output is non-empty");
+    }
+
+    // Test 16: Print output smoke test for Channel Load
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(20);
+
+        ChannelLoadReport clr;
+        clr.SetOperatingClass(81);
+        clr.SetChannelNumber(6);
+        clr.SetChannelLoad(200);
+        elem.SetChannelLoadReport(clr);
+
+        std::ostringstream oss;
+        elem.Print(oss);
+        std::string output = oss.str();
+        NS_TEST_EXPECT_MSG_EQ(output.empty(), false, "CL print output is non-empty");
+        NS_TEST_EXPECT_MSG_NE(output.find("ChannelLoad"),
+                              std::string::npos,
+                              "Print contains ChannelLoad");
     }
 }
 

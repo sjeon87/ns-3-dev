@@ -181,6 +181,95 @@ BeaconReport::GetParentTsf() const
     return m_parentTsf;
 }
 
+// --- ChannelLoadReport ---
+
+uint16_t
+ChannelLoadReport::GetSerializedSize() const
+{
+    return 13;
+}
+
+void
+ChannelLoadReport::Serialize(Buffer::Iterator& start) const
+{
+    start.WriteU8(m_operatingClass);
+    start.WriteU8(m_channelNumber);
+    start.WriteU64(m_actualMeasurementStartTime);
+    start.WriteU16(m_measurementDuration);
+    start.WriteU8(m_channelLoad);
+}
+
+uint16_t
+ChannelLoadReport::Deserialize(Buffer::Iterator& start)
+{
+    m_operatingClass = start.ReadU8();
+    m_channelNumber = start.ReadU8();
+    m_actualMeasurementStartTime = start.ReadU64();
+    m_measurementDuration = start.ReadU16();
+    m_channelLoad = start.ReadU8();
+    return 13;
+}
+
+void
+ChannelLoadReport::SetOperatingClass(uint8_t operatingClass)
+{
+    m_operatingClass = operatingClass;
+}
+
+uint8_t
+ChannelLoadReport::GetOperatingClass() const
+{
+    return m_operatingClass;
+}
+
+void
+ChannelLoadReport::SetChannelNumber(uint8_t channel)
+{
+    m_channelNumber = channel;
+}
+
+uint8_t
+ChannelLoadReport::GetChannelNumber() const
+{
+    return m_channelNumber;
+}
+
+void
+ChannelLoadReport::SetActualMeasurementStartTime(uint64_t startTime)
+{
+    m_actualMeasurementStartTime = startTime;
+}
+
+uint64_t
+ChannelLoadReport::GetActualMeasurementStartTime() const
+{
+    return m_actualMeasurementStartTime;
+}
+
+void
+ChannelLoadReport::SetMeasurementDuration(uint16_t duration)
+{
+    m_measurementDuration = duration;
+}
+
+uint16_t
+ChannelLoadReport::GetMeasurementDuration() const
+{
+    return m_measurementDuration;
+}
+
+void
+ChannelLoadReport::SetChannelLoad(uint8_t load)
+{
+    m_channelLoad = load;
+}
+
+uint8_t
+ChannelLoadReport::GetChannelLoad() const
+{
+    return m_channelLoad;
+}
+
 // --- MeasurementReportElement ---
 
 WifiInformationElementId
@@ -293,6 +382,23 @@ MeasurementReportElement::GetBeaconReport() const
     return std::nullopt;
 }
 
+void
+MeasurementReportElement::SetChannelLoadReport(const ChannelLoadReport& report)
+{
+    m_measurementType = static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD);
+    m_report = report;
+}
+
+std::optional<ChannelLoadReport>
+MeasurementReportElement::GetChannelLoadReport() const
+{
+    if (std::holds_alternative<ChannelLoadReport>(m_report))
+    {
+        return std::get<ChannelLoadReport>(m_report);
+    }
+    return std::nullopt;
+}
+
 bool
 MeasurementReportElement::HasModeSet() const
 {
@@ -303,9 +409,16 @@ uint16_t
 MeasurementReportElement::GetInformationFieldSize() const
 {
     uint16_t size = 3; // token(1) + mode(1) + type(1)
-    if (!HasModeSet() && std::holds_alternative<BeaconReport>(m_report))
+    if (!HasModeSet())
     {
-        size += std::get<BeaconReport>(m_report).GetSerializedSize();
+        if (std::holds_alternative<BeaconReport>(m_report))
+        {
+            size += std::get<BeaconReport>(m_report).GetSerializedSize();
+        }
+        else if (std::holds_alternative<ChannelLoadReport>(m_report))
+        {
+            size += std::get<ChannelLoadReport>(m_report).GetSerializedSize();
+        }
     }
     return size;
 }
@@ -317,10 +430,18 @@ MeasurementReportElement::SerializeInformationField(Buffer::Iterator start) cons
     start.WriteU8(m_measurementReportMode);
     start.WriteU8(m_measurementType);
 
-    if (!HasModeSet() && std::holds_alternative<BeaconReport>(m_report))
+    if (!HasModeSet())
     {
-        BeaconReport br = std::get<BeaconReport>(m_report);
-        br.Serialize(start);
+        if (std::holds_alternative<BeaconReport>(m_report))
+        {
+            BeaconReport br = std::get<BeaconReport>(m_report);
+            br.Serialize(start);
+        }
+        else if (std::holds_alternative<ChannelLoadReport>(m_report))
+        {
+            ChannelLoadReport clr = std::get<ChannelLoadReport>(m_report);
+            clr.Serialize(start);
+        }
     }
 }
 
@@ -341,6 +462,12 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
             BeaconReport br;
             bytesRead += br.Deserialize(i);
             m_report = br;
+        }
+        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD))
+        {
+            ChannelLoadReport clr;
+            bytesRead += clr.Deserialize(i);
+            m_report = clr;
         }
         else
         {
@@ -390,6 +517,15 @@ MeasurementReportElement::Print(std::ostream& os) const
            << ", RSNI=" << +br.GetRsni() << ", BSSID=" << br.GetBssid()
            << ", AntennaId=" << +br.GetAntennaId() << ", ParentTSF=0x" << std::hex
            << br.GetParentTsf() << std::dec << "]";
+    }
+    else if (std::holds_alternative<ChannelLoadReport>(m_report))
+    {
+        const auto& clr = std::get<ChannelLoadReport>(m_report);
+        os << ", ChannelLoadReport=[OpClass=" << +clr.GetOperatingClass()
+           << ", Channel=" << +clr.GetChannelNumber()
+           << ", StartTime=" << clr.GetActualMeasurementStartTime()
+           << ", Duration=" << clr.GetMeasurementDuration()
+           << ", ChannelLoad=" << +clr.GetChannelLoad() << "]";
     }
     os << "]";
 }

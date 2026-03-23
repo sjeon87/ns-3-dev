@@ -144,12 +144,75 @@ class BeaconReport
 };
 
 /**
+ * @brief Channel Load Report body (IEEE 802.11-2024 Section 9.4.2.20.5, Figure 9-295)
+ * @ingroup wifi
+ *
+ * Fixed fields (13 bytes total). Optional subelements (Table 9-165) are not
+ * yet implemented.
+ */
+class ChannelLoadReport
+{
+  public:
+    /**
+     * @brief Get the serialized size of the channel load report body.
+     * @return 13 bytes (fixed fields only)
+     */
+    uint16_t GetSerializedSize() const;
+
+    /**
+     * @brief Serialize the channel load report body.
+     * @param start the buffer iterator
+     */
+    void Serialize(Buffer::Iterator& start) const;
+
+    /**
+     * @brief Deserialize the channel load report body.
+     * @param start the buffer iterator
+     * @return number of bytes read
+     */
+    uint16_t Deserialize(Buffer::Iterator& start);
+
+    /** @brief Set the Operating Class field. @param operatingClass the value */
+    void SetOperatingClass(uint8_t operatingClass);
+    /** @brief Get the Operating Class field. @return the value */
+    uint8_t GetOperatingClass() const;
+
+    /** @brief Set the Channel Number field. @param channel the value */
+    void SetChannelNumber(uint8_t channel);
+    /** @brief Get the Channel Number field. @return the value */
+    uint8_t GetChannelNumber() const;
+
+    /** @brief Set the Actual Measurement Start Time field. @param startTime the TSF value */
+    void SetActualMeasurementStartTime(uint64_t startTime);
+    /** @brief Get the Actual Measurement Start Time field. @return the TSF value */
+    uint64_t GetActualMeasurementStartTime() const;
+
+    /** @brief Set the Measurement Duration field. @param duration duration in TUs */
+    void SetMeasurementDuration(uint16_t duration);
+    /** @brief Get the Measurement Duration field. @return duration in TUs */
+    uint16_t GetMeasurementDuration() const;
+
+    /** @brief Set the Channel Load field. @param load channel load value (0-255) */
+    void SetChannelLoad(uint8_t load);
+    /** @brief Get the Channel Load field. @return channel load value (0-255) */
+    uint8_t GetChannelLoad() const;
+
+  private:
+    uint8_t m_operatingClass{0};              //!< Operating Class (1 octet)
+    uint8_t m_channelNumber{0};               //!< Channel Number (1 octet)
+    uint64_t m_actualMeasurementStartTime{0}; //!< Actual Measurement Start Time (8 octets)
+    uint16_t m_measurementDuration{0};        //!< Measurement Duration (2 octets)
+    uint8_t m_channelLoad{0};                 //!< Channel Load (1 octet)
+};
+
+/**
  * @brief The Measurement Report element (IEEE 802.11-2024 Section 9.4.2.20, IE 39)
  * @ingroup wifi
  *
  * Carries measurement results. The report body type is determined by
- * the Measurement Type field. Currently only Beacon reports (type 5)
- * are supported. Unsupported types or mode-bit-set reports have no body.
+ * the Measurement Type field. Currently Beacon (type 5) and Channel Load
+ * (type 3) reports are supported. Unsupported types or mode-bit-set
+ * reports have no body.
  */
 class MeasurementReportElement : public WifiInformationElement
 {
@@ -196,6 +259,18 @@ class MeasurementReportElement : public WifiInformationElement
      */
     std::optional<BeaconReport> GetBeaconReport() const;
 
+    /**
+     * @brief Set the Channel Load Report body.
+     * Also sets Measurement Type to CHANNEL_LOAD.
+     * @param report the ChannelLoadReport
+     */
+    void SetChannelLoadReport(const ChannelLoadReport& report);
+    /**
+     * @brief Get the Channel Load Report body if present.
+     * @return the ChannelLoadReport if type is CHANNEL_LOAD and no mode bits are set
+     */
+    std::optional<ChannelLoadReport> GetChannelLoadReport() const;
+
   private:
     uint16_t GetInformationFieldSize() const override;
     void SerializeInformationField(Buffer::Iterator start) const override;
@@ -211,7 +286,7 @@ class MeasurementReportElement : public WifiInformationElement
     uint8_t m_measurementReportMode{0}; //!< Measurement Report Mode (1 octet)
     uint8_t m_measurementType{0};       //!< Measurement Type (1 octet)
 
-    std::variant<std::monostate, BeaconReport> m_report; //!< Report body
+    std::variant<std::monostate, BeaconReport, ChannelLoadReport> m_report; //!< Report body
 };
 
 } // namespace ns3
