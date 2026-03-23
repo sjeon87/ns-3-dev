@@ -12,7 +12,6 @@
 #include "ns3/log.h"
 #include "ns3/neighbor-report-element.h"
 #include "ns3/rm-enabled-capabilities.h"
-#include "ns3/ssid.h"
 #include "ns3/tpc-report-element.h"
 #include "ns3/vht-capabilities.h"
 #include "ns3/vht-operation.h"
@@ -509,7 +508,7 @@ NeighborReportSubelementsTest::DoRun()
         Buffer::Iterator it = manualBuf.Begin();
 
         // Element header
-        it.WriteU8(52); // IE_NEIGHBOR_REPORT = 52
+        it.WriteU8(IE_NEIGHBOR_REPORT);
         it.WriteU8(static_cast<uint8_t>(totalInfoFieldSize));
 
         // Fixed fields (copy from original)
@@ -915,7 +914,7 @@ NeighborReportSubelementsTest::DoRun()
         Buffer::Iterator it = manualBuf.Begin();
 
         // Element header
-        it.WriteU8(52); // IE_NEIGHBOR_REPORT
+        it.WriteU8(IE_NEIGHBOR_REPORT);
         it.WriteU8(static_cast<uint8_t>(totalInfoFieldSize));
 
         // Fixed fields: BSSID + BSSIDInfo + OpClass + Channel + PhyType
@@ -1433,8 +1432,8 @@ RmEnabledCapabilitiesTest::DoRun()
         Buffer buf;
         buf.AddAtStart(7);
         Buffer::Iterator it = buf.Begin();
-        it.WriteU8(70); // IE_RM_ENABLED_CAPACITIES
-        it.WriteU8(5);  // Length
+        it.WriteU8(IE_RM_ENABLED_CAPACITIES);
+        it.WriteU8(5); // Length
         it.WriteU8(0xFF);
         it.WriteU8(0xFF);
         it.WriteU8(0xFF);
