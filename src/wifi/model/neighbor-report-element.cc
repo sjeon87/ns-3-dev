@@ -506,6 +506,18 @@ NeighborReportElement::GetVhtOperation() const
 }
 
 void
+NeighborReportElement::SetRmEnabledCapabilities(const RmEnabledCapabilities& rmEnabledCapabilities)
+{
+    m_rmEnabledCapabilities = rmEnabledCapabilities;
+}
+
+std::optional<RmEnabledCapabilities>
+NeighborReportElement::GetRmEnabledCapabilities() const
+{
+    return m_rmEnabledCapabilities;
+}
+
+void
 NeighborReportElement::SetVendorSpecificData(std::vector<uint8_t> data)
 {
     NS_ASSERT_MSG(data.size() <= 255,
@@ -555,6 +567,10 @@ NeighborReportElement::GetInformationFieldSize() const
     if (m_htOperation)
     {
         size += m_htOperation->GetSerializedSize();
+    }
+    if (m_rmEnabledCapabilities)
+    {
+        size += m_rmEnabledCapabilities->GetSerializedSize();
     }
     if (m_vhtCapabilities)
     {
@@ -635,6 +651,10 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     {
         start = m_htOperation->Serialize(start);
     }
+    if (m_rmEnabledCapabilities)
+    {
+        start = m_rmEnabledCapabilities->Serialize(start);
+    }
     if (m_vhtCapabilities)
     {
         start = m_vhtCapabilities->Serialize(start);
@@ -686,6 +706,12 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
             HtOperation htOp;
             i = htOp.DeserializeIfPresent(i);
             m_htOperation = htOp;
+            break;
+        }
+        case IE_RM_ENABLED_CAPACITIES: {
+            RmEnabledCapabilities rmCap;
+            i = rmCap.DeserializeIfPresent(i);
+            m_rmEnabledCapabilities = rmCap;
             break;
         }
         case IE_VHT_CAPABILITIES: {
@@ -818,6 +844,10 @@ NeighborReportElement::Print(std::ostream& os) const
     if (m_htOperation)
     {
         os << ", HtOperation";
+    }
+    if (m_rmEnabledCapabilities)
+    {
+        os << ", RmEnabledCapabilities";
     }
     if (m_vhtCapabilities)
     {
