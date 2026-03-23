@@ -645,34 +645,34 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
 
     if (m_tsfInfo)
     {
-        start.WriteU8(1); // subelement ID
+        start.WriteU8(static_cast<uint8_t>(SubelementId::TSF_INFORMATION));
         start.WriteU8(4); // length
         start.WriteU16(m_tsfInfo->tsfOffset);
         start.WriteU16(m_tsfInfo->beaconInterval);
     }
     if (m_condensedCountryString)
     {
-        start.WriteU8(2);
-        start.WriteU8(2);
+        start.WriteU8(static_cast<uint8_t>(SubelementId::CONDENSED_COUNTRY_STRING));
+        start.WriteU8(2); // length
         start.WriteU8(static_cast<uint8_t>((*m_condensedCountryString)[0]));
         start.WriteU8(static_cast<uint8_t>((*m_condensedCountryString)[1]));
     }
     if (m_candidatePreference)
     {
-        start.WriteU8(3);
-        start.WriteU8(1);
+        start.WriteU8(static_cast<uint8_t>(SubelementId::BSS_TRANSITION_CANDIDATE_PREFERENCE));
+        start.WriteU8(1); // length
         start.WriteU8(*m_candidatePreference);
     }
     if (m_bssTerminationDuration)
     {
-        start.WriteU8(4);
-        start.WriteU8(10);
+        start.WriteU8(static_cast<uint8_t>(SubelementId::BSS_TERMINATION_DURATION));
+        start.WriteU8(10); // length
         start.WriteU64(m_bssTerminationDuration->terminationTsf);
         start.WriteU16(m_bssTerminationDuration->duration);
     }
     if (m_bearing)
     {
-        start.WriteU8(5); // subelement ID
+        start.WriteU8(static_cast<uint8_t>(SubelementId::BEARING));
         start.WriteU8(8); // length
         start.WriteU16(m_bearing->bearing);
         start.WriteU32(m_bearing->distance);
@@ -680,7 +680,7 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     }
     if (m_wideBandwidth)
     {
-        start.WriteU8(6); // subelement ID
+        start.WriteU8(static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL));
         start.WriteU8(3); // length
         start.WriteU8(m_wideBandwidth->channelWidth);
         start.WriteU8(m_wideBandwidth->centerFreqSegment0);
@@ -704,7 +704,7 @@ NeighborReportElement::SerializeInformationField(Buffer::Iterator start) const
     }
     if (m_vendorSpecific)
     {
-        start.WriteU8(221);
+        start.WriteU8(static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC));
         start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->size()));
         for (auto byte : *m_vendorSpecific)
         {
@@ -734,25 +734,25 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
         Buffer::Iterator before = i;
         switch (subelemId)
         {
-        case 45: { // HT Capabilities
+        case IE_HT_CAPABILITIES: {
             HtCapabilities htCap;
             i = htCap.DeserializeIfPresent(i);
             m_htCapabilities = htCap;
             break;
         }
-        case 61: { // HT Operation
+        case IE_HT_OPERATION: {
             HtOperation htOp;
             i = htOp.DeserializeIfPresent(i);
             m_htOperation = htOp;
             break;
         }
-        case 191: { // VHT Capabilities
+        case IE_VHT_CAPABILITIES: {
             VhtCapabilities vhtCap;
             i = vhtCap.DeserializeIfPresent(i);
             m_vhtCapabilities = vhtCap;
             break;
         }
-        case 192: { // VHT Operation
+        case IE_VHT_OPERATION: {
             VhtOperation vhtOp;
             i = vhtOp.DeserializeIfPresent(i);
             m_vhtOperation = vhtOp;
@@ -776,43 +776,43 @@ NeighborReportElement::DeserializeInformationField(Buffer::Iterator start, uint1
 
         switch (subelemId)
         {
-        case 1: { // TSF Information
+        case static_cast<uint8_t>(SubelementId::TSF_INFORMATION): {
             uint16_t tsfOffset = i.ReadU16();
             uint16_t beaconInterval = i.ReadU16();
             m_tsfInfo = TsfInformation{tsfOffset, beaconInterval};
             break;
         }
-        case 2: { // Condensed Country String
+        case static_cast<uint8_t>(SubelementId::CONDENSED_COUNTRY_STRING): {
             char c1 = static_cast<char>(i.ReadU8());
             char c2 = static_cast<char>(i.ReadU8());
             m_condensedCountryString = std::array<char, 2>{c1, c2};
             break;
         }
-        case 3: { // BSS Transition Candidate Preference
+        case static_cast<uint8_t>(SubelementId::BSS_TRANSITION_CANDIDATE_PREFERENCE): {
             m_candidatePreference = i.ReadU8();
             break;
         }
-        case 4: { // BSS Termination Duration
+        case static_cast<uint8_t>(SubelementId::BSS_TERMINATION_DURATION): {
             uint64_t tsf = i.ReadU64();
             uint16_t duration = i.ReadU16();
             m_bssTerminationDuration = BssTerminationDuration{tsf, duration};
             break;
         }
-        case 5: { // Bearing
+        case static_cast<uint8_t>(SubelementId::BEARING): {
             uint16_t bearing = i.ReadU16();
             uint32_t distance = i.ReadU32();
             auto relativeHeight = static_cast<int16_t>(i.ReadU16());
             m_bearing = Bearing{bearing, distance, relativeHeight};
             break;
         }
-        case 6: { // Wide Bandwidth Channel
+        case static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL): {
             uint8_t chWidth = i.ReadU8();
             uint8_t seg0 = i.ReadU8();
             uint8_t seg1 = i.ReadU8();
             m_wideBandwidth = WideBandwidthChannel{chWidth, seg0, seg1};
             break;
         }
-        case 221: { // Vendor Specific
+        case static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC): {
             std::vector<uint8_t> data(subelemLen);
             for (uint8_t j = 0; j < subelemLen; j++)
             {
