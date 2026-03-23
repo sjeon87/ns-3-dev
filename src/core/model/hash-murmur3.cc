@@ -588,6 +588,43 @@ Murmur3::clear()
     m_size64 = 0;
 }
 
+Murmur3_x64::Murmur3_x64()
+{
+    clear();
+}
+
+uint32_t
+Murmur3_x64::GetHash32(const char* buffer, const std::size_t size)
+{
+    // Return the lower 32 bits of the 64-bit hash so that 32- and 64-bit
+    // results for the same input are mutually consistent.
+    return static_cast<uint32_t>(GetHash64(buffer, size));
+}
+
+uint64_t
+Murmur3_x64::GetHash64(const char* buffer, const std::size_t size)
+{
+    using namespace Murmur3Implementation;
+
+    // _incr processes the data and writes the pre-finalization state to m_hash64.
+    MurmurHash3_x64_128_incr(buffer, size, SEED, m_hash64);
+    // One-shot design: we do not accumulate size across calls.
+    // This must remain '=' (not +=), since _incr does not preserve state.
+    m_size64 = size;
+
+    // _fin applies the length-mix and avalanche; output is two uint32_t words.
+    uint32_t hash[2];
+    MurmurHash3_x64_128_fin(m_size64, m_hash64, hash);
+    return (static_cast<uint64_t>(hash[1]) << 32) | hash[0];
+}
+
+void
+Murmur3_x64::clear()
+{
+    m_hash64[0] = m_hash64[1] = 0;
+    m_size64 = 0;
+}
+
 } // namespace Function
 
 } // namespace Hash
