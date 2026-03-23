@@ -50,7 +50,7 @@ namespace ns3
  * @todo Add Measurement Report subelement (ID 39, no ns-3 class)
  * @todo Add Secondary Channel Offset subelement (ID 62, no ns-3 class)
  * @todo Add Measurement Pilot Transmission subelement (ID 66, no ns-3 class)
- * @todo Add RM Enabled Capabilities subelement (ID 70, no ns-3 class)
+ * @todo Wire RmEnabledCapabilities as a subelement (ID 70)
  * @todo Add Multiple BSSID subelement (ID 71, no ns-3 class)
  * @todo Add HE Capabilities subelement (ID 193, awaiting maintainer guidance)
  * @todo Add HE Operation subelement (ID 194, awaiting maintainer guidance)
