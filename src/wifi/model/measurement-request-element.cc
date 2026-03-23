@@ -220,6 +220,9 @@ MeasurementRequestElement::GetDurationMandatory() const
 
 // --- Subelement serialization helpers ---
 
+/** @brief Vendor Specific subelement ID, shared across all request body types */
+static constexpr uint8_t VENDOR_SPECIFIC_SUBELEMENT_ID = 221;
+
 namespace
 {
 
@@ -242,7 +245,7 @@ SerializeVendorSpecific(Buffer::Iterator& start, const std::optional<std::vector
 {
     if (vs)
     {
-        start.WriteU8(221);
+        start.WriteU8(VENDOR_SPECIFIC_SUBELEMENT_ID);
         start.WriteU8(static_cast<uint8_t>(vs->size()));
         for (auto byte : *vs)
         {
@@ -803,7 +806,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
 
         bool handled = false;
 
-        if (subelemId == BeaconRequestBody::VENDOR_SPECIFIC)
+        if (subelemId == VENDOR_SPECIFIC_SUBELEMENT_ID)
         {
             std::vector<uint8_t> data(subelemLen);
             for (uint8_t j = 0; j < subelemLen; j++)
