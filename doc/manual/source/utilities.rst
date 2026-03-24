@@ -21,6 +21,11 @@ using various TypeIds defined throughout the |ns3| source code.
 The tool returns the various config paths, attributes, trace sources,
 etc. for the various files in |ns3|.
 
+Some parts of the generated output are driven by manual registrations in
+``utils/print-introspected-doxygen.cc``.  In particular, when adding a new
+``AttributeValue`` helper type, the corresponding entry must also be added
+there or the generated Doxygen for that type will be incomplete.
+
 Invocation
 ++++++++++
 

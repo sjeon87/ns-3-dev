@@ -1561,7 +1561,8 @@ PrintAttributeImplementations(std::ostream& os)
   const AttributeDescriptor attributes [] =
     {
       // Name             Type             see Base  header-file
-      // Users of ATTRIBUTE_HELPER_HEADER
+      // Users of ATTRIBUTE_HELPER_HEADER and ATTRIBUTE_VALUE_DEFINE_WITH_NAME
+      // must be listed here explicitly to generate complete Doxygen output.
       //
       { "Address",        "Address",        true,  "address.h"          },
       { "Box",            "Box",            true,  "box.h"              },
