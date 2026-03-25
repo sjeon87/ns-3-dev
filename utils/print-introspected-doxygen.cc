@@ -25,11 +25,14 @@
 #include "ns3/system-path.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <climits> // CHAR_BIT
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <set>
 #include <utility> // as_const
+#include <vector>
 
 using namespace ns3;
 
@@ -1524,11 +1527,172 @@ PrintMakeChecker(std::ostream& os, const std::string& name, const std::string& h
 /**Descriptor for an AttributeValue. */
 struct AttributeDescriptor
 {
-    const std::string m_name;   //!< The base name of the resulting AttributeValue type.
-    const std::string m_type;   //!< The name of the underlying type.
-    const bool m_seeBase;       //!< Print a "see also" pointing to the base class.
-    const std::string m_header; //!< The header file name.
+    const std::string m_name;               //!< The base name of the resulting AttributeValue type.
+    const std::string m_type;               //!< The name of the underlying type.
+    const bool m_seeBase;                   //!< Print a "see also" pointing to the base class.
+    const std::string m_header;             //!< The header file name.
+    const bool m_expectRegistration = true; //!< True when helper macros should register this entry.
 };
+
+std::vector<AttributeDescriptor>
+GetAttributeDescriptors()
+{
+    return {
+        // Name             Type             see Base  header-file
+        // Users of ATTRIBUTE_HELPER_HEADER and ATTRIBUTE_VALUE_DEFINE_WITH_NAME
+        // must be listed here explicitly to generate complete Doxygen output.
+        {"Address", "Address", true, "address.h"},
+        {"Box", "Box", true, "box.h"},
+        {"DataRate", "DataRate", true, "data-rate.h"},
+        {"Length", "Length", true, "length.h"},
+        {"Ipv4Address", "Ipv4Address", true, "ipv4-address.h"},
+        {"Ipv4Mask", "Ipv4Mask", true, "ipv4-address.h"},
+        {"Ipv6Address", "Ipv6Address", true, "ipv6-address.h"},
+        {"Ipv6Prefix", "Ipv6Prefix", true, "ipv6-address.h"},
+        {"Mac16Address", "Mac16Address", true, "mac16-address.h"},
+        {"Mac48Address", "Mac48Address", true, "mac48-address.h"},
+        {"Mac64Address", "Mac64Address", true, "mac64-address.h"},
+        {"ObjectFactory", "ObjectFactory", true, "object-factory.h"},
+        {"Priomap", "Priomap", true, "prio-queue-disc.h"},
+        {"QueueSize", "QueueSize", true, "queue-size.h"},
+        {"Rectangle", "Rectangle", true, "rectangle.h"},
+        {"Ssid", "Ssid", true, "ssid.h"},
+        {"TypeId", "TypeId", true, "type-id.h"},
+        {"UanModesList", "UanModesList", true, "uan-tx-mode.h"},
+        {"ValueClassTest", "ValueClassTest", false, "attribute-test-suite.cc", false},
+        {"Vector2D", "Vector2D", true, "vector.h"},
+        {"Vector3D", "Vector3D", true, "vector.h"},
+        {"Waypoint", "Waypoint", true, "waypoint.h"},
+        {"WifiMode", "WifiMode", true, "wifi-mode.h"},
+
+        // All three (Value, Access and Checkers) defined, but custom
+        {"Boolean", "bool", false, "boolean.h", false},
+        {"Callback", "CallbackBase", true, "callback.h", false},
+        {"Double", "double", false, "double.h"},
+        {"Enum", "T", false, "enum.h", false},
+        {"Integer", "int64_t", false, "integer.h"},
+        {"String", "std::string", false, "string.h"},
+        {"Time", "Time", true, "nstime.h"},
+        {"Uinteger", "uint64_t", false, "uinteger.h"},
+    };
+}
+
+std::string
+BaseName(const std::string& path)
+{
+    const auto separator = path.find_last_of("/\\");
+    if (separator == std::string::npos)
+    {
+        return path;
+    }
+    return path.substr(separator + 1);
+}
+
+bool
+ValidateAttributeDocumentation(std::ostream& os)
+{
+    const auto descriptors = GetAttributeDescriptors();
+    const auto& registrations = GetAttributeDocumentationRegistrations();
+    std::map<std::string, AttributeDescriptor> descriptorMap;
+    std::set<std::string> expectedRegistrations;
+    std::set<std::string> duplicateDescriptors;
+    for (const auto& descriptor : descriptors)
+    {
+        const auto [it, inserted] = descriptorMap.emplace(descriptor.m_name, descriptor);
+        if (!inserted)
+        {
+            duplicateDescriptors.insert(descriptor.m_name);
+        }
+        if (descriptor.m_expectRegistration)
+        {
+            expectedRegistrations.insert(descriptor.m_name);
+        }
+    }
+
+    std::vector<std::string> missing;
+    std::vector<std::string> headerMismatches;
+    std::set<std::string> registeredNames;
+    for (const auto& registration : registrations)
+    {
+        const auto descriptor = descriptorMap.find(registration.m_name);
+        if (descriptor == descriptorMap.end())
+        {
+            missing.push_back(registration.m_name + " (" + BaseName(registration.m_header) + ")");
+            continue;
+        }
+        if (!descriptor->second.m_expectRegistration)
+        {
+            missing.push_back(registration.m_name + " (" + BaseName(registration.m_header) +
+                              ", unexpected registration)");
+            continue;
+        }
+        registeredNames.insert(registration.m_name);
+        const auto registeredHeader = BaseName(registration.m_header);
+        if (descriptor->second.m_header != registeredHeader)
+        {
+            headerMismatches.push_back(registration.m_name + " (table: " +
+                                       descriptor->second.m_header + ", registered: " +
+                                       registeredHeader + ")");
+        }
+    }
+    std::vector<std::string> unregistered;
+    for (const auto& name : expectedRegistrations)
+    {
+        if (!registeredNames.contains(name))
+        {
+            const auto descriptor = descriptorMap.find(name);
+            unregistered.push_back(name + " (" + descriptor->second.m_header + ")");
+        }
+    }
+
+    if (registrations.empty())
+    {
+        os << "No AttributeValue helper registrations were found.\n";
+        return false;
+    }
+
+    if (duplicateDescriptors.empty() && missing.empty() && headerMismatches.empty() &&
+        unregistered.empty())
+    {
+        os << "Attribute documentation table validation passed.\n";
+        return true;
+    }
+
+    if (!duplicateDescriptors.empty())
+    {
+        os << "Duplicate AttributeDescriptor entries:\n";
+        for (const auto& name : duplicateDescriptors)
+        {
+            os << "  - " << name << "\n";
+        }
+    }
+    if (!missing.empty())
+    {
+        os << "AttributeValue helper types missing from print-introspected-doxygen.cc:\n";
+        for (const auto& name : missing)
+        {
+            os << "  - " << name << "\n";
+        }
+    }
+    if (!headerMismatches.empty())
+    {
+        os << "AttributeValue helper types with mismatched headers:\n";
+        for (const auto& name : headerMismatches)
+        {
+            os << "  - " << name << "\n";
+        }
+    }
+    if (!unregistered.empty())
+    {
+        os << "AttributeValue helper types present in print-introspected-doxygen.cc but not "
+              "registered by helper macros:\n";
+        for (const auto& name : unregistered)
+        {
+            os << "  - " << name << "\n";
+        }
+    }
+    return false;
+}
 
 /**
  * Print documentation corresponding to use of the
@@ -1557,55 +1721,9 @@ PrintAttributeImplementations(std::ostream& os)
 {
     NS_LOG_FUNCTION_NOARGS();
 
-    // clang-format off
-  const AttributeDescriptor attributes [] =
+    for (const auto& attribute : GetAttributeDescriptors())
     {
-      // Name             Type             see Base  header-file
-      // Users of ATTRIBUTE_HELPER_HEADER and ATTRIBUTE_VALUE_DEFINE_WITH_NAME
-      // must be listed here explicitly to generate complete Doxygen output.
-      //
-      { "Address",        "Address",        true,  "address.h"          },
-      { "Box",            "Box",            true,  "box.h"              },
-      { "DataRate",       "DataRate",       true,  "data-rate.h"        },
-      { "Length",         "Length",         true,  "length.h"           },
-      { "Ipv4Address",    "Ipv4Address",    true,  "ipv4-address.h"     },
-      { "Ipv4Mask",       "Ipv4Mask",       true,  "ipv4-address.h"     },
-      { "Ipv6Address",    "Ipv6Address",    true,  "ipv6-address.h"     },
-      { "Ipv6Prefix",     "Ipv6Prefix",     true,  "ipv6-address.h"     },
-      { "Mac16Address",   "Mac16Address",   true,  "mac16-address.h"    },
-      { "Mac48Address",   "Mac48Address",   true,  "mac48-address.h"    },
-      { "Mac64Address",   "Mac64Address",   true,  "mac64-address.h"    },
-      { "ObjectFactory",  "ObjectFactory",  true,  "object-factory.h"   },
-      { "Priomap",        "Priomap",        true,  "prio-queue-disc.h"  },
-      { "QueueSize",      "QueueSize",      true,  "queue-size.h"       },
-      { "Rectangle",      "Rectangle",      true,  "rectangle.h"        },
-      { "Ssid",           "Ssid",           true,  "ssid.h"             },
-      { "TypeId",         "TypeId",         true,  "type-id.h"          },
-      { "UanModesList",   "UanModesList",   true,  "uan-tx-mode.h"      },
-      { "ValueClassTest", "ValueClassTest", false, "attribute-test-suite.cc" /* core/test/ */  },
-      { "Vector2D",       "Vector2D",       true,  "vector.h"           },
-      { "Vector3D",       "Vector3D",       true,  "vector.h"           },
-      { "Waypoint",       "Waypoint",       true,  "waypoint.h"         },
-      { "WifiMode",       "WifiMode",       true,  "wifi-mode.h"        },
-
-      // All three (Value, Access and Checkers) defined, but custom
-      { "Boolean",        "bool",           false, "boolean.h"          },
-      { "Callback",       "CallbackBase",   true,  "callback.h"         },
-      { "Double",         "double",         false, "double.h"           },
-      { "Enum",           "T",              false, "enum.h"             },
-      { "Integer",        "int64_t",        false, "integer.h"          },
-      { "String",         "std::string",    false, "string.h"           },
-      { "Time",           "Time",           true,  "nstime.h"           },
-      { "Uinteger",       "uint64_t",       false, "uinteger.h"         },
-      { "",               "",               false, "last placeholder"   }
-    };
-    // clang-format on
-
-    int i = 0;
-    while (!attributes[i].m_name.empty())
-    {
-        PrintAttributeHelper(os, attributes[i]);
-        ++i;
+        PrintAttributeHelper(os, attribute);
     }
 
     PrintAttributeValueSection(os, "ObjectVector", false);
@@ -1627,14 +1745,24 @@ main(int argc, char* argv[])
 {
     NS_LOG_FUNCTION_NOARGS();
 
+    bool validateAttributeTable = false;
     std::string typeId;
 
     CommandLine cmd(__FILE__);
     cmd.Usage("Generate documentation for all ns-3 registered types, "
               "trace sources, attributes and global variables.");
     cmd.AddValue("output-text", "format output as plain text", outputText);
+    cmd.AddValue("validate-attribute-table",
+                 "validate that macro-generated AttributeValue types are present in the "
+                 "print-introspected-doxygen table",
+                 validateAttributeTable);
     cmd.AddValue("TypeId", "Print docs for just the given TypeId", typeId);
     cmd.Parse(argc, argv);
+
+    if (validateAttributeTable)
+    {
+        return ValidateAttributeDocumentation(std::cout) ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
 
     if (!typeId.empty())
     {

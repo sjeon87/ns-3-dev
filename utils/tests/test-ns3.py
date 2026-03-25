@@ -2828,6 +2828,22 @@ class NS3ExpectedUseTestCase(NS3BaseTestCase):
         self.assertIn(cmake_build_target_command(target="doxygen-no-build"), stdout)
         self.assertIn("Built target doxygen-no-build", stdout)
 
+    def test_11_PrintIntrospectedDoxygenAttributeValidation(self):
+        """!
+        Test validation of the print-introspected-doxygen AttributeValue table
+        @return None
+        """
+        return_code, stdout, stderr = run_ns3("build print-introspected-doxygen")
+        self.assertEqual(return_code, 0)
+        self.assertIn("Built target print-introspected-doxygen", stdout)
+
+        return_code, stdout, stderr = run_ns3(
+            'run "print-introspected-doxygen --validate-attribute-table" --no-build'
+        )
+        self.assertEqual(return_code, 0, stderr)
+        self.assertEqual(stderr, "")
+        self.assertIn("Attribute documentation table validation passed.", stdout)
+
     def test_12_SphinxDocumentation(self):
         """!
         Test every individual target for Sphinx-based documentation
