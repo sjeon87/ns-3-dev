@@ -27,6 +27,13 @@ NS_LOG_COMPONENT_DEFINE("AttributeValue");
 namespace
 {
 
+/**
+ * @internal
+ * Get the mutable storage used for AttributeValue documentation registrations.
+ *
+ * @returns The registration vector.
+ * @endinternal
+ */
 std::vector<AttributeDocumentationRegistration>&
 GetMutableAttributeDocumentationRegistrations()
 {

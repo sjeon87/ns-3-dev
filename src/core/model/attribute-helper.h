@@ -207,6 +207,7 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
         std::string SerializeToString(Ptr<const AttributeChecker> checker) const override;         \
         bool DeserializeFromString(std::string value,                                              \
                                    Ptr<const AttributeChecker> checker) override;                  \
+        /** @internal Used to validate the print-introspected-doxygen table. @endinternal */       \
         static std::string GetAttributeDocumentationFile()                                         \
         {                                                                                          \
             return __FILE__;                                                                       \
@@ -324,6 +325,7 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
     }                                                                                              \
     namespace                                                                                      \
     {                                                                                              \
+    /** @internal Triggers AttributeValue documentation registration. @endinternal */              \
     [[maybe_unused]] const bool g_register##name##AttributeDocumentation =                         \
         ::ns3::RegisterAttributeDocumentation(#name,                                               \
                                               name##Value::GetAttributeDocumentationFile());       \

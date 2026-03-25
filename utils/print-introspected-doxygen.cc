@@ -1534,6 +1534,11 @@ struct AttributeDescriptor
     const bool m_expectRegistration = true; //!< True when helper macros should register this entry.
 };
 
+/**
+ * Get the AttributeValue descriptors documented by print-introspected-doxygen.
+ *
+ * @returns The AttributeValue descriptor table.
+ */
 std::vector<AttributeDescriptor>
 GetAttributeDescriptors()
 {
@@ -1577,6 +1582,12 @@ GetAttributeDescriptors()
     };
 }
 
+/**
+ * Get the file name component of a path.
+ *
+ * @param [in] path The input path.
+ * @returns The final path component.
+ */
 std::string
 BaseName(const std::string& path)
 {
@@ -1588,6 +1599,12 @@ BaseName(const std::string& path)
     return path.substr(separator + 1);
 }
 
+/**
+ * Validate the AttributeValue documentation table against runtime registrations.
+ *
+ * @param [in,out] os The stream used to report validation results.
+ * @returns True if the table matches the registered helper types.
+ */
 bool
 ValidateAttributeDocumentation(std::ostream& os)
 {
