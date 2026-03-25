@@ -2853,7 +2853,11 @@ class NS3ExpectedUseTestCase(NS3BaseTestCase):
             ),
         )
         self.assertEqual(return_code, 0)
-        self.assertTrue(os.path.exists(os.path.join(usual_outdir, "utils", f"ns3-dev-print-introspected-doxygen{ext}")))
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(usual_outdir, "utils", f"ns3-dev-print-introspected-doxygen{ext}")
+            )
+        )
         self.assertIn(f"ns3-dev-print-introspected-doxygen{ext}", stdout)
 
         return_code, stdout, stderr = run_ns3(
