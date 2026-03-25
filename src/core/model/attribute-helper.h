@@ -207,11 +207,12 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
         std::string SerializeToString(Ptr<const AttributeChecker> checker) const override;         \
         bool DeserializeFromString(std::string value,                                              \
                                    Ptr<const AttributeChecker> checker) override;                  \
-        /** @internal Used to validate the print-introspected-doxygen table. @endinternal */       \
+        /** @cond */                                                                               \
         static std::string GetAttributeDocumentationFile()                                         \
         {                                                                                          \
             return __FILE__;                                                                       \
         }                                                                                          \
+        /** @endcond */                                                                            \
                                                                                                    \
       private:                                                                                     \
         type m_value;                                                                              \
@@ -325,10 +326,11 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
     }                                                                                              \
     namespace                                                                                      \
     {                                                                                              \
-    /** @internal Triggers AttributeValue documentation registration. @endinternal */              \
+    /** @cond */                                                                                   \
     [[maybe_unused]] const bool g_register##name##AttributeDocumentation =                         \
         ::ns3::RegisterAttributeDocumentation(#name,                                               \
                                               name##Value::GetAttributeDocumentationFile());       \
+    /** @endcond */                                                                                \
     }
 
 /**
