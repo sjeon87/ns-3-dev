@@ -48,12 +48,12 @@ bool
 RegisterAttributeDocumentation(const std::string& name, const std::string& header)
 {
     auto& registrations = GetMutableAttributeDocumentationRegistrations();
-    const auto duplicate = std::find_if(registrations.begin(),
-                                        registrations.end(),
-                                        [&name, &header](const auto& registration) {
-                                            return registration.m_name == name &&
-                                                   registration.m_header == header;
-                                        });
+    const auto duplicate =
+        std::find_if(registrations.begin(),
+                     registrations.end(),
+                     [&name, &header](const auto& registration) {
+                         return registration.m_name == name && registration.m_header == header;
+                     });
     if (duplicate == registrations.end())
     {
         registrations.push_back({name, header});

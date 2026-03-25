@@ -325,7 +325,8 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
     namespace                                                                                      \
     {                                                                                              \
     [[maybe_unused]] const bool g_register##name##AttributeDocumentation =                         \
-        ::ns3::RegisterAttributeDocumentation(#name, name##Value::GetAttributeDocumentationFile());\
+        ::ns3::RegisterAttributeDocumentation(#name,                                               \
+                                              name##Value::GetAttributeDocumentationFile());       \
     }
 
 /**

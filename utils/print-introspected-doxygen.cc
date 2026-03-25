@@ -25,8 +25,8 @@
 #include "ns3/system-path.h"
 
 #include <algorithm>
-#include <cstdlib>
 #include <climits> // CHAR_BIT
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -1630,9 +1630,9 @@ ValidateAttributeDocumentation(std::ostream& os)
         const auto registeredHeader = BaseName(registration.m_header);
         if (descriptor->second.m_header != registeredHeader)
         {
-            headerMismatches.push_back(registration.m_name + " (table: " +
-                                       descriptor->second.m_header + ", registered: " +
-                                       registeredHeader + ")");
+            headerMismatches.push_back(registration.m_name +
+                                       " (table: " + descriptor->second.m_header +
+                                       ", registered: " + registeredHeader + ")");
         }
     }
     std::vector<std::string> unregistered;

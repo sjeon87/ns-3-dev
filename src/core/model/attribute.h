@@ -8,10 +8,10 @@
 #ifndef ATTRIBUTE_H
 #define ATTRIBUTE_H
 
-#include "ns3/core-export.h"
-
 #include "ptr.h"
 #include "simple-ref-count.h"
+
+#include "ns3/core-export.h"
 
 #include <stdint.h>
 #include <string>
