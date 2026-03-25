@@ -366,6 +366,16 @@ FlentApplication::ProcessRawValues (void)
       for (auto itrName = m_output["raw_values"].begin (); itrName != m_output["raw_values"].end (); itrName++)
         {
           std::string rawValueName = itrName.key ().asString ();
+          
+          // --- THE SAFETY GUARD ---
+          // If the array is empty, log null and skip the dangerous iterator math
+          if (m_output["raw_values"][rawValueName].size() == 0)
+            {
+              m_output["results"][rawValueName].append (Json::Value::null);
+              continue;
+            }
+          // ------------------------
+
           double maxDist = m_stepSize.GetSeconds () * 5.0;
           if (!(*itrName))
             {
@@ -439,7 +449,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
   if (m_testName.compare ("ping") == 0)
     {
       Ipv4Address hostAddr = Ipv4Address::ConvertFrom (m_hostAddress);
-      m_v4ping = CreateObject<V4Ping> ();
+      m_v4ping = CreateObject<Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (hostAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       m_node->AddApplication (m_v4ping);
@@ -452,7 +462,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
   else if (m_testName.compare ("tcp_upload") == 0)
     {
       Ipv4Address hostAddr = Ipv4Address::ConvertFrom (m_hostAddress);
-      m_v4ping = CreateObject<V4Ping> ();
+      m_v4ping = CreateObject<Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (hostAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       m_node->AddApplication (m_v4ping);
@@ -501,7 +511,7 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
   else if (m_testName.compare ("tcp_download") == 0)
     {
       Ipv4Address localBindAddr = Ipv4Address::ConvertFrom (m_localBindAddress);
-      m_v4ping = CreateObject<V4Ping> ();
+      m_v4ping = CreateObject<Ping> ();
       m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (localBindAddr));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       m_hostNode->AddApplication (m_v4ping);
@@ -550,8 +560,8 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       Ipv4Address hostIpv4Address = Ipv4Address::ConvertFrom (m_hostAddress);
       Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom (m_localBindAddress);
 
-      m_v4ping = CreateObject<V4Ping> ();
-      m_v4ping->SetAttribute ("Remote", Ipv4AddressValue (hostIpv4Address));
+      m_v4ping = CreateObject<Ping> ();
+      m_v4ping->SetAttribute ("Destination", AddressValue (hostIpv4Address));
       m_v4ping->SetAttribute ("Interval", TimeValue (m_stepSize));
       m_node->AddApplication (m_v4ping);
       ApplicationContainer pingContainer;
@@ -661,7 +671,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_output["raw_values"]["TCP download BE"].append (data);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download BE", 0);
       InetSocketAddress localBindAddress = InetSocketAddress (localIpv4Address, 10);
-      localBindAddress.SetTos (Ipv4Header::DscpType::DscpDefault << 2);
       m_bulkSendDown[0] = CreateObject<BulkSendApplication> ();
       m_bulkSendDown[0]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendDown[0]->SetAttribute ("Remote", AddressValue (localBindAddress));
@@ -674,7 +683,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       
       // Upload BE
       InetSocketAddress hostAddress = InetSocketAddress (hostIpv4Address, 10);
-      hostAddress.SetTos (Ipv4Header::DscpType::DscpDefault << 2);
       m_bulkSendUp[0] = CreateObject<BulkSendApplication> ();
       m_bulkSendUp[0]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendUp[0]->SetAttribute ("Remote", AddressValue (hostAddress));
@@ -723,7 +731,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_output["raw_values"]["TCP download BK"].append (data2);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download BK", 1);
       InetSocketAddress localBindAddress2 = InetSocketAddress (localIpv4Address, 9);
-      localBindAddress2.SetTos (Ipv4Header::DscpType::DSCP_CS1 << 2);
       m_bulkSendDown[1] = CreateObject<BulkSendApplication> ();
       m_bulkSendDown[1]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendDown[1]->SetAttribute ("Remote", AddressValue (localBindAddress2));
@@ -736,7 +743,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       
       //Upload BK
       hostAddress = InetSocketAddress (hostIpv4Address, 11);
-      hostAddress.SetTos (Ipv4Header::DscpType::DSCP_CS1 << 2);
       m_bulkSendUp[1] = CreateObject<BulkSendApplication> ();
       m_bulkSendUp[1]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendUp[1]->SetAttribute ("Remote", AddressValue (hostAddress));
@@ -785,7 +791,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_output["raw_values"]["TCP download CS5"].append (data3);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download CS5", 2);
       InetSocketAddress localBindAddress3 = InetSocketAddress (localIpv4Address, 11);
-      localBindAddress3.SetTos (Ipv4Header::DscpType::DSCP_CS5 << 2);
       m_bulkSendDown[2] = CreateObject<BulkSendApplication> ();
       m_bulkSendDown[2]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendDown[2]->SetAttribute ("Remote", AddressValue (localBindAddress3));
@@ -798,7 +803,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
 
       //Upload CS5
       hostAddress = InetSocketAddress (hostIpv4Address, 12);
-      hostAddress.SetTos (Ipv4Header::DscpType::DSCP_CS5 << 2);
       m_bulkSendUp[2] = CreateObject<BulkSendApplication> ();
       m_bulkSendUp[2]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendUp[2]->SetAttribute ("Remote", AddressValue (hostAddress));
@@ -847,7 +851,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
       m_output["raw_values"]["TCP download EF"].append (data4);
       Simulator::Schedule (m_stepSize, &FlentApplication::GoodputSamplingDownload, this, "TCP download EF", 3);
       InetSocketAddress localBindAddress4 = InetSocketAddress (localIpv4Address, 12);
-      localBindAddress4.SetTos (Ipv4Header::DscpType::DSCP_EF << 2);
       m_bulkSendDown[3] = CreateObject<BulkSendApplication> ();
       m_bulkSendDown[3]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendDown[3]->SetAttribute ("Remote", AddressValue (localBindAddress4));
@@ -860,7 +863,6 @@ void FlentApplication::StartApplication (void) //Called at time specified by Sta
 
       //Upload EF
       hostAddress = InetSocketAddress (hostIpv4Address, 13);
-      hostAddress.SetTos (Ipv4Header::DscpType::DSCP_EF << 2);
       m_bulkSendUp[3] = CreateObject<BulkSendApplication> ();
       m_bulkSendUp[3]->SetAttribute ("Protocol", StringValue ("ns3::TcpSocketFactory"));
       m_bulkSendUp[3]->SetAttribute ("Remote", AddressValue (hostAddress));

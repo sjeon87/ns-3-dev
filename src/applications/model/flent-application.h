@@ -34,7 +34,7 @@
 #include "ns3/node-list.h"
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
-#include "ns3/v4ping.h"
+#include "ns3/ping.h"
 #include "ns3/bulk-send-application.h"
 #include "ns3/packet-sink.h"
 #include "ns3/udp-echo-server.h"
@@ -43,7 +43,7 @@
 
 namespace ns3 {
 
-class V4Ping;
+class Ping;
 class PacketSink;
 class BulkSendApplication;
 class SeqTsEchoHeader;
@@ -228,7 +228,7 @@ private:
   std::vector<uint32_t> m_bytesReceived {std::vector<uint32_t> (4, 0)}; //!< receive data counters
 
   /* Applications */
-  Ptr<V4Ping>               m_v4ping;            //!< V4Ping Application
+  Ptr<Ping>               m_v4ping;            //!< Ping Application
   Ptr<PacketSink>           m_packetSinkUp[4];   //!< PacketSink Applications for Upload flows
   Ptr<PacketSink>           m_packetSinkDown[4]; //!< PacketSink Applications for Download flows
   Ptr<BulkSendApplication>  m_bulkSendUp[4];     //!< BulkSend Applications for Upload flows

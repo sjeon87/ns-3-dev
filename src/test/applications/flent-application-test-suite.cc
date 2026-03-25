@@ -669,14 +669,14 @@ public:
 
 
 FlentApplicationTestSuite::FlentApplicationTestSuite ()
-  : TestSuite ("flent-application", UNIT)
+  : TestSuite ("flent-application", ns3::TestSuite::Type::UNIT)
 {
-  AddTestCase (new FlentApplicationRrul, TestCase::QUICK);
-  AddTestCase (new FlentApplicationTcpUpload, TestCase::QUICK);
-  AddTestCase (new FlentApplicationTcpDownload, TestCase::QUICK);
-  AddTestCase (new FlentApplicationPing, TestCase::QUICK);
-  AddTestCase (new FlentApplicationFileIntegrity, TestCase::QUICK);
-  AddTestCase (new FlentApplicationResults, TestCase::QUICK);
+  AddTestCase (new FlentApplicationRrul, ns3::TestCase::Duration::QUICK);
+  AddTestCase (new FlentApplicationTcpUpload, ns3::TestCase::Duration::QUICK);
+  AddTestCase (new FlentApplicationTcpDownload, ns3::TestCase::Duration::QUICK);
+  AddTestCase (new FlentApplicationPing, ns3::TestCase::Duration::QUICK);
+  AddTestCase (new FlentApplicationFileIntegrity, ns3::TestCase::Duration::QUICK);
+  AddTestCase (new FlentApplicationResults, ns3::TestCase::Duration::QUICK);
   
 }
 
