@@ -279,8 +279,8 @@ Murmur3_x64TestCase::DoRun()
     // Absolute 64-bit reference value.
     // Produced by MurmurHash3_x64_128 with both 64-bit state words
     // initialised from seed 0x8BADF00D, key "The quick brown fox jumped
-    // over the lazy dogs." (46 bytes).
-    hash64Reference = 0xdd33a0aae80bc4c8ULL;
+    // over the lazy dogs." (46 bytes). This is the lower 64-bit word (h1).
+    hash64Reference = 0x747f810de80bc4c8ULL;
     Check("murmur3_x64", hasher.clear().GetHash64(key));
 
     // GetHash32 must equal the lower 32 bits of GetHash64.
@@ -477,8 +477,7 @@ IncrementalTestCase::DoRun()
     DoHash("default", Hasher());
     DoHash("murmur3", Hasher(Create<Hash::Function::Murmur3>()));
     DoHash("FNV1a", Hasher(Create<Hash::Function::Fnv1a>()));
-    // Murmur3_x64 omitted: _incr re-seeds on every call, so hashing
-    // key1 then key2 without clear() does not equal hashing key12.
+    DoHash("murmur3_x64", Hasher(Create<Hash::Function::Murmur3_x64>()));
 }
 
 /**

@@ -14,8 +14,8 @@
 /**
  * @file
  * @ingroup hash
- * @brief ns3::Hash::Function::Murmur3 and ns3::Hash::Function::Murmur3_x64
- * declarations.
+ * @brief ns3::Hash::Function::Murmur3_x86 and
+ * ns3::Hash::Function::Murmur3_x64 declarations.
  */
 
 namespace ns3
@@ -42,13 +42,13 @@ namespace Function
  *  compile and run any of them on any platform, but your performance with the
  *  non-native version will be less than optimal.
  */
-class Murmur3 : public Implementation
+class Murmur3_x86 : public Implementation
 {
   public:
     /**
      * Constructor, clears internal state
      */
-    Murmur3();
+    Murmur3_x86();
     /**
      * Compute 32-bit hash of a byte buffer
      *
@@ -112,6 +112,11 @@ class Murmur3 : public Implementation
 };
 
 /**
+ * @brief Alias for the default Murmur3 implementation (x86 variant).
+ */
+using Murmur3 = Murmur3_x86;
+
+/**
  *  @ingroup hash
  *
  *  @brief Murmur3 hash function, x64-optimised variant (opt-in).
@@ -133,9 +138,8 @@ class Murmur3 : public Implementation
  *  The 32-bit result is the lower 32 bits of the 64-bit hash, so the two
  *  are mutually consistent for the same input.
  *
- *  @note Each call to GetHash64() or GetHash32() is a complete one-shot
- *  hash of its argument.  Successive calls without clear() do not
- *  accumulate input.
+ *  The implementation is incremental: successive calls extend the
+ *  running hash state until clear() is called.
  */
 class Murmur3_x64 : public Implementation
 {
@@ -168,10 +172,10 @@ class Murmur3_x64 : public Implementation
     void clear() override;
 
   private:
-    static constexpr auto SEED{0x8BADF00D}; // Ate bad food
+    static constexpr auto SEED{0x8BADF00D}; /**< Initial seed for Murmur3_x64. */
 
-    uint64_t m_hash64[2]; /**< 128-bit state from MurmurHash3_x64_128_incr. */
-    std::size_t m_size64;
+    uint64_t m_hash64[2]; /**< 128-bit running state. */
+    std::size_t m_size64; /**< Total number of bytes processed so far. */
 
 }; // end of class Murmur3_x64
 

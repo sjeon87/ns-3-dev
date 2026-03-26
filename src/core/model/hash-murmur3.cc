@@ -419,21 +419,25 @@ void MurmurHash3_x86_128_fin ( const std::size_t len,
 
 //-----------------------------------------------------------------------------
 /**
- * @brief Initial x64 Murmur3 hash.
+ * @brief Incremental x64 Murmur3 hash.
  *
  * @note Does not accumulate state across calls; always re-initialises
  * h1/h2 from \c seed.
+ * @param key pointer to the input buffer
+ * @param len length of the input buffer in bytes
+ * @param seeds pointer to the running 128-bit state (h1, h2)
+ * @param out pointer to the output state buffer (updated h1, h2)
  */
 static void MurmurHash3_x64_128_incr ( const void * key,
                                        const std::size_t len,
-                                       const uint32_t seed,
+                                       uint64_t * seeds,
                                        void * out )
 {
   const uint8_t * data = (const uint8_t*)key;
   const std::size_t nblocks = len / 16;  //PDB: was const int nblocks
 
-  uint64_t h1 = seed;
-  uint64_t h2 = seed;
+  uint64_t h1 = seeds[0];
+  uint64_t h2 = seeds[1];
 
   uint64_t c1 = BIG_CONSTANT(0x87c37b91114253d5);
   uint64_t c2 = BIG_CONSTANT(0x4cf5ad432745937f);
@@ -491,9 +495,13 @@ static void MurmurHash3_x64_128_incr ( const void * key,
    ((uint64_t *)out)[1] = h2;
  }
 /**
- * Finalisation for Murmur3 x64 hashing.
+ * @brief Finalisation for Murmur3 x64 hashing.
  *
- * Applies length mixing and fmix avalanche.
+ * Applies length mixing and avalanche finalisation.
+ *
+ * @param len total length of processed input in bytes
+ * @param seeds pointer to the 128-bit hash state (h1, h2)
+ * @param out pointer to the output buffer receiving final hash state
  */
 static void MurmurHash3_x64_128_fin ( const std::size_t len,
                                       const uint64_t * seeds,
@@ -517,8 +525,8 @@ static void MurmurHash3_x64_128_fin ( const std::size_t len,
   h1 += h2;
   h2 += h1;
 
-  ((uint32_t *)out)[0] = static_cast<uint32_t> (h1);  //PDB cast
-  ((uint32_t *)out)[1] = static_cast<uint32_t> (h2);  //PDB cast
+  ((uint64_t *)out)[0] = h1;
+  ((uint64_t *)out)[1] = h2;
 }
 
 // clang-format on
@@ -532,13 +540,13 @@ static void MurmurHash3_x64_128_fin ( const std::size_t len,
 
 } // namespace Murmur3Implementation
 
-Murmur3::Murmur3()
+Murmur3_x86::Murmur3_x86()
 {
     clear();
 }
 
 uint32_t
-Murmur3::GetHash32(const char* buffer, const std::size_t size)
+Murmur3_x86::GetHash32(const char* buffer, const std::size_t size)
 {
     using namespace Murmur3Implementation;
 
@@ -551,7 +559,7 @@ Murmur3::GetHash32(const char* buffer, const std::size_t size)
 }
 
 uint64_t
-Murmur3::GetHash64(const char* buffer, const std::size_t size)
+Murmur3_x86::GetHash64(const char* buffer, const std::size_t size)
 {
     using namespace Murmur3Implementation;
 
@@ -579,7 +587,7 @@ Murmur3::GetHash64(const char* buffer, const std::size_t size)
 }
 
 void
-Murmur3::clear()
+Murmur3_x86::clear()
 {
     m_hash32 = (uint32_t)SEED;
     m_size32 = 0;
@@ -605,22 +613,20 @@ Murmur3_x64::GetHash64(const char* buffer, const std::size_t size)
 {
     using namespace Murmur3Implementation;
 
-    // _incr processes the data and writes the pre-finalization state to m_hash64.
-    MurmurHash3_x64_128_incr(buffer, size, SEED, m_hash64);
-    // One-shot design: we do not accumulate size across calls.
-    // This must remain '=' (not +=), since _incr does not preserve state.
-    m_size64 = size;
+    // _incr updates the running x64 state.
+    MurmurHash3_x64_128_incr(buffer, size, m_hash64, m_hash64);
+    m_size64 += size;
 
-    // _fin applies the length-mix and avalanche; output is two uint32_t words.
-    uint32_t hash[2];
+    // _fin applies the length-mix and avalanche.
+    uint64_t hash[2];
     MurmurHash3_x64_128_fin(m_size64, m_hash64, hash);
-    return (static_cast<uint64_t>(hash[1]) << 32) | hash[0];
+    return hash[0];
 }
 
 void
 Murmur3_x64::clear()
 {
-    m_hash64[0] = m_hash64[1] = 0;
+    m_hash64[0] = m_hash64[1] = SEED;
     m_size64 = 0;
 }
 
