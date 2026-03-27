@@ -60,6 +60,12 @@ class TcpSocketBase;
  * statistics from this header have been added to \c ns3::PacketSink
  * (enable its "EnableSeqTsSizeHeader" attribute), or users may extract
  * the header via trace sources.
+ *
+ * The TCP sockets used by the application are created by TcpL4Protocol
+ * depending on how that object is configured. Users may use the SetSocket()
+ * API to bypass the TcpL4Protocol configuration, which can enable the use
+ * of different TCP variants on the same node. The BulkSendCustomSocketTestCase
+ * demonstrates two possible configuration approaches to do this.
  */
 class BulkSendApplication : public SourceApplication
 {

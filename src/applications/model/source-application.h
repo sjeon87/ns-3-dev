@@ -64,6 +64,17 @@ class SourceApplication : public Application
     Address GetRemote() const;
 
     /**
+     * @brief Set the socket for this applicationt.
+     *
+     * This replaces the socket that would be created at StartApplication time
+     *
+     * @note This method will trigger a simulation abort if called after StartApplication has
+     * executed.
+     * @param socket The socket to associate to the application
+     */
+    void SetSocket(Ptr<Socket> socket);
+
+    /**
      * @brief Get the socket this application is attached to.
      * @return pointer to associated socket
      */
@@ -152,6 +163,7 @@ class SourceApplication : public Application
     virtual void CancelEvents() = 0;
 
     bool m_allowPacketSocket; //!< Allow use of packet socket
+    bool m_hasStarted{false}; //!< Track whether the application has previously started
 };
 
 } // namespace ns3

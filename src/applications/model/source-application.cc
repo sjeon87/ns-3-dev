@@ -8,10 +8,12 @@
 
 #include "source-application.h"
 
+#include "ns3/abort.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/log.h"
 #include "ns3/packet-socket-address.h"
+#include "ns3/simulator.h"
 #include "ns3/socket.h"
 #include "ns3/uinteger.h"
 
@@ -79,7 +81,11 @@ SourceApplication::DoDispose()
 {
     NS_LOG_FUNCTION(this);
     CancelEvents();
-    m_socket = nullptr;
+    if (m_socket)
+    {
+        m_socket->Dispose();
+        m_socket = nullptr;
+    }
     Application::DoDispose();
 }
 
@@ -97,6 +103,14 @@ Address
 SourceApplication::GetRemote() const
 {
     return m_peer;
+}
+
+void
+SourceApplication::SetSocket(Ptr<Socket> socket)
+{
+    NS_LOG_FUNCTION(this << socket);
+    NS_ABORT_MSG_IF(m_hasStarted, "Socket cannot be reset after start time");
+    m_socket = socket;
 }
 
 Ptr<Socket>
@@ -122,7 +136,11 @@ SourceApplication::StartApplication()
                         "Incompatible peer and local address IP version");
     }
 
-    m_socket = Socket::CreateSocket(GetNode(), m_protocolTid);
+    if (!m_socket)
+    {
+        NS_LOG_DEBUG("Creating socket from TypeId " << m_protocolTid.GetName());
+        m_socket = Socket::CreateSocket(GetNode(), m_protocolTid);
+    }
     m_socket->SetConnectCallback(MakeCallback(&SourceApplication::ConnectionSucceeded, this),
                                  MakeCallback(&SourceApplication::ConnectionFailed, this));
 
@@ -154,6 +172,7 @@ SourceApplication::StartApplication()
 
     CancelEvents();
 
+    m_hasStarted = true;
     DoStartApplication();
 }
 

@@ -8,7 +8,9 @@
 
 #include "sink-application.h"
 
+#include "ns3/abort.h"
 #include "ns3/log.h"
+#include "ns3/simulator.h"
 #include "ns3/socket.h"
 #include "ns3/uinteger.h"
 
@@ -65,8 +67,26 @@ void
 SinkApplication::DoDispose()
 {
     NS_LOG_FUNCTION(this);
-    m_socket = nullptr;
-    m_socket6 = nullptr;
+    if (m_socket)
+    {
+        m_socket->Dispose();
+        m_socket = nullptr;
+    }
+    if (m_socket6)
+    {
+        m_socket6->Dispose();
+        m_socket6 = nullptr;
+    }
+    if (m_pendingPrimarySocket)
+    {
+        m_pendingPrimarySocket->Dispose();
+        m_pendingPrimarySocket = nullptr;
+    }
+    if (m_pendingDualStackSocket)
+    {
+        m_pendingDualStackSocket->Dispose();
+        m_pendingDualStackSocket = nullptr;
+    }
     Application::DoDispose();
 }
 
@@ -101,20 +121,90 @@ SinkApplication::GetPort() const
 }
 
 void
+SinkApplication::SetPrimarySocket(Ptr<Socket> socket)
+{
+    NS_LOG_FUNCTION(this << socket);
+    NS_ABORT_MSG_IF(m_hasStarted, "Socket cannot be reset after start time");
+    m_pendingPrimarySocket = socket;
+}
+
+Ptr<Socket>
+SinkApplication::GetPrimarySocket() const
+{
+    if (m_pendingPrimarySocket)
+    {
+        return m_pendingPrimarySocket;
+    }
+    else
+    {
+        return m_socket;
+    }
+}
+
+void
+SinkApplication::SetDualStackSocket(Ptr<Socket> socket)
+{
+    NS_LOG_FUNCTION(this << socket);
+    NS_ABORT_MSG_IF(m_hasStarted, "Socket cannot be reset after start time");
+    m_pendingDualStackSocket = socket;
+}
+
+Ptr<Socket>
+SinkApplication::GetDualStackSocket() const
+{
+    if (m_pendingDualStackSocket)
+    {
+        return m_pendingDualStackSocket;
+    }
+    else
+    {
+        return m_socket6;
+    }
+}
+
+void
 SinkApplication::StartApplication()
 {
     NS_LOG_FUNCTION(this);
 
     // note: it is currently not possible to restart an application
 
-    m_socket = Socket::CreateSocket(GetNode(), m_protocolTid);
-    if (m_local.IsInvalid() && !m_socket6)
+    if (m_pendingPrimarySocket)
     {
-        // local address is not specified, so create another socket to also listen to all IPv6
-        // addresses
-        m_socket6 = Socket::CreateSocket(GetNode(), m_protocolTid);
+        NS_LOG_DEBUG("Using user-specified primary socket");
+        m_socket = m_pendingPrimarySocket;
+        m_pendingPrimarySocket = nullptr;
+    }
+    else
+    {
+        NS_LOG_DEBUG("Creating socket from TypeId " << m_protocolTid.GetName());
+        m_socket = Socket::CreateSocket(GetNode(), m_protocolTid);
+    }
+    if (m_local.IsInvalid())
+    {
+        if (m_pendingDualStackSocket)
+        {
+            NS_LOG_DEBUG("Using user-specified dual-stack socket");
+            m_socket6 = m_pendingDualStackSocket;
+            m_pendingDualStackSocket = nullptr;
+        }
+        else
+        {
+            // local address is not specified, so create another socket to also listen on all IPv6
+            // addresses
+            NS_LOG_DEBUG("Creating IPv6 socket from TypeId " << m_protocolTid.GetName());
+            m_socket6 = Socket::CreateSocket(GetNode(), m_protocolTid);
+        }
+    }
+    else if (m_pendingDualStackSocket)
+    {
+        // Local address is specified, so warn that the dual-stack socket is not used.
+        NS_LOG_WARN("SetDualStackSocket() was called but Local address is set; dual-stack socket "
+                    "will not be used");
+        m_pendingDualStackSocket = nullptr;
     }
 
+    m_hasStarted = true;
     DoStartApplication();
 }
 
