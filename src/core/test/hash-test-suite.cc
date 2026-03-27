@@ -200,6 +200,8 @@ Fnv1aTestCase::~Fnv1aTestCase()
 void
 Fnv1aTestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Fnv1a>());
     hash32Reference = 0xa3fc0d6d; // Fnv1a(key)
     Check("FNV1a", hasher.clear().GetHash32(key));
@@ -236,6 +238,8 @@ Murmur3TestCase::~Murmur3TestCase()
 void
 Murmur3TestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Murmur3>());
     hash32Reference = 0x463d70e2; // Murmur3(key)
     Check("murmur3", hasher.clear().GetHash32(key));
@@ -287,7 +291,7 @@ Murmur3_x64TestCase::DoRun()
     hash32Reference = static_cast<uint32_t>(hash64Reference);
     Check("murmur3_x64", hasher.clear().GetHash32(key));
 
-    // x64 variant must produce a different result than x86 for the same input.
+    // x64 variant is expected to produce a different result than x86 for the same input.
     uint64_t h64_x86 = Hasher(Create<Hash::Function::Murmur3>()).clear().GetHash64(key);
     NS_TEST_EXPECT_MSG_NE(hasher.clear().GetHash64(key),
                           h64_x86,
@@ -376,6 +380,8 @@ Hash32FunctionPtrTestCase::~Hash32FunctionPtrTestCase()
 void
 Hash32FunctionPtrTestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Hash32>(&gnu_sum32));
     hash32Reference = 0x41264126; // Hash32FunctionPtr(key)
     Check("gnu_sum32", hasher.clear().GetHash32(key));
@@ -409,6 +415,8 @@ Hash64FunctionPtrTestCase::~Hash64FunctionPtrTestCase()
 void
 Hash64FunctionPtrTestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Hash64>(&gnu_sum64));
     hash64Reference = 0x4126412641264126ULL; // Hash64FunctionPtr(key)
     Check("gnu_sum64", hasher.clear().GetHash64(key));
