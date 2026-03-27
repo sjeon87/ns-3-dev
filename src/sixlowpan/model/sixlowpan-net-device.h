@@ -84,6 +84,7 @@ class SixLowPanNetDevice : public NetDevice
     {
         HC1,  //!< HC1 (RFC4944)
         IPHC, //!< IPHC (RFC6282)
+        GHC,  //!< GHC (RFC7400) on top of IPHC
     };
 
     /**
@@ -502,6 +503,73 @@ class SixLowPanNetDevice : public NetDevice
      * @param [in] daddr The IPv6 destination address.
      */
     void DecompressLowPanUdpNhc(Ptr<Packet> packet, Ipv6Address saddr, Ipv6Address daddr);
+    void DecompressLowPanGhcUdp(Ptr<Packet> packet, Ipv6Address saddr, Ipv6Address daddr);
+
+    /**
+     * @brief Compress an extension header using GHC (RFC 7400).
+     * @param [in] packet The packet to be compressed.
+     * @param [in] headerType The IPv6 next header type of the extension.
+     * @param [in] src The MAC source address.
+     * @param [in] dst The MAC destination address.
+     * @param [in] srcAddress The IPv6 source address.
+     * @param [in] dstAddress The IPv6 destination address.
+     * @return The size of the removed headers, or 0 on failure.
+     */
+    uint32_t CompressLowPanGhcNhc(Ptr<Packet> packet,
+                                  uint8_t headerType,
+                                  const Address& src,
+                                  const Address& dst,
+                                  Ipv6Address srcAddress,
+                                  Ipv6Address dstAddress);
+
+    /**
+     * @brief Decompress a GHC extension header (RFC 7400).
+     * @param [in] packet The packet to be decompressed.
+     * @param [in] src The MAC source address.
+     * @param [in] dst The MAC destination address.
+     * @param [in] srcAddress The IPv6 source address.
+     * @param [in] dstAddress The IPv6 destination address.
+     * @return A std::pair containing the decompressed header type and an error flag.
+     */
+    std::pair<uint8_t, bool> DecompressLowPanGhcNhc(Ptr<Packet> packet,
+                                                    const Address& src,
+                                                    const Address& dst,
+                                                    Ipv6Address srcAddress,
+                                                    Ipv6Address dstAddress);
+
+    /**
+     * @brief Compress ICMPv6 using GHC (RFC 7400).
+     * @param [in] packet The packet to be compressed.
+     * @param [in] srcAddress The IPv6 source address.
+     * @param [in] dstAddress The IPv6 destination address.
+     * @return The size of the removed headers, or 0 on failure.
+     */
+    uint32_t CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
+                                     Ipv6Address srcAddress,
+                                     Ipv6Address dstAddress);
+
+    /**
+     * @brief Decompress a GHC ICMPv6 header (RFC 7400).
+     * @param [in] packet The packet to be decompressed.
+     * @param [in] srcAddress The IPv6 source address.
+     * @param [in] dstAddress The IPv6 destination address.
+     */
+    void DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
+                                   Ipv6Address srcAddress,
+                                   Ipv6Address dstAddress);
+
+    /**
+     * @brief Compress UDP using GHC (RFC 7400).
+     * @param [in] packet The packet to be compressed.
+     * @param [in] omitChecksum Omit UDP checksum.
+     * @param [in] srcAddress The IPv6 source address.
+     * @param [in] dstAddress The IPv6 destination address.
+     * @return The size of the removed headers, or 0 on failure.
+     */
+    uint32_t CompressLowPanGhcUdp(Ptr<Packet> packet,
+                                  bool omitChecksum,
+                                  Ipv6Address srcAddress,
+                                  Ipv6Address dstAddress);
 
     /**
      * Fragment identifier type: src/dst address src/dst port.

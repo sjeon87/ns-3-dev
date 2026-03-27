@@ -10,6 +10,7 @@
 
 #include "sixlowpan-net-device.h"
 
+#include "sixlowpan-ghc.h"
 #include "sixlowpan-header.h"
 #include "sixlowpan-mesh-under-routing.h"
 #include "sixlowpan-simple-flooding.h"
@@ -52,10 +53,15 @@ SixLowPanNetDevice::GetTypeId()
             .AddConstructor<SixLowPanNetDevice>()
             .AddAttribute(
                 "CompressionType",
-                "The compression type, IPHC (RFC6282), or HC1 (RFC4944).",
+                "The compression type, IPHC (RFC6282), HC1 (RFC4944), or GHC (RFC7400).",
                 EnumValue(SixLowPanNetDevice::IPHC),
                 MakeEnumAccessor<CompressionType_e>(&SixLowPanNetDevice::m_compressionType),
-                MakeEnumChecker(SixLowPanNetDevice::IPHC, "IPHC", SixLowPanNetDevice::HC1, "HC1"))
+                MakeEnumChecker(SixLowPanNetDevice::IPHC,
+                                "IPHC",
+                                SixLowPanNetDevice::HC1,
+                                "HC1",
+                                SixLowPanNetDevice::GHC,
+                                "GHC"))
             .AddAttribute("OmitUdpChecksum",
                           "Omit the UDP checksum in IPHC compression.",
                           BooleanValue(true),
@@ -1192,7 +1198,24 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
             if (nextHeader == Ipv6Header::IPV6_UDP)
             {
                 iphcHeader.SetNh(true);
-                size += CompressLowPanUdpNhc(packet, m_omitUdpChecksum);
+                if (m_compressionType == GHC)
+                {
+                    size += CompressLowPanGhcUdp(packet,
+                                                 m_omitUdpChecksum,
+                                                 ipHeader.GetSource(),
+                                                 ipHeader.GetDestination());
+                }
+                else
+                {
+                    size += CompressLowPanUdpNhc(packet, m_omitUdpChecksum);
+                }
+            }
+            else if (nextHeader == Ipv6Header::IPV6_ICMPV6 && m_compressionType == GHC)
+            {
+                iphcHeader.SetNh(true);
+                size += CompressLowPanGhcIcmpv6(packet,
+                                                ipHeader.GetSource(),
+                                                ipHeader.GetDestination());
             }
             else if (nextHeader == Ipv6Header::IPV6_IPV6)
             {
@@ -1201,17 +1224,49 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
             }
             else
             {
-                uint32_t sizeNhc = CompressLowPanNhc(packet, nextHeader, src, dst);
-                // the compression might fail due to Extension header size.
-                if (sizeNhc)
+                if (m_compressionType == GHC)
                 {
-                    iphcHeader.SetNh(true);
-                    size += sizeNhc;
+                    uint32_t sizeGhc = CompressLowPanGhcNhc(packet,
+                                                            nextHeader,
+                                                            src,
+                                                            dst,
+                                                            ipHeader.GetSource(),
+                                                            ipHeader.GetDestination());
+                    if (sizeGhc)
+                    {
+                        iphcHeader.SetNh(true);
+                        size += sizeGhc;
+                    }
+                    else
+                    {
+                        // GHC compression failed, fallback to standard NHC
+                        uint32_t sizeNhc = CompressLowPanNhc(packet, nextHeader, src, dst);
+                        if (sizeNhc)
+                        {
+                            iphcHeader.SetNh(true);
+                            size += sizeNhc;
+                        }
+                        else
+                        {
+                            iphcHeader.SetNh(false);
+                            iphcHeader.SetNextHeader(nextHeader);
+                        }
+                    }
                 }
                 else
                 {
-                    iphcHeader.SetNh(false);
-                    iphcHeader.SetNextHeader(nextHeader);
+                    uint32_t sizeNhc = CompressLowPanNhc(packet, nextHeader, src, dst);
+                    // the compression might fail due to Extension header size.
+                    if (sizeNhc)
+                    {
+                        iphcHeader.SetNh(true);
+                        size += sizeNhc;
+                    }
+                    else
+                    {
+                        iphcHeader.SetNh(false);
+                        iphcHeader.SetNextHeader(nextHeader);
+                    }
                 }
             }
         }
@@ -1537,6 +1592,10 @@ SixLowPanNetDevice::CanCompressLowPanNhc(uint8_t nextHeader)
     case Ipv6Header::IPV6_IPV6:
         ret = true;
         break;
+    case Ipv6Header::IPV6_ICMPV6:
+        // ICMPv6 is compressible only with GHC (RFC 7400)
+        ret = m_compressionType == GHC;
+        break;
     case Ipv6Header::IPV6_EXT_MOBILITY:
     default:
         ret = false;
@@ -1844,6 +1903,33 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
         {
             ipHeader.SetNextHeader(Ipv6Header::IPV6_UDP);
             DecompressLowPanUdpNhc(packet, ipHeader.GetSource(), ipHeader.GetDestination());
+        }
+        else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_UDP)
+        {
+            // GHC UDP decompression (RFC 7400) - same protocol, different dispatch
+            ipHeader.SetNextHeader(Ipv6Header::IPV6_UDP);
+            DecompressLowPanGhcUdp(packet, ipHeader.GetSource(), ipHeader.GetDestination());
+        }
+        else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_ICMPV6)
+        {
+            ipHeader.SetNextHeader(Ipv6Header::IPV6_ICMPV6);
+            DecompressLowPanGhcIcmpv6(packet, ipHeader.GetSource(), ipHeader.GetDestination());
+        }
+        else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_EXT)
+        {
+            std::pair<uint8_t, bool> retval = DecompressLowPanGhcNhc(packet,
+                                                                     src,
+                                                                     dst,
+                                                                     ipHeader.GetSource(),
+                                                                     ipHeader.GetDestination());
+            if (retval.second)
+            {
+                return true;
+            }
+            else
+            {
+                ipHeader.SetNextHeader(retval.first);
+            }
         }
         else
         {
@@ -2188,6 +2274,21 @@ SixLowPanNetDevice::DecompressLowPanNhc(Ptr<Packet> packet,
                 blobData[0] = Ipv6Header::IPV6_UDP;
                 DecompressLowPanUdpNhc(packet, srcAddress, dstAddress);
             }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_UDP)
+            {
+                blobData[0] = Ipv6Header::IPV6_UDP;
+                DecompressLowPanGhcUdp(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_ICMPV6)
+            {
+                blobData[0] = Ipv6Header::IPV6_ICMPV6;
+                DecompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_EXT)
+            {
+                blobData[0] =
+                    DecompressLowPanGhcNhc(packet, src, dst, srcAddress, dstAddress).first;
+            }
             else
             {
                 blobData[0] = DecompressLowPanNhc(packet, src, dst, srcAddress, dstAddress).first;
@@ -2240,6 +2341,21 @@ SixLowPanNetDevice::DecompressLowPanNhc(Ptr<Packet> packet,
                 blobData[0] = Ipv6Header::IPV6_UDP;
                 DecompressLowPanUdpNhc(packet, srcAddress, dstAddress);
             }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_UDP)
+            {
+                blobData[0] = Ipv6Header::IPV6_UDP;
+                DecompressLowPanGhcUdp(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_ICMPV6)
+            {
+                blobData[0] = Ipv6Header::IPV6_ICMPV6;
+                DecompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_EXT)
+            {
+                blobData[0] =
+                    DecompressLowPanGhcNhc(packet, src, dst, srcAddress, dstAddress).first;
+            }
             else
             {
                 blobData[0] = DecompressLowPanNhc(packet, src, dst, srcAddress, dstAddress).first;
@@ -2271,6 +2387,21 @@ SixLowPanNetDevice::DecompressLowPanNhc(Ptr<Packet> packet,
             {
                 blobData[0] = Ipv6Header::IPV6_UDP;
                 DecompressLowPanUdpNhc(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_UDP)
+            {
+                blobData[0] = Ipv6Header::IPV6_UDP;
+                DecompressLowPanGhcUdp(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_ICMPV6)
+            {
+                blobData[0] = Ipv6Header::IPV6_ICMPV6;
+                DecompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_EXT)
+            {
+                blobData[0] =
+                    DecompressLowPanGhcNhc(packet, src, dst, srcAddress, dstAddress).first;
             }
             else
             {
@@ -2305,6 +2436,21 @@ SixLowPanNetDevice::DecompressLowPanNhc(Ptr<Packet> packet,
             {
                 blobData[0] = Ipv6Header::IPV6_UDP;
                 DecompressLowPanUdpNhc(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_UDP)
+            {
+                blobData[0] = Ipv6Header::IPV6_UDP;
+                DecompressLowPanGhcUdp(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_ICMPV6)
+            {
+                blobData[0] = Ipv6Header::IPV6_ICMPV6;
+                DecompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+            }
+            else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_EXT)
+            {
+                blobData[0] =
+                    DecompressLowPanGhcNhc(packet, src, dst, srcAddress, dstAddress).first;
             }
             else
             {
@@ -2481,6 +2627,47 @@ SixLowPanNetDevice::DecompressLowPanUdpNhc(Ptr<Packet> packet, Ipv6Address saddr
     }
 
     NS_LOG_DEBUG("Rebuilt packet: " << *packet << " Size " << packet->GetSize());
+}
+
+void
+SixLowPanNetDevice::DecompressLowPanGhcUdp(Ptr<Packet> packet, Ipv6Address saddr, Ipv6Address daddr)
+{
+    NS_LOG_FUNCTION(this << *packet);
+
+    UdpHeader udpHeader;
+    SixLowPanGhcUdp ghcEncoding;
+
+    uint32_t ret [[maybe_unused]] = packet->RemoveHeader(ghcEncoding);
+    NS_LOG_DEBUG("GHC UDP: removed " << ret << " bytes - pkt is " << *packet);
+
+    // Ports are already fully expanded by SixLowPanGhcUdp::Deserialize
+    udpHeader.SetSourcePort(ghcEncoding.GetSrcPort());
+    udpHeader.SetDestinationPort(ghcEncoding.GetDstPort());
+
+    // Get the C field and checksum
+    if (Node::ChecksumEnabled())
+    {
+        if (ghcEncoding.GetC())
+        {
+            NS_LOG_LOGIC("GHC UDP: Recalculating UDP Checksum");
+            udpHeader.EnableChecksums();
+            udpHeader.InitializeChecksum(saddr, daddr, iana::internetprotocolnumbers::UDP);
+            packet->AddHeader(udpHeader);
+        }
+        else
+        {
+            NS_LOG_LOGIC("GHC UDP: Forcing UDP Checksum to " << ghcEncoding.GetChecksum());
+            udpHeader.ForceChecksum(ghcEncoding.GetChecksum());
+            packet->AddHeader(udpHeader);
+            NS_LOG_LOGIC("GHC UDP: checksum ok ? " << udpHeader.IsChecksumOk());
+        }
+    }
+    else
+    {
+        packet->AddHeader(udpHeader);
+    }
+
+    NS_LOG_DEBUG("GHC UDP rebuilt packet: " << *packet << " Size " << packet->GetSize());
 }
 
 void
@@ -3115,6 +3302,527 @@ SixLowPanNetDevice::CleanPrefix(Ipv6Address address, Ipv6Prefix prefix)
     return cleanedAddress;
 }
 
-} // namespace ns3
+// ============================================================================
+//  GHC (RFC 7400) Compression/Decompression Methods
+// ============================================================================
 
-// namespace ns3
+uint32_t
+SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
+                                         uint8_t headerType,
+                                         const Address& src,
+                                         const Address& dst,
+                                         Ipv6Address srcAddress,
+                                         Ipv6Address dstAddress)
+{
+    NS_LOG_FUNCTION(this << *packet << int(headerType));
+
+    SixLowPanGhcExtension ghcHeader;
+    uint32_t size = 0;
+
+    // Map next header type to EID
+    SixLowPanGhcExtension::Eid_e eid;
+    switch (headerType)
+    {
+    case Ipv6Header::IPV6_EXT_HOP_BY_HOP:
+        eid = SixLowPanGhcExtension::EID_HOPBYHOP_OPTIONS_H;
+        break;
+    case Ipv6Header::IPV6_EXT_ROUTING:
+        eid = SixLowPanGhcExtension::EID_ROUTING_H;
+        break;
+    case Ipv6Header::IPV6_EXT_FRAGMENTATION:
+        eid = SixLowPanGhcExtension::EID_FRAGMENTATION_H;
+        break;
+    case Ipv6Header::IPV6_EXT_DESTINATION:
+        eid = SixLowPanGhcExtension::EID_DESTINATION_OPTIONS_H;
+        break;
+    case Ipv6Header::IPV6_EXT_MOBILITY:
+        eid = SixLowPanGhcExtension::EID_MOBILITY_H;
+        break;
+    default:
+        NS_LOG_WARN("GHC: Unknown extension header type " << int(headerType));
+        return 0;
+    }
+
+    // Read the raw extension header bytes from the packet
+    // Save a backup in case GHC compression fails and we need to restore
+    Ptr<Packet> packetBackup = packet->Copy();
+    uint8_t rawHeader[256];
+    uint32_t rawLen = 0;
+
+    if (headerType == Ipv6Header::IPV6_EXT_HOP_BY_HOP)
+    {
+        Ipv6ExtensionHopByHopHeader extHeader;
+        packet->PeekHeader(extHeader);
+        if (extHeader.GetLength() >= 0xff)
+        {
+            NS_LOG_WARN("GHC: Extension header too large");
+            return 0;
+        }
+        rawLen = (extHeader.GetLength() + 1) * 8;
+        size = packet->RemoveHeader(extHeader);
+        // Serialize the extension header to get its raw bytes
+        Buffer buf;
+        buf.AddAtStart(rawLen);
+        extHeader.Serialize(buf.Begin());
+        buf.Begin().Read(rawHeader, rawLen);
+    }
+    else if (headerType == Ipv6Header::IPV6_EXT_ROUTING)
+    {
+        Ipv6ExtensionRoutingHeader extHeader;
+        packet->PeekHeader(extHeader);
+        rawLen = (extHeader.GetLength() + 1) * 8;
+        size = packet->RemoveHeader(extHeader);
+        Buffer buf;
+        buf.AddAtStart(rawLen);
+        extHeader.Serialize(buf.Begin());
+        buf.Begin().Read(rawHeader, rawLen);
+    }
+    else if (headerType == Ipv6Header::IPV6_EXT_FRAGMENTATION)
+    {
+        Ipv6ExtensionFragmentHeader extHeader;
+        packet->PeekHeader(extHeader);
+        rawLen = 8; // Fragment header is always 8 bytes
+        size = packet->RemoveHeader(extHeader);
+        Buffer buf;
+        buf.AddAtStart(rawLen);
+        extHeader.Serialize(buf.Begin());
+        buf.Begin().Read(rawHeader, rawLen);
+    }
+    else if (headerType == Ipv6Header::IPV6_EXT_DESTINATION)
+    {
+        Ipv6ExtensionDestinationHeader extHeader;
+        packet->PeekHeader(extHeader);
+        rawLen = (extHeader.GetLength() + 1) * 8;
+        size = packet->RemoveHeader(extHeader);
+        Buffer buf;
+        buf.AddAtStart(rawLen);
+        extHeader.Serialize(buf.Begin());
+        buf.Begin().Read(rawHeader, rawLen);
+    }
+    else
+    {
+        return 0;
+    }
+
+    if (rawLen < 2)
+    {
+        return 0;
+    }
+
+    // Extract the next header byte (first byte of ext header)
+    uint8_t nextHeader = rawHeader[0];
+
+    // Check if the next header can also be compressed
+    bool nhCompressed = false;
+    if (CanCompressLowPanNhc(nextHeader))
+    {
+        nhCompressed = true;
+    }
+
+    // GHC-compress the extension header body (skip first 2 bytes: NH + Length)
+    // Per RFC 7400: the Length field is elided and replaced by Stop Code
+    uint8_t compressed[256];
+    uint32_t compressedLen = SixLowPanGhcEngine::Compress(srcAddress,
+                                                          dstAddress,
+                                                          rawHeader + 2,
+                                                          rawLen - 2,
+                                                          compressed,
+                                                          256,
+                                                          true); // emit Stop Code
+
+    if (compressedLen == 0)
+    {
+        // Compression didn't help; restore packet from backup
+        // so the caller can fall back to standard NHC
+        packet->RemoveAtStart(packet->GetSize());
+        packet->AddAtEnd(packetBackup);
+        return 0;
+    }
+
+    // Set up the GHC extension header
+    ghcHeader.SetEid(eid);
+    ghcHeader.SetNh(nhCompressed);
+    if (!nhCompressed)
+    {
+        ghcHeader.SetNextHeader(nextHeader);
+    }
+    ghcHeader.SetBlob(compressed, compressedLen);
+
+    // If next header is also compressible, compress it recursively
+    if (nhCompressed)
+    {
+        if (nextHeader == Ipv6Header::IPV6_UDP)
+        {
+            if (m_compressionType == GHC)
+            {
+                size += CompressLowPanGhcUdp(packet, m_omitUdpChecksum, srcAddress, dstAddress);
+            }
+            else
+            {
+                size += CompressLowPanUdpNhc(packet, m_omitUdpChecksum);
+            }
+        }
+        else if (nextHeader == Ipv6Header::IPV6_ICMPV6 && m_compressionType == GHC)
+        {
+            size += CompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+        }
+        else if (nextHeader == Ipv6Header::IPV6_IPV6)
+        {
+            size += CompressLowPanIphc(packet, src, dst);
+        }
+        else
+        {
+            uint32_t sizeGhc =
+                CompressLowPanGhcNhc(packet, nextHeader, src, dst, srcAddress, dstAddress);
+            if (sizeGhc)
+            {
+                size += sizeGhc;
+            }
+            else
+            {
+                uint32_t sizeNhc = CompressLowPanNhc(packet, nextHeader, src, dst);
+                if (sizeNhc)
+                {
+                    size += sizeNhc;
+                }
+                else
+                {
+                    ghcHeader.SetNh(false);
+                    ghcHeader.SetNextHeader(nextHeader);
+                }
+            }
+        }
+    }
+
+    packet->AddHeader(ghcHeader);
+    NS_LOG_DEBUG("GHC Extension compression - header size = " << ghcHeader.GetSerializedSize());
+
+    return size;
+}
+
+std::pair<uint8_t, bool>
+SixLowPanNetDevice::DecompressLowPanGhcNhc(Ptr<Packet> packet,
+                                           const Address& src,
+                                           const Address& dst,
+                                           Ipv6Address srcAddress,
+                                           Ipv6Address dstAddress)
+{
+    NS_LOG_FUNCTION(this << *packet);
+
+    SixLowPanGhcExtension encoding;
+    uint32_t ret [[maybe_unused]] = packet->RemoveHeader(encoding);
+    NS_LOG_DEBUG("GHC: removed " << ret << " bytes - pkt is " << *packet);
+
+    // Get compressed blob
+    uint8_t compressed[256];
+    uint32_t compressedLen = encoding.CopyBlob(compressed, 256);
+
+    // Decompress using GHC engine (with Stop Code termination for extension headers)
+    uint8_t decompressed[1280];
+    uint32_t decompressedLen = SixLowPanGhcEngine::Decompress(srcAddress,
+                                                              dstAddress,
+                                                              compressed,
+                                                              compressedLen,
+                                                              decompressed,
+                                                              1280,
+                                                              true); // use Stop Code
+
+    if (decompressedLen == 0)
+    {
+        NS_LOG_WARN("GHC: Extension header decompression failed");
+        return std::make_pair(0, true);
+    }
+
+    // Map EID to actual header type
+    uint8_t actualHeaderType;
+    switch (encoding.GetEid())
+    {
+    case SixLowPanGhcExtension::EID_HOPBYHOP_OPTIONS_H:
+        actualHeaderType = Ipv6Header::IPV6_EXT_HOP_BY_HOP;
+        break;
+    case SixLowPanGhcExtension::EID_ROUTING_H:
+        actualHeaderType = Ipv6Header::IPV6_EXT_ROUTING;
+        break;
+    case SixLowPanGhcExtension::EID_FRAGMENTATION_H:
+        actualHeaderType = Ipv6Header::IPV6_EXT_FRAGMENTATION;
+        break;
+    case SixLowPanGhcExtension::EID_DESTINATION_OPTIONS_H:
+        actualHeaderType = Ipv6Header::IPV6_EXT_DESTINATION;
+        break;
+    case SixLowPanGhcExtension::EID_MOBILITY_H:
+        actualHeaderType = Ipv6Header::IPV6_EXT_MOBILITY;
+        break;
+    default:
+        NS_LOG_WARN("GHC: Unknown EID " << int(encoding.GetEid()));
+        return std::make_pair(0, true);
+    }
+
+    // Reconstruct the full extension header
+    // Byte 0: Next Header, Byte 1: Length, rest: decompressed body
+    uint8_t fullHeader[1280 + 2];
+    uint32_t fullLen = decompressedLen + 2;
+
+    // Get the next header byte
+    if (encoding.GetNh())
+    {
+        // Next header is also NHC-compressed; peek at next dispatch byte
+        uint8_t dispatchRawVal = 0;
+        SixLowPanDispatch::NhcDispatch_e dispatchVal;
+
+        packet->CopyData(&dispatchRawVal, sizeof(dispatchRawVal));
+        dispatchVal = SixLowPanDispatch::GetNhcDispatchType(dispatchRawVal);
+
+        if (dispatchVal == SixLowPanDispatch::LOWPAN_UDPNHC ||
+            dispatchVal == SixLowPanDispatch::LOWPAN_GHC_UDP)
+        {
+            fullHeader[0] = Ipv6Header::IPV6_UDP;
+            DecompressLowPanGhcUdp(packet, srcAddress, dstAddress);
+        }
+        else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_ICMPV6)
+        {
+            fullHeader[0] = Ipv6Header::IPV6_ICMPV6;
+            DecompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+        }
+        else if (dispatchVal == SixLowPanDispatch::LOWPAN_GHC_EXT)
+        {
+            fullHeader[0] = DecompressLowPanGhcNhc(packet, src, dst, srcAddress, dstAddress).first;
+        }
+        else
+        {
+            fullHeader[0] = DecompressLowPanNhc(packet, src, dst, srcAddress, dstAddress).first;
+        }
+    }
+    else
+    {
+        fullHeader[0] = encoding.GetNextHeader();
+    }
+
+    // Compute Length field: (total_size / 8) - 1 for hop-by-hop, routing, destination
+    // Fragment header is always 8 bytes (length field is reserved)
+    uint32_t paddingSize = 0;
+    if (actualHeaderType != Ipv6Header::IPV6_EXT_FRAGMENTATION)
+    {
+        if ((decompressedLen + 2) % 8 > 0)
+        {
+            paddingSize = 8 - ((decompressedLen + 2) % 8);
+        }
+        fullHeader[1] = ((decompressedLen + 2 + paddingSize) >> 3) - 1;
+    }
+    else
+    {
+        fullHeader[1] = 0; // Reserved for fragment header
+    }
+
+    // Copy decompressed body
+    std::memcpy(fullHeader + 2, decompressed, decompressedLen);
+
+    // Add padding if needed
+    if (paddingSize > 0)
+    {
+        if (paddingSize == 1)
+        {
+            fullHeader[decompressedLen + 2] = 0;
+        }
+        else
+        {
+            fullHeader[decompressedLen + 2] = 1;
+            fullHeader[decompressedLen + 3] = paddingSize - 2;
+            for (uint32_t i = 0; i < paddingSize - 2; i++)
+            {
+                fullHeader[decompressedLen + 4 + i] = 0;
+            }
+        }
+        fullLen += paddingSize;
+    }
+
+    // Deserialize and add the reconstructed extension header
+    Buffer blob;
+    blob.AddAtStart(fullLen);
+    blob.Begin().Write(fullHeader, fullLen);
+
+    switch (actualHeaderType)
+    {
+    case Ipv6Header::IPV6_EXT_HOP_BY_HOP: {
+        Ipv6ExtensionHopByHopHeader hopHeader;
+        hopHeader.Deserialize(blob.Begin());
+        packet->AddHeader(hopHeader);
+        break;
+    }
+    case Ipv6Header::IPV6_EXT_ROUTING: {
+        Ipv6ExtensionRoutingHeader routingHeader;
+        routingHeader.Deserialize(blob.Begin());
+        packet->AddHeader(routingHeader);
+        break;
+    }
+    case Ipv6Header::IPV6_EXT_FRAGMENTATION: {
+        Ipv6ExtensionFragmentHeader fragHeader;
+        fragHeader.Deserialize(blob.Begin());
+        packet->AddHeader(fragHeader);
+        break;
+    }
+    case Ipv6Header::IPV6_EXT_DESTINATION: {
+        Ipv6ExtensionDestinationHeader destHeader;
+        destHeader.Deserialize(blob.Begin());
+        packet->AddHeader(destHeader);
+        break;
+    }
+    default:
+        break;
+    }
+
+    NS_LOG_DEBUG("GHC: Decompressed extension header type="
+                 << int(actualHeaderType) << " decompressed size=" << decompressedLen);
+
+    return std::make_pair(actualHeaderType, false);
+}
+
+uint32_t
+SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
+                                            Ipv6Address srcAddress,
+                                            Ipv6Address dstAddress)
+{
+    NS_LOG_FUNCTION(this << *packet);
+
+    // Read the raw ICMPv6 data from the packet
+    // ICMPv6 header: Type(1) + Code(1) + Checksum(2) + Body(variable)
+    uint32_t packetSize = packet->GetSize();
+    if (packetSize < 4)
+    {
+        NS_LOG_WARN("GHC: Packet too small for ICMPv6");
+        return 0;
+    }
+
+    // Copy raw ICMPv6 bytes
+    uint8_t rawIcmpv6[1280];
+    uint32_t rawLen = std::min(packetSize, (uint32_t)1280);
+    packet->CopyData(rawIcmpv6, rawLen);
+
+    // Compress using GHC
+    uint8_t compressed[1280];
+    uint32_t compressedLen = SixLowPanGhcEngine::Compress(srcAddress,
+                                                          dstAddress,
+                                                          rawIcmpv6,
+                                                          rawLen,
+                                                          compressed,
+                                                          1280,
+                                                          false);
+
+    if (compressedLen == 0 || compressedLen >= rawLen)
+    {
+        NS_LOG_DEBUG("GHC: ICMPv6 compression not beneficial");
+        return 0;
+    }
+
+    // Remove original ICMPv6 data from packet
+    packet->RemoveAtStart(rawLen);
+
+    // Create GHC ICMPv6 header
+    SixLowPanGhcIcmpv6 ghcHeader;
+    ghcHeader.SetBlob(compressed, compressedLen);
+
+    packet->AddHeader(ghcHeader);
+
+    NS_LOG_DEBUG("GHC ICMPv6 compression: " << rawLen << " -> " << ghcHeader.GetSerializedSize()
+                                            << " bytes");
+
+    return rawLen;
+}
+
+void
+SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
+                                              Ipv6Address srcAddress,
+                                              Ipv6Address dstAddress)
+{
+    NS_LOG_FUNCTION(this << *packet);
+
+    SixLowPanGhcIcmpv6 encoding;
+    uint32_t ret [[maybe_unused]] = packet->RemoveHeader(encoding);
+    NS_LOG_DEBUG("GHC ICMPv6: removed " << ret << " bytes");
+
+    // Get compressed blob
+    uint8_t compressed[256];
+    uint32_t compressedLen = encoding.CopyBlob(compressed, 256);
+
+    // Decompress using GHC engine
+    uint8_t decompressed[1280];
+    uint32_t decompressedLen = SixLowPanGhcEngine::Decompress(srcAddress,
+                                                              dstAddress,
+                                                              compressed,
+                                                              compressedLen,
+                                                              decompressed,
+                                                              1280,
+                                                              false);
+
+    if (decompressedLen == 0)
+    {
+        NS_LOG_WARN("GHC: ICMPv6 decompression failed");
+        return;
+    }
+
+    // Add decompressed ICMPv6 data back to packet
+    Ptr<Packet> icmpPacket = Create<Packet>(decompressed, decompressedLen);
+    packet->AddAtEnd(icmpPacket);
+
+    NS_LOG_DEBUG("GHC ICMPv6 decompression: " << compressedLen << " -> " << decompressedLen
+                                              << " bytes");
+}
+
+uint32_t
+SixLowPanNetDevice::CompressLowPanGhcUdp(Ptr<Packet> packet,
+                                         bool omitChecksum,
+                                         Ipv6Address srcAddress,
+                                         Ipv6Address dstAddress)
+{
+    NS_LOG_FUNCTION(this << *packet << int(omitChecksum));
+
+    UdpHeader udpHeader;
+    SixLowPanGhcUdp ghcUdpHeader;
+    uint32_t size = 0;
+
+    NS_ASSERT_MSG(packet->PeekHeader(udpHeader) != 0, "UDP header not found, abort");
+    size += packet->RemoveHeader(udpHeader);
+
+    // Set the C field and checksum (same logic as standard NHC)
+    ghcUdpHeader.SetC(false);
+    uint16_t checksum = udpHeader.GetChecksum();
+    ghcUdpHeader.SetChecksum(checksum);
+
+    if (omitChecksum && udpHeader.IsChecksumOk())
+    {
+        ghcUdpHeader.SetC(true);
+    }
+
+    // Set the value of the ports
+    ghcUdpHeader.SetSrcPort(udpHeader.GetSourcePort());
+    ghcUdpHeader.SetDstPort(udpHeader.GetDestinationPort());
+
+    // Set the P field (same port compression as RFC 6282)
+    if ((udpHeader.GetSourcePort() >> 4) == 0xf0b && (udpHeader.GetDestinationPort() >> 4) == 0xf0b)
+    {
+        ghcUdpHeader.SetPorts(SixLowPanGhcUdp::PORTS_LAST_SRC_LAST_DST);
+    }
+    else if ((udpHeader.GetSourcePort() >> 8) == 0xf0 &&
+             (udpHeader.GetDestinationPort() >> 8) != 0xf0)
+    {
+        ghcUdpHeader.SetPorts(SixLowPanGhcUdp::PORTS_LAST_SRC_ALL_DST);
+    }
+    else if ((udpHeader.GetSourcePort() >> 8) != 0xf0 &&
+             (udpHeader.GetDestinationPort() >> 8) == 0xf0)
+    {
+        ghcUdpHeader.SetPorts(SixLowPanGhcUdp::PORTS_ALL_SRC_LAST_DST);
+    }
+    else
+    {
+        ghcUdpHeader.SetPorts(SixLowPanGhcUdp::PORTS_INLINE);
+    }
+
+    NS_LOG_DEBUG("GHC_UDP Compression - header size = " << ghcUdpHeader.GetSerializedSize());
+
+    packet->AddHeader(ghcUdpHeader);
+
+    NS_LOG_DEBUG("Packet after GHC_UDP compression: " << *packet);
+
+    return size;
+}
+
+} // namespace ns3
