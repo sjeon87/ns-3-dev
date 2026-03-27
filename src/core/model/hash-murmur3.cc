@@ -418,20 +418,9 @@ void MurmurHash3_x86_128_fin ( const std::size_t len,
 }
 
 //-----------------------------------------------------------------------------
-/**
- * @brief Incremental x64 Murmur3 hash.
- *
- * @note Does not accumulate state across calls; always re-initialises
- * h1/h2 from \c seed.
- * @param key pointer to the input buffer
- * @param len length of the input buffer in bytes
- * @param seeds pointer to the running 128-bit state (h1, h2)
- * @param out pointer to the output state buffer (updated h1, h2)
- */
-static void MurmurHash3_x64_128_incr ( const void * key,
-                                       const std::size_t len,
-                                       uint64_t * seeds,
-                                       void * out )
+/** @copydoc MurmurHash3_x86_128_incr() */
+static void MurmurHash3_x64_128_incr ( const void * key, const std::size_t len,
+                                       uint64_t * seeds, void * out )
 {
   const uint8_t * data = (const uint8_t*)key;
   const std::size_t nblocks = len / 16;  //PDB: was const int nblocks
@@ -494,15 +483,7 @@ static void MurmurHash3_x64_128_incr ( const void * key,
    ((uint64_t *)out)[0] = h1;
    ((uint64_t *)out)[1] = h2;
  }
-/**
- * @brief Finalisation for Murmur3 x64 hashing.
- *
- * Applies length mixing and avalanche finalisation.
- *
- * @param len total length of processed input in bytes
- * @param seeds pointer to the 128-bit hash state (h1, h2)
- * @param out pointer to the output buffer receiving final hash state
- */
+/** @copydoc MurmurHash3_x86_128_fin() */
 static void MurmurHash3_x64_128_fin ( const std::size_t len,
                                       const uint64_t * seeds,
                                       void * out )
