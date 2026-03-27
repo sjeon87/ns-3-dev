@@ -9,11 +9,11 @@
 #ifndef AODV_REGRESSION_H
 #define AODV_REGRESSION_H
 
+#include "ns3/ipv4.h"
 #include "ns3/node-container.h"
 #include "ns3/nstime.h"
 #include "ns3/socket.h"
 #include "ns3/test.h"
-#include "ns3/ipv4.h"
 
 using namespace ns3;
 
