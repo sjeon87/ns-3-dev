@@ -13,6 +13,7 @@
 #include "ns3/nstime.h"
 #include "ns3/socket.h"
 #include "ns3/test.h"
+#include "ns3/ipv4.h"
 
 using namespace ns3;
 
@@ -185,7 +186,13 @@ class ChainRegressionTest : public TestCase
     Ptr<Socket> m_socket;
     /// Sequence number
     uint16_t m_seq;
+    /// RREQ counter
+    uint32_t m_rreqCount{0};
+    /// RREP counter
+    uint32_t m_rrepCount{0};
 
+    /// Packet transmission listener
+    void TxPkt (Ptr<const Packet> packet, Ptr<Ipv4> ipv4, uint32_t interface);
     /// Create test topology
     void CreateNodes();
     /// Create devices, install TCP/IP stack and applications
