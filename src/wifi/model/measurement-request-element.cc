@@ -330,20 +330,20 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, ChannelLoadRequestBody>)
             {
                 size += 6; // OpClass(1) + Channel(1) + RandInterval(2) + Duration(2)
-                if (body.channelLoadReporting)
+                if (body.GetChannelLoadReporting())
                 {
                     size += 4;
                 }
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, NoiseHistogramRequestBody>)
             {
                 size += 6;
-                if (body.noiseHistogramReporting)
+                if (body.GetNoiseHistogramReporting())
                 {
                     size += 4;
                 }
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, BeaconRequestBody>)
             {
@@ -462,35 +462,35 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, ChannelLoadRequestBody>)
             {
-                start.WriteU8(body.operatingClass);
-                start.WriteU8(body.channelNumber);
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU16(body.measurementDuration);
-                if (body.channelLoadReporting)
+                start.WriteU8(body.GetOperatingClass());
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU16(body.GetMeasurementDuration());
+                if (body.GetChannelLoadReporting())
                 {
                     start.WriteU8(static_cast<uint8_t>(
                         ChannelLoadRequestBody::SubelementId::CHANNEL_LOAD_REPORTING));
-                    start.WriteU8(body.channelLoadReporting->GetSerializedSize());
-                    start.WriteU8(body.channelLoadReporting->reportingCondition);
-                    start.WriteU8(body.channelLoadReporting->channelLoadReferenceValue);
+                    start.WriteU8(body.GetChannelLoadReporting()->GetSerializedSize());
+                    start.WriteU8(body.GetChannelLoadReporting()->reportingCondition);
+                    start.WriteU8(body.GetChannelLoadReporting()->channelLoadReferenceValue);
                 }
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, NoiseHistogramRequestBody>)
             {
-                start.WriteU8(body.operatingClass);
-                start.WriteU8(body.channelNumber);
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU16(body.measurementDuration);
-                if (body.noiseHistogramReporting)
+                start.WriteU8(body.GetOperatingClass());
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU16(body.GetMeasurementDuration());
+                if (body.GetNoiseHistogramReporting())
                 {
                     start.WriteU8(static_cast<uint8_t>(
                         NoiseHistogramRequestBody::SubelementId::NOISE_HISTOGRAM_REPORTING));
-                    start.WriteU8(body.noiseHistogramReporting->GetSerializedSize());
-                    start.WriteU8(body.noiseHistogramReporting->reportingCondition);
-                    start.WriteU8(body.noiseHistogramReporting->anpiReferenceValue);
+                    start.WriteU8(body.GetNoiseHistogramReporting()->GetSerializedSize());
+                    start.WriteU8(body.GetNoiseHistogramReporting()->reportingCondition);
+                    start.WriteU8(body.GetNoiseHistogramReporting()->anpiReferenceValue);
                 }
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, BeaconRequestBody>)
             {
@@ -666,19 +666,19 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::CHANNEL_LOAD: {
         auto& body = std::get<ChannelLoadRequestBody>(m_body);
-        body.operatingClass = i.ReadU8();
-        body.channelNumber = i.ReadU8();
-        body.randomizationInterval = i.ReadU16();
-        body.measurementDuration = i.ReadU16();
+        body.SetOperatingClass(i.ReadU8());
+        body.SetChannelNumber(i.ReadU8());
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMeasurementDuration(i.ReadU16());
         bytesRead += 6;
         break;
     }
     case MeasurementType::NOISE_HISTOGRAM: {
         auto& body = std::get<NoiseHistogramRequestBody>(m_body);
-        body.operatingClass = i.ReadU8();
-        body.channelNumber = i.ReadU8();
-        body.randomizationInterval = i.ReadU16();
-        body.measurementDuration = i.ReadU16();
+        body.SetOperatingClass(i.ReadU8());
+        body.SetChannelNumber(i.ReadU8());
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMeasurementDuration(i.ReadU16());
         bytesRead += 6;
         break;
     }
@@ -827,7 +827,15 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                     if constexpr (!std::is_same_v<T, std::monostate> &&
                                   !std::is_same_v<T, BasicRequestBody>)
                     {
-                        body.vendorSpecific = std::move(data);
+                        if constexpr (std::is_same_v<T, ChannelLoadRequestBody> ||
+                                      std::is_same_v<T, NoiseHistogramRequestBody>)
+                        {
+                            body.SetVendorSpecific(std::move(data));
+                        }
+                        else
+                        {
+                            body.vendorSpecific = std::move(data);
+                        }
                     }
                 },
                 m_body);
@@ -905,7 +913,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 auto& body = std::get<ChannelLoadRequestBody>(m_body);
                 uint8_t condition = i.ReadU8();
                 uint8_t refValue = i.ReadU8();
-                body.channelLoadReporting = ChannelLoadReporting{condition, refValue};
+                body.SetChannelLoadReporting(ChannelLoadReporting{condition, refValue});
                 handled = true;
             }
         }
@@ -918,7 +926,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 auto& body = std::get<NoiseHistogramRequestBody>(m_body);
                 uint8_t condition = i.ReadU8();
                 uint8_t refValue = i.ReadU8();
-                body.noiseHistogramReporting = NoiseHistogramReporting{condition, refValue};
+                body.SetNoiseHistogramReporting(NoiseHistogramReporting{condition, refValue});
                 handled = true;
             }
         }

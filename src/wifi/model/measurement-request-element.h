@@ -187,8 +187,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for Channel Load measurement (Figure 9-246)
      */
-    struct ChannelLoadRequestBody
+    class ChannelLoadRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Channel Load request (Table 9-137)
          */
@@ -200,20 +201,95 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
-        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+        /** @brief Set the Operating Class field. */
+        void SetOperatingClass(uint8_t v)
+        {
+            m_operatingClass = v;
+        }
 
-        std::optional<ChannelLoadReporting> channelLoadReporting; //!< Reporting subelement (ID 1)
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /** @brief Get the Operating Class field. */
+        uint8_t GetOperatingClass() const
+        {
+            return m_operatingClass;
+        }
+
+        /** @brief Set the Channel Number field. */
+        void SetChannelNumber(uint8_t v)
+        {
+            m_channelNumber = v;
+        }
+
+        /** @brief Get the Channel Number field. */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /** @brief Set the Randomization Interval field. */
+        void SetRandomizationInterval(uint16_t v)
+        {
+            m_randomizationInterval = v;
+        }
+
+        /** @brief Get the Randomization Interval field. */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /** @brief Set the Measurement Duration field. */
+        void SetMeasurementDuration(uint16_t v)
+        {
+            m_measurementDuration = v;
+        }
+
+        /** @brief Get the Measurement Duration field. */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /** @brief Set the Channel Load Reporting subelement. */
+        void SetChannelLoadReporting(const ChannelLoadReporting& v)
+        {
+            m_channelLoadReporting = v;
+        }
+
+        /** @brief Get the Channel Load Reporting subelement. */
+        std::optional<ChannelLoadReporting> GetChannelLoadReporting() const
+        {
+            return m_channelLoadReporting;
+        }
+
+        /** @brief Set the Vendor Specific subelement. */
+        void SetVendorSpecific(const std::vector<uint8_t>& v)
+        {
+            m_vendorSpecific = v;
+        }
+
+        /** @brief Get the Vendor Specific subelement. */
+        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_operatingClass{0};         ///< Operating Class (1 octet)
+        uint8_t m_channelNumber{0};          ///< Channel Number (1 octet)
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint16_t m_measurementDuration{0};   ///< Measurement Duration (2 octets)
+
+        std::optional<ChannelLoadReporting> m_channelLoadReporting; ///< Reporting subelement (ID 1)
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
      * @brief Request body for Noise Histogram measurement (Figure 9-248)
      */
-    struct NoiseHistogramRequestBody
+    class NoiseHistogramRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Noise Histogram request (Table 9-139)
          */
@@ -225,14 +301,88 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
-        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
+        /** @brief Set the Operating Class field. */
+        void SetOperatingClass(uint8_t v)
+        {
+            m_operatingClass = v;
+        }
+
+        /** @brief Get the Operating Class field. */
+        uint8_t GetOperatingClass() const
+        {
+            return m_operatingClass;
+        }
+
+        /** @brief Set the Channel Number field. */
+        void SetChannelNumber(uint8_t v)
+        {
+            m_channelNumber = v;
+        }
+
+        /** @brief Get the Channel Number field. */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /** @brief Set the Randomization Interval field. */
+        void SetRandomizationInterval(uint16_t v)
+        {
+            m_randomizationInterval = v;
+        }
+
+        /** @brief Get the Randomization Interval field. */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /** @brief Set the Measurement Duration field. */
+        void SetMeasurementDuration(uint16_t v)
+        {
+            m_measurementDuration = v;
+        }
+
+        /** @brief Get the Measurement Duration field. */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /** @brief Set the Noise Histogram Reporting subelement. */
+        void SetNoiseHistogramReporting(const NoiseHistogramReporting& v)
+        {
+            m_noiseHistogramReporting = v;
+        }
+
+        /** @brief Get the Noise Histogram Reporting subelement. */
+        std::optional<NoiseHistogramReporting> GetNoiseHistogramReporting() const
+        {
+            return m_noiseHistogramReporting;
+        }
+
+        /** @brief Set the Vendor Specific subelement. */
+        void SetVendorSpecific(const std::vector<uint8_t>& v)
+        {
+            m_vendorSpecific = v;
+        }
+
+        /** @brief Get the Vendor Specific subelement. */
+        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_operatingClass{0};         ///< Operating Class (1 octet)
+        uint8_t m_channelNumber{0};          ///< Channel Number (1 octet)
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint16_t m_measurementDuration{0};   ///< Measurement Duration (2 octets)
 
         std::optional<NoiseHistogramReporting>
-            noiseHistogramReporting;                        //!< Reporting subelement (ID 1)
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+            m_noiseHistogramReporting; ///< Reporting subelement (ID 1)
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**

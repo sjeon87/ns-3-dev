@@ -1559,10 +1559,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 11, "Channel Load size");
         }
@@ -1573,10 +1573,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::NOISE_HISTOGRAM);
             NoiseHistogramBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 11, "Noise Histogram size");
         }
@@ -1799,10 +1799,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(10);
             elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 500;
-            body.measurementDuration = 1000;
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(500);
+            body.SetMeasurementDuration(1000);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -1813,10 +1813,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(20);
             elem.SetMeasurementType(MeasurementType::NOISE_HISTOGRAM);
             NoiseHistogramBody body;
-            body.operatingClass = 115;
-            body.channelNumber = 36;
-            body.randomizationInterval = 200;
-            body.measurementDuration = 500;
+            body.SetOperatingClass(115);
+            body.SetChannelNumber(36);
+            body.SetRandomizationInterval(200);
+            body.SetMeasurementDuration(500);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2091,10 +2091,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(42);
             elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
-            body.operatingClass = 115;
-            body.channelNumber = 36;
-            body.randomizationInterval = 1234;
-            body.measurementDuration = 5678;
+            body.SetOperatingClass(115);
+            body.SetChannelNumber(36);
+            body.SetRandomizationInterval(1234);
+            body.SetMeasurementDuration(5678);
             elem.SetBody(body);
 
             Buffer buf;
@@ -2109,10 +2109,10 @@ MeasurementRequestElementTest::DoRun()
                                   MeasurementType::CHANNEL_LOAD,
                                   "CL type");
             auto& b = deserialized.GetBody<ChannelLoadBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.operatingClass, 115, "CL opclass");
-            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 36, "CL channel");
-            NS_TEST_EXPECT_MSG_EQ(b.randomizationInterval, 1234, "CL rand interval");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 5678, "CL duration");
+            NS_TEST_EXPECT_MSG_EQ(b.GetOperatingClass(), 115, "CL opclass");
+            NS_TEST_EXPECT_MSG_EQ(b.GetChannelNumber(), 36, "CL channel");
+            NS_TEST_EXPECT_MSG_EQ(b.GetRandomizationInterval(), 1234, "CL rand interval");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementDuration(), 5678, "CL duration");
         }
 
         // Beacon
@@ -2232,10 +2232,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(255);
             elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
             elem.SetBody(body);
 
             Buffer buf;
@@ -2254,10 +2254,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 0xFFFF;
-            body.measurementDuration = 0xFFFF;
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(0xFFFF);
+            body.SetMeasurementDuration(0xFFFF);
             elem.SetBody(body);
 
             Buffer buf;
@@ -2268,8 +2268,8 @@ MeasurementRequestElementTest::DoRun()
             deserialized.Deserialize(buf.Begin());
 
             auto& b = deserialized.GetBody<ChannelLoadBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.randomizationInterval, 0xFFFF, "Max rand interval");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 0xFFFF, "Max duration");
+            NS_TEST_EXPECT_MSG_EQ(b.GetRandomizationInterval(), 0xFFFF, "Max rand interval");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementDuration(), 0xFFFF, "Max duration");
         }
 
         // Wildcard BSSID in Beacon request
@@ -2292,8 +2292,8 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementRequestMode(0);
             elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
             elem.SetBody(body);
 
             Buffer buf;
@@ -2477,10 +2477,10 @@ MeasurementRequestModeTest::DoRun()
         elem.SetMeasurementToken(1);
         elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         MeasurementRequestElement::ChannelLoadRequestBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
         elem.SetBody(body);
         elem.SetParallel(true);
         elem.SetDurationMandatory(true);
@@ -2541,11 +2541,11 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(1);
         elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetChannelLoadReporting(MeasurementRequestElement::ChannelLoadReporting{1, 128});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2558,11 +2558,13 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<ChannelLoadBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting.has_value(), true, "CL Reporting present");
-        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting->reportingCondition,
+        NS_TEST_ASSERT_MSG_EQ(b.GetChannelLoadReporting().has_value(),
+                              true,
+                              "CL Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(b.GetChannelLoadReporting()->reportingCondition,
                               1,
                               "CL Reporting condition");
-        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting->channelLoadReferenceValue,
+        NS_TEST_ASSERT_MSG_EQ(b.GetChannelLoadReporting()->channelLoadReferenceValue,
                               128,
                               "CL Reporting reference value");
     }
@@ -2756,10 +2758,10 @@ MeasurementRequestSubelementsTest::DoRun()
         base.SetMeasurementToken(1);
         base.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody baseBody;
-        baseBody.operatingClass = 81;
-        baseBody.channelNumber = 6;
-        baseBody.randomizationInterval = 100;
-        baseBody.measurementDuration = 200;
+        baseBody.SetOperatingClass(81);
+        baseBody.SetChannelNumber(6);
+        baseBody.SetRandomizationInterval(100);
+        baseBody.SetMeasurementDuration(200);
         base.SetBody(baseBody);
 
         uint32_t baseSize = base.GetSerializedSize();
@@ -2768,11 +2770,11 @@ MeasurementRequestSubelementsTest::DoRun()
         withSubelem.SetMeasurementToken(1);
         withSubelem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody subBody;
-        subBody.operatingClass = 81;
-        subBody.channelNumber = 6;
-        subBody.randomizationInterval = 100;
-        subBody.measurementDuration = 200;
-        subBody.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
+        subBody.SetOperatingClass(81);
+        subBody.SetChannelNumber(6);
+        subBody.SetRandomizationInterval(100);
+        subBody.SetMeasurementDuration(200);
+        subBody.SetChannelLoadReporting(MeasurementRequestElement::ChannelLoadReporting{1, 128});
         withSubelem.SetBody(subBody);
 
         uint32_t withSubelemSize = withSubelem.GetSerializedSize();
@@ -2787,11 +2789,11 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(9);
         elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.vendorSpecific = std::vector<uint8_t>{0xAA, 0xBB, 0xCC};
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetVendorSpecific(std::vector<uint8_t>{0xAA, 0xBB, 0xCC});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2804,10 +2806,10 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<ChannelLoadBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.vendorSpecific.has_value(), true, "Vendor Specific present");
-        NS_TEST_ASSERT_MSG_EQ(b.vendorSpecific->size(), 3, "Vendor Specific size");
-        NS_TEST_ASSERT_MSG_EQ((*b.vendorSpecific)[0], 0xAA, "VS byte 0");
-        NS_TEST_ASSERT_MSG_EQ((*b.vendorSpecific)[2], 0xCC, "VS byte 2");
+        NS_TEST_ASSERT_MSG_EQ(b.GetVendorSpecific().has_value(), true, "Vendor Specific present");
+        NS_TEST_ASSERT_MSG_EQ(b.GetVendorSpecific()->size(), 3, "Vendor Specific size");
+        NS_TEST_ASSERT_MSG_EQ((*b.GetVendorSpecific())[0], 0xAA, "VS byte 0");
+        NS_TEST_ASSERT_MSG_EQ((*b.GetVendorSpecific())[2], 0xCC, "VS byte 2");
     }
 
     // Test 10: Noise Histogram with Reporting subelement (ID 1)
@@ -2816,11 +2818,11 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(10);
         elem.SetMeasurementType(MeasurementType::NOISE_HISTOGRAM);
         NoiseHistogramBody body;
-        body.operatingClass = 115;
-        body.channelNumber = 36;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.noiseHistogramReporting = MeasurementRequestElement::NoiseHistogramReporting{2, 200};
+        body.SetOperatingClass(115);
+        body.SetChannelNumber(36);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetNoiseHistogramReporting(MeasurementRequestElement::NoiseHistogramReporting{2, 200});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2833,11 +2835,13 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<NoiseHistogramBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.noiseHistogramReporting.has_value(), true, "NH Reporting present");
-        NS_TEST_ASSERT_MSG_EQ(b.noiseHistogramReporting->reportingCondition,
+        NS_TEST_ASSERT_MSG_EQ(b.GetNoiseHistogramReporting().has_value(),
+                              true,
+                              "NH Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(b.GetNoiseHistogramReporting()->reportingCondition,
                               2,
                               "NH Reporting condition");
-        NS_TEST_ASSERT_MSG_EQ(b.noiseHistogramReporting->anpiReferenceValue,
+        NS_TEST_ASSERT_MSG_EQ(b.GetNoiseHistogramReporting()->anpiReferenceValue,
                               200,
                               "NH Reporting ANPI ref");
     }
@@ -2976,11 +2980,11 @@ MeasurementRequestSubelementsTest::DoRun()
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(14);
         ChannelLoadBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetChannelLoadReporting(MeasurementRequestElement::ChannelLoadReporting{1, 128});
         elem.SetBody(body);
 
         NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
@@ -3000,10 +3004,10 @@ MeasurementRequestSubelementsTest::DoRun()
                               MeasurementType::CHANNEL_LOAD,
                               "Auto-synced type survives round-trip");
         auto& b = deserialized.GetBody<ChannelLoadBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting.has_value(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetChannelLoadReporting().has_value(),
                               true,
                               "CL Reporting present after auto-sync");
-        NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting->channelLoadReferenceValue,
+        NS_TEST_ASSERT_MSG_EQ(b.GetChannelLoadReporting()->channelLoadReferenceValue,
                               128,
                               "CL Reporting ref value after auto-sync");
     }
