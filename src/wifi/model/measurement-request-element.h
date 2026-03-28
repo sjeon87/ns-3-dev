@@ -46,6 +46,11 @@ class MeasurementRequestElement : public WifiInformationElement
     {
         uint8_t reportingCondition;        //!< Reporting Condition (1 octet, Table 9-138)
         uint8_t channelLoadReferenceValue; //!< Channel Load Reference Value (1 octet)
+
+        uint8_t GetSerializedSize() const
+        {
+            return sizeof(reportingCondition) + sizeof(channelLoadReferenceValue);
+        }
     };
 
     /**
@@ -55,6 +60,11 @@ class MeasurementRequestElement : public WifiInformationElement
     {
         uint8_t reportingCondition; //!< Reporting Condition (1 octet, Table 9-140)
         uint8_t anpiReferenceValue; //!< ANPI Reference Value (1 octet)
+
+        uint8_t GetSerializedSize() const
+        {
+            return sizeof(reportingCondition) + sizeof(anpiReferenceValue);
+        }
     };
 
     /**
@@ -64,6 +74,11 @@ class MeasurementRequestElement : public WifiInformationElement
     {
         uint8_t reportingCondition;       //!< Reporting Condition (1 octet, Table 9-143)
         uint8_t thresholdOffsetReference; //!< Threshold/Offset Reference (1 octet)
+
+        uint8_t GetSerializedSize() const
+        {
+            return sizeof(reportingCondition) + sizeof(thresholdOffsetReference);
+        }
     };
 
     /**
@@ -130,7 +145,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Channel Load request (Table 9-137)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             RESERVED = 0,
             CHANNEL_LOAD_REPORTING = 1,
@@ -155,7 +170,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Noise Histogram request (Table 9-139)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             RESERVED = 0,
             NOISE_HISTOGRAM_REPORTING = 1,
@@ -181,7 +196,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Beacon request (Table 9-142)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             SSID = 0,
             BEACON_REPORTING = 1,
@@ -216,7 +231,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Frame request (Table 9-145)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
             VENDOR_SPECIFIC = 221,
@@ -240,7 +255,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for STA Statistics request (Table 9-147)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             TRIGGERED_REPORTING = 1,
             VENDOR_SPECIFIC = 221,
@@ -262,7 +277,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for LCI request (Table 9-149)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             AZIMUTH_REQUEST = 1,
             ORIGINATOR_REQUESTING_STA_MAC_ADDRESS = 2,
@@ -285,7 +300,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Transmit Stream request (Table 9-150)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             TRIGGERED_REPORTING = 1,
             VENDOR_SPECIFIC = 221,
@@ -308,7 +323,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Multicast Diagnostics request (Table 9-153)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             MULTICAST_TRIGGERED_REPORTING = 1,
             VENDOR_SPECIFIC = 221,
@@ -329,7 +344,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Location Civic request (Table 9-156)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             ORIGINATOR_REQUESTING_STA_MAC_ADDRESS = 1,
             TARGET_MAC_ADDRESS = 2,
@@ -352,7 +367,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Location Identifier request (Table 9-157)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             ORIGINATOR_REQUESTING_STA_MAC_ADDRESS = 1,
             TARGET_MAC_ADDRESS = 2,
@@ -374,7 +389,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Directional Channel Quality request (Table 9-158)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             DIRECTIONAL_CHANNEL_QUALITY_REPORTING = 1,
             MEASUREMENT_CONFIGURATION = 2,
@@ -402,7 +417,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Directional Measurement request (Table 9-160)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             VENDOR_SPECIFIC = 221,
         };
@@ -426,7 +441,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Directional Statistics request (Table 9-161)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             VENDOR_SPECIFIC = 221,
         };
@@ -450,7 +465,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for FTM Range request (Table 9-162)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             MAXIMUM_AGE = 4,
             NEIGHBOR_REPORT = 52,
@@ -472,7 +487,7 @@ class MeasurementRequestElement : public WifiInformationElement
         /**
          * @brief Subelement IDs for Measurement Pause request (Table 9-152)
          */
-        enum SubelementId : uint8_t
+        enum class SubelementId : uint8_t
         {
             VENDOR_SPECIFIC = 221,
         };
