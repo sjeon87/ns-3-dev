@@ -2263,6 +2263,444 @@ MeasurementReportElementTest::DoRun()
 
         NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 2 + 3 + 26, "Fixed-only size");
     }
+
+    // Test 29: ChannelLoadReport WBC subelement (ID 163) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        ChannelLoadReport clr;
+        clr.SetOperatingClass(81);
+        clr.SetChannelNumber(6);
+        clr.SetChannelLoad(100);
+        BeaconReport::WideBandwidthChannelSwitch wbc;
+        wbc.newChannelWidth = 2;
+        wbc.newChannelCenterFreqSeg0 = 42;
+        wbc.newChannelCenterFreqSeg1 = 58;
+        clr.SetWideBandwidthChannelSwitch(wbc);
+        elem.SetChannelLoadReport(clr);
+
+        // 2 (IE hdr) + 3 (common) + 13 (fixed) + 2 (subhdr) + 3 (WBC data) = 23
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 23, "CL with WBC size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetChannelLoadReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "CL report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 81, "CL OpClass survives");
+        auto w = report->GetWideBandwidthChannelSwitch();
+        NS_TEST_ASSERT_MSG_EQ(w.has_value(), true, "WBC present");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelWidth, 2, "WBC width survives");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg0, 42, "WBC seg0 survives");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg1, 58, "WBC seg1 survives");
+    }
+
+    // Test 30: ChannelLoadReport Vendor Specific subelement (ID 221) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        ChannelLoadReport clr;
+        clr.SetChannelLoad(50);
+        clr.SetVendorSpecific({0x11, 0x22, 0x33});
+        elem.SetChannelLoadReport(clr);
+
+        // 2 + 3 + 13 + 2 + 3 = 23
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 23, "CL with VS size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetChannelLoadReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "CL report present");
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS present");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 3, "VS size");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[0], 0x11, "VS byte 0");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[2], 0x33, "VS byte 2");
+    }
+
+    // Test 31: ChannelLoadReport WBC and VS present simultaneously
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        ChannelLoadReport clr;
+        clr.SetOperatingClass(115);
+        clr.SetChannelNumber(36);
+        clr.SetChannelLoad(200);
+        BeaconReport::WideBandwidthChannelSwitch wbc;
+        wbc.newChannelWidth = 1;
+        wbc.newChannelCenterFreqSeg0 = 58;
+        wbc.newChannelCenterFreqSeg1 = 0;
+        clr.SetWideBandwidthChannelSwitch(wbc);
+        clr.SetVendorSpecific({0xAA, 0xBB});
+        elem.SetChannelLoadReport(clr);
+
+        // 2 + 3 + 13 + (2+3) + (2+2) = 27
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 27, "CL with WBC+VS size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetChannelLoadReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "CL report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 115, "OpClass survives");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelLoad(), 200, "Load survives");
+
+        auto w = report->GetWideBandwidthChannelSwitch();
+        NS_TEST_ASSERT_MSG_EQ(w.has_value(), true, "WBC survives");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg0, 58, "WBC seg0 survives");
+
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS survives");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 2, "VS size survives");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[1], 0xBB, "VS byte 1 survives");
+    }
+
+    // Test 32: ChannelLoadReport default -- no subelements
+    {
+        ChannelLoadReport clr;
+        NS_TEST_EXPECT_MSG_EQ(clr.GetWideBandwidthChannelSwitch().has_value(),
+                              false,
+                              "WBC absent by default");
+        NS_TEST_EXPECT_MSG_EQ(clr.GetVendorSpecific().has_value(), false, "VS absent by default");
+    }
+
+    // Test 33: Unknown subelement in CL raw buffer is skipped gracefully
+    {
+        // Build raw: IE hdr(2) + token(1) + mode(1) + type(1) + 13 fixed CL + unknown sub(2+2)
+        // Total = 2 + 1 + 1 + 1 + 13 + 4 = 22 bytes; IE length field = 20
+        Buffer buf;
+        buf.AddAtStart(22);
+        Buffer::Iterator it = buf.Begin();
+        it.WriteU8(39); // IE_MEASUREMENT_REPORT
+        it.WriteU8(20); // length
+        it.WriteU8(5);  // token
+        it.WriteU8(0);  // mode
+        it.WriteU8(3);  // CHANNEL_LOAD
+        // 13 fixed CL bytes
+        it.WriteU8(81);   // operating class
+        it.WriteU8(6);    // channel
+        it.WriteU64(0);   // start time
+        it.WriteU16(500); // duration
+        it.WriteU8(77);   // load
+        // unknown subelement: ID=5, len=2, data=0xAA 0xBB
+        it.WriteU8(5);
+        it.WriteU8(2);
+        it.WriteU8(0xAA);
+        it.WriteU8(0xBB);
+
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetChannelLoadReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "CL present after unknown sub");
+        NS_TEST_EXPECT_MSG_EQ(report->GetChannelLoad(), 77, "Load correct after skip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetWideBandwidthChannelSwitch().has_value(),
+                              false,
+                              "WBC absent");
+    }
+
+    // Test 34: NoiseHistogramReport WBC subelement (ID 163) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(2);
+        NoiseHistogramReport nhr;
+        nhr.SetOperatingClass(81);
+        nhr.SetChannelNumber(6);
+        nhr.SetAnpi(150);
+        BeaconReport::WideBandwidthChannelSwitch wbc;
+        wbc.newChannelWidth = 2;
+        wbc.newChannelCenterFreqSeg0 = 42;
+        wbc.newChannelCenterFreqSeg1 = 58;
+        nhr.SetWideBandwidthChannelSwitch(wbc);
+        elem.SetNoiseHistogramReport(nhr);
+
+        // 2 + 3 + 25 + 2 + 3 = 35
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 35, "NH with WBC size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetNoiseHistogramReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "NH report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAnpi(), 150, "ANPI survives");
+        auto w = report->GetWideBandwidthChannelSwitch();
+        NS_TEST_ASSERT_MSG_EQ(w.has_value(), true, "WBC present");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelWidth, 2, "WBC width survives");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg0, 42, "WBC seg0 survives");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg1, 58, "WBC seg1 survives");
+    }
+
+    // Test 35: NoiseHistogramReport Vendor Specific subelement (ID 221) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(2);
+        NoiseHistogramReport nhr;
+        nhr.SetAnpi(200);
+        nhr.SetVendorSpecific({0xDE, 0xAD, 0xBE, 0xEF});
+        elem.SetNoiseHistogramReport(nhr);
+
+        // 2 + 3 + 25 + 2 + 4 = 36
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 36, "NH with VS size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetNoiseHistogramReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "NH report present");
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS present");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 4, "VS size");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[0], 0xDE, "VS byte 0");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[3], 0xEF, "VS byte 3");
+    }
+
+    // Test 36: NoiseHistogramReport WBC and VS present simultaneously
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(2);
+        NoiseHistogramReport nhr;
+        nhr.SetOperatingClass(115);
+        nhr.SetChannelNumber(36);
+        nhr.SetAnpi(100);
+        BeaconReport::WideBandwidthChannelSwitch wbc;
+        wbc.newChannelWidth = 1;
+        wbc.newChannelCenterFreqSeg0 = 58;
+        wbc.newChannelCenterFreqSeg1 = 0;
+        nhr.SetWideBandwidthChannelSwitch(wbc);
+        nhr.SetVendorSpecific({0x01, 0x02, 0x03});
+        elem.SetNoiseHistogramReport(nhr);
+
+        // 2 + 3 + 25 + (2+3) + (2+3) = 40
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 40, "NH with WBC+VS size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetNoiseHistogramReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "NH report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAnpi(), 100, "ANPI survives");
+
+        auto w = report->GetWideBandwidthChannelSwitch();
+        NS_TEST_ASSERT_MSG_EQ(w.has_value(), true, "WBC survives");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg0, 58, "WBC seg0 survives");
+
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS survives");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 3, "VS size survives");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[2], 0x03, "VS byte 2 survives");
+    }
+
+    // Test 37: NoiseHistogramReport default -- no subelements
+    {
+        NoiseHistogramReport nhr;
+        NS_TEST_EXPECT_MSG_EQ(nhr.GetWideBandwidthChannelSwitch().has_value(),
+                              false,
+                              "WBC absent by default");
+        NS_TEST_EXPECT_MSG_EQ(nhr.GetVendorSpecific().has_value(), false, "VS absent by default");
+    }
+
+    // Test 38: Unknown subelement in NH raw buffer is skipped gracefully
+    {
+        // IE hdr(2) + token(1) + mode(1) + type(1) + 25 fixed NH + unknown sub(2+1)
+        // Total = 33; IE length = 31
+        Buffer buf;
+        buf.AddAtStart(33);
+        Buffer::Iterator it = buf.Begin();
+        it.WriteU8(39); // IE_MEASUREMENT_REPORT
+        it.WriteU8(31); // length
+        it.WriteU8(3);  // token
+        it.WriteU8(0);  // mode
+        it.WriteU8(4);  // NOISE_HISTOGRAM
+        // 25 fixed NH bytes
+        it.WriteU8(81);   // operating class
+        it.WriteU8(6);    // channel
+        it.WriteU64(0);   // start time
+        it.WriteU16(200); // duration
+        it.WriteU8(1);    // antenna id
+        it.WriteU8(80);   // ANPI
+        for (uint8_t i = 0; i < 11; i++)
+        {
+            it.WriteU8(i * 10);
+        }
+        // unknown subelement: ID=7, len=1, data=0xFF
+        it.WriteU8(7);
+        it.WriteU8(1);
+        it.WriteU8(0xFF);
+
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetNoiseHistogramReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "NH present after unknown sub");
+        NS_TEST_EXPECT_MSG_EQ(report->GetAnpi(), 80, "ANPI correct after skip");
+        NS_TEST_EXPECT_MSG_EQ(report->GetWideBandwidthChannelSwitch().has_value(),
+                              false,
+                              "WBC absent");
+    }
+
+    // Test 39: StaStatisticsReport Reporting Reason (ID 1) round-trip, Group0
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(10);
+        StaStatisticsReport ssr;
+        StaStatisticsReport::Group0Data g0;
+        g0.fcsErrorCount = 42;
+        ssr.SetGroup0Data(g0);
+        ssr.SetMeasurementDuration(500);
+        ssr.SetReportingReason(
+            0x15); // triggered: dot11Failed | dot11MultipleRetry | dot11RTSFailure
+        elem.SetStaStatisticsReport(ssr);
+
+        // 2 + 3 + (3 + 28) + (2 + 1) = 39
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 39, "STA stats with ReportingReason size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetStaStatisticsReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "SSR present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), 500, "Duration survives");
+        NS_TEST_EXPECT_MSG_EQ(report->GetGroupIdentity(), 0, "GroupIdentity survives");
+        auto rr = report->GetReportingReason();
+        NS_TEST_ASSERT_MSG_EQ(rr.has_value(), true, "ReportingReason present");
+        NS_TEST_EXPECT_MSG_EQ(*rr, 0x15, "ReportingReason value survives");
+    }
+
+    // Test 40: StaStatisticsReport Reporting Reason = 0 (non-triggered), Group10
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(10);
+        StaStatisticsReport ssr;
+        StaStatisticsReport::Group10Data g10;
+        g10.channelUtilization = 80;
+        ssr.SetGroup10Data(g10);
+        ssr.SetReportingReason(0x00);
+        elem.SetStaStatisticsReport(ssr);
+
+        // 2 + 3 + (3 + 8) + (2 + 1) = 19
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 19, "STA stats Group10 with RR size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetStaStatisticsReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "SSR present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetGroupIdentity(), 10, "GroupIdentity 10 survives");
+        auto g = report->GetGroup10Data();
+        NS_TEST_ASSERT_MSG_EQ(g.has_value(), true, "Group10 data present");
+        NS_TEST_EXPECT_MSG_EQ(g->channelUtilization, 80, "ChannelUtilization survives");
+        auto rr = report->GetReportingReason();
+        NS_TEST_ASSERT_MSG_EQ(rr.has_value(), true, "ReportingReason present");
+        NS_TEST_EXPECT_MSG_EQ(*rr, 0x00, "ReportingReason 0 survives");
+    }
+
+    // Test 41: StaStatisticsReport Vendor Specific subelement (ID 221) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(10);
+        StaStatisticsReport ssr;
+        StaStatisticsReport::Group1Data g1;
+        g1.retryCount = 10;
+        ssr.SetGroup1Data(g1);
+        ssr.SetVendorSpecific({0xCA, 0xFE, 0xBA, 0xBE});
+        elem.SetStaStatisticsReport(ssr);
+
+        // 2 + 3 + (3 + 24) + (2 + 4) = 38
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 38, "STA stats with VS size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetStaStatisticsReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "SSR present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetGroupIdentity(), 1, "GroupIdentity 1 survives");
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS present");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 4, "VS size");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[0], 0xCA, "VS byte 0");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[3], 0xBE, "VS byte 3");
+    }
+
+    // Test 42: StaStatisticsReport Reporting Reason and VS present simultaneously
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(10);
+        StaStatisticsReport ssr;
+        StaStatisticsReport::Group0Data g0;
+        g0.transmittedFragmentCount = 100;
+        ssr.SetGroup0Data(g0);
+        ssr.SetMeasurementDuration(1000);
+        ssr.SetReportingReason(0x07);
+        ssr.SetVendorSpecific({0x01, 0x02});
+        elem.SetStaStatisticsReport(ssr);
+
+        // 2 + 3 + (3 + 28) + (2 + 1) + (2 + 2) = 43
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 43, "STA stats with RR+VS size");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetStaStatisticsReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "SSR present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetMeasurementDuration(), 1000, "Duration survives");
+
+        auto rr = report->GetReportingReason();
+        NS_TEST_ASSERT_MSG_EQ(rr.has_value(), true, "RR survives");
+        NS_TEST_EXPECT_MSG_EQ(*rr, 0x07, "RR value survives");
+
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "VS survives");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 2, "VS size survives");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[0], 0x01, "VS byte 0 survives");
+    }
+
+    // Test 43: StaStatisticsReport default -- no subelements
+    {
+        StaStatisticsReport ssr;
+        NS_TEST_EXPECT_MSG_EQ(ssr.GetReportingReason().has_value(), false, "RR absent by default");
+        NS_TEST_EXPECT_MSG_EQ(ssr.GetVendorSpecific().has_value(), false, "VS absent by default");
+    }
 }
 
 /**

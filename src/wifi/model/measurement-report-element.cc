@@ -371,7 +371,16 @@ BeaconReport::GetVendorSpecific() const
 uint16_t
 ChannelLoadReport::GetSerializedSize() const
 {
-    return SERIALIZED_SIZE;
+    uint16_t size = FIXED_FIELDS_SIZE;
+    if (m_wideBandwidthChannelSwitch)
+    {
+        size += 2 + 3;
+    }
+    if (m_vendorSpecific)
+    {
+        size += 2 + static_cast<uint16_t>(m_vendorSpecific->size());
+    }
+    return size;
 }
 
 void
@@ -382,17 +391,70 @@ ChannelLoadReport::Serialize(Buffer::Iterator& start) const
     start.WriteU64(m_actualMeasurementStartTime);
     start.WriteU16(m_measurementDuration);
     start.WriteU8(m_channelLoad);
+    if (m_wideBandwidthChannelSwitch)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL_SWITCH));
+        start.WriteU8(3);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelWidth);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelCenterFreqSeg0);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelCenterFreqSeg1);
+    }
+    if (m_vendorSpecific)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC));
+        start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->size()));
+        for (uint8_t b : *m_vendorSpecific)
+        {
+            start.WriteU8(b);
+        }
+    }
 }
 
 uint16_t
-ChannelLoadReport::Deserialize(Buffer::Iterator& start)
+ChannelLoadReport::Deserialize(Buffer::Iterator& start, uint16_t length)
 {
     m_operatingClass = start.ReadU8();
     m_channelNumber = start.ReadU8();
     m_actualMeasurementStartTime = start.ReadU64();
     m_measurementDuration = start.ReadU16();
     m_channelLoad = start.ReadU8();
-    return SERIALIZED_SIZE;
+    uint16_t bytesRead = FIXED_FIELDS_SIZE;
+
+    while (bytesRead + 2 <= length)
+    {
+        uint8_t subId = start.ReadU8();
+        uint8_t subLen = start.ReadU8();
+        bytesRead += 2;
+        if (subId == static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL_SWITCH))
+        {
+            BeaconReport::WideBandwidthChannelSwitch wbc;
+            wbc.newChannelWidth = start.ReadU8();
+            wbc.newChannelCenterFreqSeg0 = start.ReadU8();
+            wbc.newChannelCenterFreqSeg1 = start.ReadU8();
+            m_wideBandwidthChannelSwitch = wbc;
+            bytesRead += subLen;
+        }
+        else if (subId == static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC))
+        {
+            std::vector<uint8_t> data(subLen);
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                data[j] = start.ReadU8();
+            }
+            m_vendorSpecific = std::move(data);
+            bytesRead += subLen;
+        }
+        else
+        {
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                start.ReadU8();
+            }
+            bytesRead += subLen;
+        }
+    }
+
+    return bytesRead;
 }
 
 void
@@ -455,12 +517,46 @@ ChannelLoadReport::GetChannelLoad() const
     return m_channelLoad;
 }
 
+void
+ChannelLoadReport::SetWideBandwidthChannelSwitch(
+    const BeaconReport::WideBandwidthChannelSwitch& wbc)
+{
+    m_wideBandwidthChannelSwitch = wbc;
+}
+
+std::optional<BeaconReport::WideBandwidthChannelSwitch>
+ChannelLoadReport::GetWideBandwidthChannelSwitch() const
+{
+    return m_wideBandwidthChannelSwitch;
+}
+
+void
+ChannelLoadReport::SetVendorSpecific(const std::vector<uint8_t>& data)
+{
+    m_vendorSpecific = data;
+}
+
+std::optional<std::vector<uint8_t>>
+ChannelLoadReport::GetVendorSpecific() const
+{
+    return m_vendorSpecific;
+}
+
 // --- NoiseHistogramReport ---
 
 uint16_t
 NoiseHistogramReport::GetSerializedSize() const
 {
-    return SERIALIZED_SIZE;
+    uint16_t size = FIXED_FIELDS_SIZE;
+    if (m_wideBandwidthChannelSwitch)
+    {
+        size += 2 + 3;
+    }
+    if (m_vendorSpecific)
+    {
+        size += 2 + static_cast<uint16_t>(m_vendorSpecific->size());
+    }
+    return size;
 }
 
 void
@@ -476,10 +572,27 @@ NoiseHistogramReport::Serialize(Buffer::Iterator& start) const
     {
         start.WriteU8(m_ipiDensities[i]);
     }
+    if (m_wideBandwidthChannelSwitch)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL_SWITCH));
+        start.WriteU8(3);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelWidth);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelCenterFreqSeg0);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelCenterFreqSeg1);
+    }
+    if (m_vendorSpecific)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC));
+        start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->size()));
+        for (uint8_t b : *m_vendorSpecific)
+        {
+            start.WriteU8(b);
+        }
+    }
 }
 
 uint16_t
-NoiseHistogramReport::Deserialize(Buffer::Iterator& start)
+NoiseHistogramReport::Deserialize(Buffer::Iterator& start, uint16_t length)
 {
     m_operatingClass = start.ReadU8();
     m_channelNumber = start.ReadU8();
@@ -491,7 +604,43 @@ NoiseHistogramReport::Deserialize(Buffer::Iterator& start)
     {
         m_ipiDensities[i] = start.ReadU8();
     }
-    return SERIALIZED_SIZE;
+    uint16_t bytesRead = FIXED_FIELDS_SIZE;
+
+    while (bytesRead + 2 <= length)
+    {
+        uint8_t subId = start.ReadU8();
+        uint8_t subLen = start.ReadU8();
+        bytesRead += 2;
+        if (subId == static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL_SWITCH))
+        {
+            BeaconReport::WideBandwidthChannelSwitch wbc;
+            wbc.newChannelWidth = start.ReadU8();
+            wbc.newChannelCenterFreqSeg0 = start.ReadU8();
+            wbc.newChannelCenterFreqSeg1 = start.ReadU8();
+            m_wideBandwidthChannelSwitch = wbc;
+            bytesRead += subLen;
+        }
+        else if (subId == static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC))
+        {
+            std::vector<uint8_t> data(subLen);
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                data[j] = start.ReadU8();
+            }
+            m_vendorSpecific = std::move(data);
+            bytesRead += subLen;
+        }
+        else
+        {
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                start.ReadU8();
+            }
+            bytesRead += subLen;
+        }
+    }
+
+    return bytesRead;
 }
 
 void
@@ -578,6 +727,31 @@ NoiseHistogramReport::GetIpiDensity(uint8_t level) const
 {
     NS_ASSERT_MSG(level <= 10, "IPI level must be 0-10");
     return m_ipiDensities[level];
+}
+
+void
+NoiseHistogramReport::SetWideBandwidthChannelSwitch(
+    const BeaconReport::WideBandwidthChannelSwitch& wbc)
+{
+    m_wideBandwidthChannelSwitch = wbc;
+}
+
+std::optional<BeaconReport::WideBandwidthChannelSwitch>
+NoiseHistogramReport::GetWideBandwidthChannelSwitch() const
+{
+    return m_wideBandwidthChannelSwitch;
+}
+
+void
+NoiseHistogramReport::SetVendorSpecific(const std::vector<uint8_t>& data)
+{
+    m_vendorSpecific = data;
+}
+
+std::optional<std::vector<uint8_t>>
+NoiseHistogramReport::GetVendorSpecific() const
+{
+    return m_vendorSpecific;
 }
 
 // --- FrameReportEntry ---
@@ -893,7 +1067,16 @@ StaStatisticsReport::GetExpectedGroupDataSize(uint8_t groupIdentity)
 uint16_t
 StaStatisticsReport::GetSerializedSize() const
 {
-    return 3 + static_cast<uint16_t>(m_statisticsGroupData.size());
+    uint16_t size = 3 + static_cast<uint16_t>(m_statisticsGroupData.size());
+    if (m_reportingReason)
+    {
+        size += 2 + 1;
+    }
+    if (m_vendorSpecific)
+    {
+        size += 2 + static_cast<uint16_t>(m_vendorSpecific->size());
+    }
+    return size;
 }
 
 void
@@ -905,10 +1088,25 @@ StaStatisticsReport::Serialize(Buffer::Iterator& start) const
     {
         start.WriteU8(byte);
     }
+    if (m_reportingReason)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::REPORTING_REASON));
+        start.WriteU8(1);
+        start.WriteU8(*m_reportingReason);
+    }
+    if (m_vendorSpecific)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC));
+        start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->size()));
+        for (uint8_t b : *m_vendorSpecific)
+        {
+            start.WriteU8(b);
+        }
+    }
 }
 
 uint16_t
-StaStatisticsReport::Deserialize(Buffer::Iterator& start)
+StaStatisticsReport::Deserialize(Buffer::Iterator& start, uint16_t length)
 {
     m_measurementDuration = start.ReadU16();
     m_groupIdentity = start.ReadU8();
@@ -918,7 +1116,39 @@ StaStatisticsReport::Deserialize(Buffer::Iterator& start)
     {
         m_statisticsGroupData[i] = start.ReadU8();
     }
-    return 3 + dataSize;
+    uint16_t bytesRead = 3 + dataSize;
+
+    while (bytesRead + 2 <= length)
+    {
+        uint8_t subId = start.ReadU8();
+        uint8_t subLen = start.ReadU8();
+        bytesRead += 2;
+        if (subId == static_cast<uint8_t>(SubelementId::REPORTING_REASON))
+        {
+            m_reportingReason = start.ReadU8();
+            bytesRead += subLen;
+        }
+        else if (subId == static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC))
+        {
+            std::vector<uint8_t> data(subLen);
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                data[j] = start.ReadU8();
+            }
+            m_vendorSpecific = std::move(data);
+            bytesRead += subLen;
+        }
+        else
+        {
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                start.ReadU8();
+            }
+            bytesRead += subLen;
+        }
+    }
+
+    return bytesRead;
 }
 
 void
@@ -1079,6 +1309,30 @@ StaStatisticsReport::GetGroup10Data() const
     data.stationCount = it.ReadU16();
     data.channelUtilization = it.ReadU8();
     return data;
+}
+
+void
+StaStatisticsReport::SetReportingReason(uint8_t reason)
+{
+    m_reportingReason = reason;
+}
+
+std::optional<uint8_t>
+StaStatisticsReport::GetReportingReason() const
+{
+    return m_reportingReason;
+}
+
+void
+StaStatisticsReport::SetVendorSpecific(const std::vector<uint8_t>& data)
+{
+    m_vendorSpecific = data;
+}
+
+std::optional<std::vector<uint8_t>>
+StaStatisticsReport::GetVendorSpecific() const
+{
+    return m_vendorSpecific;
 }
 
 // --- MeasurementReportElement ---
@@ -1353,13 +1607,13 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
         else if (m_measurementType == MeasurementReportType::CHANNEL_LOAD)
         {
             ChannelLoadReport clr;
-            bytesRead += clr.Deserialize(i);
+            bytesRead += clr.Deserialize(i, length - bytesRead);
             m_report = clr;
         }
         else if (m_measurementType == MeasurementReportType::NOISE_HISTOGRAM)
         {
             NoiseHistogramReport nhr;
-            bytesRead += nhr.Deserialize(i);
+            bytesRead += nhr.Deserialize(i, length - bytesRead);
             m_report = nhr;
         }
         else if (m_measurementType == MeasurementReportType::FRAME)
@@ -1371,7 +1625,7 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
         else if (m_measurementType == MeasurementReportType::STA_STATISTICS)
         {
             StaStatisticsReport ssr;
-            bytesRead += ssr.Deserialize(i);
+            bytesRead += ssr.Deserialize(i, length - bytesRead);
             m_report = ssr;
         }
         else

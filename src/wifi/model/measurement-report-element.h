@@ -258,17 +258,26 @@ class BeaconReport
  * @brief Channel Load Report body (IEEE 802.11-2024 Section 9.4.2.20.5, Figure 9-295)
  * @ingroup wifi
  *
- * Fixed fields (13 bytes total). Optional subelements (Table 9-165) are not
- * yet implemented.
+ * Fixed fields (13 bytes) plus optional subelements (Table 9-165):
+ * Wide Bandwidth Channel Switch (ID 163) and Vendor Specific (ID 221).
  */
 class ChannelLoadReport
 {
   public:
-    static constexpr uint16_t SERIALIZED_SIZE = 13; ///< Fixed fields size in bytes
+    static constexpr uint16_t FIXED_FIELDS_SIZE = 13; ///< Fixed fields size in bytes
+
+    /**
+     * @brief Subelement IDs for Channel Load Report (IEEE 802.11-2024 Table 9-165)
+     */
+    enum class SubelementId : uint8_t
+    {
+        WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
+        VENDOR_SPECIFIC = 221,
+    };
 
     /**
      * @brief Get the serialized size of the channel load report body.
-     * @return 13 bytes (fixed fields only)
+     * @return size in bytes (fixed fields plus any present subelements)
      */
     uint16_t GetSerializedSize() const;
 
@@ -281,9 +290,10 @@ class ChannelLoadReport
     /**
      * @brief Deserialize the channel load report body.
      * @param start the buffer iterator
+     * @param length total bytes available for the report body
      * @return number of bytes read
      */
-    uint16_t Deserialize(Buffer::Iterator& start);
+    uint16_t Deserialize(Buffer::Iterator& start, uint16_t length);
 
     /** @brief Set the Operating Class field. @param operatingClass the value */
     void SetOperatingClass(uint8_t operatingClass);
@@ -310,29 +320,64 @@ class ChannelLoadReport
     /** @brief Get the Channel Load field. @return channel load value (0-255) */
     uint8_t GetChannelLoad() const;
 
+    /**
+     * @brief Set the Wide Bandwidth Channel Switch subelement (ID 163).
+     * @param wbc the channel switch fields
+     */
+    void SetWideBandwidthChannelSwitch(const BeaconReport::WideBandwidthChannelSwitch& wbc);
+    /**
+     * @brief Get the Wide Bandwidth Channel Switch subelement (ID 163).
+     * @return the channel switch fields, or std::nullopt if not present
+     */
+    std::optional<BeaconReport::WideBandwidthChannelSwitch> GetWideBandwidthChannelSwitch() const;
+
+    /**
+     * @brief Set the Vendor Specific subelement (ID 221).
+     * @param data raw vendor specific bytes
+     */
+    void SetVendorSpecific(const std::vector<uint8_t>& data);
+    /**
+     * @brief Get the Vendor Specific subelement (ID 221).
+     * @return raw bytes, or std::nullopt if not present
+     */
+    std::optional<std::vector<uint8_t>> GetVendorSpecific() const;
+
   private:
     uint8_t m_operatingClass{0};              //!< Operating Class (1 octet)
     uint8_t m_channelNumber{0};               //!< Channel Number (1 octet)
     uint64_t m_actualMeasurementStartTime{0}; //!< Actual Measurement Start Time (8 octets)
     uint16_t m_measurementDuration{0};        //!< Measurement Duration (2 octets)
     uint8_t m_channelLoad{0};                 //!< Channel Load (1 octet)
+
+    std::optional<BeaconReport::WideBandwidthChannelSwitch>
+        m_wideBandwidthChannelSwitch;                     //!< WBC subelement (ID 163)
+    std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific subelement (ID 221)
 };
 
 /**
  * @brief Noise Histogram Report body (IEEE 802.11-2024 Section 9.4.2.20.6, Figure 9-296)
  * @ingroup wifi
  *
- * Fixed fields (25 bytes total). Optional subelements (Table 9-167) are not
- * yet implemented.
+ * Fixed fields (25 bytes) plus optional subelements (Table 9-167):
+ * Wide Bandwidth Channel Switch (ID 163) and Vendor Specific (ID 221).
  */
 class NoiseHistogramReport
 {
   public:
-    static constexpr uint16_t SERIALIZED_SIZE = 25; ///< Fixed fields size in bytes
+    static constexpr uint16_t FIXED_FIELDS_SIZE = 25; ///< Fixed fields size in bytes
+
+    /**
+     * @brief Subelement IDs for Noise Histogram Report (IEEE 802.11-2024 Table 9-167)
+     */
+    enum class SubelementId : uint8_t
+    {
+        WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
+        VENDOR_SPECIFIC = 221,
+    };
 
     /**
      * @brief Get the serialized size of the noise histogram report body.
-     * @return 25 bytes (fixed fields only)
+     * @return size in bytes (fixed fields plus any present subelements)
      */
     uint16_t GetSerializedSize() const;
 
@@ -345,9 +390,10 @@ class NoiseHistogramReport
     /**
      * @brief Deserialize the noise histogram report body.
      * @param start the buffer iterator
+     * @param length total bytes available for the report body
      * @return number of bytes read
      */
-    uint16_t Deserialize(Buffer::Iterator& start);
+    uint16_t Deserialize(Buffer::Iterator& start, uint16_t length);
 
     /** @brief Set the Operating Class field. @param operatingClass the value */
     void SetOperatingClass(uint8_t operatingClass);
@@ -392,6 +438,28 @@ class NoiseHistogramReport
      */
     uint8_t GetIpiDensity(uint8_t level) const;
 
+    /**
+     * @brief Set the Wide Bandwidth Channel Switch subelement (ID 163).
+     * @param wbc the channel switch fields
+     */
+    void SetWideBandwidthChannelSwitch(const BeaconReport::WideBandwidthChannelSwitch& wbc);
+    /**
+     * @brief Get the Wide Bandwidth Channel Switch subelement (ID 163).
+     * @return the channel switch fields, or std::nullopt if not present
+     */
+    std::optional<BeaconReport::WideBandwidthChannelSwitch> GetWideBandwidthChannelSwitch() const;
+
+    /**
+     * @brief Set the Vendor Specific subelement (ID 221).
+     * @param data raw vendor specific bytes
+     */
+    void SetVendorSpecific(const std::vector<uint8_t>& data);
+    /**
+     * @brief Get the Vendor Specific subelement (ID 221).
+     * @return raw bytes, or std::nullopt if not present
+     */
+    std::optional<std::vector<uint8_t>> GetVendorSpecific() const;
+
   private:
     uint8_t m_operatingClass{0};              //!< Operating Class (1 octet)
     uint8_t m_channelNumber{0};               //!< Channel Number (1 octet)
@@ -400,6 +468,10 @@ class NoiseHistogramReport
     uint8_t m_antennaId{0};                   //!< Antenna ID (1 octet)
     uint8_t m_anpi{0};                        //!< ANPI (1 octet)
     std::array<uint8_t, 11> m_ipiDensities{}; //!< IPI 0-10 Densities (11 octets)
+
+    std::optional<BeaconReport::WideBandwidthChannelSwitch>
+        m_wideBandwidthChannelSwitch;                     //!< WBC subelement (ID 163)
+    std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific subelement (ID 221)
 };
 
 /**
@@ -562,11 +634,20 @@ class FrameReport
  *
  * Fixed fields: Measurement Duration (2 octets), Group Identity (1 octet),
  * Statistics Group Data (variable, size determined by Group Identity per Table 9-170).
- * Optional subelements (Table 9-171) are not yet implemented.
+ * Optional subelements (Table 9-171): Reporting Reason (ID 1) and Vendor Specific (ID 221).
  */
 class StaStatisticsReport
 {
   public:
+    /**
+     * @brief Subelement IDs for STA Statistics Report (IEEE 802.11-2024 Table 9-171)
+     */
+    enum class SubelementId : uint8_t
+    {
+        REPORTING_REASON = 1,
+        VENDOR_SPECIFIC = 221,
+    };
+
     /**
      * @brief dot11CountersTable (Figure 9-304, 7 x Counter32 = 28 bytes)
      */
@@ -623,9 +704,10 @@ class StaStatisticsReport
     /**
      * @brief Deserialize the STA Statistics report body.
      * @param start the buffer iterator
+     * @param length total bytes available for the report body
      * @return number of bytes read
      */
-    uint16_t Deserialize(Buffer::Iterator& start);
+    uint16_t Deserialize(Buffer::Iterator& start, uint16_t length);
 
     /** @brief Set the Measurement Duration field. @param duration duration in TUs */
     void SetMeasurementDuration(uint16_t duration);
@@ -666,10 +748,39 @@ class StaStatisticsReport
      */
     static uint16_t GetExpectedGroupDataSize(uint8_t groupIdentity);
 
+    /**
+     * @brief Set the Reporting Reason subelement (ID 1).
+     *
+     * The 1-byte Data field encodes which triggered condition caused the report.
+     * Set to 0 for non-triggered reports. The bit layout depends on Group Identity
+     * (Figures 9-309, 9-310, 9-311).
+     * @param reason the reporting reason byte
+     */
+    void SetReportingReason(uint8_t reason);
+    /**
+     * @brief Get the Reporting Reason subelement (ID 1).
+     * @return the reason byte, or std::nullopt if not present
+     */
+    std::optional<uint8_t> GetReportingReason() const;
+
+    /**
+     * @brief Set the Vendor Specific subelement (ID 221).
+     * @param data raw vendor specific bytes
+     */
+    void SetVendorSpecific(const std::vector<uint8_t>& data);
+    /**
+     * @brief Get the Vendor Specific subelement (ID 221).
+     * @return raw bytes, or std::nullopt if not present
+     */
+    std::optional<std::vector<uint8_t>> GetVendorSpecific() const;
+
   private:
     uint16_t m_measurementDuration{0};          //!< Measurement Duration (2 octets)
     uint8_t m_groupIdentity{0};                 //!< Group Identity (1 octet)
     std::vector<uint8_t> m_statisticsGroupData; //!< Statistics Group Data (variable)
+
+    std::optional<uint8_t> m_reportingReason;             //!< Reporting Reason subelement (ID 1)
+    std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific subelement (ID 221)
 };
 
 /**
