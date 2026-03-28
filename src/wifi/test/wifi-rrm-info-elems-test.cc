@@ -1588,12 +1588,12 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.measurementMode = 0;
-            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetMeasurementMode(0);
+            body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 18, "Beacon size");
         }
@@ -1827,12 +1827,12 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(30);
             elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.measurementMode = 1;
-            body.bssid = Mac48Address("aa:bb:cc:dd:ee:ff");
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetMeasurementMode(1);
+            body.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2121,12 +2121,12 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(7);
             elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 0;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.measurementMode = 2;
-            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(0);
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetMeasurementMode(2);
+            body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
             elem.SetBody(body);
 
             Buffer buf;
@@ -2137,8 +2137,8 @@ MeasurementRequestElementTest::DoRun()
             deserialized.Deserialize(buf.Begin());
 
             auto& b = deserialized.GetBody<BeaconBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.measurementMode, 2, "Beacon mode");
-            NS_TEST_EXPECT_MSG_EQ(b.bssid,
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementMode(), 2, "Beacon mode");
+            NS_TEST_EXPECT_MSG_EQ(b.GetBssid(),
                                   Mac48Address("ff:ff:ff:ff:ff:ff"),
                                   "Beacon wildcard BSSID");
         }
@@ -2278,9 +2278,9 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 255;
-            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(255);
+            body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2575,13 +2575,13 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(2);
         elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.measurementMode = 1;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
-        body.ssid = Ssid("TestNetwork");
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetMeasurementMode(1);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        body.SetSsid(Ssid("TestNetwork"));
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2594,8 +2594,8 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<BeaconBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.ssid.has_value(), true, "Beacon SSID present");
-        NS_TEST_ASSERT_MSG_EQ(b.ssid->IsEqual(Ssid("TestNetwork")), true, "Beacon SSID value");
+        NS_TEST_ASSERT_MSG_EQ(b.GetSsid().has_value(), true, "Beacon SSID present");
+        NS_TEST_ASSERT_MSG_EQ(b.GetSsid()->IsEqual(Ssid("TestNetwork")), true, "Beacon SSID value");
     }
 
     // Test 3: Beacon with Reporting Detail subelement (ID 2)
@@ -2604,12 +2604,12 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(3);
         elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
-        body.reportingDetail = 2;
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        body.SetReportingDetail(2);
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2622,8 +2622,8 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<BeaconBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.reportingDetail.has_value(), true, "Reporting Detail present");
-        NS_TEST_ASSERT_MSG_EQ(*b.reportingDetail, 2, "Reporting Detail value");
+        NS_TEST_ASSERT_MSG_EQ(b.GetReportingDetail().has_value(), true, "Reporting Detail present");
+        NS_TEST_ASSERT_MSG_EQ(*b.GetReportingDetail(), 2, "Reporting Detail value");
     }
 
     // Test 4: Beacon with AP Channel Report subelement (ID 51)
@@ -2632,12 +2632,12 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(4);
         elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
-        body.apChannelReports.push_back(ApChannelReport{115, {36, 40, 44, 48}});
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        body.AddApChannelReport(ApChannelReport{115, {36, 40, 44, 48}});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2650,11 +2650,11 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<BeaconBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports.empty(), false, "AP Channel Report present");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].operatingClass,
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports().empty(), false, "AP Channel Report present");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[0].operatingClass,
                               115,
                               "AP Channel Report opclass");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList.size(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[0].channelList.size(),
                               4,
                               "AP Channel Report channel count");
     }
@@ -2722,15 +2722,15 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(7);
         elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.measurementMode = 1;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
-        body.ssid = Ssid("MultiTest");
-        body.reportingDetail = 1;
-        body.apChannelReports.push_back(ApChannelReport{81, {1, 6, 11}});
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetMeasurementMode(1);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        body.SetSsid(Ssid("MultiTest"));
+        body.SetReportingDetail(1);
+        body.AddApChannelReport(ApChannelReport{81, {1, 6, 11}});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2743,11 +2743,11 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<BeaconBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.ssid.has_value(), true, "SSID survives multi-subelement");
-        NS_TEST_ASSERT_MSG_EQ(b.reportingDetail.has_value(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetSsid().has_value(), true, "SSID survives multi-subelement");
+        NS_TEST_ASSERT_MSG_EQ(b.GetReportingDetail().has_value(),
                               true,
                               "ReportingDetail survives multi-subelement");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports.empty(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports().empty(),
                               false,
                               "AP Channel Report survives multi-subelement");
     }
@@ -2852,12 +2852,12 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(11);
         elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
-        body.beaconReporting = MeasurementRequestElement::BeaconReporting{5, 180};
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        body.SetBeaconReporting(MeasurementRequestElement::BeaconReporting{5, 180});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2870,11 +2870,11 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<BeaconBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.beaconReporting.has_value(), true, "Beacon Reporting present");
-        NS_TEST_ASSERT_MSG_EQ(b.beaconReporting->reportingCondition,
+        NS_TEST_ASSERT_MSG_EQ(b.GetBeaconReporting().has_value(), true, "Beacon Reporting present");
+        NS_TEST_ASSERT_MSG_EQ(b.GetBeaconReporting()->reportingCondition,
                               5,
                               "Beacon Reporting condition");
-        NS_TEST_ASSERT_MSG_EQ(b.beaconReporting->thresholdOffsetReference,
+        NS_TEST_ASSERT_MSG_EQ(b.GetBeaconReporting()->thresholdOffsetReference,
                               180,
                               "Beacon Reporting threshold");
     }
@@ -2885,14 +2885,14 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(12);
         elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
-        body.apChannelReports.push_back(ApChannelReport{81, {1, 6, 11}});
-        body.apChannelReports.push_back(ApChannelReport{115, {36, 40, 44, 48}});
-        body.apChannelReports.push_back(ApChannelReport{124, {149, 153, 157, 161, 165}});
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
+        body.AddApChannelReport(ApChannelReport{81, {1, 6, 11}});
+        body.AddApChannelReport(ApChannelReport{115, {36, 40, 44, 48}});
+        body.AddApChannelReport(ApChannelReport{124, {149, 153, 157, 161, 165}});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2905,19 +2905,19 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<BeaconBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports.size(), 3, "3 AP Channel Reports");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports().size(), 3, "3 AP Channel Reports");
 
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].operatingClass, 81, "APChRep 0 opclass");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList.size(), 3, "APChRep 0 count");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList[0], 1, "APChRep 0 ch0");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[0].channelList[2], 11, "APChRep 0 ch2");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[0].operatingClass, 81, "APChRep 0 opclass");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[0].channelList.size(), 3, "APChRep 0 count");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[0].channelList[0], 1, "APChRep 0 ch0");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[0].channelList[2], 11, "APChRep 0 ch2");
 
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[1].operatingClass, 115, "APChRep 1 opclass");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[1].channelList.size(), 4, "APChRep 1 count");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[1].operatingClass, 115, "APChRep 1 opclass");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[1].channelList.size(), 4, "APChRep 1 count");
 
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[2].operatingClass, 124, "APChRep 2 opclass");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[2].channelList.size(), 5, "APChRep 2 count");
-        NS_TEST_ASSERT_MSG_EQ(b.apChannelReports[2].channelList[4], 165, "APChRep 2 ch4");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[2].operatingClass, 124, "APChRep 2 opclass");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[2].channelList.size(), 5, "APChRep 2 count");
+        NS_TEST_ASSERT_MSG_EQ(b.GetApChannelReports()[2].channelList[4], 165, "APChRep 2 ch4");
     }
 
     // Test 13: Multiple FTM Range Neighbor Report subelements
@@ -3027,7 +3027,7 @@ MeasurementRequestSubelementsTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             BeaconBody body;
-            body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+            body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
                                   MeasurementType::BEACON,

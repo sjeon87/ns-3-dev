@@ -348,23 +348,23 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, BeaconRequestBody>)
             {
                 size += 13; // OpClass(1)+Ch(1)+Rand(2)+Dur(2)+Mode(1)+BSSID(6)
-                if (body.ssid)
+                if (body.GetSsid())
                 {
-                    size += 2 + (body.ssid->GetSerializedSize() - 2);
+                    size += 2 + (body.GetSsid()->GetSerializedSize() - 2);
                 }
-                if (body.beaconReporting)
+                if (body.GetBeaconReporting())
                 {
                     size += 4;
                 }
-                if (body.reportingDetail)
+                if (body.GetReportingDetail())
                 {
                     size += 3;
                 }
-                for (const auto& report : body.apChannelReports)
+                for (const auto& report : body.GetApChannelReports())
                 {
                     size += static_cast<uint16_t>(2 + 1 + report.channelList.size());
                 }
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, FrameRequestBody>)
             {
@@ -494,29 +494,29 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, BeaconRequestBody>)
             {
-                start.WriteU8(body.operatingClass);
-                start.WriteU8(body.channelNumber);
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU16(body.measurementDuration);
-                start.WriteU8(body.measurementMode);
-                WriteTo(start, body.bssid);
-                SerializeSsidSubelement(start, body.ssid);
-                if (body.beaconReporting)
+                start.WriteU8(body.GetOperatingClass());
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU16(body.GetMeasurementDuration());
+                start.WriteU8(body.GetMeasurementMode());
+                WriteTo(start, body.GetBssid());
+                SerializeSsidSubelement(start, body.GetSsid());
+                if (body.GetBeaconReporting())
                 {
                     start.WriteU8(
                         static_cast<uint8_t>(BeaconRequestBody::SubelementId::BEACON_REPORTING));
-                    start.WriteU8(body.beaconReporting->GetSerializedSize());
-                    start.WriteU8(body.beaconReporting->reportingCondition);
-                    start.WriteU8(body.beaconReporting->thresholdOffsetReference);
+                    start.WriteU8(body.GetBeaconReporting()->GetSerializedSize());
+                    start.WriteU8(body.GetBeaconReporting()->reportingCondition);
+                    start.WriteU8(body.GetBeaconReporting()->thresholdOffsetReference);
                 }
-                if (body.reportingDetail)
+                if (body.GetReportingDetail())
                 {
                     start.WriteU8(
                         static_cast<uint8_t>(BeaconRequestBody::SubelementId::REPORTING_DETAIL));
                     start.WriteU8(1); // length
-                    start.WriteU8(*body.reportingDetail);
+                    start.WriteU8(*body.GetReportingDetail());
                 }
-                for (const auto& report : body.apChannelReports)
+                for (const auto& report : body.GetApChannelReports())
                 {
                     start.WriteU8(
                         static_cast<uint8_t>(BeaconRequestBody::SubelementId::AP_CHANNEL_REPORT));
@@ -527,7 +527,7 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
                         start.WriteU8(ch);
                     }
                 }
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, FrameRequestBody>)
             {
@@ -684,12 +684,14 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::BEACON: {
         auto& body = std::get<BeaconRequestBody>(m_body);
-        body.operatingClass = i.ReadU8();
-        body.channelNumber = i.ReadU8();
-        body.randomizationInterval = i.ReadU16();
-        body.measurementDuration = i.ReadU16();
-        body.measurementMode = i.ReadU8();
-        ReadFrom(i, body.bssid);
+        body.SetOperatingClass(i.ReadU8());
+        body.SetChannelNumber(i.ReadU8());
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMeasurementDuration(i.ReadU16());
+        body.SetMeasurementMode(i.ReadU8());
+        Mac48Address bssid;
+        ReadFrom(i, bssid);
+        body.SetBssid(bssid);
         bytesRead += 13;
         break;
     }
@@ -828,7 +830,8 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                                   !std::is_same_v<T, BasicRequestBody>)
                     {
                         if constexpr (std::is_same_v<T, ChannelLoadRequestBody> ||
-                                      std::is_same_v<T, NoiseHistogramRequestBody>)
+                                      std::is_same_v<T, NoiseHistogramRequestBody> ||
+                                      std::is_same_v<T, BeaconRequestBody>)
                         {
                             body.SetVendorSpecific(std::move(data));
                         }
@@ -858,19 +861,19 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 }
                 Ssid ssid;
                 ssid.Deserialize(ssidBuf.Begin());
-                body.ssid = ssid;
+                body.SetSsid(ssid);
                 handled = true;
                 break;
             }
             case static_cast<uint8_t>(BeaconRequestBody::SubelementId::BEACON_REPORTING): {
                 uint8_t condition = i.ReadU8();
                 uint8_t thresholdOffsetRef = i.ReadU8();
-                body.beaconReporting = BeaconReporting{condition, thresholdOffsetRef};
+                body.SetBeaconReporting(BeaconReporting{condition, thresholdOffsetRef});
                 handled = true;
                 break;
             }
             case static_cast<uint8_t>(BeaconRequestBody::SubelementId::REPORTING_DETAIL): {
-                body.reportingDetail = i.ReadU8();
+                body.SetReportingDetail(i.ReadU8());
                 handled = true;
                 break;
             }
@@ -886,7 +889,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 {
                     channels[j] = i.ReadU8();
                 }
-                body.apChannelReports.push_back(ApChannelReport{opClass, std::move(channels)});
+                body.AddApChannelReport(ApChannelReport{opClass, std::move(channels)});
                 handled = true;
                 break;
             }

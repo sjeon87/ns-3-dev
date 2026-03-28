@@ -388,8 +388,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for Beacon measurement (Figure 9-250)
      */
-    struct BeaconRequestBody
+    class BeaconRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Beacon request (Table 9-142)
          */
@@ -406,18 +407,218 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
-        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
-        uint8_t measurementMode{0};        //!< Measurement Mode (1 octet)
-        Mac48Address bssid;                //!< BSSID (6 octets)
+        /**
+         * @brief Set the Operating Class field.
+         * @param operatingClass the operating class
+         */
+        void SetOperatingClass(uint8_t operatingClass)
+        {
+            m_operatingClass = operatingClass;
+        }
 
-        std::optional<Ssid> ssid;                           //!< SSID subelement (ID 0)
-        std::optional<BeaconReporting> beaconReporting;     //!< Reporting subelement (ID 1)
-        std::optional<uint8_t> reportingDetail;             //!< Reporting Detail subelement (ID 2)
-        std::vector<ApChannelReport> apChannelReports;      //!< AP Channel Reports (ID 51)
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Operating Class field.
+         * @return the operating class
+         */
+        uint8_t GetOperatingClass() const
+        {
+            return m_operatingClass;
+        }
+
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
+        {
+            m_channelNumber = channelNumber;
+        }
+
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
+        {
+            m_randomizationInterval = randomizationInterval;
+        }
+
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
+        {
+            m_measurementDuration = measurementDuration;
+        }
+
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /**
+         * @brief Set the Measurement Mode field.
+         * @param measurementMode the measurement mode
+         */
+        void SetMeasurementMode(uint8_t measurementMode)
+        {
+            m_measurementMode = measurementMode;
+        }
+
+        /**
+         * @brief Get the Measurement Mode field.
+         * @return the measurement mode
+         */
+        uint8_t GetMeasurementMode() const
+        {
+            return m_measurementMode;
+        }
+
+        /**
+         * @brief Set the BSSID field.
+         * @param bssid the BSSID
+         */
+        void SetBssid(const Mac48Address& bssid)
+        {
+            m_bssid = bssid;
+        }
+
+        /**
+         * @brief Get the BSSID field.
+         * @return the BSSID
+         */
+        Mac48Address GetBssid() const
+        {
+            return m_bssid;
+        }
+
+        /**
+         * @brief Set the SSID subelement.
+         * @param ssid the SSID
+         */
+        void SetSsid(const Ssid& ssid)
+        {
+            m_ssid = ssid;
+        }
+
+        /**
+         * @brief Get the SSID subelement.
+         * @return the SSID, or std::nullopt if not present
+         */
+        std::optional<Ssid> GetSsid() const
+        {
+            return m_ssid;
+        }
+
+        /**
+         * @brief Set the Beacon Reporting subelement.
+         * @param beaconReporting the beacon reporting parameters
+         */
+        void SetBeaconReporting(const BeaconReporting& beaconReporting)
+        {
+            m_beaconReporting = beaconReporting;
+        }
+
+        /**
+         * @brief Get the Beacon Reporting subelement.
+         * @return the beacon reporting parameters, or std::nullopt if not present
+         */
+        std::optional<BeaconReporting> GetBeaconReporting() const
+        {
+            return m_beaconReporting;
+        }
+
+        /**
+         * @brief Set the Reporting Detail subelement.
+         * @param reportingDetail the reporting detail value
+         */
+        void SetReportingDetail(uint8_t reportingDetail)
+        {
+            m_reportingDetail = reportingDetail;
+        }
+
+        /**
+         * @brief Get the Reporting Detail subelement.
+         * @return the reporting detail value, or std::nullopt if not present
+         */
+        std::optional<uint8_t> GetReportingDetail() const
+        {
+            return m_reportingDetail;
+        }
+
+        /**
+         * @brief Add an AP Channel Report subelement.
+         * @param apChannelReport the AP channel report to add
+         */
+        void AddApChannelReport(const ApChannelReport& apChannelReport)
+        {
+            m_apChannelReports.push_back(apChannelReport);
+        }
+
+        /**
+         * @brief Get all AP Channel Report subelements.
+         * @return the list of AP channel reports
+         */
+        const std::vector<ApChannelReport>& GetApChannelReports() const
+        {
+            return m_apChannelReports;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_operatingClass{0};         ///< Operating Class (1 octet)
+        uint8_t m_channelNumber{0};          ///< Channel Number (1 octet)
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint16_t m_measurementDuration{0};   ///< Measurement Duration (2 octets)
+        uint8_t m_measurementMode{0};        ///< Measurement Mode (1 octet)
+        Mac48Address m_bssid;                ///< BSSID (6 octets)
+
+        std::optional<Ssid> m_ssid;                       ///< SSID subelement (ID 0)
+        std::optional<BeaconReporting> m_beaconReporting; ///< Reporting subelement (ID 1)
+        std::optional<uint8_t> m_reportingDetail;         ///< Reporting Detail subelement (ID 2)
+        std::vector<ApChannelReport> m_apChannelReports;  ///< AP Channel Reports (ID 51)
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
