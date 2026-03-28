@@ -21,7 +21,28 @@ NS_LOG_COMPONENT_DEFINE("MeasurementReportElement");
 uint16_t
 BeaconReport::GetSerializedSize() const
 {
-    return SERIALIZED_SIZE;
+    uint16_t size = SERIALIZED_SIZE;
+    if (m_reportedFrameBody)
+    {
+        size += 2 + static_cast<uint16_t>(m_reportedFrameBody->size());
+    }
+    if (m_reportedFrameBodyFragmentId)
+    {
+        size += 2 + 2;
+    }
+    if (m_wideBandwidthChannelSwitch)
+    {
+        size += 2 + 3;
+    }
+    if (m_lastBeaconReportIndication)
+    {
+        size += 2 + 1;
+    }
+    if (m_vendorSpecific)
+    {
+        size += 2 + static_cast<uint16_t>(m_vendorSpecific->size());
+    }
+    return size;
 }
 
 void
@@ -37,10 +58,53 @@ BeaconReport::Serialize(Buffer::Iterator& start) const
     WriteTo(start, m_bssid);
     start.WriteU8(m_antennaId);
     start.WriteU32(m_parentTsf);
+
+    if (m_reportedFrameBody)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::REPORTED_FRAME_BODY));
+        start.WriteU8(static_cast<uint8_t>(m_reportedFrameBody->size()));
+        for (uint8_t b : *m_reportedFrameBody)
+        {
+            start.WriteU8(b);
+        }
+    }
+    if (m_reportedFrameBodyFragmentId)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::REPORTED_FRAME_BODY_FRAGMENT_ID));
+        start.WriteU8(2);
+        const auto& f = *m_reportedFrameBodyFragmentId;
+        uint16_t packed = static_cast<uint16_t>(f.beaconReportId) |
+                          (static_cast<uint16_t>(f.fragmentIdNumber & 0x7F) << 8) |
+                          (f.moreFrameBodyFragments ? (1U << 15) : 0U);
+        start.WriteU16(packed);
+    }
+    if (m_wideBandwidthChannelSwitch)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL_SWITCH));
+        start.WriteU8(3);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelWidth);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelCenterFreqSeg0);
+        start.WriteU8(m_wideBandwidthChannelSwitch->newChannelCenterFreqSeg1);
+    }
+    if (m_lastBeaconReportIndication)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::LAST_BEACON_REPORT_INDICATION));
+        start.WriteU8(1);
+        start.WriteU8(*m_lastBeaconReportIndication ? 1 : 0);
+    }
+    if (m_vendorSpecific)
+    {
+        start.WriteU8(static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC));
+        start.WriteU8(static_cast<uint8_t>(m_vendorSpecific->size()));
+        for (uint8_t b : *m_vendorSpecific)
+        {
+            start.WriteU8(b);
+        }
+    }
 }
 
 uint16_t
-BeaconReport::Deserialize(Buffer::Iterator& start)
+BeaconReport::Deserialize(Buffer::Iterator& start, uint16_t length)
 {
     m_operatingClass = start.ReadU8();
     m_channelNumber = start.ReadU8();
@@ -52,7 +116,68 @@ BeaconReport::Deserialize(Buffer::Iterator& start)
     ReadFrom(start, m_bssid);
     m_antennaId = start.ReadU8();
     m_parentTsf = start.ReadU32();
-    return SERIALIZED_SIZE;
+    uint16_t bytesRead = SERIALIZED_SIZE;
+
+    while (bytesRead + 2 <= length)
+    {
+        uint8_t subId = start.ReadU8();
+        uint8_t subLen = start.ReadU8();
+        bytesRead += 2;
+        if (subId == static_cast<uint8_t>(SubelementId::REPORTED_FRAME_BODY))
+        {
+            std::vector<uint8_t> body(subLen);
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                body[j] = start.ReadU8();
+            }
+            m_reportedFrameBody = std::move(body);
+            bytesRead += subLen;
+        }
+        else if (subId == static_cast<uint8_t>(SubelementId::REPORTED_FRAME_BODY_FRAGMENT_ID))
+        {
+            uint16_t packed = start.ReadU16();
+            ReportedFrameBodyFragmentId f;
+            f.beaconReportId = static_cast<uint8_t>(packed & 0xFF);
+            f.fragmentIdNumber = static_cast<uint8_t>((packed >> 8) & 0x7F);
+            f.moreFrameBodyFragments = (packed & (1U << 15)) != 0;
+            m_reportedFrameBodyFragmentId = f;
+            bytesRead += 2;
+        }
+        else if (subId == static_cast<uint8_t>(SubelementId::WIDE_BANDWIDTH_CHANNEL_SWITCH))
+        {
+            WideBandwidthChannelSwitch wbc;
+            wbc.newChannelWidth = start.ReadU8();
+            wbc.newChannelCenterFreqSeg0 = start.ReadU8();
+            wbc.newChannelCenterFreqSeg1 = start.ReadU8();
+            m_wideBandwidthChannelSwitch = wbc;
+            bytesRead += subLen;
+        }
+        else if (subId == static_cast<uint8_t>(SubelementId::LAST_BEACON_REPORT_INDICATION))
+        {
+            m_lastBeaconReportIndication = (start.ReadU8() != 0);
+            bytesRead += subLen;
+        }
+        else if (subId == static_cast<uint8_t>(SubelementId::VENDOR_SPECIFIC))
+        {
+            std::vector<uint8_t> data(subLen);
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                data[j] = start.ReadU8();
+            }
+            m_vendorSpecific = std::move(data);
+            bytesRead += subLen;
+        }
+        else
+        {
+            for (uint8_t j = 0; j < subLen; j++)
+            {
+                start.ReadU8();
+            }
+            bytesRead += subLen;
+        }
+    }
+
+    return bytesRead;
 }
 
 void
@@ -179,6 +304,66 @@ uint32_t
 BeaconReport::GetParentTsf() const
 {
     return m_parentTsf;
+}
+
+void
+BeaconReport::SetReportedFrameBody(const std::vector<uint8_t>& body)
+{
+    m_reportedFrameBody = body;
+}
+
+std::optional<std::vector<uint8_t>>
+BeaconReport::GetReportedFrameBody() const
+{
+    return m_reportedFrameBody;
+}
+
+void
+BeaconReport::SetReportedFrameBodyFragmentId(const ReportedFrameBodyFragmentId& fragId)
+{
+    m_reportedFrameBodyFragmentId = fragId;
+}
+
+std::optional<BeaconReport::ReportedFrameBodyFragmentId>
+BeaconReport::GetReportedFrameBodyFragmentId() const
+{
+    return m_reportedFrameBodyFragmentId;
+}
+
+void
+BeaconReport::SetWideBandwidthChannelSwitch(const WideBandwidthChannelSwitch& wbc)
+{
+    m_wideBandwidthChannelSwitch = wbc;
+}
+
+std::optional<BeaconReport::WideBandwidthChannelSwitch>
+BeaconReport::GetWideBandwidthChannelSwitch() const
+{
+    return m_wideBandwidthChannelSwitch;
+}
+
+void
+BeaconReport::SetLastBeaconReportIndication(bool indication)
+{
+    m_lastBeaconReportIndication = indication;
+}
+
+std::optional<bool>
+BeaconReport::GetLastBeaconReportIndication() const
+{
+    return m_lastBeaconReportIndication;
+}
+
+void
+BeaconReport::SetVendorSpecific(const std::vector<uint8_t>& data)
+{
+    m_vendorSpecific = data;
+}
+
+std::optional<std::vector<uint8_t>>
+BeaconReport::GetVendorSpecific() const
+{
+    return m_vendorSpecific;
 }
 
 // --- ChannelLoadReport ---
@@ -1162,7 +1347,7 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
         if (m_measurementType == MeasurementReportType::BEACON)
         {
             BeaconReport br;
-            bytesRead += br.Deserialize(i);
+            bytesRead += br.Deserialize(i, length - bytesRead);
             m_report = br;
         }
         else if (m_measurementType == MeasurementReportType::CHANNEL_LOAD)

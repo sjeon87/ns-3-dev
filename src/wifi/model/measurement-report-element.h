@@ -63,8 +63,7 @@ operator<<(std::ostream& os, MeasurementReportType type)
  * @brief Beacon Report body (IEEE 802.11-2024 Section 9.4.2.20.7, Figure 9-297)
  * @ingroup wifi
  *
- * Fixed fields (26 bytes total). Optional subelements (Table 9-168) are not
- * yet implemented.
+ * Fixed fields (26 bytes) plus optional subelements (Table 9-168).
  */
 class BeaconReport
 {
@@ -72,8 +71,40 @@ class BeaconReport
     static constexpr uint16_t SERIALIZED_SIZE = 26; ///< Fixed fields size in bytes
 
     /**
+     * @brief Subelement IDs for Beacon Report (IEEE 802.11-2024 Table 9-168)
+     */
+    enum class SubelementId : uint8_t
+    {
+        REPORTED_FRAME_BODY = 1,
+        REPORTED_FRAME_BODY_FRAGMENT_ID = 2,
+        WIDE_BANDWIDTH_CHANNEL_SWITCH = 163,
+        LAST_BEACON_REPORT_INDICATION = 164,
+        VENDOR_SPECIFIC = 221,
+    };
+
+    /**
+     * @brief Reported Frame Body Fragment ID subelement (ID 2, Figure 9-1077)
+     */
+    struct ReportedFrameBodyFragmentId
+    {
+        uint8_t beaconReportId{0};          ///< Beacon Report ID (B0-B7)
+        uint8_t fragmentIdNumber{0};        ///< Fragment ID Number (B8-B14, 7 bits)
+        bool moreFrameBodyFragments{false}; ///< More Frame Body Fragments (B15)
+    };
+
+    /**
+     * @brief Wide Bandwidth Channel Switch subelement (ID 163)
+     */
+    struct WideBandwidthChannelSwitch
+    {
+        uint8_t newChannelWidth{0};          ///< New Channel Width
+        uint8_t newChannelCenterFreqSeg0{0}; ///< New Channel Center Frequency Segment 0
+        uint8_t newChannelCenterFreqSeg1{0}; ///< New Channel Center Frequency Segment 1
+    };
+
+    /**
      * @brief Get the serialized size of the beacon report body.
-     * @return 26 bytes (fixed fields only)
+     * @return size in bytes (fixed fields plus any present subelements)
      */
     uint16_t GetSerializedSize() const;
 
@@ -86,9 +117,10 @@ class BeaconReport
     /**
      * @brief Deserialize the beacon report body.
      * @param start the buffer iterator
+     * @param length total bytes available for the report body
      * @return number of bytes read
      */
-    uint16_t Deserialize(Buffer::Iterator& start);
+    uint16_t Deserialize(Buffer::Iterator& start, uint16_t length);
 
     /** @brief Set the Operating Class field. @param operatingClass the value */
     void SetOperatingClass(uint8_t operatingClass);
@@ -147,6 +179,61 @@ class BeaconReport
     /** @brief Get the Parent TSF field. @return the value */
     uint32_t GetParentTsf() const;
 
+    /**
+     * @brief Set the Reported Frame Body subelement (ID 1).
+     * @param body raw bytes of the reported frame body
+     */
+    void SetReportedFrameBody(const std::vector<uint8_t>& body);
+    /**
+     * @brief Get the Reported Frame Body subelement (ID 1).
+     * @return raw bytes, or std::nullopt if not present
+     */
+    std::optional<std::vector<uint8_t>> GetReportedFrameBody() const;
+
+    /**
+     * @brief Set the Reported Frame Body Fragment ID subelement (ID 2).
+     * @param fragId the fragment ID fields
+     */
+    void SetReportedFrameBodyFragmentId(const ReportedFrameBodyFragmentId& fragId);
+    /**
+     * @brief Get the Reported Frame Body Fragment ID subelement (ID 2).
+     * @return the fragment ID fields, or std::nullopt if not present
+     */
+    std::optional<ReportedFrameBodyFragmentId> GetReportedFrameBodyFragmentId() const;
+
+    /**
+     * @brief Set the Wide Bandwidth Channel Switch subelement (ID 163).
+     * @param wbc the channel switch fields
+     */
+    void SetWideBandwidthChannelSwitch(const WideBandwidthChannelSwitch& wbc);
+    /**
+     * @brief Get the Wide Bandwidth Channel Switch subelement (ID 163).
+     * @return the channel switch fields, or std::nullopt if not present
+     */
+    std::optional<WideBandwidthChannelSwitch> GetWideBandwidthChannelSwitch() const;
+
+    /**
+     * @brief Set the Last Beacon Report Indication subelement (ID 164).
+     * @param indication true if this is the last beacon report
+     */
+    void SetLastBeaconReportIndication(bool indication);
+    /**
+     * @brief Get the Last Beacon Report Indication subelement (ID 164).
+     * @return the indication value, or std::nullopt if not present
+     */
+    std::optional<bool> GetLastBeaconReportIndication() const;
+
+    /**
+     * @brief Set the Vendor Specific subelement (ID 221).
+     * @param data raw vendor specific bytes
+     */
+    void SetVendorSpecific(const std::vector<uint8_t>& data);
+    /**
+     * @brief Get the Vendor Specific subelement (ID 221).
+     * @return raw bytes, or std::nullopt if not present
+     */
+    std::optional<std::vector<uint8_t>> GetVendorSpecific() const;
+
   private:
     uint8_t m_operatingClass{0};              //!< Operating Class (1 octet)
     uint8_t m_channelNumber{0};               //!< Channel Number (1 octet)
@@ -158,6 +245,13 @@ class BeaconReport
     Mac48Address m_bssid;                     //!< BSSID (6 octets)
     uint8_t m_antennaId{0};                   //!< Antenna ID (1 octet)
     uint32_t m_parentTsf{0};                  //!< Parent TSF (4 octets)
+
+    std::optional<std::vector<uint8_t>> m_reportedFrameBody; //!< Reported Frame Body (ID 1)
+    std::optional<ReportedFrameBodyFragmentId>
+        m_reportedFrameBodyFragmentId;                                      //!< Fragment ID (ID 2)
+    std::optional<WideBandwidthChannelSwitch> m_wideBandwidthChannelSwitch; //!< WBC (ID 163)
+    std::optional<bool> m_lastBeaconReportIndication; //!< Last Beacon Report Indication (ID 164)
+    std::optional<std::vector<uint8_t>> m_vendorSpecific; //!< Vendor Specific (ID 221)
 };
 
 /**
