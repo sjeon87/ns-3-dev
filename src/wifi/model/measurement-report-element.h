@@ -474,6 +474,47 @@ class StaStatisticsReport
 {
   public:
     /**
+     * @brief dot11CountersTable (Figure 9-304, 7 x Counter32 = 28 bytes)
+     */
+    struct Group0Data
+    {
+        uint32_t transmittedFragmentCount{0};   ///< TransmittedFragmentCount
+        uint32_t groupTransmittedFrameCount{0}; ///< GroupTransmittedFrameCount
+        uint32_t failedCount{0};                ///< FailedCount
+        uint32_t receivedFragmentCount{0};      ///< ReceivedFragmentCount
+        uint32_t groupReceivedFrameCount{0};    ///< GroupReceivedFrameCount
+        uint32_t fcsErrorCount{0};              ///< FCSErrorCount
+        uint32_t transmittedFrameCount{0};      ///< TransmittedFrameCount
+    };
+
+    /**
+     * @brief dot11MACStatistics (Figure 9-305, 6 x Counter32 = 24 bytes)
+     */
+    struct Group1Data
+    {
+        uint32_t retryCount{0};          ///< RetryCount
+        uint32_t multipleRetryCount{0};  ///< MultipleRetryCount
+        uint32_t frameDuplicateCount{0}; ///< FrameDuplicateCount
+        uint32_t rtsSuccessCount{0};     ///< RTSSuccessCount
+        uint32_t rtsFailureCount{0};     ///< RTSFailureCount
+        uint32_t ackFailureCount{0};     ///< ACKFailureCount
+    };
+
+    /**
+     * @brief dot11BSSAverageAccessDelay (Figure 9-307, 8 bytes)
+     */
+    struct Group10Data
+    {
+        uint8_t apAverageAccessDelay{0};         ///< AP Average Access Delay
+        uint8_t averageAccessDelayBestEffort{0}; ///< Average Access Delay Best Effort
+        uint8_t averageAccessDelayBackGround{0}; ///< Average Access Delay Background
+        uint8_t averageAccessDelayVideo{0};      ///< Average Access Delay Video
+        uint8_t averageAccessDelayVoice{0};      ///< Average Access Delay Voice
+        uint16_t stationCount{0};                ///< Station Count
+        uint8_t channelUtilization{0};           ///< Channel Utilization
+    };
+
+    /**
      * @brief Get the serialized size of the STA Statistics report body.
      * @return size in bytes (3 + statistics group data length)
      */
@@ -497,15 +538,32 @@ class StaStatisticsReport
     /** @brief Get the Measurement Duration field. @return duration in TUs */
     uint16_t GetMeasurementDuration() const;
 
-    /** @brief Set the Group Identity field. @param groupIdentity the value (Table 9-170) */
-    void SetGroupIdentity(uint8_t groupIdentity);
-    /** @brief Get the Group Identity field. @return the value */
+    /** @brief Get the Group Identity field. @return the value (set implicitly by Set*Data) */
     uint8_t GetGroupIdentity() const;
 
-    /** @brief Set the Statistics Group Data field. @param data raw counter bytes */
-    void SetStatisticsGroupData(const std::vector<uint8_t>& data);
-    /** @brief Get the Statistics Group Data field. @return raw counter bytes */
-    const std::vector<uint8_t>& GetStatisticsGroupData() const;
+    /** @brief Set Group 0 (dot11CountersTable) data. @param data the counter values */
+    void SetGroup0Data(const Group0Data& data);
+    /**
+     * @brief Get Group 0 (dot11CountersTable) data.
+     * @return the counter values, or std::nullopt if group identity is not 0
+     */
+    std::optional<Group0Data> GetGroup0Data() const;
+
+    /** @brief Set Group 1 (dot11MACStatistics) data. @param data the counter values */
+    void SetGroup1Data(const Group1Data& data);
+    /**
+     * @brief Get Group 1 (dot11MACStatistics) data.
+     * @return the counter values, or std::nullopt if group identity is not 1
+     */
+    std::optional<Group1Data> GetGroup1Data() const;
+
+    /** @brief Set Group 10 (dot11BSSAverageAccessDelay) data. @param data the field values */
+    void SetGroup10Data(const Group10Data& data);
+    /**
+     * @brief Get Group 10 (dot11BSSAverageAccessDelay) data.
+     * @return the field values, or std::nullopt if group identity is not 10
+     */
+    std::optional<Group10Data> GetGroup10Data() const;
 
     /**
      * @brief Get the expected Statistics Group Data size for a given Group Identity.

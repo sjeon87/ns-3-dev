@@ -422,14 +422,15 @@ RadioMeasurementReportTest::DoRun()
 
         StaStatisticsReport body;
         body.SetMeasurementDuration(500);
-        body.SetGroupIdentity(0);
-        // 28 bytes: 7 x Counter32, fill with sequential values
-        std::vector<uint8_t> data(28, 0);
-        for (uint8_t i = 0; i < 28; i++)
-        {
-            data[i] = i + 1;
-        }
-        body.SetStatisticsGroupData(data);
+        StaStatisticsReport::Group0Data g0;
+        g0.transmittedFragmentCount = 100;
+        g0.groupTransmittedFrameCount = 200;
+        g0.failedCount = 5;
+        g0.receivedFragmentCount = 300;
+        g0.groupReceivedFrameCount = 400;
+        g0.fcsErrorCount = 3;
+        g0.transmittedFrameCount = 250;
+        body.SetGroup0Data(g0);
         elem.SetStaStatisticsReport(body);
         hdr.AddMeasurementReportElement(elem);
 
@@ -454,9 +455,17 @@ RadioMeasurementReportTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(staOpt.has_value(), true, "STA Stats report present");
         NS_TEST_EXPECT_MSG_EQ(staOpt->GetMeasurementDuration(), 500, "Duration round-trip");
         NS_TEST_EXPECT_MSG_EQ(staOpt->GetGroupIdentity(), 0, "Group Identity round-trip");
-        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData().size(), 28, "Group 0 data size");
-        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[0], 1, "First data byte");
-        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[27], 28, "Last data byte");
+        auto g0Opt = staOpt->GetGroup0Data();
+        NS_TEST_ASSERT_MSG_EQ(g0Opt.has_value(), true, "Group 0 data present");
+        NS_TEST_EXPECT_MSG_EQ(g0Opt->transmittedFragmentCount, 100U, "transmittedFragmentCount");
+        NS_TEST_EXPECT_MSG_EQ(g0Opt->groupTransmittedFrameCount,
+                              200U,
+                              "groupTransmittedFrameCount");
+        NS_TEST_EXPECT_MSG_EQ(g0Opt->failedCount, 5U, "failedCount");
+        NS_TEST_EXPECT_MSG_EQ(g0Opt->receivedFragmentCount, 300U, "receivedFragmentCount");
+        NS_TEST_EXPECT_MSG_EQ(g0Opt->groupReceivedFrameCount, 400U, "groupReceivedFrameCount");
+        NS_TEST_EXPECT_MSG_EQ(g0Opt->fcsErrorCount, 3U, "fcsErrorCount");
+        NS_TEST_EXPECT_MSG_EQ(g0Opt->transmittedFrameCount, 250U, "transmittedFrameCount");
     }
 
     // Test 7: STA Statistics report -- Group 1 (dot11MACStatistics, 24 bytes) round-trip
@@ -469,9 +478,14 @@ RadioMeasurementReportTest::DoRun()
 
         StaStatisticsReport body;
         body.SetMeasurementDuration(0); // current values
-        body.SetGroupIdentity(1);
-        std::vector<uint8_t> data(24, 0xAB);
-        body.SetStatisticsGroupData(data);
+        StaStatisticsReport::Group1Data g1;
+        g1.retryCount = 10;
+        g1.multipleRetryCount = 2;
+        g1.frameDuplicateCount = 0;
+        g1.rtsSuccessCount = 50;
+        g1.rtsFailureCount = 1;
+        g1.ackFailureCount = 3;
+        body.SetGroup1Data(g1);
         elem.SetStaStatisticsReport(body);
         hdr.AddMeasurementReportElement(elem);
 
@@ -488,8 +502,14 @@ RadioMeasurementReportTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(staOpt.has_value(), true, "Group 1 report present");
         NS_TEST_EXPECT_MSG_EQ(staOpt->GetMeasurementDuration(), 0, "Duration 0 = current values");
         NS_TEST_EXPECT_MSG_EQ(staOpt->GetGroupIdentity(), 1, "Group 1 identity");
-        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData().size(), 24, "Group 1 data size");
-        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[0], 0xAB, "Group 1 data byte");
+        auto g1Opt = staOpt->GetGroup1Data();
+        NS_TEST_ASSERT_MSG_EQ(g1Opt.has_value(), true, "Group 1 data present");
+        NS_TEST_EXPECT_MSG_EQ(g1Opt->retryCount, 10U, "retryCount");
+        NS_TEST_EXPECT_MSG_EQ(g1Opt->multipleRetryCount, 2U, "multipleRetryCount");
+        NS_TEST_EXPECT_MSG_EQ(g1Opt->frameDuplicateCount, 0U, "frameDuplicateCount");
+        NS_TEST_EXPECT_MSG_EQ(g1Opt->rtsSuccessCount, 50U, "rtsSuccessCount");
+        NS_TEST_EXPECT_MSG_EQ(g1Opt->rtsFailureCount, 1U, "rtsFailureCount");
+        NS_TEST_EXPECT_MSG_EQ(g1Opt->ackFailureCount, 3U, "ackFailureCount");
     }
 
     // Test 8: STA Statistics report -- Group 10 (BSSAverageAccessDelay, 8 bytes) round-trip
@@ -502,9 +522,15 @@ RadioMeasurementReportTest::DoRun()
 
         StaStatisticsReport body;
         body.SetMeasurementDuration(1000);
-        body.SetGroupIdentity(10);
-        std::vector<uint8_t> data = {50, 30, 40, 10, 20, 0x00, 0x0A, 80};
-        body.SetStatisticsGroupData(data);
+        StaStatisticsReport::Group10Data g10;
+        g10.apAverageAccessDelay = 50;
+        g10.averageAccessDelayBestEffort = 30;
+        g10.averageAccessDelayBackGround = 40;
+        g10.averageAccessDelayVideo = 10;
+        g10.averageAccessDelayVoice = 20;
+        g10.stationCount = 10;
+        g10.channelUtilization = 80;
+        body.SetGroup10Data(g10);
         elem.SetStaStatisticsReport(body);
         hdr.AddMeasurementReportElement(elem);
 
@@ -520,8 +546,19 @@ RadioMeasurementReportTest::DoRun()
         auto staOpt = desElem8.GetStaStatisticsReport();
         NS_TEST_ASSERT_MSG_EQ(staOpt.has_value(), true, "Group 10 report present");
         NS_TEST_EXPECT_MSG_EQ(staOpt->GetGroupIdentity(), 10, "Group 10 identity");
-        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData().size(), 8, "Group 10 data size");
-        NS_TEST_EXPECT_MSG_EQ(staOpt->GetStatisticsGroupData()[0], 50, "AP avg access delay");
+        auto g10Opt = staOpt->GetGroup10Data();
+        NS_TEST_ASSERT_MSG_EQ(g10Opt.has_value(), true, "Group 10 data present");
+        NS_TEST_EXPECT_MSG_EQ(+g10Opt->apAverageAccessDelay, 50, "apAverageAccessDelay");
+        NS_TEST_EXPECT_MSG_EQ(+g10Opt->averageAccessDelayBestEffort,
+                              30,
+                              "averageAccessDelayBestEffort");
+        NS_TEST_EXPECT_MSG_EQ(+g10Opt->averageAccessDelayBackGround,
+                              40,
+                              "averageAccessDelayBackGround");
+        NS_TEST_EXPECT_MSG_EQ(+g10Opt->averageAccessDelayVideo, 10, "averageAccessDelayVideo");
+        NS_TEST_EXPECT_MSG_EQ(+g10Opt->averageAccessDelayVoice, 20, "averageAccessDelayVoice");
+        NS_TEST_EXPECT_MSG_EQ(g10Opt->stationCount, 10, "stationCount");
+        NS_TEST_EXPECT_MSG_EQ(+g10Opt->channelUtilization, 80, "channelUtilization");
     }
 
     // Test 9: STA Statistics report with Incapable mode bit -- no body

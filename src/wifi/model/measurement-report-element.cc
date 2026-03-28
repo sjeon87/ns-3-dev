@@ -748,12 +748,6 @@ StaStatisticsReport::GetMeasurementDuration() const
     return m_measurementDuration;
 }
 
-void
-StaStatisticsReport::SetGroupIdentity(uint8_t groupIdentity)
-{
-    m_groupIdentity = groupIdentity;
-}
-
 uint8_t
 StaStatisticsReport::GetGroupIdentity() const
 {
@@ -761,15 +755,145 @@ StaStatisticsReport::GetGroupIdentity() const
 }
 
 void
-StaStatisticsReport::SetStatisticsGroupData(const std::vector<uint8_t>& data)
+StaStatisticsReport::SetGroup0Data(const Group0Data& data)
 {
-    m_statisticsGroupData = data;
+    m_groupIdentity = 0;
+    Buffer buf;
+    buf.AddAtStart(28);
+    auto it = buf.Begin();
+    it.WriteU32(data.transmittedFragmentCount);
+    it.WriteU32(data.groupTransmittedFrameCount);
+    it.WriteU32(data.failedCount);
+    it.WriteU32(data.receivedFragmentCount);
+    it.WriteU32(data.groupReceivedFrameCount);
+    it.WriteU32(data.fcsErrorCount);
+    it.WriteU32(data.transmittedFrameCount);
+    m_statisticsGroupData.resize(28);
+    it = buf.Begin();
+    for (auto& byte : m_statisticsGroupData)
+    {
+        byte = it.ReadU8();
+    }
 }
 
-const std::vector<uint8_t>&
-StaStatisticsReport::GetStatisticsGroupData() const
+std::optional<StaStatisticsReport::Group0Data>
+StaStatisticsReport::GetGroup0Data() const
 {
-    return m_statisticsGroupData;
+    if (m_groupIdentity != 0)
+    {
+        return std::nullopt;
+    }
+    Buffer buf;
+    buf.AddAtStart(28);
+    auto it = buf.Begin();
+    for (const auto& byte : m_statisticsGroupData)
+    {
+        it.WriteU8(byte);
+    }
+    it = buf.Begin();
+    Group0Data data;
+    data.transmittedFragmentCount = it.ReadU32();
+    data.groupTransmittedFrameCount = it.ReadU32();
+    data.failedCount = it.ReadU32();
+    data.receivedFragmentCount = it.ReadU32();
+    data.groupReceivedFrameCount = it.ReadU32();
+    data.fcsErrorCount = it.ReadU32();
+    data.transmittedFrameCount = it.ReadU32();
+    return data;
+}
+
+void
+StaStatisticsReport::SetGroup1Data(const Group1Data& data)
+{
+    m_groupIdentity = 1;
+    Buffer buf;
+    buf.AddAtStart(24);
+    auto it = buf.Begin();
+    it.WriteU32(data.retryCount);
+    it.WriteU32(data.multipleRetryCount);
+    it.WriteU32(data.frameDuplicateCount);
+    it.WriteU32(data.rtsSuccessCount);
+    it.WriteU32(data.rtsFailureCount);
+    it.WriteU32(data.ackFailureCount);
+    m_statisticsGroupData.resize(24);
+    it = buf.Begin();
+    for (auto& byte : m_statisticsGroupData)
+    {
+        byte = it.ReadU8();
+    }
+}
+
+std::optional<StaStatisticsReport::Group1Data>
+StaStatisticsReport::GetGroup1Data() const
+{
+    if (m_groupIdentity != 1)
+    {
+        return std::nullopt;
+    }
+    Buffer buf;
+    buf.AddAtStart(24);
+    auto it = buf.Begin();
+    for (const auto& byte : m_statisticsGroupData)
+    {
+        it.WriteU8(byte);
+    }
+    it = buf.Begin();
+    Group1Data data;
+    data.retryCount = it.ReadU32();
+    data.multipleRetryCount = it.ReadU32();
+    data.frameDuplicateCount = it.ReadU32();
+    data.rtsSuccessCount = it.ReadU32();
+    data.rtsFailureCount = it.ReadU32();
+    data.ackFailureCount = it.ReadU32();
+    return data;
+}
+
+void
+StaStatisticsReport::SetGroup10Data(const Group10Data& data)
+{
+    m_groupIdentity = 10;
+    Buffer buf;
+    buf.AddAtStart(8);
+    auto it = buf.Begin();
+    it.WriteU8(data.apAverageAccessDelay);
+    it.WriteU8(data.averageAccessDelayBestEffort);
+    it.WriteU8(data.averageAccessDelayBackGround);
+    it.WriteU8(data.averageAccessDelayVideo);
+    it.WriteU8(data.averageAccessDelayVoice);
+    it.WriteU16(data.stationCount);
+    it.WriteU8(data.channelUtilization);
+    m_statisticsGroupData.resize(8);
+    it = buf.Begin();
+    for (auto& byte : m_statisticsGroupData)
+    {
+        byte = it.ReadU8();
+    }
+}
+
+std::optional<StaStatisticsReport::Group10Data>
+StaStatisticsReport::GetGroup10Data() const
+{
+    if (m_groupIdentity != 10)
+    {
+        return std::nullopt;
+    }
+    Buffer buf;
+    buf.AddAtStart(8);
+    auto it = buf.Begin();
+    for (const auto& byte : m_statisticsGroupData)
+    {
+        it.WriteU8(byte);
+    }
+    it = buf.Begin();
+    Group10Data data;
+    data.apAverageAccessDelay = it.ReadU8();
+    data.averageAccessDelayBestEffort = it.ReadU8();
+    data.averageAccessDelayBackGround = it.ReadU8();
+    data.averageAccessDelayVideo = it.ReadU8();
+    data.averageAccessDelayVoice = it.ReadU8();
+    data.stationCount = it.ReadU16();
+    data.channelUtilization = it.ReadU8();
+    return data;
 }
 
 // --- MeasurementReportElement ---
@@ -1156,7 +1280,8 @@ MeasurementReportElement::Print(std::ostream& os) const
         const auto& ssr = std::get<StaStatisticsReport>(m_report);
         os << ", StaStatisticsReport=[Duration=" << ssr.GetMeasurementDuration()
            << ", GroupId=" << +ssr.GetGroupIdentity()
-           << ", DataSize=" << ssr.GetStatisticsGroupData().size() << "]";
+           << ", DataSize=" << StaStatisticsReport::GetExpectedGroupDataSize(ssr.GetGroupIdentity())
+           << "]";
     }
     os << "]";
 }
