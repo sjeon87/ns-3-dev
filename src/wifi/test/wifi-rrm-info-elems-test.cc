@@ -1519,7 +1519,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::BASIC);
-            elem.SetBody(BasicBody{6, 0, 200});
+            BasicBody b;
+            b.SetChannelNumber(6);
+            b.SetMeasurementStartTime(0);
+            b.SetMeasurementDuration(200);
+            elem.SetBody(b);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "Basic size");
         }
 
@@ -1528,7 +1532,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::CCA);
-            elem.SetBody(BasicBody{6, 0, 200});
+            BasicBody b;
+            b.SetChannelNumber(6);
+            b.SetMeasurementStartTime(0);
+            b.SetMeasurementDuration(200);
+            elem.SetBody(b);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "CCA size");
         }
 
@@ -1537,7 +1545,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::RPI_HISTOGRAM);
-            elem.SetBody(BasicBody{6, 0, 200});
+            BasicBody b;
+            b.SetChannelNumber(6);
+            b.SetMeasurementStartTime(0);
+            b.SetMeasurementDuration(200);
+            elem.SetBody(b);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "RPI Histogram size");
         }
 
@@ -1747,7 +1759,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::BASIC);
-            elem.SetBody(BasicBody{11, 123456789, 1000});
+            BasicBody b;
+            b.SetChannelNumber(11);
+            b.SetMeasurementStartTime(123456789);
+            b.SetMeasurementDuration(1000);
+            elem.SetBody(b);
             TestHeaderSerialization(elem);
         }
 
@@ -1756,7 +1772,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(2);
             elem.SetMeasurementType(MeasurementType::CCA);
-            elem.SetBody(BasicBody{36, 0, 500});
+            BasicBody b;
+            b.SetChannelNumber(36);
+            b.SetMeasurementStartTime(0);
+            b.SetMeasurementDuration(500);
+            elem.SetBody(b);
             TestHeaderSerialization(elem);
         }
 
@@ -1765,7 +1785,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(3);
             elem.SetMeasurementType(MeasurementType::RPI_HISTOGRAM);
-            elem.SetBody(BasicBody{1, 999999, 2000});
+            BasicBody b;
+            b.SetChannelNumber(1);
+            b.SetMeasurementStartTime(999999);
+            b.SetMeasurementDuration(2000);
+            elem.SetBody(b);
             TestHeaderSerialization(elem);
         }
 
@@ -1984,7 +2008,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::BASIC);
-            elem.SetBody(BasicBody{11, 123456789, 1000});
+            BasicBody body;
+            body.SetChannelNumber(11);
+            body.SetMeasurementStartTime(123456789);
+            body.SetMeasurementDuration(1000);
+            elem.SetBody(body);
 
             Buffer buf;
             buf.AddAtStart(elem.GetSerializedSize());
@@ -1998,9 +2026,9 @@ MeasurementRequestElementTest::DoRun()
                                   MeasurementType::BASIC,
                                   "Basic type");
             auto& b = deserialized.GetBody<BasicBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 11, "Basic channel");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 123456789, "Basic start time");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 1000, "Basic duration");
+            NS_TEST_EXPECT_MSG_EQ(b.GetChannelNumber(), 11, "Basic channel");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementStartTime(), 123456789, "Basic start time");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementDuration(), 1000, "Basic duration");
         }
 
         // CCA
@@ -2008,7 +2036,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(2);
             elem.SetMeasurementType(MeasurementType::CCA);
-            elem.SetBody(BasicBody{36, 0, 500});
+            BasicBody body;
+            body.SetChannelNumber(36);
+            body.SetMeasurementStartTime(0);
+            body.SetMeasurementDuration(500);
+            elem.SetBody(body);
 
             Buffer buf;
             buf.AddAtStart(elem.GetSerializedSize());
@@ -2021,9 +2053,9 @@ MeasurementRequestElementTest::DoRun()
                                   MeasurementType::CCA,
                                   "CCA type");
             auto& b = deserialized.GetBody<BasicBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 36, "CCA channel");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 0, "CCA start time");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 500, "CCA duration");
+            NS_TEST_EXPECT_MSG_EQ(b.GetChannelNumber(), 36, "CCA channel");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementStartTime(), 0, "CCA start time");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementDuration(), 500, "CCA duration");
         }
 
         // RPI Histogram
@@ -2031,7 +2063,11 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(3);
             elem.SetMeasurementType(MeasurementType::RPI_HISTOGRAM);
-            elem.SetBody(BasicBody{1, 999999, 2000});
+            BasicBody body;
+            body.SetChannelNumber(1);
+            body.SetMeasurementStartTime(999999);
+            body.SetMeasurementDuration(2000);
+            elem.SetBody(body);
 
             Buffer buf;
             buf.AddAtStart(elem.GetSerializedSize());
@@ -2044,9 +2080,9 @@ MeasurementRequestElementTest::DoRun()
                                   MeasurementType::RPI_HISTOGRAM,
                                   "RPI type");
             auto& b = deserialized.GetBody<BasicBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 1, "RPI channel");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 999999, "RPI start time");
-            NS_TEST_EXPECT_MSG_EQ(b.measurementDuration, 2000, "RPI duration");
+            NS_TEST_EXPECT_MSG_EQ(b.GetChannelNumber(), 1, "RPI channel");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementStartTime(), 999999, "RPI start time");
+            NS_TEST_EXPECT_MSG_EQ(b.GetMeasurementDuration(), 2000, "RPI duration");
         }
 
         // Channel Load

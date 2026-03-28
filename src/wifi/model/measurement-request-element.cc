@@ -456,9 +456,9 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, BasicRequestBody>)
             {
-                start.WriteU8(body.channelNumber);
-                start.WriteU64(body.measurementStartTime);
-                start.WriteU16(body.measurementDuration);
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU64(body.GetMeasurementStartTime());
+                start.WriteU16(body.GetMeasurementDuration());
             }
             else if constexpr (std::is_same_v<T, ChannelLoadRequestBody>)
             {
@@ -658,9 +658,9 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     case MeasurementType::CCA:
     case MeasurementType::RPI_HISTOGRAM: {
         auto& body = std::get<BasicRequestBody>(m_body);
-        body.channelNumber = i.ReadU8();
-        body.measurementStartTime = i.ReadU64();
-        body.measurementDuration = i.ReadU16();
+        body.SetChannelNumber(i.ReadU8());
+        body.SetMeasurementStartTime(i.ReadU64());
+        body.SetMeasurementDuration(i.ReadU16());
         bytesRead += 11;
         break;
     }

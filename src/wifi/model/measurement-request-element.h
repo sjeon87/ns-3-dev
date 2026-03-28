@@ -139,11 +139,49 @@ class MeasurementRequestElement : public WifiInformationElement
      *
      * Shared by types 0 (Basic), 1 (CCA), and 2 (RPI Histogram) which have identical layouts.
      */
-    struct BasicRequestBody
+    class BasicRequestBody
     {
-        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
-        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
-        uint16_t measurementDuration{0};  //!< Measurement Duration (2 octets)
+      public:
+        /** @brief Set the Channel Number field. */
+        void SetChannelNumber(uint8_t v)
+        {
+            m_channelNumber = v;
+        }
+
+        /** @brief Get the Channel Number field. */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /** @brief Set the Measurement Start Time field. */
+        void SetMeasurementStartTime(uint64_t v)
+        {
+            m_measurementStartTime = v;
+        }
+
+        /** @brief Get the Measurement Start Time field. */
+        uint64_t GetMeasurementStartTime() const
+        {
+            return m_measurementStartTime;
+        }
+
+        /** @brief Set the Measurement Duration field. */
+        void SetMeasurementDuration(uint16_t v)
+        {
+            m_measurementDuration = v;
+        }
+
+        /** @brief Get the Measurement Duration field. */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+      private:
+        uint8_t m_channelNumber{0};         ///< Channel Number (1 octet)
+        uint64_t m_measurementStartTime{0}; ///< Measurement Start Time (8 octets)
+        uint16_t m_measurementDuration{0};  ///< Measurement Duration (2 octets)
     };
 
     /**
