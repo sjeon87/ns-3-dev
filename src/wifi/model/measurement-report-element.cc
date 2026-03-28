@@ -861,10 +861,10 @@ MeasurementReportElement::GetRefused() const
 void
 MeasurementReportElement::SetMeasurementType(MeasurementReportType type)
 {
-    m_measurementType = static_cast<uint8_t>(type);
+    m_measurementType = type;
 }
 
-uint8_t
+MeasurementReportType
 MeasurementReportElement::GetMeasurementType() const
 {
     return m_measurementType;
@@ -873,7 +873,7 @@ MeasurementReportElement::GetMeasurementType() const
 void
 MeasurementReportElement::SetBeaconReport(const BeaconReport& report)
 {
-    m_measurementType = static_cast<uint8_t>(MeasurementReportType::BEACON);
+    m_measurementType = MeasurementReportType::BEACON;
     m_report = report;
 }
 
@@ -890,7 +890,7 @@ MeasurementReportElement::GetBeaconReport() const
 void
 MeasurementReportElement::SetChannelLoadReport(const ChannelLoadReport& report)
 {
-    m_measurementType = static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD);
+    m_measurementType = MeasurementReportType::CHANNEL_LOAD;
     m_report = report;
 }
 
@@ -907,7 +907,7 @@ MeasurementReportElement::GetChannelLoadReport() const
 void
 MeasurementReportElement::SetNoiseHistogramReport(const NoiseHistogramReport& report)
 {
-    m_measurementType = static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM);
+    m_measurementType = MeasurementReportType::NOISE_HISTOGRAM;
     m_report = report;
 }
 
@@ -924,7 +924,7 @@ MeasurementReportElement::GetNoiseHistogramReport() const
 void
 MeasurementReportElement::SetStaStatisticsReport(const StaStatisticsReport& report)
 {
-    m_measurementType = static_cast<uint8_t>(MeasurementReportType::STA_STATISTICS);
+    m_measurementType = MeasurementReportType::STA_STATISTICS;
     m_report = report;
 }
 
@@ -941,7 +941,7 @@ MeasurementReportElement::GetStaStatisticsReport() const
 void
 MeasurementReportElement::SetFrameReport(const FrameReport& report)
 {
-    m_measurementType = static_cast<uint8_t>(MeasurementReportType::FRAME);
+    m_measurementType = MeasurementReportType::FRAME;
     m_report = report;
 }
 
@@ -996,7 +996,7 @@ MeasurementReportElement::SerializeInformationField(Buffer::Iterator start) cons
 {
     start.WriteU8(m_measurementToken);
     start.WriteU8(m_measurementReportMode);
-    start.WriteU8(m_measurementType);
+    start.WriteU8(static_cast<uint8_t>(m_measurementType));
 
     if (!HasModeSet())
     {
@@ -1029,37 +1029,37 @@ MeasurementReportElement::DeserializeInformationField(Buffer::Iterator start, ui
     Buffer::Iterator i = start;
     m_measurementToken = i.ReadU8();
     m_measurementReportMode = i.ReadU8();
-    m_measurementType = i.ReadU8();
+    m_measurementType = static_cast<MeasurementReportType>(i.ReadU8());
 
     uint16_t bytesRead = 3;
 
     if (!HasModeSet() && bytesRead < length)
     {
-        if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::BEACON))
+        if (m_measurementType == MeasurementReportType::BEACON)
         {
             BeaconReport br;
             bytesRead += br.Deserialize(i);
             m_report = br;
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD))
+        else if (m_measurementType == MeasurementReportType::CHANNEL_LOAD)
         {
             ChannelLoadReport clr;
             bytesRead += clr.Deserialize(i);
             m_report = clr;
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM))
+        else if (m_measurementType == MeasurementReportType::NOISE_HISTOGRAM)
         {
             NoiseHistogramReport nhr;
             bytesRead += nhr.Deserialize(i);
             m_report = nhr;
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::FRAME))
+        else if (m_measurementType == MeasurementReportType::FRAME)
         {
             FrameReport fr;
             bytesRead += fr.Deserialize(i, length - bytesRead);
             m_report = fr;
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementReportType::STA_STATISTICS))
+        else if (m_measurementType == MeasurementReportType::STA_STATISTICS)
         {
             StaStatisticsReport ssr;
             bytesRead += ssr.Deserialize(i);
@@ -1085,7 +1085,8 @@ void
 MeasurementReportElement::Print(std::ostream& os) const
 {
     os << "MeasurementReport=[Token=" << +m_measurementToken << ", Mode=0x" << std::hex
-       << +m_measurementReportMode << std::dec << ", Type=" << +m_measurementType;
+       << +m_measurementReportMode << std::dec
+       << ", Type=" << +static_cast<uint8_t>(m_measurementType);
     if (HasModeSet())
     {
         if (GetLate())

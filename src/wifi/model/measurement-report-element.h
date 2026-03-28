@@ -15,6 +15,7 @@
 
 #include <array>
 #include <optional>
+#include <ostream>
 #include <variant>
 #include <vector>
 
@@ -45,6 +46,18 @@ enum class MeasurementReportType : uint8_t
     DIRECTIONAL_STATISTICS = 15,
     FTM_RANGE = 16,
 };
+
+/**
+ * @brief Stream insertion for MeasurementReportType.
+ * @param os output stream
+ * @param type the measurement report type
+ * @return the output stream
+ */
+inline std::ostream&
+operator<<(std::ostream& os, MeasurementReportType type)
+{
+    return os << +static_cast<uint8_t>(type);
+}
 
 /**
  * @brief Beacon Report body (IEEE 802.11-2024 Section 9.4.2.20.7, Figure 9-297)
@@ -546,8 +559,8 @@ class MeasurementReportElement : public WifiInformationElement
 
     /** @brief Set the Measurement Type field. @param type the MeasurementReportType */
     void SetMeasurementType(MeasurementReportType type);
-    /** @brief Get the Measurement Type field. @return the raw value */
-    uint8_t GetMeasurementType() const;
+    /** @brief Get the Measurement Type field. @return the measurement type */
+    MeasurementReportType GetMeasurementType() const;
 
     /**
      * @brief Set the Beacon Report body.
@@ -622,7 +635,8 @@ class MeasurementReportElement : public WifiInformationElement
 
     uint8_t m_measurementToken{0};      //!< Measurement Token (1 octet)
     uint8_t m_measurementReportMode{0}; //!< Measurement Report Mode (1 octet)
-    uint8_t m_measurementType{0};       //!< Measurement Type (1 octet)
+    MeasurementReportType m_measurementType{
+        MeasurementReportType::BASIC}; //!< Measurement Type (1 octet)
 
     std::variant<std::monostate,
                  BeaconReport,

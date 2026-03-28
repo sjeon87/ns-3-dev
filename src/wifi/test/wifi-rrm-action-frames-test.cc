@@ -43,6 +43,8 @@ RadioMeasurementRequestTest::RadioMeasurementRequestTest()
 void
 RadioMeasurementRequestTest::DoRun()
 {
+    using MeasurementType = MeasurementRequestElement::MeasurementType;
+
     // Test 1: Default construction round-trip
     {
         RadioMeasurementRequestHeader hdr;
@@ -85,7 +87,7 @@ RadioMeasurementRequestTest::DoRun()
 
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(1);
-        elem.SetMeasurementType(5); // BEACON
+        elem.SetMeasurementType(MeasurementType::BEACON);
         MeasurementRequestElement::BeaconRequestBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -123,14 +125,14 @@ RadioMeasurementRequestTest::DoRun()
         // Element 1: Basic request
         MeasurementRequestElement elem1;
         elem1.SetMeasurementToken(1);
-        elem1.SetMeasurementType(0); // BASIC
+        elem1.SetMeasurementType(MeasurementType::BASIC);
         elem1.SetBody(MeasurementRequestElement::BasicRequestBody{6, 0, 200});
         hdr.AddMeasurementRequestElement(elem1);
 
         // Element 2: Beacon request
         MeasurementRequestElement elem2;
         elem2.SetMeasurementToken(2);
-        elem2.SetMeasurementType(5); // BEACON
+        elem2.SetMeasurementType(MeasurementType::BEACON);
         MeasurementRequestElement::BeaconRequestBody body;
         body.operatingClass = 115;
         body.channelNumber = 36;
@@ -142,7 +144,7 @@ RadioMeasurementRequestTest::DoRun()
         // Element 3: Channel Load request
         MeasurementRequestElement elem3;
         elem3.SetMeasurementToken(3);
-        elem3.SetMeasurementType(3); // CHANNEL_LOAD
+        elem3.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         MeasurementRequestElement::ChannelLoadRequestBody clBody;
         clBody.operatingClass = 81;
         clBody.channelNumber = 1;
@@ -196,7 +198,7 @@ RadioMeasurementRequestTest::DoRun()
 
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(255);
-        elem.SetMeasurementType(0);
+        elem.SetMeasurementType(MeasurementType::BASIC);
         elem.SetBody(MeasurementRequestElement::BasicRequestBody{255, UINT64_MAX, UINT16_MAX});
         hdr.AddMeasurementRequestElement(elem);
 
@@ -446,7 +448,7 @@ RadioMeasurementReportTest::DoRun()
         const auto& desElem6 = deserialized.GetMeasurementReportElements()[0];
         NS_TEST_EXPECT_MSG_EQ(desElem6.GetMeasurementToken(), 3, "STA Stats element token");
         NS_TEST_EXPECT_MSG_EQ(desElem6.GetMeasurementType(),
-                              static_cast<uint8_t>(MeasurementReportType::STA_STATISTICS),
+                              MeasurementReportType::STA_STATISTICS,
                               "Type is STA_STATISTICS");
         auto staOpt = desElem6.GetStaStatisticsReport();
         NS_TEST_ASSERT_MSG_EQ(staOpt.has_value(), true, "STA Stats report present");
@@ -578,7 +580,7 @@ RadioMeasurementReportTest::DoRun()
                               "One Frame Report element");
         const auto& desElem10 = deserialized.GetMeasurementReportElements()[0];
         NS_TEST_EXPECT_MSG_EQ(desElem10.GetMeasurementType(),
-                              static_cast<uint8_t>(MeasurementReportType::FRAME),
+                              MeasurementReportType::FRAME,
                               "Type is FRAME");
         auto frameOpt = desElem10.GetFrameReport();
         NS_TEST_ASSERT_MSG_EQ(frameOpt.has_value(), true, "Frame report present");

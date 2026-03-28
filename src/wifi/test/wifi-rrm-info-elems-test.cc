@@ -1523,7 +1523,7 @@ MeasurementReportElementTest::DoRun()
 
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 42, "Token round-trip");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
-                              static_cast<uint8_t>(MeasurementReportType::BEACON),
+                              MeasurementReportType::BEACON,
                               "Type round-trip");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetLate(), false, "Late is false");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetIncapable(), false, "Incapable is false");
@@ -1707,7 +1707,7 @@ MeasurementReportElementTest::DoRun()
         elem.SetChannelLoadReport(clr);
 
         NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
-                              static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD),
+                              MeasurementReportType::CHANNEL_LOAD,
                               "Type auto-set to CHANNEL_LOAD");
 
         TestHeaderSerialization(elem);
@@ -1721,7 +1721,7 @@ MeasurementReportElementTest::DoRun()
 
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 5, "CL token");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
-                              static_cast<uint8_t>(MeasurementReportType::CHANNEL_LOAD),
+                              MeasurementReportType::CHANNEL_LOAD,
                               "CL type");
         auto report = deserialized.GetChannelLoadReport();
         NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "CL report present");
@@ -1823,7 +1823,9 @@ MeasurementReportElementTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 1, "Token from unknown type");
-        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 7, "Type preserved");
+        NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                              MeasurementReportType::STA_STATISTICS,
+                              "Type preserved");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetBeaconReport().has_value(),
                               false,
                               "No beacon report for unknown type");
@@ -1885,7 +1887,7 @@ MeasurementReportElementTest::DoRun()
         elem.SetNoiseHistogramReport(nhr);
 
         NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
-                              static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM),
+                              MeasurementReportType::NOISE_HISTOGRAM,
                               "Type auto-set to NOISE_HISTOGRAM");
 
         TestHeaderSerialization(elem);
@@ -1899,7 +1901,7 @@ MeasurementReportElementTest::DoRun()
 
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 7, "NH token");
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
-                              static_cast<uint8_t>(MeasurementReportType::NOISE_HISTOGRAM),
+                              MeasurementReportType::NOISE_HISTOGRAM,
                               "NH type");
         auto report = deserialized.GetNoiseHistogramReport();
         NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "NH report present");
