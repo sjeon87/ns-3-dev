@@ -21,7 +21,7 @@ NS_LOG_COMPONENT_DEFINE("MeasurementReportElement");
 uint16_t
 BeaconReport::GetSerializedSize() const
 {
-    return 26;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -52,7 +52,7 @@ BeaconReport::Deserialize(Buffer::Iterator& start)
     ReadFrom(start, m_bssid);
     m_antennaId = start.ReadU8();
     m_parentTsf = start.ReadU32();
-    return 26;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -186,7 +186,7 @@ BeaconReport::GetParentTsf() const
 uint16_t
 ChannelLoadReport::GetSerializedSize() const
 {
-    return 13;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -207,7 +207,7 @@ ChannelLoadReport::Deserialize(Buffer::Iterator& start)
     m_actualMeasurementStartTime = start.ReadU64();
     m_measurementDuration = start.ReadU16();
     m_channelLoad = start.ReadU8();
-    return 13;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -275,7 +275,7 @@ ChannelLoadReport::GetChannelLoad() const
 uint16_t
 NoiseHistogramReport::GetSerializedSize() const
 {
-    return 25;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -306,7 +306,7 @@ NoiseHistogramReport::Deserialize(Buffer::Iterator& start)
     {
         m_ipiDensities[i] = start.ReadU8();
     }
-    return 25;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -400,7 +400,7 @@ NoiseHistogramReport::GetIpiDensity(uint8_t level) const
 uint16_t
 FrameReportEntry::GetSerializedSize() const
 {
-    return 19;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -427,7 +427,7 @@ FrameReportEntry::Deserialize(Buffer::Iterator& start)
     m_lastRcpi = start.ReadU8();
     m_antennaId = start.ReadU8();
     m_frameCount = start.ReadU16();
-    return 19;
+    return SERIALIZED_SIZE;
 }
 
 void
@@ -531,10 +531,11 @@ FrameReportEntry::GetFrameCount() const
 uint16_t
 FrameReport::GetSerializedSize() const
 {
-    uint16_t size = 12;
+    uint16_t size = FIXED_FIELDS_SIZE;
     if (!m_frameReportEntries.empty())
     {
-        size += 2 + static_cast<uint16_t>(m_frameReportEntries.size()) * 19;
+        size += 2 + static_cast<uint16_t>(m_frameReportEntries.size()) *
+                        FrameReportEntry::SERIALIZED_SIZE;
     }
     return size;
 }
@@ -552,11 +553,11 @@ FrameReport::Serialize(Buffer::Iterator& start) const
             m_frameReportEntries.size() <= 13,
             "Frame Count Report subelement Length is 1 octet, max 13 entries (13*19=247)");
         start.WriteU8(FRAME_COUNT_REPORT);
-        start.WriteU8(static_cast<uint8_t>(m_frameReportEntries.size() * 19));
+        start.WriteU8(
+            static_cast<uint8_t>(m_frameReportEntries.size() * FrameReportEntry::SERIALIZED_SIZE));
         for (const auto& entry : m_frameReportEntries)
         {
-            FrameReportEntry e = entry;
-            e.Serialize(start);
+            entry.Serialize(start);
         }
     }
 }
@@ -568,7 +569,7 @@ FrameReport::Deserialize(Buffer::Iterator& start, uint16_t length)
     m_channelNumber = start.ReadU8();
     m_actualMeasurementStartTime = start.ReadU64();
     m_measurementDuration = start.ReadU16();
-    uint16_t bytesRead = 12;
+    uint16_t bytesRead = FIXED_FIELDS_SIZE;
 
     while (bytesRead + 2 <= length)
     {
@@ -578,13 +579,13 @@ FrameReport::Deserialize(Buffer::Iterator& start, uint16_t length)
         if (subId == FRAME_COUNT_REPORT)
         {
             uint16_t remaining = subLen;
-            while (remaining >= 19)
+            while (remaining >= FrameReportEntry::SERIALIZED_SIZE)
             {
                 FrameReportEntry entry;
                 entry.Deserialize(start);
                 m_frameReportEntries.push_back(entry);
-                remaining -= 19;
-                bytesRead += 19;
+                remaining -= FrameReportEntry::SERIALIZED_SIZE;
+                bytesRead += FrameReportEntry::SERIALIZED_SIZE;
             }
             // Skip any leftover bytes in this subelement
             for (uint16_t j = 0; j < remaining; j++)
@@ -671,12 +672,13 @@ FrameReport::GetFrameReportEntries() const
 uint16_t
 StaStatisticsReport::GetExpectedGroupDataSize(uint8_t groupIdentity)
 {
+    // Sizes from IEEE 802.11-2024 Table 9-170
     switch (groupIdentity)
     {
     case 0:
-        return 28;
+        return 28; // dot11CountersTable (7 x Counter32)
     case 1:
-        return 24;
+        return 24; // dot11MACStatistics (6 x Counter32)
     case 2:
     case 3:
     case 4:
@@ -685,21 +687,21 @@ StaStatisticsReport::GetExpectedGroupDataSize(uint8_t groupIdentity)
     case 7:
     case 8:
     case 9:
-        return 52;
+        return 52; // dot11QosCountersTable (13 x Counter32)
     case 10:
-        return 8;
+        return 8; // BSSAverageAccessDelay
     case 11:
-        return 40;
+        return 40; // dot11CountersGroup11
     case 12:
     case 13:
     case 14:
-        return 36;
+        return 36; // dot11CountersGroup12-14
     case 15:
-        return 20;
+        return 20; // dot11CountersGroup15
     case 16:
-        return 28;
+        return 28; // dot11RSNAStatsTable
     default:
-        return 0;
+        return 0; // reserved/unknown
     }
 }
 
@@ -795,6 +797,7 @@ MeasurementReportElement::SetLate(bool late)
 {
     if (late)
     {
+        // 0x06 masks B1|B2 (Incapable|Refused) -- spec requires at most one mode bit set
         NS_ABORT_MSG_IF(m_measurementReportMode & 0x06,
                         "No more than one bit is set to 1 within a Measurement Report Mode field");
         m_measurementReportMode |= (1 << 0);
@@ -816,6 +819,7 @@ MeasurementReportElement::SetIncapable(bool incapable)
 {
     if (incapable)
     {
+        // 0x05 masks B0|B2 (Late|Refused) -- spec requires at most one mode bit set
         NS_ABORT_MSG_IF(m_measurementReportMode & 0x05,
                         "No more than one bit is set to 1 within a Measurement Report Mode field");
         m_measurementReportMode |= (1 << 1);
@@ -837,6 +841,7 @@ MeasurementReportElement::SetRefused(bool refused)
 {
     if (refused)
     {
+        // 0x03 masks B0|B1 (Late|Incapable) -- spec requires at most one mode bit set
         NS_ABORT_MSG_IF(m_measurementReportMode & 0x03,
                         "No more than one bit is set to 1 within a Measurement Report Mode field");
         m_measurementReportMode |= (1 << 2);
@@ -997,28 +1002,23 @@ MeasurementReportElement::SerializeInformationField(Buffer::Iterator start) cons
     {
         if (std::holds_alternative<BeaconReport>(m_report))
         {
-            BeaconReport br = std::get<BeaconReport>(m_report);
-            br.Serialize(start);
+            std::get<BeaconReport>(m_report).Serialize(start);
         }
         else if (std::holds_alternative<ChannelLoadReport>(m_report))
         {
-            ChannelLoadReport clr = std::get<ChannelLoadReport>(m_report);
-            clr.Serialize(start);
+            std::get<ChannelLoadReport>(m_report).Serialize(start);
         }
         else if (std::holds_alternative<NoiseHistogramReport>(m_report))
         {
-            NoiseHistogramReport nhr = std::get<NoiseHistogramReport>(m_report);
-            nhr.Serialize(start);
+            std::get<NoiseHistogramReport>(m_report).Serialize(start);
         }
         else if (std::holds_alternative<FrameReport>(m_report))
         {
-            FrameReport fr = std::get<FrameReport>(m_report);
-            fr.Serialize(start);
+            std::get<FrameReport>(m_report).Serialize(start);
         }
         else if (std::holds_alternative<StaStatisticsReport>(m_report))
         {
-            StaStatisticsReport ssr = std::get<StaStatisticsReport>(m_report);
-            ssr.Serialize(start);
+            std::get<StaStatisticsReport>(m_report).Serialize(start);
         }
     }
 }

@@ -56,6 +56,8 @@ enum class MeasurementReportType : uint8_t
 class BeaconReport
 {
   public:
+    static constexpr uint16_t SERIALIZED_SIZE = 26; ///< Fixed fields size in bytes
+
     /**
      * @brief Get the serialized size of the beacon report body.
      * @return 26 bytes (fixed fields only)
@@ -155,6 +157,8 @@ class BeaconReport
 class ChannelLoadReport
 {
   public:
+    static constexpr uint16_t SERIALIZED_SIZE = 13; ///< Fixed fields size in bytes
+
     /**
      * @brief Get the serialized size of the channel load report body.
      * @return 13 bytes (fixed fields only)
@@ -217,6 +221,8 @@ class ChannelLoadReport
 class NoiseHistogramReport
 {
   public:
+    static constexpr uint16_t SERIALIZED_SIZE = 25; ///< Fixed fields size in bytes
+
     /**
      * @brief Get the serialized size of the noise histogram report body.
      * @return 25 bytes (fixed fields only)
@@ -298,6 +304,8 @@ class NoiseHistogramReport
 class FrameReportEntry
 {
   public:
+    static constexpr uint16_t SERIALIZED_SIZE = 19; ///< Fixed entry size in bytes
+
     /**
      * @brief Get the serialized size of a frame report entry.
      * @return 19 bytes
@@ -378,6 +386,8 @@ class FrameReportEntry
 class FrameReport
 {
   public:
+    static constexpr uint16_t FIXED_FIELDS_SIZE = 12; ///< Fixed fields size in bytes
+
     /**
      * @brief Subelement IDs for Frame Report (IEEE 802.11-2024 Table 9-169)
      */
