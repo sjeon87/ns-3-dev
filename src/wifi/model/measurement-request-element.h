@@ -47,6 +47,9 @@ class MeasurementRequestElement : public WifiInformationElement
         uint8_t reportingCondition;        //!< Reporting Condition (1 octet, Table 9-138)
         uint8_t channelLoadReferenceValue; //!< Channel Load Reference Value (1 octet)
 
+        /**
+         * @return serialized size in bytes
+         */
         uint8_t GetSerializedSize() const
         {
             return sizeof(reportingCondition) + sizeof(channelLoadReferenceValue);
@@ -61,6 +64,9 @@ class MeasurementRequestElement : public WifiInformationElement
         uint8_t reportingCondition; //!< Reporting Condition (1 octet, Table 9-140)
         uint8_t anpiReferenceValue; //!< ANPI Reference Value (1 octet)
 
+        /**
+         * @return serialized size in bytes
+         */
         uint8_t GetSerializedSize() const
         {
             return sizeof(reportingCondition) + sizeof(anpiReferenceValue);
@@ -75,6 +81,9 @@ class MeasurementRequestElement : public WifiInformationElement
         uint8_t reportingCondition;       //!< Reporting Condition (1 octet, Table 9-143)
         uint8_t thresholdOffsetReference; //!< Threshold/Offset Reference (1 octet)
 
+        /**
+         * @return serialized size in bytes
+         */
         uint8_t GetSerializedSize() const
         {
             return sizeof(reportingCondition) + sizeof(thresholdOffsetReference);
