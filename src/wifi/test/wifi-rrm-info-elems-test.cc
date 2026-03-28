@@ -2021,6 +2021,248 @@ MeasurementReportElementTest::DoRun()
                               std::string::npos,
                               "Print contains NoiseHistogram");
     }
+
+    // Test 22: BeaconReport Reported Frame Body subelement (ID 1) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        BeaconReport br;
+        br.SetReportedFrameBody({0x01, 0x02, 0x03, 0xFF});
+        elem.SetBeaconReport(br);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(),
+                              2 + 3 + 26 + 2 + 4,
+                              "Size with Reported Frame Body");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetBeaconReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Beacon report present");
+        auto body = report->GetReportedFrameBody();
+        NS_TEST_ASSERT_MSG_EQ(body.has_value(), true, "Reported Frame Body present");
+        NS_TEST_ASSERT_MSG_EQ(body->size(), 4, "Reported Frame Body size");
+        NS_TEST_EXPECT_MSG_EQ((*body)[0], 0x01, "Body byte 0");
+        NS_TEST_EXPECT_MSG_EQ((*body)[3], 0xFF, "Body byte 3");
+    }
+
+    // Test 23: BeaconReport Fragment ID subelement (ID 2) -- bit-field packing
+    {
+        // All combinations of the three fields
+        struct FragCase
+        {
+            uint8_t beaconReportId;
+            uint8_t fragmentIdNumber;
+            bool more;
+        };
+
+        const FragCase cases[] = {
+            {0, 0, false},
+            {255, 127, true},
+            {42, 13, false},
+            {0, 0, true},
+            {1, 1, true},
+        };
+        for (const auto& c : cases)
+        {
+            MeasurementReportElement elem;
+            elem.SetMeasurementToken(1);
+            BeaconReport br;
+            BeaconReport::ReportedFrameBodyFragmentId fid;
+            fid.beaconReportId = c.beaconReportId;
+            fid.fragmentIdNumber = c.fragmentIdNumber;
+            fid.moreFrameBodyFragments = c.more;
+            br.SetReportedFrameBodyFragmentId(fid);
+            elem.SetBeaconReport(br);
+
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(),
+                                  2 + 3 + 26 + 2 + 2,
+                                  "Size with Fragment ID");
+            TestHeaderSerialization(elem);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+            MeasurementReportElement d;
+            d.Deserialize(buf.Begin());
+
+            auto report = d.GetBeaconReport();
+            NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Beacon report present");
+            auto f = report->GetReportedFrameBodyFragmentId();
+            NS_TEST_ASSERT_MSG_EQ(f.has_value(), true, "Fragment ID present");
+            NS_TEST_EXPECT_MSG_EQ(f->beaconReportId, c.beaconReportId, "beaconReportId round-trip");
+            NS_TEST_EXPECT_MSG_EQ(f->fragmentIdNumber,
+                                  c.fragmentIdNumber,
+                                  "fragmentIdNumber round-trip");
+            NS_TEST_EXPECT_MSG_EQ(f->moreFrameBodyFragments,
+                                  c.more,
+                                  "moreFrameBodyFragments round-trip");
+        }
+    }
+
+    // Test 24: BeaconReport WBC subelement (ID 163) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        BeaconReport br;
+        BeaconReport::WideBandwidthChannelSwitch wbc;
+        wbc.newChannelWidth = 2;
+        wbc.newChannelCenterFreqSeg0 = 42;
+        wbc.newChannelCenterFreqSeg1 = 58;
+        br.SetWideBandwidthChannelSwitch(wbc);
+        elem.SetBeaconReport(br);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 2 + 3 + 26 + 2 + 3, "Size with WBC");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetBeaconReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Beacon report present");
+        auto w = report->GetWideBandwidthChannelSwitch();
+        NS_TEST_ASSERT_MSG_EQ(w.has_value(), true, "WBC present");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelWidth, 2, "newChannelWidth");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg0, 42, "newChannelCenterFreqSeg0");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelCenterFreqSeg1, 58, "newChannelCenterFreqSeg1");
+    }
+
+    // Test 25: BeaconReport Last Beacon Report Indication subelement (ID 164) -- both values
+    {
+        for (bool indication : {false, true})
+        {
+            MeasurementReportElement elem;
+            elem.SetMeasurementToken(1);
+            BeaconReport br;
+            br.SetLastBeaconReportIndication(indication);
+            elem.SetBeaconReport(br);
+
+            NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(),
+                                  2 + 3 + 26 + 2 + 1,
+                                  "Size with LastBeaconReportIndication");
+            TestHeaderSerialization(elem);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+            MeasurementReportElement d;
+            d.Deserialize(buf.Begin());
+
+            auto report = d.GetBeaconReport();
+            NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Beacon report present");
+            auto ind = report->GetLastBeaconReportIndication();
+            NS_TEST_ASSERT_MSG_EQ(ind.has_value(), true, "Indication present");
+            NS_TEST_EXPECT_MSG_EQ(*ind, indication, "Indication value round-trip");
+        }
+    }
+
+    // Test 26: BeaconReport Vendor Specific subelement (ID 221) round-trip
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        BeaconReport br;
+        br.SetVendorSpecific({0xAA, 0xBB, 0xCC, 0xDD, 0xEE});
+        elem.SetBeaconReport(br);
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(),
+                              2 + 3 + 26 + 2 + 5,
+                              "Size with Vendor Specific");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetBeaconReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Beacon report present");
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "Vendor Specific present");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 5, "Vendor Specific size");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[0], 0xAA, "VS byte 0");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[4], 0xEE, "VS byte 4");
+    }
+
+    // Test 27: BeaconReport all subelements present simultaneously
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(7);
+        BeaconReport br;
+        br.SetOperatingClass(81);
+        br.SetChannelNumber(6);
+        br.SetBssid(Mac48Address("AA:BB:CC:DD:EE:FF"));
+        br.SetReportedFrameBody({0x10, 0x20});
+        BeaconReport::ReportedFrameBodyFragmentId fid;
+        fid.beaconReportId = 5;
+        fid.fragmentIdNumber = 3;
+        fid.moreFrameBodyFragments = true;
+        br.SetReportedFrameBodyFragmentId(fid);
+        BeaconReport::WideBandwidthChannelSwitch wbc;
+        wbc.newChannelWidth = 1;
+        wbc.newChannelCenterFreqSeg0 = 36;
+        wbc.newChannelCenterFreqSeg1 = 0;
+        br.SetWideBandwidthChannelSwitch(wbc);
+        br.SetLastBeaconReportIndication(true);
+        br.SetVendorSpecific({0x11, 0x22, 0x33});
+        elem.SetBeaconReport(br);
+
+        // 26 fixed + (2+2) + (2+2) + (2+3) + (2+1) + (2+3) = 26+4+4+5+3+5 = 47
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 2 + 3 + 47, "Size with all subelements");
+        TestHeaderSerialization(elem);
+
+        Buffer buf;
+        buf.AddAtStart(elem.GetSerializedSize());
+        elem.Serialize(buf.Begin());
+        MeasurementReportElement d;
+        d.Deserialize(buf.Begin());
+
+        auto report = d.GetBeaconReport();
+        NS_TEST_ASSERT_MSG_EQ(report.has_value(), true, "Beacon report present");
+        NS_TEST_EXPECT_MSG_EQ(report->GetOperatingClass(), 81, "OpClass survives");
+        NS_TEST_EXPECT_MSG_EQ(report->GetBssid(),
+                              Mac48Address("AA:BB:CC:DD:EE:FF"),
+                              "BSSID survives");
+
+        auto body = report->GetReportedFrameBody();
+        NS_TEST_ASSERT_MSG_EQ(body.has_value(), true, "Frame Body survives");
+        NS_TEST_ASSERT_MSG_EQ(body->size(), 2, "Frame Body size survives");
+
+        auto f = report->GetReportedFrameBodyFragmentId();
+        NS_TEST_ASSERT_MSG_EQ(f.has_value(), true, "Fragment ID survives");
+        NS_TEST_EXPECT_MSG_EQ(f->beaconReportId, 5, "beaconReportId survives");
+        NS_TEST_EXPECT_MSG_EQ(f->fragmentIdNumber, 3, "fragmentIdNumber survives");
+        NS_TEST_EXPECT_MSG_EQ(f->moreFrameBodyFragments, true, "moreFragments survives");
+
+        auto w = report->GetWideBandwidthChannelSwitch();
+        NS_TEST_ASSERT_MSG_EQ(w.has_value(), true, "WBC survives");
+        NS_TEST_EXPECT_MSG_EQ(w->newChannelWidth, 1, "WBC width survives");
+
+        auto ind = report->GetLastBeaconReportIndication();
+        NS_TEST_ASSERT_MSG_EQ(ind.has_value(), true, "Indication survives");
+        NS_TEST_EXPECT_MSG_EQ(*ind, true, "Indication value survives");
+
+        auto vs = report->GetVendorSpecific();
+        NS_TEST_ASSERT_MSG_EQ(vs.has_value(), true, "Vendor Specific survives");
+        NS_TEST_ASSERT_MSG_EQ(vs->size(), 3, "VS size survives");
+        NS_TEST_EXPECT_MSG_EQ((*vs)[1], 0x22, "VS byte 1 survives");
+    }
+
+    // Test 28: No subelements -- size stays at 26 fixed bytes (+ IE header)
+    {
+        MeasurementReportElement elem;
+        elem.SetMeasurementToken(1);
+        elem.SetBeaconReport(BeaconReport{});
+
+        NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 2 + 3 + 26, "Fixed-only size");
+    }
 }
 
 /**
