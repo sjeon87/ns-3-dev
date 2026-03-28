@@ -707,7 +707,17 @@ class NeighborReportElement : public WifiInformationElement
         DMG_POSITIONING = 22,
     };
 
+    /**
+     * @brief Set a bit in the BSSID Information field.
+     * @param bit the bit position to set
+     * @param val the value to assign
+     */
     void SetBit(BssidInfoBit bit, bool val);
+    /**
+     * @brief Get a bit from the BSSID Information field.
+     * @param bit the bit position to read
+     * @return the bit value
+     */
     bool GetBit(BssidInfoBit bit) const;
 
     Mac48Address m_bssid;     //!< BSSID (6 octets)
