@@ -22,6 +22,7 @@
 #include "wifi-mac-queue-scheduler.h"
 #include "wifi-mac-queue.h"
 #include "wifi-net-device.h"
+#include "wifi-ns3-constants.h"
 #include "wifi-phy.h"
 
 #include "ns3/ap-emlsr-manager.h"
@@ -35,6 +36,9 @@
 #include "ns3/random-variable-stream.h"
 #include "ns3/simulator.h"
 #include "ns3/string.h"
+#include "ns3/uinteger.h"
+
+#include <algorithm>
 
 namespace ns3
 {
@@ -54,21 +58,26 @@ ApWifiMac::GetTypeId()
             .AddAttribute(
                 "BeaconInterval",
                 "Delay between two beacons",
-                TimeValue(MicroSeconds(102400)),
+                TimeValue(DEFAULT_BEACON_INTERVAL),
                 MakeTimeAccessor(&ApWifiMac::GetBeaconInterval, &ApWifiMac::SetBeaconInterval),
                 MakeTimeChecker())
             .AddAttribute("BeaconJitter",
-                          "A uniform random variable to cause the initial beacon starting time "
-                          "(after simulation time 0) "
-                          "to be distributed between 0 and the BeaconInterval.",
+                          "A random variable to cause the initial beacon starting time (after "
+                          "simulation time 0) to be distributed between 0 and the BeaconInterval. "
+                          "Generated values must be between 0 and 1.",
                           StringValue("ns3::UniformRandomVariable"),
                           MakePointerAccessor(&ApWifiMac::m_beaconJitter),
-                          MakePointerChecker<UniformRandomVariable>())
+                          MakePointerChecker<RandomVariableStream>())
             .AddAttribute("EnableBeaconJitter",
                           "If beacons are enabled, whether to jitter the initial send event.",
                           BooleanValue(true),
                           MakeBooleanAccessor(&ApWifiMac::m_enableBeaconJitter),
                           MakeBooleanChecker())
+            .AddAttribute("BeaconDtimPeriod",
+                          "The DTIM Period, in number of beacons",
+                          UintegerValue(3),
+                          MakeUintegerAccessor(&ApWifiMac::m_dtimPeriod),
+                          MakeUintegerChecker<uint8_t>(1))
             .AddAttribute("BeaconGeneration",
                           "Whether or not beacons are generated.",
                           BooleanValue(true),
@@ -353,14 +362,14 @@ ApWifiMac::DoCompleteConfig()
     }
 }
 
-Ptr<WifiMacQueue>
-ApWifiMac::GetTxopQueue(AcIndex ac) const
+Ptr<Txop>
+ApWifiMac::GetTxopFor(AcIndex ac) const
 {
     if (ac == AC_BEACON)
     {
-        return m_beaconTxop->GetWifiMacQueue();
+        return m_beaconTxop;
     }
-    return WifiMac::GetTxopQueue(ac);
+    return WifiMac::GetTxopFor(ac);
 }
 
 void
@@ -602,6 +611,285 @@ ApWifiMac::GetCapabilities(uint8_t linkId) const
     capabilities.SetShortSlotTime(GetLink(linkId).shortSlotTimeEnabled);
     capabilities.SetEss();
     return capabilities;
+}
+
+Ptr<WifiMpdu>
+ApWifiMac::GetBufferedDataFor(Mac48Address address, uint8_t linkId) const
+{
+    if (!GetQosSupported())
+    {
+        const WifiContainerQueueId queueId(WIFI_DATA_QUEUE,
+                                           WifiRcvAddr::UNICAST,
+                                           address,
+                                           std::nullopt);
+        return GetTxopQueue(AC_BE_NQOS)->PeekByQueueId(queueId);
+    }
+
+    const auto singleLink = !GetMldAddress(address).has_value();
+
+    for (uint8_t tid = 0; tid < 8; ++tid)
+    {
+        auto mpdu = GetTxopQueue(QosUtilsMapTidToAc(tid))->PeekByTidAndAddress(tid, address);
+
+        if (!mpdu)
+        {
+            continue; // queue empty, look for another TID
+        }
+
+        if (linkId != WIFI_LINKID_UNDEFINED && !singleLink &&
+            !TidMappedOnLink(address, WifiDirection::DOWNLINK, tid, linkId))
+        {
+            continue; // this TID is not mapped on the link for which we want a buffered unit
+        }
+
+        // (Sec. 35.3.12.4 802.11be D6.0) An AP MLD shall buffer a BU with a TID at the AP MLD if
+        // the TID is not mapped to any link on which the corresponding non-AP STA affiliated with
+        // a non-AP MLD is in active mode
+        if (std::none_of(GetLinks().cbegin(), GetLinks().cend(), [=, this](const auto& pair) {
+                const auto lnkId = pair.first;
+                const auto& link = pair.second;
+                // return true if the STA operating on this link is in active mode and the TID is
+                // mapped on this link (or the STA is a single link device)
+                return link->stationManager->IsAssociated(address) &&
+                       !link->stationManager->IsInPsMode(address) &&
+                       (singleLink ||
+                        TidMappedOnLink(address, WifiDirection::DOWNLINK, tid, lnkId));
+            }))
+        {
+            NS_LOG_DEBUG("Found BU: " << *mpdu << " for STA " << address << " and TID=" << +tid);
+            return mpdu;
+        }
+    }
+    return nullptr;
+}
+
+Ptr<WifiMpdu>
+ApWifiMac::GetBufferedMmpduFor(Mac48Address address, uint8_t linkId) const
+{
+    // TODO: 802.11be specs (Sec. 35.3.12.4 of D6.0) allow an AP MLD to avoid buffering an
+    // MMPDU if a non-AP STA is in active mode, even if the non-AP STA is not the intended
+    // receiver of the MMPDU. In case the MMPDU is sent on a link other than the one on which
+    // the intended receiver is operating, the MMPDU shall carry the MLO Link Info element.
+    // Until this mechanism is supported, an MMPDU is buffered if the intended receiver is
+    // in powersave mode
+    const auto acList = GetQosSupported() ? edcaAcIndices : std::list<AcIndex>{AC_BE_NQOS};
+    const auto linkIds = (linkId == WIFI_LINKID_UNDEFINED ? GetLinkIds() : std::set{linkId});
+
+    for (const auto& id : linkIds)
+    {
+        auto& link = GetLink(id);
+        if (!link.stationManager->IsInPsMode(address))
+        {
+            continue; // STA on this link is not in PS mode
+        }
+        for (const auto& aci : acList)
+        {
+            WifiContainerQueueId queueId(
+                WIFI_MGT_QUEUE,
+                WifiRcvAddr::UNICAST,
+                link.stationManager->GetAffiliatedStaAddress(address).value_or(address),
+                std::nullopt);
+
+            if (auto mpdu = GetTxopQueue(aci)->PeekByQueueId(queueId))
+            {
+                NS_LOG_DEBUG("Found MMPDU: " << *mpdu << " for STA " << address << " on link "
+                                             << +id);
+                return mpdu;
+            }
+        }
+    }
+    return nullptr;
+}
+
+bool
+ApWifiMac::HasBufferedGroupcast(uint8_t linkId) const
+{
+    auto acList = GetQosSupported() ? edcaAcIndices : std::list<AcIndex>{AC_BE_NQOS};
+
+    const auto blocked =
+        GetMacQueueScheduler()->GetAllQueuesBlockedOnLink(linkId,
+                                                          WifiRcvAddr::BROADCAST,
+                                                          WifiQueueBlockedReason::WAIT_UNTIL_DTIM);
+
+    if (blocked)
+    {
+        // temporarily unblock queues with group addressed frames, otherwise buffered group
+        // addressed frames will not be detected
+        GetMacQueueScheduler()->UnblockAllQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                                 {linkId},
+                                                 {WifiRcvAddr::BROADCAST, WifiRcvAddr::GROUPCAST});
+    }
+
+    const auto found = std::any_of(acList.cbegin(), acList.cend(), [=, this](const auto aci) {
+        auto queueId = m_scheduler->GetNext(aci, linkId);
+
+        while (queueId)
+        {
+            if (const auto addrType = std::get<1>(*queueId);
+                addrType == WifiRcvAddr::BROADCAST || addrType == WifiRcvAddr::GROUPCAST)
+            {
+                NS_LOG_DEBUG("Found some group addressed frames for link " << +linkId);
+                return true;
+            }
+            queueId = m_scheduler->GetNext(aci, linkId, *queueId);
+        }
+        return false;
+    });
+
+    if (blocked)
+    {
+        GetMacQueueScheduler()->BlockAllQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                               {linkId},
+                                               {WifiRcvAddr::BROADCAST, WifiRcvAddr::GROUPCAST});
+    }
+
+    return found;
+}
+
+Tim
+ApWifiMac::GetTim(uint8_t linkId) const
+{
+    NS_LOG_FUNCTION(this << linkId);
+
+    Tim tim;
+    tim.m_dtimCount = GetLink(linkId).beaconDtimCount;
+    tim.m_dtimPeriod = m_dtimPeriod;
+
+    // Iterate over the list of associated non-AP STAs or MLDs
+    for (const auto& [aid, address] : m_aidToMldOrLinkAddress)
+    {
+        if (GetStaList(linkId).contains(aid) &&
+            (GetBufferedDataFor(address) || GetBufferedMmpduFor(address)))
+        {
+            tim.AddAid(aid);
+        }
+    }
+
+    // Check for group addressed frames, but only if this is a DTIM
+    if (tim.m_dtimCount == 0)
+    {
+        if (GetLink(linkId).nStationsInPsMode > 0)
+        {
+            tim.m_hasMulticastPending = HasBufferedGroupcast(linkId);
+        }
+
+        /**
+         * Sec. 35.3.15.1 of 802.11be D7.0:
+         * The bits 1 to N of the bitmap in the Partial Virtual Bitmap field are for the AP MLD
+         * where N is equal to 2^(Group Addressed BU Indication Exponent + 1) – 1.
+         * The first n bits of N bits are used to indicate that one or more group addressed frames
+         * are buffered for each AP of the other AP(s) that are affiliated with the same AP MLD by
+         * setting the corresponding bit value to 1 in an increasing order of their link IDs. The
+         * remaining (N – n) bits are set to 0.
+         */
+        if (GetNLinks() > 1)
+        {
+            uint16_t aid = MIN_AID;
+            for (uint8_t id = 0; id < GetNLinks(); ++id)
+            {
+                if (id == linkId || GetLink(id).nStationsInPsMode == 0)
+                {
+                    continue;
+                }
+                if (HasBufferedGroupcast(id))
+                {
+                    tim.AddAid(aid);
+                }
+                ++aid;
+            }
+        }
+    }
+
+    return tim;
+}
+
+bool
+ApWifiMac::HasMoreDataAfter(Ptr<const WifiMpdu> mpdu, uint8_t linkId) const
+{
+    NS_LOG_FUNCTION(this << *mpdu << linkId);
+
+    const auto acList = GetQosSupported() ? edcaAcIndices : std::list<AcIndex>{AC_BE_NQOS};
+    const auto& hdr = mpdu->GetHeader();
+    const auto addr1 = hdr.GetAddr1();
+
+    if (addr1.IsGroup())
+    {
+        NS_ASSERT_MSG(GetMacQueueScheduler()->GetAllQueuesBlockedOnLink(
+                          linkId,
+                          WifiRcvAddr::UNICAST,
+                          WifiQueueBlockedReason::TX_GROUP_AFTER_DTIM),
+                      "Expected unicast transmissions to be blocked");
+
+        return std::any_of(acList.cbegin(), acList.cend(), [=, this](const auto aci) {
+            auto item = mpdu->IsQueued() && mpdu->GetQueueAc() == aci ? mpdu : nullptr;
+            return GetTxopQueue(aci)->PeekFirstAvailable(linkId, item) != nullptr;
+        });
+    }
+
+    // Sec. 9.2.4.1.8 802.11be D6.0:
+    // A non-DMG and non-S1G STA uses the More Data subfield to indicate to a STA that is not
+    // affiliated with a non-AP MLD and in PS mode that more BUs are buffered for that STA at
+    // the AP.
+    // For a non-AP MLD, an AP affiliated with an AP MLD uses the More Data subfield to indicate to
+    // a non-AP STA in PS mode affiliated with the non-AP MLD that more BUs, corresponding to Data
+    // frames with TIDs that are mapped to this link [...] or bufferable Management frames are
+    // buffered for the non-AP MLD at the AP MLD
+
+    const auto receiver = GetLink(linkId).stationManager->GetMldAddress(addr1).value_or(addr1);
+    const auto isSingleLink = (addr1 == receiver);
+
+    // look for buffered data frames
+    if (!GetQosSupported())
+    {
+        const WifiContainerQueueId queueId(WIFI_DATA_QUEUE,
+                                           WifiRcvAddr::UNICAST,
+                                           receiver,
+                                           std::nullopt);
+        auto start = hdr.IsData() ? mpdu : nullptr;
+        if (auto bu = GetTxopQueue(AC_BE_NQOS)->PeekByQueueId(queueId, start))
+        {
+            NS_LOG_DEBUG("Found a buffered unit: " << *bu);
+            return true;
+        }
+    }
+    else
+    {
+        for (uint8_t tid = 0; tid < 8; ++tid)
+        {
+            if (!isSingleLink && !TidMappedOnLink(receiver, WifiDirection::DOWNLINK, tid, linkId))
+            {
+                continue; // this TID is not mapped on this link
+            }
+
+            auto start =
+                (hdr.IsQosData() && hdr.GetQosTid() == tid) ? mpdu->GetOriginal() : nullptr;
+
+            if (auto bu = GetTxopQueue(QosUtilsMapTidToAc(tid))
+                              ->PeekByTidAndAddress(tid, receiver, start))
+            {
+                NS_LOG_DEBUG("Found a buffered unit: " << *bu);
+                return true;
+            }
+        }
+    }
+
+    // look for buffered management frames
+    for (const auto aci : acList)
+    {
+        const WifiContainerQueueId queueId(WIFI_MGT_QUEUE,
+                                           WifiRcvAddr::UNICAST,
+                                           addr1,
+                                           std::nullopt);
+        auto start = (hdr.IsMgt() && mpdu->GetQueueAc() == aci) ? mpdu : nullptr;
+
+        if (auto bu = GetTxopQueue(aci)->PeekByQueueId(queueId, start))
+        {
+            NS_LOG_DEBUG("Found a buffered unit: " << *bu);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 ErpInformation
@@ -1218,8 +1506,8 @@ ApWifiMac::GetProbeRespProfile(uint8_t linkId) const
     auto supportedRates = GetSupportedRates(linkId);
     probe.Get<SupportedRates>() = supportedRates.rates;
     probe.Get<ExtendedSupportedRatesIE>() = supportedRates.extendedRates;
-    probe.SetBeaconIntervalUs(GetBeaconInterval().GetMicroSeconds());
-    probe.Capabilities() = GetCapabilities(linkId);
+    probe.m_beaconInterval = GetBeaconInterval().GetMicroSeconds();
+    probe.m_capability = GetCapabilities(linkId);
     GetWifiRemoteStationManager(linkId)->SetShortPreambleEnabled(
         GetLink(linkId).shortPreambleEnabled);
     GetWifiRemoteStationManager(linkId)->SetShortSlotTimeEnabled(
@@ -1326,8 +1614,8 @@ ApWifiMac::GetAssocResp(Mac48Address to, uint8_t linkId)
     auto supportedRates = GetSupportedRates(linkId);
     assoc.Get<SupportedRates>() = supportedRates.rates;
     assoc.Get<ExtendedSupportedRatesIE>() = supportedRates.extendedRates;
-    assoc.SetStatusCode(code);
-    assoc.Capabilities() = GetCapabilities(linkId);
+    assoc.m_statusCode = code;
+    assoc.m_capability = GetCapabilities(linkId);
     if (GetQosSupported())
     {
         assoc.Get<EdcaParameterSet>() = GetEdcaParameterSet(linkId);
@@ -1376,7 +1664,7 @@ ApWifiMac::GetLinkIdStaAddrMap(MgtAssocResponseHeader& assoc,
     // find all the links to setup (i.e., those for which status code is success)
     std::map<uint8_t /* link ID */, Mac48Address> linkIdStaAddrMap;
 
-    if (assoc.GetStatusCode().IsSuccess())
+    if (assoc.m_statusCode.IsSuccess())
     {
         linkIdStaAddrMap[linkId] = to;
     }
@@ -1390,7 +1678,7 @@ ApWifiMac::GetLinkIdStaAddrMap(MgtAssocResponseHeader& assoc,
         {
             auto& perStaProfile = mle->GetPerStaProfile(idx);
             if (perStaProfile.HasAssocResponse() &&
-                perStaProfile.GetAssocResponse().GetStatusCode().IsSuccess())
+                perStaProfile.GetAssocResponse().m_statusCode.IsSuccess())
             {
                 uint8_t otherLinkId = perStaProfile.GetLinkId();
                 auto staAddress = GetWifiRemoteStationManager(otherLinkId)
@@ -1476,9 +1764,9 @@ ApWifiMac::SetAid(MgtAssocResponseHeader& assoc, const LinkIdStaAddrMap& linkIdS
     // Element must not contain the AID field. We set the AID field in such
     // Association Responses anyway, in order to ease future implementation of
     // the inheritance mechanism.
-    if (assoc.GetStatusCode().IsSuccess())
+    if (assoc.m_statusCode.IsSuccess())
     {
-        assoc.SetAssociationId(aid);
+        assoc.m_aid = aid;
     }
     if (const auto& mle = assoc.Get<MultiLinkElement>())
     {
@@ -1486,9 +1774,9 @@ ApWifiMac::SetAid(MgtAssocResponseHeader& assoc, const LinkIdStaAddrMap& linkIdS
         {
             if (const auto& perStaProfile = mle->GetPerStaProfile(idx);
                 perStaProfile.HasAssocResponse() &&
-                perStaProfile.GetAssocResponse().GetStatusCode().IsSuccess())
+                perStaProfile.GetAssocResponse().m_statusCode.IsSuccess())
             {
-                perStaProfile.GetAssocResponse().SetAssociationId(aid);
+                perStaProfile.GetAssocResponse().m_aid = aid;
             }
         }
     }
@@ -1565,8 +1853,9 @@ ApWifiMac::SendOneBeacon(uint8_t linkId)
     auto supportedRates = GetSupportedRates(linkId);
     beacon.Get<SupportedRates>() = supportedRates.rates;
     beacon.Get<ExtendedSupportedRatesIE>() = supportedRates.extendedRates;
-    beacon.SetBeaconIntervalUs(GetBeaconInterval().GetMicroSeconds());
-    beacon.Capabilities() = GetCapabilities(linkId);
+    beacon.m_beaconInterval = GetBeaconInterval().GetMicroSeconds();
+    beacon.m_capability = GetCapabilities(linkId);
+    beacon.Get<Tim>() = GetTim(linkId);
     GetWifiRemoteStationManager(linkId)->SetShortPreambleEnabled(link.shortPreambleEnabled);
     GetWifiRemoteStationManager(linkId)->SetShortSlotTimeEnabled(link.shortSlotTimeEnabled);
     if (GetDsssSupported(linkId))
@@ -1660,6 +1949,156 @@ ApWifiMac::SendOneBeacon(uint8_t linkId)
             GetWifiPhy(linkId)->SetSlot(MicroSeconds(20));
         }
     }
+
+    // Update the DTIM Count
+    auto& dtimCount = GetLink(linkId).beaconDtimCount;
+    dtimCount = dtimCount == 0 ? (m_dtimPeriod - 1) : (dtimCount - 1);
+
+    const auto& tim = beacon.Get<Tim>();
+    NS_ASSERT(tim);
+    if (tim->m_dtimCount == 0 && tim->m_hasMulticastPending)
+    {
+        // connect a callback to intercept the transmission of the Beacon frame and start
+        // transmitting the pending group addressed frames
+        link.phy->TraceConnectWithoutContext(
+            "PhyTxPsduBegin",
+            MakeCallback(&ApWifiMac::TxGroupAddrFramesAfterDtim, this).Bind(linkId));
+    }
+}
+
+void
+ApWifiMac::TxGroupAddrFramesAfterDtim(uint8_t linkId,
+                                      WifiConstPsduMap psduMap,
+                                      WifiTxVector /* txVector */,
+                                      Watt_u /* txPower */)
+{
+    NS_LOG_FUNCTION(this << linkId);
+
+    if (psduMap.size() > 1 || !psduMap.cbegin()->second->GetHeader(0).IsBeacon())
+    {
+        return;
+    }
+
+    const auto acList = GetQosSupported() ? edcaAcIndices : std::list<AcIndex>{AC_BE_NQOS};
+
+    std::map<AcIndex, bool> hasFramesToTransmit;
+    for (const auto aci : acList)
+    {
+        // save the status of the AC queues before unblocking the queues
+        hasFramesToTransmit[aci] = GetTxopFor(aci)->HasFramesToTransmit(linkId);
+    }
+
+    NS_LOG_DEBUG("Unblock transmission of group addressed frames on link " << +linkId);
+    GetMacQueueScheduler()->UnblockAllQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                             {linkId},
+                                             {WifiRcvAddr::BROADCAST, WifiRcvAddr::GROUPCAST});
+
+    NS_LOG_DEBUG("Block transmission of unicast frames on link " << +linkId);
+    GetMacQueueScheduler()->BlockAllQueues(WifiQueueBlockedReason::TX_GROUP_AFTER_DTIM,
+                                           {linkId},
+                                           {WifiRcvAddr::UNICAST});
+
+    for (const auto aci : acList)
+    {
+        GetTxopFor(aci)->StartAccessAfterEvent(linkId,
+                                               hasFramesToTransmit[aci],
+                                               Txop::CHECK_MEDIUM_BUSY);
+    }
+
+    // the Beacon frame has been intercepted, we can disconnect the callback (right after all
+    // callbacks connected to the trace source are called)
+    Simulator::ScheduleNow([=, this]() {
+        GetLink(linkId).phy->TraceDisconnectWithoutContext(
+            "PhyTxPsduBegin",
+            MakeCallback(&ApWifiMac::TxGroupAddrFramesAfterDtim, this).Bind(linkId));
+    });
+
+    // connect another callback to be notified of packets removed from the MAC queues; this is
+    // needed to detect that all pending group addressed frames have been transmitted
+    for (const auto aci : acList)
+    {
+        GetTxopQueue(aci)->TraceConnectWithoutContext(
+            "Dequeue",
+            MakeCallback(&ApWifiMac::CheckGroupAddrFramesAfterDtimDone, this).Bind(linkId));
+        GetTxopQueue(aci)->TraceConnectWithoutContext(
+            "Drop",
+            MakeCallback(&ApWifiMac::CheckGroupAddrFramesAfterDtimDone, this).Bind(linkId));
+    }
+
+    // check that the AP actually has group addressed frames to transmit
+    CheckGroupAddrFramesAfterDtimDone(linkId);
+}
+
+void
+ApWifiMac::CheckGroupAddrFramesAfterDtimDone(uint8_t linkId, Ptr<const WifiMpdu> mpdu) const
+{
+    NS_LOG_FUNCTION(this << linkId);
+
+    if (!GetMacQueueScheduler()->GetAllQueuesBlockedOnLink(
+            linkId,
+            WifiRcvAddr::UNICAST,
+            WifiQueueBlockedReason::TX_GROUP_AFTER_DTIM))
+    {
+        NS_LOG_DEBUG("Unicast frames are not blocked on link " << +linkId << ", nothing to do");
+        return;
+    }
+
+    const auto acList = GetQosSupported() ? edcaAcIndices : std::list<AcIndex>{AC_BE_NQOS};
+
+    // when this function is called right after sending the Beacon frame, no MPDU is passed
+    const auto noGroupAddressed =
+        !mpdu && std::all_of(acList.cbegin(), acList.cend(), [=, this](const auto aci) {
+            return (GetTxopQueue(aci)->PeekFirstAvailable(linkId) == nullptr);
+        });
+    const auto lastGroupAddressed =
+        mpdu && mpdu->GetHeader().GetAddr1().IsGroup() && !mpdu->GetHeader().IsMoreData();
+
+    if (noGroupAddressed || lastGroupAddressed)
+    {
+        NS_LOG_DEBUG((noGroupAddressed ? "No group addressed frames queued for link "
+                                       : "Sent a group addressed frame with More Data=0 on link ")
+                     << +linkId);
+
+        std::map<AcIndex, bool> hasFramesToTransmit;
+        for (const auto aci : acList)
+        {
+            // save the status of the AC queues before unblocking the queues
+            hasFramesToTransmit[aci] = GetTxopFor(aci)->HasFramesToTransmit(linkId);
+        }
+
+        GetMacQueueScheduler()->UnblockAllQueues(WifiQueueBlockedReason::TX_GROUP_AFTER_DTIM,
+                                                 {linkId},
+                                                 {WifiRcvAddr::UNICAST});
+        GetMacQueueScheduler()->BlockAllQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                               {linkId},
+                                               {WifiRcvAddr::BROADCAST, WifiRcvAddr::GROUPCAST});
+        // do not block transmission of Beacon frames
+        GetMacQueueScheduler()->UnblockQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                              AC_BEACON,
+                                              {WifiContainerQueueType::WIFI_MGT_QUEUE},
+                                              Mac48Address::GetBroadcast(),
+                                              GetFrameExchangeManager(linkId)->GetAddress());
+
+        for (const auto aci : acList)
+        {
+            GetTxopFor(aci)->StartAccessAfterEvent(linkId,
+                                                   hasFramesToTransmit[aci],
+                                                   Txop::CHECK_MEDIUM_BUSY);
+        }
+
+        // disconnect callbacks (right after all callbacks connected to the trace source are called)
+        Simulator::ScheduleNow([=, this]() {
+            for (const auto aci : acList)
+            {
+                GetTxopQueue(aci)->TraceDisconnectWithoutContext(
+                    "Dequeue",
+                    MakeCallback(&ApWifiMac::CheckGroupAddrFramesAfterDtimDone, this).Bind(linkId));
+                GetTxopQueue(aci)->TraceDisconnectWithoutContext(
+                    "Drop",
+                    MakeCallback(&ApWifiMac::CheckGroupAddrFramesAfterDtimDone, this).Bind(linkId));
+            }
+        });
+    }
 }
 
 Ptr<WifiMpdu>
@@ -1743,7 +2182,7 @@ ApWifiMac::TxOk(Ptr<const WifiMpdu> mpdu)
     {
         MgtAssocResponseHeader assocResp;
         mpdu->GetPacket()->PeekHeader(assocResp);
-        auto aid = assocResp.GetAssociationId();
+        auto aid = assocResp.m_aid;
 
         auto linkId = GetLinkIdByAddress(hdr.GetAddr2());
         NS_ABORT_MSG_IF(!linkId.has_value(), "No link ID matching the TA");
@@ -1860,7 +2299,7 @@ ApWifiMac::TxFailed(WifiMacDropReason timeoutReason, Ptr<const WifiMpdu> mpdu)
         // free the assigned AID
         MgtAssocResponseHeader assocResp;
         mpdu->GetPacket()->PeekHeader(assocResp);
-        auto aid = assocResp.GetAssociationId();
+        auto aid = assocResp.m_aid;
         m_aidToMldOrLinkAddress.erase(aid);
         for (const auto& [id, lnk] : GetLinks())
         {
@@ -1895,12 +2334,35 @@ ApWifiMac::StaSwitchingToPsMode(const Mac48Address& staAddr, uint8_t linkId)
 {
     NS_LOG_FUNCTION(this << staAddr << linkId);
 
-    GetWifiRemoteStationManager(linkId)->SetPsMode(staAddr, true);
+    auto rsm = GetWifiRemoteStationManager(linkId);
+    if (rsm->IsInPsMode(staAddr))
+    {
+        NS_LOG_DEBUG(staAddr << " is already in PS mode, nothing to do");
+        return;
+    }
+
+    rsm->SetPsMode(staAddr, true);
 
     // Block frames addressed to the STA in PS mode
     NS_LOG_DEBUG("Block destination " << staAddr << " on link " << +linkId);
-    auto staMldAddr = GetWifiRemoteStationManager(linkId)->GetMldAddress(staAddr).value_or(staAddr);
+    auto staMldAddr = rsm->GetMldAddress(staAddr).value_or(staAddr);
     BlockUnicastTxOnLinks(WifiQueueBlockedReason::POWER_SAVE_MODE, staMldAddr, {linkId});
+
+    if (GetLink(linkId).nStationsInPsMode++ == 0)
+    {
+        // this is the first associated STA switching to PS mode. Group addressed frames shall be
+        // sent after Beacon frames including a DTIM
+        NS_LOG_DEBUG("Block transmission of group addressed frames on link " << +linkId);
+        GetMacQueueScheduler()->BlockAllQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                               {linkId},
+                                               {WifiRcvAddr::BROADCAST, WifiRcvAddr::GROUPCAST});
+        // do not block transmission of Beacon frames
+        GetMacQueueScheduler()->UnblockQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                              AC_BEACON,
+                                              {WifiContainerQueueType::WIFI_MGT_QUEUE},
+                                              Mac48Address::GetBroadcast(),
+                                              GetFrameExchangeManager(linkId)->GetAddress());
+    }
 }
 
 void
@@ -1908,16 +2370,34 @@ ApWifiMac::StaSwitchingToActiveModeOrDeassociated(const Mac48Address& staAddr, u
 {
     NS_LOG_FUNCTION(this << staAddr << linkId);
 
+    if (!GetWifiRemoteStationManager(linkId)->IsInPsMode(staAddr))
+    {
+        NS_LOG_DEBUG(staAddr << " is already in active mode, nothing to do");
+        return;
+    }
+
     GetWifiRemoteStationManager(linkId)->SetPsMode(staAddr, false);
 
-    if (GetWifiRemoteStationManager(linkId)->IsAssociated(staAddr))
+    // unblock transmissions to the station
+    NS_LOG_DEBUG("Unblock destination " << staAddr << " on link " << +linkId);
+    auto staMldAddr = GetWifiRemoteStationManager(linkId)->GetMldAddress(staAddr).value_or(staAddr);
+    UnblockUnicastTxOnLinks(WifiQueueBlockedReason::POWER_SAVE_MODE, staMldAddr, {linkId});
+
+    if (--GetLink(linkId).nStationsInPsMode == 0)
     {
-        // the station is still associated, unblock its frames
-        NS_LOG_DEBUG("Unblock destination " << staAddr << " on link " << +linkId);
-        auto staMldAddr =
-            GetWifiRemoteStationManager(linkId)->GetMldAddress(staAddr).value_or(staAddr);
-        UnblockUnicastTxOnLinks(WifiQueueBlockedReason::POWER_SAVE_MODE, staMldAddr, {linkId});
+        // the last STA in PS mode switched back to active mode or deassociated. No need to
+        // keep blocking group addressed frames
+        NS_LOG_DEBUG("Unblock transmission of group addressed frames on link " << +linkId);
+        GetMacQueueScheduler()->UnblockAllQueues(WifiQueueBlockedReason::WAIT_UNTIL_DTIM,
+                                                 {linkId},
+                                                 {WifiRcvAddr::BROADCAST, WifiRcvAddr::GROUPCAST});
     }
+}
+
+std::size_t
+ApWifiMac::GetNStationsInPsMode(linkId_t linkId) const
+{
+    return GetLink(linkId).nStationsInPsMode;
 }
 
 std::optional<uint8_t>
@@ -2105,34 +2585,47 @@ ApWifiMac::Receive(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
             }
             case WIFI_MAC_MGT_DISASSOCIATION: {
                 NS_LOG_DEBUG("Disassociation received from " << from);
-                GetWifiRemoteStationManager(linkId)->RecordDisassociated(from);
-                auto& staList = GetLink(linkId).staList;
-                for (auto it = staList.begin(); it != staList.end(); ++it)
+                const auto aid = GetAssociationId(from, linkId);
+                if (aid == SU_STA_ID)
                 {
-                    if (it->second == from)
+                    NS_LOG_DEBUG("Station " << from << " is not associated");
+                    return;
+                }
+                const auto address =
+                    GetWifiRemoteStationManager(linkId)->GetMldAddress(from).value_or(from);
+                m_deAssocLogger(aid, address);
+                if (m_gcrManager)
+                {
+                    m_gcrManager->NotifyStaDeassociated(address);
+                }
+
+                for (const auto& [id, lnk] : GetLinks())
+                {
+                    auto& link = GetLink(id);
+                    auto it = link.staList.find(aid);
+
+                    if (it == link.staList.cend())
                     {
-                        staList.erase(it);
-                        m_deAssocLogger(it->first, it->second);
-                        if (GetWifiRemoteStationManager(linkId)->GetDsssSupported(from) &&
-                            !GetWifiRemoteStationManager(linkId)->GetErpOfdmSupported(from))
-                        {
-                            GetLink(linkId).numNonErpStations--;
-                        }
-                        if (!GetWifiRemoteStationManager(linkId)->GetHtSupported(from) &&
-                            !GetWifiRemoteStationManager(linkId)->GetStationHe6GhzCapabilities(
-                                from))
-                        {
-                            GetLink(linkId).numNonHtStations--;
-                        }
-                        UpdateShortSlotTimeEnabled(linkId);
-                        UpdateShortPreambleEnabled(linkId);
-                        StaSwitchingToActiveModeOrDeassociated(from, linkId);
-                        if (m_gcrManager)
-                        {
-                            m_gcrManager->NotifyStaDeassociated(from);
-                        }
-                        break;
+                        continue; // STA has not setup this link
                     }
+
+                    // a STA operating on this link is associated with the AP
+                    StaSwitchingToActiveModeOrDeassociated(address, id);
+                    link.staList.erase(it);
+                    m_aidToMldOrLinkAddress.erase(aid);
+                    GetWifiRemoteStationManager(id)->RecordDisassociated(address);
+                    if (GetWifiRemoteStationManager(id)->GetDsssSupported(address) &&
+                        !GetWifiRemoteStationManager(id)->GetErpOfdmSupported(address))
+                    {
+                        link.numNonErpStations--;
+                    }
+                    if (!GetWifiRemoteStationManager(id)->GetHtSupported(address) &&
+                        !GetWifiRemoteStationManager(id)->GetStationHe6GhzCapabilities(address))
+                    {
+                        link.numNonHtStations--;
+                    }
+                    UpdateShortSlotTimeEnabled(id);
+                    UpdateShortPreambleEnabled(id);
                 }
                 return;
             }
@@ -2184,7 +2677,7 @@ ApWifiMac::ReceiveAssocRequest(const AssocReqRefVariant& assoc,
 
         // first, verify that the the station's supported
         // rate set is compatible with our Basic Rate set
-        const CapabilityInformation& capabilities = frame.Capabilities();
+        const CapabilityInformation& capabilities = frame.m_capability;
         remoteStationManager->AddSupportedPhyPreamble(from, capabilities.IsShortPreamble());
         NS_ASSERT(frame.template Get<SupportedRates>());
         const auto rates = AllSupportedRates{*frame.template Get<SupportedRates>(),
@@ -2667,11 +3160,15 @@ ApWifiMac::DoInitialize()
         GetLink(linkId).beaconEvent.Cancel();
         if (m_enableBeaconGeneration)
         {
-            uint64_t jitterUs =
-                (m_enableBeaconJitter
-                     ? static_cast<uint64_t>(m_beaconJitter->GetValue(0, 1) *
-                                             (GetBeaconInterval().GetMicroSeconds()))
-                     : 0);
+            uint64_t jitterUs{0};
+            if (m_enableBeaconJitter)
+            {
+                const auto value = m_beaconJitter->GetValue();
+                NS_ABORT_MSG_IF(value < 0 || value > 1,
+                                "Jitter (" << value << ") must be between 0 and 1");
+                jitterUs = static_cast<uint64_t>(value * (GetBeaconInterval().GetMicroSeconds()));
+            }
+
             NS_LOG_DEBUG("Scheduling initial beacon for access point "
                          << GetAddress() << " at time " << jitterUs << "us");
             GetLink(linkId).beaconEvent = Simulator::Schedule(MicroSeconds(jitterUs),

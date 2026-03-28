@@ -35,6 +35,8 @@ enum class WifiQueueBlockedReason : uint8_t
     USING_OTHER_EMLSR_LINK,
     WAITING_EMLSR_TRANSITION_DELAY,
     TID_NOT_MAPPED,
+    WAIT_UNTIL_DTIM,
+    TX_GROUP_AFTER_DTIM,
     REASONS_COUNT
 };
 
@@ -60,6 +62,10 @@ operator<<(std::ostream& os, WifiQueueBlockedReason reason)
         return (os << "WAITING_EMLSR_TRANSITION_DELAY");
     case WifiQueueBlockedReason::TID_NOT_MAPPED:
         return (os << "TID_NOT_MAPPED");
+    case WifiQueueBlockedReason::WAIT_UNTIL_DTIM:
+        return (os << "WAIT_UNTIL_DTIM");
+    case WifiQueueBlockedReason::TX_GROUP_AFTER_DTIM:
+        return (os << "TX_GROUP_AFTER_DTIM");
     case WifiQueueBlockedReason::REASONS_COUNT:
         return (os << "REASONS_COUNT");
     default:
@@ -182,33 +188,42 @@ class WifiMacQueueScheduler : public Object
                                const std::set<uint8_t>& linkIds = {}) = 0;
 
     /**
-     * Block the given set of links for all the container queues for the given reason.
+     * Block the given set of links for all the container queues of the given receiver
+     * address types for the given reason.
      *
      * @param reason the reason for blocking the queues
      * @param linkIds set of links to block (empty to block all setup links)
+     * @param addrTypes set of receiver address types (empty to block all types)
      */
     virtual void BlockAllQueues(WifiQueueBlockedReason reason,
-                                const std::set<uint8_t>& linkIds = {}) = 0;
+                                const std::set<uint8_t>& linkIds = {},
+                                const std::set<WifiRcvAddr>& addrTypes = {}) = 0;
 
     /**
-     * Unblock the given set of links for all the container queues for the given reason.
+     * Unblock the given set of links for all the container queues of the given receiver
+     * address types for the given reason.
      *
      * @param reason the reason for unblocking the queues
      * @param linkIds set of links to unblock (empty to unblock all setup links)
+     * @param addrTypes set of receiver address types (empty to unblock all types)
      */
     virtual void UnblockAllQueues(WifiQueueBlockedReason reason,
-                                  const std::set<uint8_t>& linkIds = {}) = 0;
+                                  const std::set<uint8_t>& linkIds = {},
+                                  const std::set<WifiRcvAddr>& addrTypes = {}) = 0;
 
     /**
-     * Return whether all the container queues are blocked for the given link for the given
-     * reason, if different than REASONS_COUNT, or for any reason, otherwise.
+     * Return whether all the container queues of the given receiver address type (if different
+     * than COUNT, or of any receiver address type, otherwise) are blocked for the given link for
+     * the given reason (if different than REASONS_COUNT, or for any reason, otherwise).
      *
      * @param linkId the ID of the given link
+     * @param addrType receiver address types (empty to block all types)
      * @param reason the reason to check (if different than REASONS_COUNT)
      * @return whether all the container queues are blocked for the given link
      */
     virtual bool GetAllQueuesBlockedOnLink(
         uint8_t linkId,
+        WifiRcvAddr addrType = WifiRcvAddr::COUNT,
         WifiQueueBlockedReason reason = WifiQueueBlockedReason::REASONS_COUNT) = 0;
 
     /// Bitset identifying the reasons to block individual links for a container queue

@@ -253,7 +253,17 @@ class WifiMac : public Object
      * @return the wifi MAC queue of the (Qos)Txop associated with the given AC,
      *         if such (Qos)Txop is installed, or a null pointer, otherwise
      */
-    virtual Ptr<WifiMacQueue> GetTxopQueue(AcIndex ac) const;
+    Ptr<WifiMacQueue> GetTxopQueue(AcIndex ac) const;
+
+    /**
+     * Get the (Qos)Txop associated with the given AC, if such (Qos)Txop is installed, or a null
+     * pointer, otherwise.
+     *
+     * @param ac the given Access Category
+     * @return the (Qos)Txop associated with the given AC, if such (Qos)Txop is installed, or a
+     *         null pointer, otherwise
+     */
+    virtual Ptr<Txop> GetTxopFor(AcIndex ac) const;
 
     /**
      * Check if the MAC has frames to transmit over the given link
@@ -527,6 +537,22 @@ class WifiMac : public Object
      * Public method used to fire a MacRxDrop trace. Implemented for encapsulation purposes.
      */
     void NotifyRxDrop(Ptr<const Packet> packet);
+
+    /**
+     * Notify that the given TXOP is requesting channel access on the given link.
+     *
+     * @param txop the DCF/EDCAF requesting channel access
+     * @param linkId the ID of the given link
+     */
+    virtual void NotifyRequestAccess(Ptr<Txop> txop, uint8_t linkId);
+
+    /**
+     * Notify that the given TXOP has released the channel on the given link.
+     *
+     * @param txop the DCF/EDCAF releasing the channel
+     * @param linkId the ID of the given link
+     */
+    virtual void NotifyChannelReleased(Ptr<Txop> txop, uint8_t linkId);
 
     /**
      * @return pointer to HtConfiguration if it exists

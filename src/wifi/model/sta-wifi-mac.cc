@@ -13,6 +13,7 @@
 #include "channel-access-manager.h"
 #include "frame-exchange-manager.h"
 #include "mgt-action-headers.h"
+#include "power-save-manager.h"
 #include "qos-txop.h"
 #include "snr-tag.h"
 #include "wifi-assoc-manager.h"
@@ -111,6 +112,12 @@ StaWifiMac::GetTypeId()
                                           "LEGACY",
                                           WifiAssocType::ML_SETUP,
                                           "ML_SETUP"))
+            .AddAttribute("PowerSaveManager",
+                          "The Power Save manager object.",
+                          PointerValue(),
+                          MakePointerAccessor(&StaWifiMac::m_powerSaveManager),
+                          MakePointerChecker<PowerSaveManager>())
+            // NS_DEPRECATED_3_48
             .AddAttribute(
                 "PowerSaveMode",
                 "Enable/disable power save mode on the given link. The power management mode is "
@@ -120,7 +127,9 @@ StaWifiMac::GetTypeId()
                 PairValue<BooleanValue, UintegerValue>(),
                 MakePairAccessor<BooleanValue, UintegerValue>(&StaWifiMac::SetPowerSaveMode),
                 MakePairChecker<BooleanValue, UintegerValue>(MakeBooleanChecker(),
-                                                             MakeUintegerChecker<uint8_t>()))
+                                                             MakeUintegerChecker<uint8_t>()),
+                TypeId::SupportLevel::DEPRECATED,
+                "Use PowerSaveManager::PowerSaveMode instead")
             .AddAttribute("PmModeSwitchTimeout",
                           "If switching to a new Power Management mode is not completed within "
                           "this amount of time, make another attempt at switching Power "
@@ -196,6 +205,10 @@ StaWifiMac::DoInitialize()
     {
         m_emlsrManager->Initialize();
     }
+    if (m_powerSaveManager)
+    {
+        m_powerSaveManager->Initialize();
+    }
     StartScanning();
     NS_ABORT_IF(!TraceConnectWithoutContext("AckedMpdu", MakeCallback(&StaWifiMac::TxOk, this)));
     WifiMac::DoInitialize();
@@ -210,6 +223,11 @@ StaWifiMac::DoDispose()
         m_assocManager->Dispose();
     }
     m_assocManager = nullptr;
+    if (m_powerSaveManager)
+    {
+        m_powerSaveManager->Dispose();
+    }
+    m_powerSaveManager = nullptr;
     if (m_emlsrManager)
     {
         m_emlsrManager->Dispose();
@@ -283,6 +301,20 @@ StaWifiMac::GetAssocType() const
 }
 
 void
+StaWifiMac::SetPowerSaveManager(Ptr<PowerSaveManager> powerSaveManager)
+{
+    NS_LOG_FUNCTION(this << powerSaveManager);
+    m_powerSaveManager = powerSaveManager;
+    m_powerSaveManager->SetWifiMac(this);
+}
+
+Ptr<PowerSaveManager>
+StaWifiMac::GetPowerSaveManager() const
+{
+    return m_powerSaveManager;
+}
+
+void
 StaWifiMac::SetEmlsrManager(Ptr<EmlsrManager> emlsrManager)
 {
     NS_LOG_FUNCTION(this << emlsrManager);
@@ -343,29 +375,51 @@ StaWifiMac::GetCurrentChannel(uint8_t linkId) const
 }
 
 void
-StaWifiMac::NotifyEmlsrModeChanged(const std::set<uint8_t>& linkIds)
+StaWifiMac::NotifyEmlsrModeChanged(uint8_t txLinkId, const std::set<uint8_t>& linkIds)
 {
     std::stringstream ss;
     if (g_log.IsEnabled(ns3::LOG_FUNCTION))
     {
         std::copy(linkIds.cbegin(), linkIds.cend(), std::ostream_iterator<uint16_t>(ss, " "));
     }
-    NS_LOG_FUNCTION(this << ss.str());
+    NS_LOG_FUNCTION(this << txLinkId << ss.str());
 
     for (const auto& [linkId, lnk] : GetLinks())
     {
         auto& link = GetStaLink(lnk);
 
-        if (linkIds.contains(linkId))
+        if (!linkIds.empty())
         {
-            // EMLSR mode enabled
-            link.emlsrEnabled = true;
-            link.pmMode = WIFI_PM_ACTIVE;
+            // enabling EMLSR mode on EMLSR links
+            /**
+             * 802.11be D7.0 Sec. 35.3.17
+             * When a non-AP MLD [...] intends to enable the EMLSR mode on the EMLSR link(s), then:
+             * - The non-AP MLD shall operate in the EMLSR mode on the EMLSR link(s) and the other
+             *   non-AP STA(s) affiliated with the non-AP MLD operating on the corresponding EMLSR
+             *   link(s), which did not transmit the EML Operating Mode Notification frame, shall
+             *   transition to active mode without being required to transmit a frame with the Power
+             *   Management subfield set to 0
+             */
+            const auto enabled = linkIds.contains(linkId);
+            if (enabled)
+            {
+                link.pmMode = WIFI_PM_ACTIVE;
+            }
+            link.emlsrEnabled = enabled;
         }
         else
         {
-            // EMLSR mode disabled
-            if (link.emlsrEnabled)
+            // disabling EMLSR mode
+            /**
+             * 802.11be D7.0 Sec. 35.3.17
+             * When a non-AP MLD [...] intends to disable the EMLSR mode, then:
+             * - The non-AP MLD shall disable the EMLSR mode and the other non-AP STA(s) affiliated
+             *   with the non-AP MLD operating on the corresponding EMLSR link(s), which did not
+             *   transmit the EML Operating Mode Notification frame, shall transition to power save
+             *   mode without being required to transmit a frame with the Power Management subfield
+             *   set to 1
+             */
+            if (linkId != txLinkId && link.emlsrEnabled)
             {
                 link.pmMode = WIFI_PM_POWERSAVE;
             }
@@ -470,6 +524,31 @@ StaWifiMac::EnqueueProbeRequest(const MgtProbeRequestHeader& probeReq,
     }
 }
 
+void
+StaWifiMac::EnqueuePsPoll(uint8_t linkId)
+{
+    NS_LOG_FUNCTION(this << linkId);
+
+    WifiMacHeader psPoll(WIFI_MAC_CTL_PSPOLL);
+    psPoll.SetDsNotFrom();
+    psPoll.SetDsTo();
+    psPoll.SetNoRetry();
+    psPoll.SetNoMoreFragments();
+    psPoll.SetPowerManagement();
+    // The Duration/ID field contains the AID value assigned to the STA transmitting the frame by
+    // the AP in the (Re)Association Response frame that established that STA’s current association,
+    // with the two MSBs set to 1 (Sec. 9.3.1.5.2 of 802.11-2020)
+    psPoll.SetId(GetAssociationId() | 0xC000);
+    auto fem = GetLink(linkId).feManager;
+    psPoll.SetAddr1(fem->GetBssid());
+    psPoll.SetAddr2(fem->GetAddress());
+
+    // A non-S1G STA shall send PS-Poll frames using the access category AC_BE. This reduces the
+    // likelihood of collisions following a Beacon frame. (802.11-2020 Section 10.2.3.2)
+    auto txop = GetQosSupported() ? StaticCast<Txop>(GetQosTxop(AC_BE)) : GetTxop();
+    txop->Queue(Create<WifiMpdu>(Create<Packet>(), psPoll));
+}
+
 std::variant<MgtAssocRequestHeader, MgtReassocRequestHeader>
 StaWifiMac::GetAssociationRequest(bool isReassoc, uint8_t linkId) const
 {
@@ -480,7 +559,7 @@ StaWifiMac::GetAssociationRequest(bool isReassoc, uint8_t linkId) const
     if (isReassoc)
     {
         MgtReassocRequestHeader reassoc;
-        reassoc.SetCurrentApAddress(GetBssid(linkId));
+        reassoc.m_currentApAddr = GetBssid(linkId);
         mgtFrame = std::move(reassoc);
     }
     else
@@ -494,8 +573,8 @@ StaWifiMac::GetAssociationRequest(bool isReassoc, uint8_t linkId) const
         auto supportedRates = GetSupportedRates(linkId);
         frame.template Get<SupportedRates>() = supportedRates.rates;
         frame.template Get<ExtendedSupportedRatesIE>() = supportedRates.extendedRates;
-        frame.Capabilities() = GetCapabilities(linkId);
-        frame.SetListenInterval(0);
+        frame.m_capability = GetCapabilities(linkId);
+        frame.m_listenInterval = m_powerSaveManager ? m_powerSaveManager->GetListenInterval() : 1;
         if (GetHtSupported(linkId))
         {
             frame.template Get<ExtendedCapabilities>() = GetExtendedCapabilities();
@@ -909,23 +988,32 @@ StaWifiMac::ScanningTimeout(const std::optional<ApInfo>& bestAp)
     SwapLinks(swapInfo);
 
     // lambda to get beacon interval from Beacon or Probe Response
-    auto getBeaconInterval = [](auto&& frame) {
+    auto getBeaconIntervalAndTimestamp = [](auto&& frame) {
         using T = std::decay_t<decltype(frame)>;
         if constexpr (std::is_same_v<T, MgtBeaconHeader> ||
                       std::is_same_v<T, MgtProbeResponseHeader>)
         {
-            return MicroSeconds(frame.GetBeaconIntervalUs());
+            return std::make_pair(MicroSeconds(frame.m_beaconInterval),
+                                  MicroSeconds(frame.GetTimestamp()));
         }
         else
         {
             NS_ABORT_MSG("Unexpected frame type");
-            return Seconds(0);
+            return std::make_pair(Seconds(0), Seconds(0));
         }
     };
-    Time beaconInterval = std::visit(getBeaconInterval, bestAp->m_frame);
+    const auto [beaconInterval, timestamp] =
+        std::visit(getBeaconIntervalAndTimestamp, bestAp->m_frame);
     Time delay = beaconInterval * m_maxMissedBeacons;
     // restart beacon watchdog
     RestartBeaconWatchdog(delay);
+
+    if (m_powerSaveManager)
+    {
+        m_powerSaveManager->NotifyBeaconIntervalAndTimestamp(beaconInterval,
+                                                             timestamp,
+                                                             bestAp->m_linkId);
+    }
 
     SetState(WAIT_ASSOC_RESP);
     SendAssociationRequest(false);
@@ -994,6 +1082,10 @@ StaWifiMac::Disassociated()
     m_assocRequestEvent.Cancel();
     m_deAssocLogger(apAddr);
     m_aid = 0; // reset AID
+    if (m_powerSaveManager)
+    {
+        m_powerSaveManager->NotifyDisassociation();
+    }
     TryToEnsureAssociated();
 }
 
@@ -1212,6 +1304,10 @@ StaWifiMac::Receive(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
             NotifyRxDrop(packet);
             return;
         }
+        if (m_powerSaveManager && hdr->GetAddr1().IsGroup())
+        {
+            m_powerSaveManager->NotifyReceivedGroupcast(mpdu, linkId);
+        }
         if (hdr->IsQosData())
         {
             if (hdr->IsQosAmsdu())
@@ -1286,7 +1382,7 @@ StaWifiMac::ReceiveBeacon(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
     NS_LOG_DEBUG("Beacon received");
     MgtBeaconHeader beacon;
     mpdu->GetPacket()->PeekHeader(beacon);
-    const auto& capabilities = beacon.Capabilities();
+    const auto& capabilities = beacon.m_capability;
     NS_ASSERT(capabilities.IsEss());
     bool goodBeacon;
     if (IsWaitAssocResp() || IsAssociated())
@@ -1329,10 +1425,14 @@ StaWifiMac::ReceiveBeacon(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
     if (m_state == ASSOCIATED)
     {
         m_beaconArrival(Simulator::Now());
-        Time delay = MicroSeconds(std::get<MgtBeaconHeader>(apInfo.m_frame).GetBeaconIntervalUs() *
+        Time delay = MicroSeconds(std::get<MgtBeaconHeader>(apInfo.m_frame).m_beaconInterval *
                                   m_maxMissedBeacons);
         RestartBeaconWatchdog(delay);
         ApplyOperationalSettings(apInfo.m_frame, hdr.GetAddr2(), hdr.GetAddr3(), linkId);
+        if (m_powerSaveManager)
+        {
+            m_powerSaveManager->NotifyReceivedBeacon(mpdu, linkId);
+        }
     }
     else
     {
@@ -1395,9 +1495,9 @@ StaWifiMac::ReceiveAssocResp(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
     }
 
     std::optional<Mac48Address> apMldAddress;
-    if (assocResp.GetStatusCode().IsSuccess())
+    if (assocResp.m_statusCode.IsSuccess())
     {
-        m_aid = assocResp.GetAssociationId();
+        m_aid = assocResp.m_aid;
         NS_LOG_DEBUG((hdr.IsReassocResp() ? "reassociation done" : "association completed"));
         ApplyOperationalSettings(assocResp, hdr.GetAddr2(), hdr.GetAddr3(), linkId);
         NS_ASSERT(GetLink(linkId).bssid.has_value() && *GetLink(linkId).bssid == hdr.GetAddr3());
@@ -1465,7 +1565,7 @@ StaWifiMac::ReceiveAssocResp(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
     {
         setupLinks.push_back(id);
     }
-    if (assocResp.GetStatusCode().IsSuccess())
+    if (assocResp.m_statusCode.IsSuccess())
     {
         setupLinks.remove(linkId);
     }
@@ -1508,11 +1608,11 @@ StaWifiMac::ReceiveAssocResp(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
             MgtAssocResponseHeader assoc = perStaProfile.GetAssocResponse();
             RecordCapabilities(assoc, *bssid, staLinkid);
             RecordOperations(assoc, *bssid, staLinkid);
-            if (assoc.GetStatusCode().IsSuccess())
+            if (assoc.m_statusCode.IsSuccess())
             {
-                NS_ABORT_MSG_IF(m_aid != 0 && m_aid != assoc.GetAssociationId(),
+                NS_ABORT_MSG_IF(m_aid != 0 && m_aid != assoc.m_aid,
                                 "AID should be the same for all the links");
-                m_aid = assoc.GetAssociationId();
+                m_aid = assoc.m_aid;
                 NS_LOG_DEBUG("Setup on link " << staLinkid << " completed");
                 ApplyOperationalSettings(assocResp, *bssid, *bssid, staLinkid);
                 SetBssid(*bssid, staLinkid);
@@ -1566,6 +1666,33 @@ StaWifiMac::ReceiveAssocResp(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
     }
 
     SetPmModeAfterAssociation(linkId);
+}
+
+void
+StaWifiMac::NotifyReceivedFrameAfterPsPoll(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
+{
+    if (m_powerSaveManager)
+    {
+        m_powerSaveManager->NotifyReceivedFrameAfterPsPoll(mpdu, linkId);
+    }
+}
+
+void
+StaWifiMac::NotifyRequestAccess(Ptr<Txop> txop, uint8_t linkId)
+{
+    if (m_powerSaveManager)
+    {
+        m_powerSaveManager->NotifyRequestAccess(txop, linkId);
+    }
+}
+
+void
+StaWifiMac::NotifyChannelReleased(Ptr<Txop> txop, uint8_t linkId)
+{
+    if (m_powerSaveManager)
+    {
+        m_powerSaveManager->NotifyChannelReleased(txop, linkId);
+    }
 }
 
 void
@@ -1637,6 +1764,13 @@ StaWifiMac::SetPmModeAfterAssociation(uint8_t linkId)
                     }
                     link.pmMode = WIFI_PM_POWERSAVE;
                 }
+            }
+
+            if (m_powerSaveManager)
+            {
+                Simulator::Schedule(ackDuration,
+                                    &PowerSaveManager::NotifyAssocCompleted,
+                                    m_powerSaveManager);
             }
         });
 
@@ -1753,7 +1887,7 @@ StaWifiMac::ApplyOperationalSettings(const MgtFrameType& frame,
 
     // lambda processing Information Elements included in all frame types sent by APs
     auto processOtherIes = [&](auto&& frame) {
-        const auto& capabilities = frame.Capabilities();
+        const auto& capabilities = frame.m_capability;
         bool isShortPreambleEnabled = capabilities.IsShortPreamble();
         auto remoteStationManager = GetWifiRemoteStationManager(linkId);
         if (erpInformation && erpInformation->has_value() && GetErpSupported(linkId))
@@ -1988,10 +2122,18 @@ StaWifiMac::TxOk(Ptr<const WifiMpdu> mpdu)
     if (hdr.IsPowerManagement() && link.pmMode == WIFI_PM_SWITCHING_TO_PS)
     {
         link.pmMode = WIFI_PM_POWERSAVE;
+        if (m_powerSaveManager)
+        {
+            m_powerSaveManager->NotifyPmModeChanged(link.pmMode, *linkId);
+        }
     }
     else if (!hdr.IsPowerManagement() && link.pmMode == WIFI_PM_SWITCHING_TO_ACTIVE)
     {
         link.pmMode = WIFI_PM_ACTIVE;
+        if (m_powerSaveManager)
+        {
+            m_powerSaveManager->NotifyPmModeChanged(link.pmMode, *linkId);
+        }
     }
 }
 
@@ -2226,6 +2368,24 @@ operator<<(std::ostream& os, const StaWifiMac::ApInfo& apInfo)
     std::visit([&os](auto&& frame) { frame.Print(os); }, apInfo.m_frame);
     os << "]";
     return os;
+}
+
+std::ostream&
+operator<<(std::ostream& os, WifiPowerManagementMode pmMode)
+{
+    switch (pmMode)
+    {
+    case WIFI_PM_ACTIVE:
+        return (os << "PM_ACTIVE");
+    case WIFI_PM_SWITCHING_TO_PS:
+        return (os << "PM_SWITCHING_TO_PS");
+    case WIFI_PM_POWERSAVE:
+        return (os << "PM_POWERSAVE");
+    case WIFI_PM_SWITCHING_TO_ACTIVE:
+        return (os << "PM_SWITCHING_TO_ACTIVE");
+    default:
+        return (os << "INVALID");
+    }
 }
 
 } // namespace ns3

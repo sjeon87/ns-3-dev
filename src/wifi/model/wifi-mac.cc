@@ -663,8 +663,18 @@ WifiMac::GetBKQueue() const
 Ptr<WifiMacQueue>
 WifiMac::GetTxopQueue(AcIndex ac) const
 {
-    Ptr<Txop> txop = (ac == AC_BE_NQOS ? m_txop : StaticCast<Txop>(GetQosTxop(ac)));
+    auto txop = GetTxopFor(ac);
     return (txop ? txop->GetWifiMacQueue() : nullptr);
+}
+
+Ptr<Txop>
+WifiMac::GetTxopFor(AcIndex ac) const
+{
+    if (auto txop = (ac == AC_BE_NQOS ? m_txop : StaticCast<Txop>(GetQosTxop(ac))))
+    {
+        return txop;
+    }
+    return nullptr;
 }
 
 bool
@@ -738,6 +748,16 @@ void
 WifiMac::NotifyRxDrop(Ptr<const Packet> packet)
 {
     m_macRxDropTrace(packet);
+}
+
+void
+WifiMac::NotifyRequestAccess(Ptr<Txop> txop, uint8_t linkId)
+{
+}
+
+void
+WifiMac::NotifyChannelReleased(Ptr<Txop> txop, uint8_t linkId)
+{
 }
 
 void

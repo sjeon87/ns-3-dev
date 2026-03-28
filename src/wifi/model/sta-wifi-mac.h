@@ -28,6 +28,7 @@ namespace ns3
 class SupportedRates;
 class CapabilityInformation;
 class RandomVariableStream;
+class PowerSaveManager;
 class WifiAssocManager;
 class EmlsrManager;
 
@@ -201,6 +202,18 @@ class StaWifiMac : public WifiMac
     void SetAssocManager(Ptr<WifiAssocManager> assocManager);
 
     /**
+     * Set the Power Save Manager.
+     *
+     * @param powerSaveManager the Power Save Manager
+     */
+    void SetPowerSaveManager(Ptr<PowerSaveManager> powerSaveManager);
+
+    /**
+     * @return the Power Save Manager
+     */
+    Ptr<PowerSaveManager> GetPowerSaveManager() const;
+
+    /**
      * Set the EMLSR Manager.
      *
      * @param emlsrManager the EMLSR Manager
@@ -301,6 +314,21 @@ class StaWifiMac : public WifiMac
     void SetPmModeAfterAssociation(uint8_t linkId);
 
     /**
+     * Enqueue a PS-Poll frame to be sent on the given link.
+     *
+     * @param linkId the ID of the link on which the PS-Poll frame must be sent
+     */
+    void EnqueuePsPoll(uint8_t linkId);
+
+    /**
+     * Notify the reception of a frame in response to a PS-Poll frame on the given link.
+     *
+     * @param mpdu the received MPDU
+     * @param linkId the ID of the given link
+     */
+    void NotifyReceivedFrameAfterPsPoll(Ptr<const WifiMpdu> mpdu, uint8_t linkId);
+
+    /**
      * Notify that the MPDU we sent was successfully received by the receiver
      * (i.e. we received an Ack from the receiver).
      *
@@ -309,14 +337,17 @@ class StaWifiMac : public WifiMac
     void TxOk(Ptr<const WifiMpdu> mpdu);
 
     void NotifyChannelSwitching(uint8_t linkId) override;
+    void NotifyRequestAccess(Ptr<Txop> txop, uint8_t linkId) override;
+    void NotifyChannelReleased(Ptr<Txop> txop, uint8_t linkId) override;
 
     /**
      * Notify the MAC that EMLSR mode has changed on the given set of links.
      *
+     * @param txLinkId the ID of the link on which the EML OMN frame was sent by the EMLSR client
      * @param linkIds the IDs of the links that are now EMLSR links (EMLSR mode is disabled
      *                on other links)
      */
-    void NotifyEmlsrModeChanged(const std::set<uint8_t>& linkIds);
+    void NotifyEmlsrModeChanged(uint8_t txLinkId, const std::set<uint8_t>& linkIds);
 
     /**
      * @param linkId the ID of the given link
@@ -654,6 +685,7 @@ class StaWifiMac : public WifiMac
     MacState m_state;                             ///< MAC state
     uint16_t m_aid;                               ///< Association AID
     Ptr<WifiAssocManager> m_assocManager;         ///< Association Manager
+    Ptr<PowerSaveManager> m_powerSaveManager;     ///< Power Save Manager
     WifiAssocType m_assocType;                    ///< type of association
     Ptr<EmlsrManager> m_emlsrManager;             ///< EMLSR Manager
     Time m_waitBeaconTimeout;                     ///< wait beacon timeout
@@ -699,6 +731,15 @@ class StaWifiMac : public WifiMac
  * @returns a reference to the stream
  */
 std::ostream& operator<<(std::ostream& os, const StaWifiMac::ApInfo& apInfo);
+
+/**
+ * @brief Stream insertion operator.
+ *
+ * @param os the output stream
+ * @param pmMode the power management mode
+ * @returns a reference to the stream
+ */
+std::ostream& operator<<(std::ostream& os, WifiPowerManagementMode pmMode);
 
 } // namespace ns3
 

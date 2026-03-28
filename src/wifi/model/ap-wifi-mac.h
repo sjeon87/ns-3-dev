@@ -11,8 +11,10 @@
 #ifndef AP_WIFI_MAC_H
 #define AP_WIFI_MAC_H
 
+#include "tim.h"
 #include "wifi-mac-header.h"
 #include "wifi-mac.h"
+#include "wifi-psdu.h"
 
 #include "ns3/attribute-container.h"
 #include "ns3/enum.h"
@@ -73,7 +75,7 @@ class ApWifiMac : public WifiMac
     void SetLinkUpCallback(Callback<void> linkUp) override;
     bool CanForwardPacketsTo(Mac48Address to) const override;
     bool SupportsSendFrom() const override;
-    Ptr<WifiMacQueue> GetTxopQueue(AcIndex ac) const override;
+    Ptr<Txop> GetTxopFor(AcIndex ac) const override;
     int64_t AssignStreams(int64_t stream) override;
 
     /**
@@ -146,6 +148,50 @@ class ApWifiMac : public WifiMac
     std::optional<Mac48Address> GetMldOrLinkAddressByAid(uint16_t aid) const;
 
     /**
+     * Get the number of STAs associated on the given link that are in PowerSave mode.
+     *
+     * @param linkId the ID of the given link
+     * @return the number of STAs associated on the given link that are in PowerSave mode
+     */
+    std::size_t GetNStationsInPsMode(linkId_t linkId) const;
+
+    /**
+     * Check whether the AP MLD has buffered (QoS) data frame(s) for the given destination
+     * because non-AP STAs operating on links where those (QoS) data frames could be transmitted
+     * are in powersave mode. If a link ID is defined, it must be possible for the returned buffered
+     * (QoS) data frame to be transmitted on that link (e.g., the TID of the data frame is mapped to
+     * that link).
+     *
+     * @param address the MLD address, if the destination is an MLD, or the MAC address, otherwise
+     * @param linkId the ID of the link for which we check buffered (QoS) data frames
+     * @return a buffered (QoS) data frame for the given destination
+     */
+    Ptr<WifiMpdu> GetBufferedDataFor(Mac48Address address,
+                                     uint8_t linkId = WIFI_LINKID_UNDEFINED) const;
+
+    /**
+     * Check whether the AP MLD has buffered MMPDUs for the given destination because non-AP STAs
+     * operating on links where those MMPDUs could be transmitted are in powersave mode. If a link
+     * ID is defined, it must be possible for the returned buffered MMPDU to be transmitted on that
+     * link.
+     *
+     * @param address the MLD address, if the destination is an MLD, or the MAC address, otherwise
+     * @param linkId the ID of the link for which we check buffered (QoS) data frames
+     * @return a buffered MMPDUs for the given destination
+     */
+    Ptr<WifiMpdu> GetBufferedMmpduFor(Mac48Address address,
+                                      uint8_t linkId = WIFI_LINKID_UNDEFINED) const;
+
+    /**
+     * Check whether the AP MLD has buffered frames with a destination groupcast address to be sent
+     * on the given link.
+     *
+     * @param linkId the ID of the given link
+     * @return whether the AP MLD has buffered frames with a destination groupcast address
+     */
+    bool HasBufferedGroupcast(uint8_t linkId) const;
+
+    /**
      * Return the value of the Queue Size subfield of the last QoS Data or QoS Null
      * frame received from the station with the given MAC address and belonging to
      * the given TID.
@@ -181,6 +227,21 @@ class ApWifiMac : public WifiMac
      * @return the maximum among the values of the Queue Size subfields
      */
     uint8_t GetMaxBufferStatus(Mac48Address address) const;
+
+    /**
+     * Return whether at least one additional buffered unit is present for the same STA after
+     * transmitting the given MPDU, if the given MPDU is a unicast frame, or whether one additional
+     * group addressed buffered unit is present after transmitting the given MPDU, if the given
+     * MPDU is a group addressed frame.
+     *
+     * @param mpdu an individually addressed Data or Management frame transmitted to a STA in
+     *             PS mode or a group addressed frame transmitted after a DTIM (i.e., while
+     *             transmission of unicast frames is blocked)
+     * @param linkId the ID of the link on which the MPDU is transmitted
+     * @return whether at least one additional buffered unit is present after transmitting the
+     *         given MPDU
+     */
+    bool HasMoreDataAfter(Ptr<const WifiMpdu> mpdu, uint8_t linkId) const;
 
     /**
      * Return whether GCR is used to transmit a packet.
@@ -281,6 +342,8 @@ class ApWifiMac : public WifiMac
         bool shortSlotTimeEnabled{
             false}; //!< Flag whether short slot time is enabled within the BSS
         bool shortPreambleEnabled{false}; //!< Flag whether short preamble is enabled in the BSS
+        uint8_t beaconDtimCount{0};       ///< Number of beacons to DTIM
+        std::size_t nStationsInPsMode{0}; //!< Number of associated stations in PS mode
     };
 
     /**
@@ -473,6 +536,33 @@ class ApWifiMac : public WifiMac
     void SendOneBeacon(uint8_t linkId);
 
     /**
+     * This function is connected to the PhyTxPsduBegin PHY trace source when enqueuing a Beacon
+     * frame containing a DTIM that indicates that group addressed frames are queued. This function
+     * intercepts the Beacon frame, unblock the transmission of group addressed frames on the given
+     * link and block the transmission of unicast frames on the given link (so that group addressed
+     * frames are transmitted first).
+     *
+     * @param linkId the ID of the link on which the frame is transmitted
+     * @param psduMap the transmitted PSDU map
+     */
+    void TxGroupAddrFramesAfterDtim(uint8_t linkId,
+                                    WifiConstPsduMap psduMap,
+                                    WifiTxVector /* txVector */,
+                                    Watt_u /* txPower */);
+
+    /**
+     * Check whether the AP is done with the transmission of group addressed frames after a DTIM
+     * transmitted on the given link. If so, transmission of group addressed frames on the given
+     * link is blocked and transmission of unicast frames on the given link is unblocked.
+     *
+     * @param linkId the ID of the given link
+     * @param mpdu the MPDU (if any) that triggered a call to this function after being removed
+     *             from a MAC queue
+     */
+    void CheckGroupAddrFramesAfterDtimDone(uint8_t linkId,
+                                           Ptr<const WifiMpdu> mpdu = nullptr) const;
+
+    /**
      * Get the FILS Discovery frame to send on the given link.
      *
      * @param linkId the ID of the given link
@@ -497,7 +587,7 @@ class ApWifiMac : public WifiMac
      */
     void ProcessPowerManagementFlag(Ptr<const WifiMpdu> mpdu, uint8_t linkId);
     /**
-     * Perform the necessary actions when a given station switches from active mode
+     * Perform the necessary actions when a given station that is in active mode switches
      * to powersave mode.
      *
      * @param staAddr the MAC address of the given station
@@ -505,8 +595,8 @@ class ApWifiMac : public WifiMac
      */
     void StaSwitchingToPsMode(const Mac48Address& staAddr, uint8_t linkId);
     /**
-     * Perform the necessary actions when a given station deassociates or switches
-     * from powersave mode to active mode.
+     * Perform the necessary actions when a given station that is in powersave mode deassociates
+     * or switches to active mode.
      *
      * @param staAddr the MAC address of the given station
      * @param linkId the ID of the link on which the given station is operating
@@ -520,6 +610,15 @@ class ApWifiMac : public WifiMac
      * @return the Capability information that we support
      */
     CapabilityInformation GetCapabilities(uint8_t linkId) const;
+
+    /**
+     * Return the TIM for the current AP to transmit on the given link.
+     *
+     * @param linkId the ID of the given link
+     * @return the TIM based on the current status of the queues
+     */
+    Tim GetTim(uint8_t linkId) const;
+
     /**
      * Return the ERP information of the current AP for the given link.
      *
@@ -653,9 +752,10 @@ class ApWifiMac : public WifiMac
     Ptr<Txop> m_beaconTxop;        //!< Dedicated Txop for beacons
     bool m_enableBeaconGeneration; //!< Flag whether beacons are being generated
     Time m_beaconInterval;         //!< Beacon interval
-    Ptr<UniformRandomVariable>
+    Ptr<RandomVariableStream>
         m_beaconJitter; //!< UniformRandomVariable used to randomize the time of the first beacon
     bool m_enableBeaconJitter; //!< Flag whether the first beacon should be generated at random time
+    uint8_t m_dtimPeriod;      //!< DTIM Period
     bool m_enableNonErpProtection; //!< Flag whether protection mechanism is used or not when
                                    //!< non-ERP STAs are present within the BSS
     Time m_bsrLifetime;            //!< Lifetime of Buffer Status Reports

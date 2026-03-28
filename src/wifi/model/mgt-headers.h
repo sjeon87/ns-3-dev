@@ -18,6 +18,7 @@
 #include "ssid.h"
 #include "status-code.h"
 #include "supported-rates.h"
+#include "tim.h"
 #include "wifi-mgt-header.h"
 
 #include "ns3/dsss-parameter-set.h"
@@ -60,6 +61,12 @@ struct CanBeInPerStaProfile<ReducedNeighborReport> : std::false_type
 {
 };
 
+/// @copydoc CanBeInPerStaProfile
+template <>
+struct CanBeInPerStaProfile<Tim> : std::false_type
+{
+};
+
 /** @copydoc CanBeInPerStaProfile */
 template <>
 struct CanBeInPerStaProfile<TidToLinkMapping> : std::false_type
@@ -77,6 +84,29 @@ template <>
 struct CanBeInPerStaProfile<Ssid> : std::false_type
 {
 };
+
+/// List of Information Elements included in Beacon frames
+using BeaconElems = std::tuple<Ssid,
+                               SupportedRates,
+                               std::optional<DsssParameterSet>,
+                               std::optional<Tim>,
+                               std::optional<ErpInformation>,
+                               std::optional<ExtendedSupportedRatesIE>,
+                               std::optional<EdcaParameterSet>,
+                               std::optional<HtCapabilities>,
+                               std::optional<HtOperation>,
+                               std::optional<ExtendedCapabilities>,
+                               std::optional<VhtCapabilities>,
+                               std::optional<VhtOperation>,
+                               std::optional<ReducedNeighborReport>,
+                               std::optional<HeCapabilities>,
+                               std::optional<HeOperation>,
+                               std::optional<MuEdcaParameterSet>,
+                               std::optional<He6GhzBandCapabilities>,
+                               std::optional<MultiLinkElement>,
+                               std::optional<EhtCapabilities>,
+                               std::optional<EhtOperation>,
+                               std::vector<TidToLinkMapping>>;
 
 /// List of Information Elements included in Probe Request frames
 using ProbeRequestElems = std::tuple<Ssid,
@@ -166,26 +196,8 @@ class MgtAssocRequestHeader
     /** @copydoc Header::GetInstanceTypeId */
     TypeId GetInstanceTypeId() const override;
 
-    /**
-     * Set the listen interval.
-     *
-     * @param interval the listen interval
-     */
-    void SetListenInterval(uint16_t interval);
-    /**
-     * Return the listen interval.
-     *
-     * @return the listen interval
-     */
-    uint16_t GetListenInterval() const;
-    /**
-     * @return a reference to the Capability information
-     */
-    CapabilityInformation& Capabilities();
-    /**
-     * @return a const reference to the Capability information
-     */
-    const CapabilityInformation& Capabilities() const;
+    uint16_t m_listenInterval{0};       //!< listen interval (in units of beacon interval)
+    CapabilityInformation m_capability; //!< Capability information
 
   protected:
     /** @copydoc Header::GetSerializedSize */
@@ -222,10 +234,6 @@ class MgtAssocRequestHeader
     uint32_t DeserializeFromPerStaProfileImpl(Buffer::Iterator start,
                                               uint16_t length,
                                               const MgtAssocRequestHeader& frame);
-
-  private:
-    CapabilityInformation m_capability; //!< Capability information
-    uint16_t m_listenInterval{0};       //!< listen interval
 };
 
 /**
@@ -250,32 +258,9 @@ class MgtReassocRequestHeader
     /** @copydoc Header::GetInstanceTypeId */
     TypeId GetInstanceTypeId() const override;
 
-    /**
-     * Set the listen interval.
-     *
-     * @param interval the listen interval
-     */
-    void SetListenInterval(uint16_t interval);
-    /**
-     * Return the listen interval.
-     *
-     * @return the listen interval
-     */
-    uint16_t GetListenInterval() const;
-    /**
-     * @return a reference to the Capability information
-     */
-    CapabilityInformation& Capabilities();
-    /**
-     * @return a const reference to the Capability information
-     */
-    const CapabilityInformation& Capabilities() const;
-    /**
-     * Set the address of the current access point.
-     *
-     * @param currentApAddr address of the current access point
-     */
-    void SetCurrentApAddress(Mac48Address currentApAddr);
+    Mac48Address m_currentApAddr;       //!< Address of the current access point
+    CapabilityInformation m_capability; //!< Capability information
+    uint16_t m_listenInterval{0};       //!< listen interval (in units of beacon interval)
 
   protected:
     /** @copydoc Header::GetSerializedSize */
@@ -314,11 +299,6 @@ class MgtReassocRequestHeader
     uint32_t DeserializeFromPerStaProfileImpl(Buffer::Iterator start,
                                               uint16_t length,
                                               const MgtReassocRequestHeader& frame);
-
-  private:
-    Mac48Address m_currentApAddr;       //!< Address of the current access point
-    CapabilityInformation m_capability; //!< Capability information
-    uint16_t m_listenInterval{0};       //!< listen interval
 };
 
 /**
@@ -343,38 +323,9 @@ class MgtAssocResponseHeader
     /** @copydoc Header::GetInstanceTypeId */
     TypeId GetInstanceTypeId() const override;
 
-    /**
-     * Return the status code.
-     *
-     * @return the status code
-     */
-    StatusCode GetStatusCode();
-    /**
-     * Set the status code.
-     *
-     * @param code the status code
-     */
-    void SetStatusCode(StatusCode code);
-    /**
-     * @return a reference to the Capability information
-     */
-    CapabilityInformation& Capabilities();
-    /**
-     * @return a const reference to the Capability information
-     */
-    const CapabilityInformation& Capabilities() const;
-    /**
-     * Return the association ID.
-     *
-     * @return the association ID
-     */
-    uint16_t GetAssociationId() const;
-    /**
-     * Set the association ID.
-     *
-     * @param aid the association ID
-     */
-    void SetAssociationId(uint16_t aid);
+    CapabilityInformation m_capability; //!< Capability information
+    StatusCode m_statusCode;            //!< Status code
+    uint16_t m_aid{0};                  //!< AID
 
   protected:
     /** @copydoc Header::GetSerializedSize */
@@ -413,11 +364,6 @@ class MgtAssocResponseHeader
     uint32_t DeserializeFromPerStaProfileImpl(Buffer::Iterator start,
                                               uint16_t length,
                                               const MgtAssocResponseHeader& frame);
-
-  private:
-    CapabilityInformation m_capability; //!< Capability information
-    StatusCode m_code;                  //!< Status code
-    uint16_t m_aid{0};                  //!< AID
 };
 
 /**
@@ -462,31 +408,14 @@ class MgtProbeResponseHeader
     TypeId GetInstanceTypeId() const override;
 
     /**
-     * Return the beacon interval in microseconds unit.
-     *
-     * @return beacon interval in microseconds unit
-     */
-    uint64_t GetBeaconIntervalUs() const;
-    /**
-     * Set the beacon interval in microseconds unit.
-     *
-     * @param us beacon interval in microseconds unit
-     */
-    void SetBeaconIntervalUs(uint64_t us);
-    /**
-     * @return a reference to the Capability information
-     */
-    CapabilityInformation& Capabilities();
-    /**
-     * @return a const reference to the Capability information
-     */
-    const CapabilityInformation& Capabilities() const;
-    /**
      * Return the time stamp.
      *
      * @return time stamp
      */
     uint64_t GetTimestamp() const;
+
+    uint64_t m_beaconInterval;          //!< Beacon interval
+    CapabilityInformation m_capability; //!< Capability information
 
   protected:
     /** @copydoc Header::GetSerializedSize */
@@ -525,17 +454,17 @@ class MgtProbeResponseHeader
                                               const MgtProbeResponseHeader& frame);
 
   private:
-    uint64_t m_timestamp;               //!< Timestamp
-    uint64_t m_beaconInterval;          //!< Beacon interval
-    CapabilityInformation m_capability; //!< Capability information
+    uint64_t m_timestamp; //!< Timestamp (microseconds)
 };
 
 /**
  * @ingroup wifi
  * Implement the header for management frames of type beacon.
  */
-class MgtBeaconHeader : public MgtProbeResponseHeader
+class MgtBeaconHeader : public WifiMgtHeader<MgtBeaconHeader, BeaconElems>
 {
+    friend class WifiMgtHeader<MgtBeaconHeader, BeaconElems>;
+
   public:
     ~MgtBeaconHeader() override = default;
 
@@ -544,6 +473,26 @@ class MgtBeaconHeader : public MgtProbeResponseHeader
      * @return The TypeId.
      */
     static TypeId GetTypeId();
+
+    /// @copydoc Header::GetInstanceTypeId
+    TypeId GetInstanceTypeId() const override;
+
+    /// @return the time stamp
+    uint64_t GetTimestamp() const;
+
+    uint64_t m_beaconInterval{0};       //!< Beacon interval (microseconds)
+    CapabilityInformation m_capability; //!< Capability information
+
+  protected:
+    /// @copydoc Header::GetSerializedSize
+    uint32_t GetSerializedSizeImpl() const;
+    /// @copydoc Header::Serialize
+    void SerializeImpl(Buffer::Iterator start) const;
+    /// @copydoc Header::Deserialize
+    uint32_t DeserializeImpl(Buffer::Iterator start);
+
+  private:
+    uint64_t m_timestamp{0}; //!< Timestamp (microseconds)
 };
 
 } // namespace ns3

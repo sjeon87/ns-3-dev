@@ -1223,6 +1223,7 @@ WifiHelper::EnableLogComponents(LogLevel logLevel)
     LogComponentEnable("ConstantRateWifiManager", logLevel);
     LogComponentEnable("DefaultApEmlsrManager", logLevel);
     LogComponentEnable("DefaultEmlsrManager", logLevel);
+    LogComponentEnable("DefaultPowerSaveManager", logLevel);
     LogComponentEnable("DsssErrorRateModel", logLevel);
     LogComponentEnable("DsssPhy", logLevel);
     LogComponentEnable("DsssPpdu", logLevel);
@@ -1259,6 +1260,7 @@ WifiHelper::EnableLogComponents(LogLevel logLevel)
     LogComponentEnable("OriginatorBlockAckAgreement", logLevel);
     LogComponentEnable("ParfWifiManager", logLevel);
     LogComponentEnable("PhyEntity", logLevel);
+    LogComponentEnable("PowerSaveManager", logLevel);
     LogComponentEnable("QosFrameExchangeManager", logLevel);
     LogComponentEnable("QosTxop", logLevel);
     LogComponentEnable("RecipientBlockAckAgreement", logLevel);

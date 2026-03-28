@@ -36,10 +36,15 @@ been tested on Linux. As of this release, the latest known version to work with 
 
 ### New user-visible features
 
+- (wifi) Add support for Power Save mode.
+
 ### Bugs fixed
 
 - (spectrum) !2774 `MultiModelSpectrumChannel` will now omit an existing precoding matrix if its dimensions do not match those of the receiver. This is necessary because we do not convert it in the same way as the PSD.
 - (tcp) #1319 TCP CongestionStateSet() was not being called upon entering or leaving CA_CWR state
+- (wifi) APs unblock transmissions to stations that are in power save mode when they disassociate, otherwise they will not be able to associate again
+- (wifi) APs record disassociation on all links setup with a non-AP MLD
+- (wifi) Prevent AP's counter of STAs in PS mode from being updated incorrectly
 
 ## Release 3.47
 
