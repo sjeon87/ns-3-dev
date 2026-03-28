@@ -548,12 +548,12 @@ class MeasurementRequestElement : public WifiInformationElement
      * @brief Set the Measurement Type field.
      * @param type the measurement type
      */
-    void SetMeasurementType(uint8_t type);
+    void SetMeasurementType(MeasurementType type);
     /**
      * @brief Get the Measurement Type field.
      * @return the measurement type
      */
-    uint8_t GetMeasurementType() const;
+    MeasurementType GetMeasurementType() const;
 
     // --- Mode bitmap bit accessors (Figure 9-242) ---
 
@@ -620,9 +620,21 @@ class MeasurementRequestElement : public WifiInformationElement
     // Fixed header
     uint8_t m_measurementToken{0};       //!< Measurement Token (1 octet)
     uint8_t m_measurementRequestMode{0}; //!< Measurement Request Mode (1 octet, B0-B4 defined)
-    uint8_t m_measurementType{0};        //!< Measurement Type (1 octet)
-    MeasurementRequestBody m_body;       //!< Type-specific request body
+    MeasurementType m_measurementType{MeasurementType::BASIC}; //!< Measurement Type (1 octet)
+    MeasurementRequestBody m_body;                             //!< Type-specific request body
 };
+
+/**
+ * @brief Stream insertion for MeasurementRequestElement::MeasurementType.
+ * @param os output stream
+ * @param type the measurement type
+ * @return the output stream
+ */
+inline std::ostream&
+operator<<(std::ostream& os, MeasurementRequestElement::MeasurementType type)
+{
+    return os << +static_cast<uint8_t>(type);
+}
 
 namespace detail
 {
@@ -634,74 +646,74 @@ namespace detail
  * the caller must set m_measurementType explicitly for those.
  */
 template <typename T>
-constexpr uint8_t
+constexpr MeasurementRequestElement::MeasurementType
 MeasurementTypeFor()
 {
     using MT = MeasurementRequestElement::MeasurementType;
     if constexpr (std::is_same_v<T, MeasurementRequestElement::ChannelLoadRequestBody>)
     {
-        return static_cast<uint8_t>(MT::CHANNEL_LOAD);
+        return MT::CHANNEL_LOAD;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::NoiseHistogramRequestBody>)
     {
-        return static_cast<uint8_t>(MT::NOISE_HISTOGRAM);
+        return MT::NOISE_HISTOGRAM;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::BeaconRequestBody>)
     {
-        return static_cast<uint8_t>(MT::BEACON);
+        return MT::BEACON;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::FrameRequestBody>)
     {
-        return static_cast<uint8_t>(MT::FRAME);
+        return MT::FRAME;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::StaStatisticsRequestBody>)
     {
-        return static_cast<uint8_t>(MT::STA_STATISTICS);
+        return MT::STA_STATISTICS;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::LciRequestBody>)
     {
-        return static_cast<uint8_t>(MT::LCI);
+        return MT::LCI;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::TransmitStreamRequestBody>)
     {
-        return static_cast<uint8_t>(MT::TRANSMIT_STREAM);
+        return MT::TRANSMIT_STREAM;
     }
     else if constexpr (std::is_same_v<T,
                                       MeasurementRequestElement::MulticastDiagnosticsRequestBody>)
     {
-        return static_cast<uint8_t>(MT::MULTICAST_DIAGNOSTICS);
+        return MT::MULTICAST_DIAGNOSTICS;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::LocationCivicRequestBody>)
     {
-        return static_cast<uint8_t>(MT::LOCATION_CIVIC);
+        return MT::LOCATION_CIVIC;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::LocationIdentifierRequestBody>)
     {
-        return static_cast<uint8_t>(MT::LOCATION_IDENTIFIER);
+        return MT::LOCATION_IDENTIFIER;
     }
     else if constexpr (std::is_same_v<
                            T,
                            MeasurementRequestElement::DirectionalChannelQualityRequestBody>)
     {
-        return static_cast<uint8_t>(MT::DIRECTIONAL_CHANNEL_QUALITY);
+        return MT::DIRECTIONAL_CHANNEL_QUALITY;
     }
     else if constexpr (std::is_same_v<T,
                                       MeasurementRequestElement::DirectionalMeasurementRequestBody>)
     {
-        return static_cast<uint8_t>(MT::DIRECTIONAL_MEASUREMENT);
+        return MT::DIRECTIONAL_MEASUREMENT;
     }
     else if constexpr (std::is_same_v<T,
                                       MeasurementRequestElement::DirectionalStatisticsRequestBody>)
     {
-        return static_cast<uint8_t>(MT::DIRECTIONAL_STATISTICS);
+        return MT::DIRECTIONAL_STATISTICS;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::FtmRangeRequestBody>)
     {
-        return static_cast<uint8_t>(MT::FTM_RANGE);
+        return MT::FTM_RANGE;
     }
     else if constexpr (std::is_same_v<T, MeasurementRequestElement::MeasurementPauseRequestBody>)
     {
-        return static_cast<uint8_t>(MT::MEASUREMENT_PAUSE);
+        return MT::MEASUREMENT_PAUSE;
     }
     else
     {

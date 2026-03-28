@@ -1508,6 +1508,7 @@ MeasurementRequestElementTest::DoRun()
     using DirStatsBody = MeasurementRequestElement::DirectionalStatisticsRequestBody;
     using FtmBody = MeasurementRequestElement::FtmRangeRequestBody;
     using PauseBody = MeasurementRequestElement::MeasurementPauseRequestBody;
+    using MeasurementType = MeasurementRequestElement::MeasurementType;
 
     // IE header (2) + token (1) + mode (1) + type (1) = 5 fixed bytes
 
@@ -1517,7 +1518,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(0);
+            elem.SetMeasurementType(MeasurementType::BASIC);
             elem.SetBody(BasicBody{6, 0, 200});
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "Basic size");
         }
@@ -1526,7 +1527,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(1);
+            elem.SetMeasurementType(MeasurementType::CCA);
             elem.SetBody(BasicBody{6, 0, 200});
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "CCA size");
         }
@@ -1535,7 +1536,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(2);
+            elem.SetMeasurementType(MeasurementType::RPI_HISTOGRAM);
             elem.SetBody(BasicBody{6, 0, 200});
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "RPI Histogram size");
         }
@@ -1544,7 +1545,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(3);
+            elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -1558,7 +1559,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(4);
+            elem.SetMeasurementType(MeasurementType::NOISE_HISTOGRAM);
             NoiseHistogramBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -1573,7 +1574,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(5);
+            elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -1590,7 +1591,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(6);
+            elem.SetMeasurementType(MeasurementType::FRAME);
             FrameBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -1606,7 +1607,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(7);
+            elem.SetMeasurementType(MeasurementType::STA_STATISTICS);
             StaStatsBody body;
             body.peerMacAddress = Mac48Address("00:11:22:33:44:55");
             body.randomizationInterval = 100;
@@ -1620,7 +1621,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(8);
+            elem.SetMeasurementType(MeasurementType::LCI);
             LciBody body;
             body.locationSubject = 0;
             elem.SetBody(body);
@@ -1632,7 +1633,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(9);
+            elem.SetMeasurementType(MeasurementType::TRANSMIT_STREAM);
             TxStreamBody body;
             body.randomizationInterval = 100;
             body.measurementDuration = 200;
@@ -1647,7 +1648,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(10);
+            elem.SetMeasurementType(MeasurementType::MULTICAST_DIAGNOSTICS);
             MulticastBody body;
             body.randomizationInterval = 100;
             body.measurementDuration = 200;
@@ -1660,7 +1661,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(11);
+            elem.SetMeasurementType(MeasurementType::LOCATION_CIVIC);
             elem.SetBody(LocCivicBody{});
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 10, "Location Civic size");
         }
@@ -1669,7 +1670,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(12);
+            elem.SetMeasurementType(MeasurementType::LOCATION_IDENTIFIER);
             elem.SetBody(LocIdBody{});
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 9, "Location Identifier size");
         }
@@ -1678,7 +1679,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(13);
+            elem.SetMeasurementType(MeasurementType::DIRECTIONAL_CHANNEL_QUALITY);
             DirChQBody body;
             body.operatingClass = 1;
             body.channelNumber = 1;
@@ -1693,7 +1694,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(14);
+            elem.SetMeasurementType(MeasurementType::DIRECTIONAL_MEASUREMENT);
             DirMeasBody body;
             body.operatingClass = 1;
             body.channelNumber = 1;
@@ -1706,7 +1707,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(15);
+            elem.SetMeasurementType(MeasurementType::DIRECTIONAL_STATISTICS);
             DirStatsBody body;
             body.operatingClass = 1;
             body.channelNumber = 1;
@@ -1719,7 +1720,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(16);
+            elem.SetMeasurementType(MeasurementType::FTM_RANGE);
             FtmBody body;
             body.randomizationInterval = 100;
             body.minimumApCount = 1;
@@ -1731,7 +1732,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(255);
+            elem.SetMeasurementType(MeasurementType::MEASUREMENT_PAUSE);
             PauseBody body;
             body.pauseTime = 100;
             elem.SetBody(body);
@@ -1745,7 +1746,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(0);
+            elem.SetMeasurementType(MeasurementType::BASIC);
             elem.SetBody(BasicBody{11, 123456789, 1000});
             TestHeaderSerialization(elem);
         }
@@ -1754,7 +1755,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(2);
-            elem.SetMeasurementType(1);
+            elem.SetMeasurementType(MeasurementType::CCA);
             elem.SetBody(BasicBody{36, 0, 500});
             TestHeaderSerialization(elem);
         }
@@ -1763,7 +1764,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(3);
-            elem.SetMeasurementType(2);
+            elem.SetMeasurementType(MeasurementType::RPI_HISTOGRAM);
             elem.SetBody(BasicBody{1, 999999, 2000});
             TestHeaderSerialization(elem);
         }
@@ -1772,7 +1773,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(10);
-            elem.SetMeasurementType(3);
+            elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -1786,7 +1787,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(20);
-            elem.SetMeasurementType(4);
+            elem.SetMeasurementType(MeasurementType::NOISE_HISTOGRAM);
             NoiseHistogramBody body;
             body.operatingClass = 115;
             body.channelNumber = 36;
@@ -1800,7 +1801,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(30);
-            elem.SetMeasurementType(5);
+            elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -1816,7 +1817,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(40);
-            elem.SetMeasurementType(6);
+            elem.SetMeasurementType(MeasurementType::FRAME);
             FrameBody body;
             body.operatingClass = 81;
             body.channelNumber = 11;
@@ -1832,7 +1833,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(50);
-            elem.SetMeasurementType(7);
+            elem.SetMeasurementType(MeasurementType::STA_STATISTICS);
             StaStatsBody body;
             body.peerMacAddress = Mac48Address("aa:bb:cc:dd:ee:ff");
             body.randomizationInterval = 100;
@@ -1846,7 +1847,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(60);
-            elem.SetMeasurementType(8);
+            elem.SetMeasurementType(MeasurementType::LCI);
             LciBody body;
             body.locationSubject = 1;
             elem.SetBody(body);
@@ -1857,7 +1858,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(70);
-            elem.SetMeasurementType(9);
+            elem.SetMeasurementType(MeasurementType::TRANSMIT_STREAM);
             TxStreamBody body;
             body.randomizationInterval = 50;
             body.measurementDuration = 100;
@@ -1872,7 +1873,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(80);
-            elem.SetMeasurementType(10);
+            elem.SetMeasurementType(MeasurementType::MULTICAST_DIAGNOSTICS);
             MulticastBody body;
             body.randomizationInterval = 100;
             body.measurementDuration = 200;
@@ -1885,7 +1886,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(90);
-            elem.SetMeasurementType(11);
+            elem.SetMeasurementType(MeasurementType::LOCATION_CIVIC);
             LocCivicBody body;
             body.locationSubject = 1;
             body.locationServiceIntervalUnits = 1;
@@ -1898,7 +1899,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(100);
-            elem.SetMeasurementType(12);
+            elem.SetMeasurementType(MeasurementType::LOCATION_IDENTIFIER);
             LocIdBody body;
             body.locationServiceIntervalUnits = 2;
             body.locationServiceInterval = 24;
@@ -1910,7 +1911,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(110);
-            elem.SetMeasurementType(13);
+            elem.SetMeasurementType(MeasurementType::DIRECTIONAL_CHANNEL_QUALITY);
             DirChQBody body;
             body.operatingClass = 1;
             body.channelNumber = 1;
@@ -1927,7 +1928,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(120);
-            elem.SetMeasurementType(14);
+            elem.SetMeasurementType(MeasurementType::DIRECTIONAL_MEASUREMENT);
             DirMeasBody body;
             body.operatingClass = 1;
             body.channelNumber = 1;
@@ -1941,7 +1942,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(130);
-            elem.SetMeasurementType(15);
+            elem.SetMeasurementType(MeasurementType::DIRECTIONAL_STATISTICS);
             DirStatsBody body;
             body.operatingClass = 1;
             body.channelNumber = 1;
@@ -1956,7 +1957,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(140);
-            elem.SetMeasurementType(16);
+            elem.SetMeasurementType(MeasurementType::FTM_RANGE);
             FtmBody body;
             body.randomizationInterval = 100;
             body.minimumApCount = 3;
@@ -1968,7 +1969,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(150);
-            elem.SetMeasurementType(255);
+            elem.SetMeasurementType(MeasurementType::MEASUREMENT_PAUSE);
             PauseBody body;
             body.pauseTime = 5000;
             elem.SetBody(body);
@@ -1982,7 +1983,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(0);
+            elem.SetMeasurementType(MeasurementType::BASIC);
             elem.SetBody(BasicBody{11, 123456789, 1000});
 
             Buffer buf;
@@ -1993,7 +1994,9 @@ MeasurementRequestElementTest::DoRun()
             deserialized.Deserialize(buf.Begin());
 
             NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 1, "Basic token");
-            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 0, "Basic type");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                                  MeasurementType::BASIC,
+                                  "Basic type");
             auto& b = deserialized.GetBody<BasicBody>();
             NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 11, "Basic channel");
             NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 123456789, "Basic start time");
@@ -2004,7 +2007,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(2);
-            elem.SetMeasurementType(1);
+            elem.SetMeasurementType(MeasurementType::CCA);
             elem.SetBody(BasicBody{36, 0, 500});
 
             Buffer buf;
@@ -2014,7 +2017,9 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement deserialized;
             deserialized.Deserialize(buf.Begin());
 
-            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 1, "CCA type");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                                  MeasurementType::CCA,
+                                  "CCA type");
             auto& b = deserialized.GetBody<BasicBody>();
             NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 36, "CCA channel");
             NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 0, "CCA start time");
@@ -2025,7 +2030,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(3);
-            elem.SetMeasurementType(2);
+            elem.SetMeasurementType(MeasurementType::RPI_HISTOGRAM);
             elem.SetBody(BasicBody{1, 999999, 2000});
 
             Buffer buf;
@@ -2035,7 +2040,9 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement deserialized;
             deserialized.Deserialize(buf.Begin());
 
-            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 2, "RPI type");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                                  MeasurementType::RPI_HISTOGRAM,
+                                  "RPI type");
             auto& b = deserialized.GetBody<BasicBody>();
             NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 1, "RPI channel");
             NS_TEST_EXPECT_MSG_EQ(b.measurementStartTime, 999999, "RPI start time");
@@ -2046,7 +2053,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(42);
-            elem.SetMeasurementType(3);
+            elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
             body.operatingClass = 115;
             body.channelNumber = 36;
@@ -2062,7 +2069,9 @@ MeasurementRequestElementTest::DoRun()
             deserialized.Deserialize(buf.Begin());
 
             NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementToken(), 42, "CL token");
-            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(), 3, "CL type");
+            NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
+                                  MeasurementType::CHANNEL_LOAD,
+                                  "CL type");
             auto& b = deserialized.GetBody<ChannelLoadBody>();
             NS_TEST_EXPECT_MSG_EQ(b.operatingClass, 115, "CL opclass");
             NS_TEST_EXPECT_MSG_EQ(b.channelNumber, 36, "CL channel");
@@ -2074,7 +2083,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(7);
-            elem.SetMeasurementType(5);
+            elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
             body.operatingClass = 81;
             body.channelNumber = 0;
@@ -2102,7 +2111,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(99);
-            elem.SetMeasurementType(8);
+            elem.SetMeasurementType(MeasurementType::LCI);
             LciBody body;
             body.locationSubject = 2;
             elem.SetBody(body);
@@ -2122,7 +2131,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(55);
-            elem.SetMeasurementType(7);
+            elem.SetMeasurementType(MeasurementType::STA_STATISTICS);
             StaStatsBody body;
             body.peerMacAddress = Mac48Address("aa:bb:cc:dd:ee:ff");
             body.randomizationInterval = 300;
@@ -2148,7 +2157,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(77);
-            elem.SetMeasurementType(9);
+            elem.SetMeasurementType(MeasurementType::TRANSMIT_STREAM);
             TxStreamBody body;
             body.randomizationInterval = 50;
             body.measurementDuration = 100;
@@ -2185,7 +2194,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(255);
-            elem.SetMeasurementType(3);
+            elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -2207,7 +2216,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(3);
+            elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -2231,7 +2240,7 @@ MeasurementRequestElementTest::DoRun()
         {
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
-            elem.SetMeasurementType(5);
+            elem.SetMeasurementType(MeasurementType::BEACON);
             BeaconBody body;
             body.operatingClass = 81;
             body.channelNumber = 255;
@@ -2245,7 +2254,7 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementRequestMode(0);
-            elem.SetMeasurementType(3);
+            elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
             ChannelLoadBody body;
             body.operatingClass = 81;
             body.channelNumber = 6;
@@ -2289,6 +2298,8 @@ MeasurementRequestModeTest::MeasurementRequestModeTest()
 void
 MeasurementRequestModeTest::DoRun()
 {
+    using MeasurementType = MeasurementRequestElement::MeasurementType;
+
     // Test 1: Individual bit setters produce correct raw value
     {
         MeasurementRequestElement elem;
@@ -2428,7 +2439,7 @@ MeasurementRequestModeTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(1);
-        elem.SetMeasurementType(3);
+        elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         MeasurementRequestElement::ChannelLoadRequestBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2486,12 +2497,13 @@ MeasurementRequestSubelementsTest::DoRun()
     using LciBody = MeasurementRequestElement::LciRequestBody;
     using FtmBody = MeasurementRequestElement::FtmRangeRequestBody;
     using ApChannelReport = MeasurementRequestElement::ApChannelReport;
+    using MeasurementType = MeasurementRequestElement::MeasurementType;
 
     // Test 1: Channel Load with Reporting subelement (ID 1)
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(1);
-        elem.SetMeasurementType(3);
+        elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2523,7 +2535,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(2);
-        elem.SetMeasurementType(5);
+        elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2552,7 +2564,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(3);
-        elem.SetMeasurementType(5);
+        elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2580,7 +2592,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(4);
-        elem.SetMeasurementType(5);
+        elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2613,7 +2625,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(5);
-        elem.SetMeasurementType(8);
+        elem.SetMeasurementType(MeasurementType::LCI);
         LciBody body;
         body.locationSubject = 1;
         body.azimuthRequest = MeasurementRequestElement::AzimuthRequest{9, 1};
@@ -2638,7 +2650,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(6);
-        elem.SetMeasurementType(16);
+        elem.SetMeasurementType(MeasurementType::FTM_RANGE);
         FtmBody body;
         body.randomizationInterval = 100;
         body.minimumApCount = 1;
@@ -2670,7 +2682,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(7);
-        elem.SetMeasurementType(5);
+        elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2706,7 +2718,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement base;
         base.SetMeasurementToken(1);
-        base.SetMeasurementType(3);
+        base.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody baseBody;
         baseBody.operatingClass = 81;
         baseBody.channelNumber = 6;
@@ -2718,7 +2730,7 @@ MeasurementRequestSubelementsTest::DoRun()
 
         MeasurementRequestElement withSubelem;
         withSubelem.SetMeasurementToken(1);
-        withSubelem.SetMeasurementType(3);
+        withSubelem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody subBody;
         subBody.operatingClass = 81;
         subBody.channelNumber = 6;
@@ -2737,7 +2749,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(9);
-        elem.SetMeasurementType(3);
+        elem.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         ChannelLoadBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2766,7 +2778,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(10);
-        elem.SetMeasurementType(4);
+        elem.SetMeasurementType(MeasurementType::NOISE_HISTOGRAM);
         NoiseHistogramBody body;
         body.operatingClass = 115;
         body.channelNumber = 36;
@@ -2798,7 +2810,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(11);
-        elem.SetMeasurementType(5);
+        elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2831,7 +2843,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(12);
-        elem.SetMeasurementType(5);
+        elem.SetMeasurementType(MeasurementType::BEACON);
         BeaconBody body;
         body.operatingClass = 81;
         body.channelNumber = 6;
@@ -2872,7 +2884,7 @@ MeasurementRequestSubelementsTest::DoRun()
     {
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(13);
-        elem.SetMeasurementType(16);
+        elem.SetMeasurementType(MeasurementType::FTM_RANGE);
         FtmBody body;
         body.randomizationInterval = 100;
         body.minimumApCount = 3;
@@ -2935,7 +2947,9 @@ MeasurementRequestSubelementsTest::DoRun()
         body.channelLoadReporting = MeasurementRequestElement::ChannelLoadReporting{1, 128};
         elem.SetBody(body);
 
-        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 3, "SetBody auto-sets type to 3");
+        NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
+                              MeasurementType::CHANNEL_LOAD,
+                              "SetBody auto-sets type to 3");
 
         TestHeaderSerialization(elem);
 
@@ -2947,7 +2961,7 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         NS_TEST_EXPECT_MSG_EQ(deserialized.GetMeasurementType(),
-                              3,
+                              MeasurementType::CHANNEL_LOAD,
                               "Auto-synced type survives round-trip");
         auto& b = deserialized.GetBody<ChannelLoadBody>();
         NS_TEST_ASSERT_MSG_EQ(b.channelLoadReporting.has_value(),
@@ -2964,7 +2978,9 @@ MeasurementRequestSubelementsTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetBody(NoiseHistogramBody{});
-            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 4, "SetBody auto-sets NH type");
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
+                                  MeasurementType::NOISE_HISTOGRAM,
+                                  "SetBody auto-sets NH type");
             TestHeaderSerialization(elem);
         }
         {
@@ -2973,7 +2989,9 @@ MeasurementRequestSubelementsTest::DoRun()
             BeaconBody body;
             body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
             elem.SetBody(body);
-            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 5, "SetBody auto-sets Beacon type");
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
+                                  MeasurementType::BEACON,
+                                  "SetBody auto-sets Beacon type");
             TestHeaderSerialization(elem);
         }
         {
@@ -2983,7 +3001,9 @@ MeasurementRequestSubelementsTest::DoRun()
             body.locationSubject = 1;
             body.azimuthRequest = MeasurementRequestElement::AzimuthRequest{9, 1};
             elem.SetBody(body);
-            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 8, "SetBody auto-sets LCI type");
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
+                                  MeasurementType::LCI,
+                                  "SetBody auto-sets LCI type");
             TestHeaderSerialization(elem);
         }
         {
@@ -2999,7 +3019,9 @@ MeasurementRequestSubelementsTest::DoRun()
             nre.SetPhyType(8);
             body.neighborReports.push_back(nre);
             elem.SetBody(body);
-            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(), 16, "SetBody auto-sets FTM type");
+            NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
+                                  MeasurementType::FTM_RANGE,
+                                  "SetBody auto-sets FTM type");
             TestHeaderSerialization(elem);
         }
     }

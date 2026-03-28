@@ -54,10 +54,10 @@ MeasurementRequestElement::GetMeasurementRequestMode() const
 }
 
 void
-MeasurementRequestElement::SetMeasurementType(uint8_t type)
+MeasurementRequestElement::SetMeasurementType(MeasurementType type)
 {
     m_measurementType = type;
-    switch (static_cast<MeasurementType>(type))
+    switch (m_measurementType)
     {
     case MeasurementType::BASIC:
     case MeasurementType::CCA:
@@ -115,7 +115,7 @@ MeasurementRequestElement::SetMeasurementType(uint8_t type)
     }
 }
 
-uint8_t
+MeasurementRequestElement::MeasurementType
 MeasurementRequestElement::GetMeasurementType() const
 {
     return m_measurementType;
@@ -443,7 +443,7 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
 {
     start.WriteU8(m_measurementToken);
     start.WriteU8(m_measurementRequestMode);
-    start.WriteU8(m_measurementType);
+    start.WriteU8(static_cast<uint8_t>(m_measurementType));
 
     std::visit(
         [&start](const auto& body) {
@@ -637,14 +637,14 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     Buffer::Iterator i = start;
     m_measurementToken = i.ReadU8();
     m_measurementRequestMode = i.ReadU8() & 0x1F;
-    m_measurementType = i.ReadU8();
+    m_measurementType = static_cast<MeasurementType>(i.ReadU8());
 
     uint16_t bytesRead = 3;
 
     // Initialize variant for the type, then populate body fields
     SetMeasurementType(m_measurementType);
 
-    switch (static_cast<MeasurementType>(m_measurementType))
+    switch (m_measurementType)
     {
     case MeasurementType::BASIC:
     case MeasurementType::CCA:
@@ -825,7 +825,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 m_body);
             handled = true;
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementType::BEACON))
+        else if (m_measurementType == MeasurementType::BEACON)
         {
             auto& body = std::get<BeaconRequestBody>(m_body);
             switch (subelemId)
@@ -878,7 +878,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 break;
             }
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementType::LCI))
+        else if (m_measurementType == MeasurementType::LCI)
         {
             if (subelemId == LciRequestBody::AZIMUTH_REQUEST)
             {
@@ -889,7 +889,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 handled = true;
             }
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementType::CHANNEL_LOAD))
+        else if (m_measurementType == MeasurementType::CHANNEL_LOAD)
         {
             if (subelemId == ChannelLoadRequestBody::CHANNEL_LOAD_REPORTING)
             {
@@ -900,7 +900,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 handled = true;
             }
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementType::NOISE_HISTOGRAM))
+        else if (m_measurementType == MeasurementType::NOISE_HISTOGRAM)
         {
             if (subelemId == NoiseHistogramRequestBody::NOISE_HISTOGRAM_REPORTING)
             {
@@ -911,7 +911,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 handled = true;
             }
         }
-        else if (m_measurementType == static_cast<uint8_t>(MeasurementType::FTM_RANGE))
+        else if (m_measurementType == MeasurementType::FTM_RANGE)
         {
             if (subelemId == FtmRangeRequestBody::NEIGHBOR_REPORT)
             {
@@ -950,7 +950,8 @@ void
 MeasurementRequestElement::Print(std::ostream& os) const
 {
     os << "MeasurementRequest=[Token=" << +m_measurementToken << ", Mode=0x" << std::hex
-       << +m_measurementRequestMode << std::dec << ", Type=" << +m_measurementType << "]";
+       << +m_measurementRequestMode << std::dec
+       << ", Type=" << +static_cast<uint8_t>(m_measurementType) << "]";
 }
 
 } // namespace ns3
