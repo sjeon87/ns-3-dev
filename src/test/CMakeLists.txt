@@ -21,9 +21,9 @@ if(applications
      AND (point-to-point
           IN_LIST
           ns3-all-enabled-modules
-          )
+         )
   )
-  # cmake-format: off
+    # cmake-format: off
   set(applications_sources
       applications/flent-application-test-suite.cc
   )
@@ -107,7 +107,6 @@ if(traffic-control
       ns3tc/fq-codel-queue-disc-test-suite.cc
       ns3tc/fq-pie-queue-disc-test-suite.cc
       ns3tc/pfifo-fast-queue-disc-test-suite.cc
-
   )
 endif()
 
