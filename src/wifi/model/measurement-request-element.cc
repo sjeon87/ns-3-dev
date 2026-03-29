@@ -348,9 +348,9 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, BeaconRequestBody>)
             {
                 size += 13; // OpClass(1)+Ch(1)+Rand(2)+Dur(2)+Mode(1)+BSSID(6)
-                if (body.GetSsid())
+                if (const auto& ssid = body.GetSsid())
                 {
-                    size += 2 + (body.GetSsid()->GetSerializedSize() - 2);
+                    size += 2 + (ssid->GetSerializedSize() - 2);
                 }
                 if (body.GetBeaconReporting())
                 {
@@ -466,13 +466,13 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
                 start.WriteU8(body.GetChannelNumber());
                 start.WriteU16(body.GetRandomizationInterval());
                 start.WriteU16(body.GetMeasurementDuration());
-                if (body.GetChannelLoadReporting())
+                if (const auto& clr = body.GetChannelLoadReporting())
                 {
                     start.WriteU8(static_cast<uint8_t>(
                         ChannelLoadRequestBody::SubelementId::CHANNEL_LOAD_REPORTING));
-                    start.WriteU8(body.GetChannelLoadReporting()->GetSerializedSize());
-                    start.WriteU8(body.GetChannelLoadReporting()->reportingCondition);
-                    start.WriteU8(body.GetChannelLoadReporting()->channelLoadReferenceValue);
+                    start.WriteU8(clr->GetSerializedSize());
+                    start.WriteU8(clr->reportingCondition);
+                    start.WriteU8(clr->channelLoadReferenceValue);
                 }
                 SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
@@ -482,13 +482,13 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
                 start.WriteU8(body.GetChannelNumber());
                 start.WriteU16(body.GetRandomizationInterval());
                 start.WriteU16(body.GetMeasurementDuration());
-                if (body.GetNoiseHistogramReporting())
+                if (const auto& nhr = body.GetNoiseHistogramReporting())
                 {
                     start.WriteU8(static_cast<uint8_t>(
                         NoiseHistogramRequestBody::SubelementId::NOISE_HISTOGRAM_REPORTING));
-                    start.WriteU8(body.GetNoiseHistogramReporting()->GetSerializedSize());
-                    start.WriteU8(body.GetNoiseHistogramReporting()->reportingCondition);
-                    start.WriteU8(body.GetNoiseHistogramReporting()->anpiReferenceValue);
+                    start.WriteU8(nhr->GetSerializedSize());
+                    start.WriteU8(nhr->reportingCondition);
+                    start.WriteU8(nhr->anpiReferenceValue);
                 }
                 SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
@@ -501,13 +501,13 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
                 start.WriteU8(body.GetMeasurementMode());
                 WriteTo(start, body.GetBssid());
                 SerializeSsidSubelement(start, body.GetSsid());
-                if (body.GetBeaconReporting())
+                if (const auto& br = body.GetBeaconReporting())
                 {
                     start.WriteU8(
                         static_cast<uint8_t>(BeaconRequestBody::SubelementId::BEACON_REPORTING));
-                    start.WriteU8(body.GetBeaconReporting()->GetSerializedSize());
-                    start.WriteU8(body.GetBeaconReporting()->reportingCondition);
-                    start.WriteU8(body.GetBeaconReporting()->thresholdOffsetReference);
+                    start.WriteU8(br->GetSerializedSize());
+                    start.WriteU8(br->reportingCondition);
+                    start.WriteU8(br->thresholdOffsetReference);
                 }
                 if (body.GetReportingDetail())
                 {

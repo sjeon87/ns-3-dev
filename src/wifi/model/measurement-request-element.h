@@ -142,37 +142,55 @@ class MeasurementRequestElement : public WifiInformationElement
     class BasicRequestBody
     {
       public:
-        /** @brief Set the Channel Number field. */
-        void SetChannelNumber(uint8_t v)
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
         {
-            m_channelNumber = v;
+            m_channelNumber = channelNumber;
         }
 
-        /** @brief Get the Channel Number field. */
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
         uint8_t GetChannelNumber() const
         {
             return m_channelNumber;
         }
 
-        /** @brief Set the Measurement Start Time field. */
-        void SetMeasurementStartTime(uint64_t v)
+        /**
+         * @brief Set the Measurement Start Time field.
+         * @param measurementStartTime the measurement start time
+         */
+        void SetMeasurementStartTime(uint64_t measurementStartTime)
         {
-            m_measurementStartTime = v;
+            m_measurementStartTime = measurementStartTime;
         }
 
-        /** @brief Get the Measurement Start Time field. */
+        /**
+         * @brief Get the Measurement Start Time field.
+         * @return the measurement start time
+         */
         uint64_t GetMeasurementStartTime() const
         {
             return m_measurementStartTime;
         }
 
-        /** @brief Set the Measurement Duration field. */
-        void SetMeasurementDuration(uint16_t v)
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
         {
-            m_measurementDuration = v;
+            m_measurementDuration = measurementDuration;
         }
 
-        /** @brief Get the Measurement Duration field. */
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
         uint16_t GetMeasurementDuration() const
         {
             return m_measurementDuration;
@@ -201,74 +219,110 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        /** @brief Set the Operating Class field. */
-        void SetOperatingClass(uint8_t v)
+        /**
+         * @brief Set the Operating Class field.
+         * @param operatingClass the operating class
+         */
+        void SetOperatingClass(uint8_t operatingClass)
         {
-            m_operatingClass = v;
+            m_operatingClass = operatingClass;
         }
 
-        /** @brief Get the Operating Class field. */
+        /**
+         * @brief Get the Operating Class field.
+         * @return the operating class
+         */
         uint8_t GetOperatingClass() const
         {
             return m_operatingClass;
         }
 
-        /** @brief Set the Channel Number field. */
-        void SetChannelNumber(uint8_t v)
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
         {
-            m_channelNumber = v;
+            m_channelNumber = channelNumber;
         }
 
-        /** @brief Get the Channel Number field. */
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
         uint8_t GetChannelNumber() const
         {
             return m_channelNumber;
         }
 
-        /** @brief Set the Randomization Interval field. */
-        void SetRandomizationInterval(uint16_t v)
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
         {
-            m_randomizationInterval = v;
+            m_randomizationInterval = randomizationInterval;
         }
 
-        /** @brief Get the Randomization Interval field. */
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
         uint16_t GetRandomizationInterval() const
         {
             return m_randomizationInterval;
         }
 
-        /** @brief Set the Measurement Duration field. */
-        void SetMeasurementDuration(uint16_t v)
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
         {
-            m_measurementDuration = v;
+            m_measurementDuration = measurementDuration;
         }
 
-        /** @brief Get the Measurement Duration field. */
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
         uint16_t GetMeasurementDuration() const
         {
             return m_measurementDuration;
         }
 
-        /** @brief Set the Channel Load Reporting subelement. */
-        void SetChannelLoadReporting(const ChannelLoadReporting& v)
+        /**
+         * @brief Set the Channel Load Reporting subelement.
+         * @param channelLoadReporting the channel load reporting parameters
+         */
+        void SetChannelLoadReporting(const ChannelLoadReporting& channelLoadReporting)
         {
-            m_channelLoadReporting = v;
+            m_channelLoadReporting = channelLoadReporting;
         }
 
-        /** @brief Get the Channel Load Reporting subelement. */
-        std::optional<ChannelLoadReporting> GetChannelLoadReporting() const
+        /**
+         * @brief Get the Channel Load Reporting subelement.
+         * @return the channel load reporting parameters, or std::nullopt if not present
+         */
+        const std::optional<ChannelLoadReporting>& GetChannelLoadReporting() const
         {
             return m_channelLoadReporting;
         }
 
-        /** @brief Set the Vendor Specific subelement. */
-        void SetVendorSpecific(const std::vector<uint8_t>& v)
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
         {
-            m_vendorSpecific = v;
+            m_vendorSpecific = std::move(vendorSpecific);
         }
 
-        /** @brief Get the Vendor Specific subelement. */
-        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
         {
             return m_vendorSpecific;
         }
@@ -301,74 +355,110 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        /** @brief Set the Operating Class field. */
-        void SetOperatingClass(uint8_t v)
+        /**
+         * @brief Set the Operating Class field.
+         * @param operatingClass the operating class
+         */
+        void SetOperatingClass(uint8_t operatingClass)
         {
-            m_operatingClass = v;
+            m_operatingClass = operatingClass;
         }
 
-        /** @brief Get the Operating Class field. */
+        /**
+         * @brief Get the Operating Class field.
+         * @return the operating class
+         */
         uint8_t GetOperatingClass() const
         {
             return m_operatingClass;
         }
 
-        /** @brief Set the Channel Number field. */
-        void SetChannelNumber(uint8_t v)
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
         {
-            m_channelNumber = v;
+            m_channelNumber = channelNumber;
         }
 
-        /** @brief Get the Channel Number field. */
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
         uint8_t GetChannelNumber() const
         {
             return m_channelNumber;
         }
 
-        /** @brief Set the Randomization Interval field. */
-        void SetRandomizationInterval(uint16_t v)
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
         {
-            m_randomizationInterval = v;
+            m_randomizationInterval = randomizationInterval;
         }
 
-        /** @brief Get the Randomization Interval field. */
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
         uint16_t GetRandomizationInterval() const
         {
             return m_randomizationInterval;
         }
 
-        /** @brief Set the Measurement Duration field. */
-        void SetMeasurementDuration(uint16_t v)
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
         {
-            m_measurementDuration = v;
+            m_measurementDuration = measurementDuration;
         }
 
-        /** @brief Get the Measurement Duration field. */
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
         uint16_t GetMeasurementDuration() const
         {
             return m_measurementDuration;
         }
 
-        /** @brief Set the Noise Histogram Reporting subelement. */
-        void SetNoiseHistogramReporting(const NoiseHistogramReporting& v)
+        /**
+         * @brief Set the Noise Histogram Reporting subelement.
+         * @param noiseHistogramReporting the noise histogram reporting parameters
+         */
+        void SetNoiseHistogramReporting(const NoiseHistogramReporting& noiseHistogramReporting)
         {
-            m_noiseHistogramReporting = v;
+            m_noiseHistogramReporting = noiseHistogramReporting;
         }
 
-        /** @brief Get the Noise Histogram Reporting subelement. */
-        std::optional<NoiseHistogramReporting> GetNoiseHistogramReporting() const
+        /**
+         * @brief Get the Noise Histogram Reporting subelement.
+         * @return the noise histogram reporting parameters, or std::nullopt if not present
+         */
+        const std::optional<NoiseHistogramReporting>& GetNoiseHistogramReporting() const
         {
             return m_noiseHistogramReporting;
         }
 
-        /** @brief Set the Vendor Specific subelement. */
-        void SetVendorSpecific(const std::vector<uint8_t>& v)
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
         {
-            m_vendorSpecific = v;
+            m_vendorSpecific = std::move(vendorSpecific);
         }
 
-        /** @brief Get the Vendor Specific subelement. */
-        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
         {
             return m_vendorSpecific;
         }
@@ -528,7 +618,7 @@ class MeasurementRequestElement : public WifiInformationElement
          * @brief Get the SSID subelement.
          * @return the SSID, or std::nullopt if not present
          */
-        std::optional<Ssid> GetSsid() const
+        const std::optional<Ssid>& GetSsid() const
         {
             return m_ssid;
         }
@@ -546,7 +636,7 @@ class MeasurementRequestElement : public WifiInformationElement
          * @brief Get the Beacon Reporting subelement.
          * @return the beacon reporting parameters, or std::nullopt if not present
          */
-        std::optional<BeaconReporting> GetBeaconReporting() const
+        const std::optional<BeaconReporting>& GetBeaconReporting() const
         {
             return m_beaconReporting;
         }
@@ -600,7 +690,7 @@ class MeasurementRequestElement : public WifiInformationElement
          * @brief Get the Vendor Specific subelement.
          * @return the vendor specific data, or std::nullopt if not present
          */
-        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
         {
             return m_vendorSpecific;
         }
@@ -757,7 +847,7 @@ class MeasurementRequestElement : public WifiInformationElement
          * @brief Get the Vendor Specific subelement.
          * @return the vendor specific data, or std::nullopt if not present
          */
-        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
         {
             return m_vendorSpecific;
         }
@@ -874,7 +964,7 @@ class MeasurementRequestElement : public WifiInformationElement
          * @brief Get the Vendor Specific subelement.
          * @return the vendor specific data, or std::nullopt if not present
          */
-        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
         {
             return m_vendorSpecific;
         }
@@ -1017,7 +1107,7 @@ class MeasurementRequestElement : public WifiInformationElement
          * @brief Get the Vendor Specific subelement.
          * @return the vendor specific data, or std::nullopt if not present
          */
-        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
         {
             return m_vendorSpecific;
         }
