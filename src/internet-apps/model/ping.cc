@@ -346,7 +346,51 @@ Ping::Receive(Ptr<Socket> socket)
                 Icmpv6DestinationUnreachable destUnreach;
                 packet->RemoveHeader(destUnreach);
 
+                Ping::DropReason reason;
+                bool mappedReason = true;
+                switch (destUnreach.GetCode())
+                {
+                case Icmpv6Header::ICMPV6_NO_ROUTE:
+                    reason = Ping::DropReason::DROP_NET_UNREACHABLE;
+                    break;
+                case Icmpv6Header::ICMPV6_ADDR_UNREACHABLE:
+                    reason = Ping::DropReason::DROP_HOST_UNREACHABLE;
+                    break;
+                default:
+                    mappedReason = false;
+                    break;
+                }
+
+                bool tracedDrop = false;
+                if (mappedReason)
+                {
+                    Ipv6Header innerIpv6Header;
+                    if (packet->GetSize() >= innerIpv6Header.GetSerializedSize())
+                    {
+                        packet->RemoveHeader(innerIpv6Header);
+                        if (innerIpv6Header.GetNextHeader() == Ipv6Header::IPV6_ICMPV6)
+                        {
+                            uint8_t innerType;
+                            packet->CopyData(&innerType, sizeof(innerType));
+                            if (innerType == Icmpv6Header::ICMPV6_ECHO_REQUEST)
+                            {
+                                Icmpv6Echo innerEcho(false);
+                                packet->RemoveHeader(innerEcho);
+                                if (innerEcho.GetId() == PING_ID &&
+                                    innerEcho.GetSeq() < m_sent.size())
+                                {
+                                    m_dropTrace(innerEcho.GetSeq(), reason);
+                                    tracedDrop = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 NS_LOG_INFO("Received Destination Unreachable from " << realFrom.GetIpv6());
+                NS_LOG_LOGIC("ICMPv6 Destination Unreachable code="
+                             << static_cast<uint16_t>(destUnreach.GetCode())
+                             << " mapped=" << mappedReason << " tracedDrop=" << tracedDrop);
                 break;
             }
             case Icmpv6Header::ICMPV6_ERROR_TIME_EXCEEDED: {
