@@ -203,7 +203,7 @@ private:
 
   /**
    * \brief Fill x_values parameter in flent file.
-   * Adds x parameter values with the differece of stepSize
+   * Adds x parameter values with the difference of stepSize
    */
   void FillXValues (void);
 
@@ -222,7 +222,7 @@ private:
   Address         m_localBindAddress; //!< Local bind address
   std::string     m_imageText;        //!< Text to be included in plot
   std::string     m_imageName;        //!< Name of the image to which plot is saved
-  Time            m_stepSize;         //!< Measurment data point step size
+  Time            m_stepSize;         //!< Measurement data point step size
   Time            m_delay;            //!< Number of Seconds to delay parts of test
   std::vector<uint32_t> m_bytesSent {std::vector<uint32_t> (4, 0)}; //!< sent data counters
   std::vector<uint32_t> m_bytesReceived {std::vector<uint32_t> (4, 0)}; //!< receive data counters

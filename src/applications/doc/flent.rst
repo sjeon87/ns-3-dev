@@ -11,7 +11,7 @@ Flent
 -----
 
 Flent is a wrapper around netperf (https://hewlettpackard.github.io/netperf/) and similar network benchmarking tools to run predefined tests, 
-originally authored by Toke Høiland-Jørgensen `[1]`_. On running any predefined test, flent aggregates 
+originally authored by T. Høiland-Jørgensen `[1]`_. On running any predefined test, flent aggregates 
 results into a gzipped file of JSON format. One may open this file with the help of the flent GUI to 
 visualize the aggregated results as plots in a very interactive window. 
 
@@ -55,7 +55,7 @@ via the control connection by the sender.
 
 The following points provide useful insights about how flent records metrics:  
   - Flent reuses the definition and implementation of throughput from netperf. It collects the throughput readings that netperf produces. Netperf is a network benchmark tool used to measure the network performance. Flent requires the user to run netserver on the remote machine and netperf on the local machine.
-  - The throughput data points are generated on the sender side when the test is running. The sender uses the linux send function `[2]`_ to transmit “send_size” bytes at a time from the tcp socket. When the function returns a value less than send_size, it marks the end of the test. Hence when “send_size” is returned, the sender increments the cumulative bytes sent by send_size everytime it sends a message and records data points for plotting the throughput `[3]`_.  
+  - The throughput data points are generated on the sender side when the test is running. The sender uses the linux send function `[2]`_ to transmit “send_size” bytes at a time from the tcp socket. When the function returns a value less than send_size, it marks the end of the test. Hence when “send_size” is returned, the sender increments the cumulative bytes sent by send_size every time it sends a message and records data points for plotting the throughput `[3]`_.  
   - By default, netperf sets the socket send_size as equal to the initial socket buffer size. The socket buffer sizes are dynamic during the execution of the test. ns-3 on the other hand does not have dynamic socket buffer sizes `[4]`_.   
   - The TCP MSS used by netperf is read from the kernel. 
   - It uses socket stats (‘ss’) to measure congestion window, smooth RTT, pacing rate and delivery rate. 
@@ -81,7 +81,7 @@ For the first/last data point we might not have vPrev and vNext so we directly u
 For all other datapoints we will find the previous and next values; interpolate between them. We assume that the rate of change dv/dt
 is constant in the interval, and so can be calculated as (vNext-vPrev)/(tNext-tPrev). Then the value of result at t can be calculated
 as v_t=vPrev + dv/dt * (t-tPrev). If the interpolation distance (default max interpolation distance = 5 * stepSize) is too long then
-we wont use the value and keep the datapoint as null.
+we won't use the value and keep the datapoint as null.
 
 References
 ==========
