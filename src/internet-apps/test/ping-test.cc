@@ -672,22 +672,22 @@ PingIcmpv6NoRouteTestCase::DoRun()
     Ptr<Ping> ping = CreateObject<Ping>();
     ping->SetAttribute("VerboseMode", EnumValue(Ping::VerboseMode::SILENT)); // No console output
     ping->SetAttribute("Count", UintegerValue(1)); // Send exactly 1 ping packet
-    ping->SetAttribute("InterfaceAddress", AddressValue(interfaces.GetAddress(0, 1))); // From node 0
+    ping->SetAttribute("InterfaceAddress",
+                       AddressValue(interfaces.GetAddress(0, 1))); // From node 0
     // Destination is unreachable (not in network 2001:1::/64), so node 1 will return NO_ROUTE error
     ping->SetAttribute("Destination", AddressValue(Ipv6Address("2001:2::1")));
     ping->SetStartTime(Seconds(1)); // Start ping at 1 second simulation time
-    ping->SetStopTime(Seconds(4)); // Stop at 4 seconds
+    ping->SetStopTime(Seconds(4));  // Stop at 4 seconds
 
     // Install the Ping application on node 0 and connect our trace callbacks
     nodes.Get(0)->AddApplication(ping);
     // Hook the Drop trace: called when Ping receives an ICMP error
     ping->TraceConnectWithoutContext("Drop",
-                                     MakeCallback(&PingIcmpv6NoRouteTestCase::DropTraceSink,
-                                                  this));
+                                     MakeCallback(&PingIcmpv6NoRouteTestCase::DropTraceSink, this));
     // Hook the Report trace: called when Ping finishes with statistics
-    ping->TraceConnectWithoutContext("Report",
-                                     MakeCallback(&PingIcmpv6NoRouteTestCase::ReportTraceSink,
-                                                  this));
+    ping->TraceConnectWithoutContext(
+        "Report",
+        MakeCallback(&PingIcmpv6NoRouteTestCase::ReportTraceSink, this));
 
     // Pre-populate the neighbor cache to avoid extra neighbor discovery delays
     NeighborCacheHelper neighborCacheHelper;
@@ -716,6 +716,7 @@ PingIcmpv6NoRouteTestCase::DoTeardown()
 {
     Simulator::Destroy();
 }
+
 ////
 
 /**
@@ -1108,11 +1109,12 @@ PingTestSuite::PingTestSuite()
     testcase10v6->CheckTraceTx(5);
     testcase10v6->SetDestinationAddress(Ipv6Address("2001:1::200:ff:fe00:2"));
     AddTestCase(testcase10v6, TestCase::Duration::QUICK);
-////
+    ////
     // Register the new ICMPv6 destination unreachable test (test 11 for IPv6)
     auto testcase11v6 = new PingIcmpv6NoRouteTestCase();
     AddTestCase(testcase11v6, TestCase::Duration::QUICK); // Mark as quick-running test
 }
+
 ////
 
 static PingTestSuite pingTestSuite; //!< Static variable for test initialization
