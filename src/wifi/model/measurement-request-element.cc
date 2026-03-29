@@ -369,12 +369,12 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, FrameRequestBody>)
             {
                 // OpClass(1)+Ch(1)+Rand(2)+Dur(2)+FReqType(1)+MAC(6)
-                size += 13 + VendorSpecificSize(body.vendorSpecific);
+                size += 13 + VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, StaStatisticsRequestBody>)
             {
                 size += 11; // PeerMAC(6)+Rand(2)+Dur(2)+GroupID(1)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, LciRequestBody>)
             {
@@ -393,7 +393,7 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, MulticastDiagnosticsRequestBody>)
             {
                 size += 10; // Rand(2)+Dur(2)+GroupMAC(6)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, LocationCivicRequestBody>)
             {
@@ -531,21 +531,21 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, FrameRequestBody>)
             {
-                start.WriteU8(body.operatingClass);
-                start.WriteU8(body.channelNumber);
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU16(body.measurementDuration);
-                start.WriteU8(body.frameRequestType);
-                WriteTo(start, body.macAddress);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU8(body.GetOperatingClass());
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU16(body.GetMeasurementDuration());
+                start.WriteU8(body.GetFrameRequestType());
+                WriteTo(start, body.GetMacAddress());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, StaStatisticsRequestBody>)
             {
-                WriteTo(start, body.peerMacAddress);
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU16(body.measurementDuration);
-                start.WriteU8(body.groupIdentity);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                WriteTo(start, body.GetPeerMacAddress());
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU16(body.GetMeasurementDuration());
+                start.WriteU8(body.GetGroupIdentity());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, LciRequestBody>)
             {
@@ -572,10 +572,10 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, MulticastDiagnosticsRequestBody>)
             {
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU16(body.measurementDuration);
-                WriteTo(start, body.groupMacAddress);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU16(body.GetMeasurementDuration());
+                WriteTo(start, body.GetGroupMacAddress());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, LocationCivicRequestBody>)
             {
@@ -697,21 +697,25 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::FRAME: {
         auto& body = std::get<FrameRequestBody>(m_body);
-        body.operatingClass = i.ReadU8();
-        body.channelNumber = i.ReadU8();
-        body.randomizationInterval = i.ReadU16();
-        body.measurementDuration = i.ReadU16();
-        body.frameRequestType = i.ReadU8();
-        ReadFrom(i, body.macAddress);
+        body.SetOperatingClass(i.ReadU8());
+        body.SetChannelNumber(i.ReadU8());
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMeasurementDuration(i.ReadU16());
+        body.SetFrameRequestType(i.ReadU8());
+        Mac48Address macAddr;
+        ReadFrom(i, macAddr);
+        body.SetMacAddress(macAddr);
         bytesRead += 13;
         break;
     }
     case MeasurementType::STA_STATISTICS: {
         auto& body = std::get<StaStatisticsRequestBody>(m_body);
-        ReadFrom(i, body.peerMacAddress);
-        body.randomizationInterval = i.ReadU16();
-        body.measurementDuration = i.ReadU16();
-        body.groupIdentity = i.ReadU8();
+        Mac48Address peerMac;
+        ReadFrom(i, peerMac);
+        body.SetPeerMacAddress(peerMac);
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMeasurementDuration(i.ReadU16());
+        body.SetGroupIdentity(i.ReadU8());
         bytesRead += 11;
         break;
     }
@@ -733,9 +737,11 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::MULTICAST_DIAGNOSTICS: {
         auto& body = std::get<MulticastDiagnosticsRequestBody>(m_body);
-        body.randomizationInterval = i.ReadU16();
-        body.measurementDuration = i.ReadU16();
-        ReadFrom(i, body.groupMacAddress);
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMeasurementDuration(i.ReadU16());
+        Mac48Address groupMac;
+        ReadFrom(i, groupMac);
+        body.SetGroupMacAddress(groupMac);
         bytesRead += 10;
         break;
     }
@@ -831,7 +837,10 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                     {
                         if constexpr (std::is_same_v<T, ChannelLoadRequestBody> ||
                                       std::is_same_v<T, NoiseHistogramRequestBody> ||
-                                      std::is_same_v<T, BeaconRequestBody>)
+                                      std::is_same_v<T, BeaconRequestBody> ||
+                                      std::is_same_v<T, FrameRequestBody> ||
+                                      std::is_same_v<T, StaStatisticsRequestBody> ||
+                                      std::is_same_v<T, MulticastDiagnosticsRequestBody>)
                         {
                             body.SetVendorSpecific(std::move(data));
                         }

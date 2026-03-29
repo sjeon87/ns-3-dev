@@ -624,8 +624,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for Frame measurement (Figure 9-252)
      */
-    struct FrameRequestBody
+    class FrameRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Frame request (Table 9-145)
          */
@@ -635,21 +636,150 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t operatingClass{0};         //!< Operating Class (1 octet)
-        uint8_t channelNumber{0};          //!< Channel Number (1 octet)
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
-        uint8_t frameRequestType{0};       //!< Frame Request Type (1 octet)
-        Mac48Address macAddress;           //!< MAC Address (6 octets)
+        /**
+         * @brief Set the Operating Class field.
+         * @param operatingClass the operating class
+         */
+        void SetOperatingClass(uint8_t operatingClass)
+        {
+            m_operatingClass = operatingClass;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Operating Class field.
+         * @return the operating class
+         */
+        uint8_t GetOperatingClass() const
+        {
+            return m_operatingClass;
+        }
+
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
+        {
+            m_channelNumber = channelNumber;
+        }
+
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
+        {
+            m_randomizationInterval = randomizationInterval;
+        }
+
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
+        {
+            m_measurementDuration = measurementDuration;
+        }
+
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /**
+         * @brief Set the Frame Request Type field.
+         * @param frameRequestType the frame request type
+         */
+        void SetFrameRequestType(uint8_t frameRequestType)
+        {
+            m_frameRequestType = frameRequestType;
+        }
+
+        /**
+         * @brief Get the Frame Request Type field.
+         * @return the frame request type
+         */
+        uint8_t GetFrameRequestType() const
+        {
+            return m_frameRequestType;
+        }
+
+        /**
+         * @brief Set the MAC Address field.
+         * @param macAddress the MAC address
+         */
+        void SetMacAddress(const Mac48Address& macAddress)
+        {
+            m_macAddress = macAddress;
+        }
+
+        /**
+         * @brief Get the MAC Address field.
+         * @return the MAC address
+         */
+        Mac48Address GetMacAddress() const
+        {
+            return m_macAddress;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_operatingClass{0};         ///< Operating Class (1 octet)
+        uint8_t m_channelNumber{0};          ///< Channel Number (1 octet)
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint16_t m_measurementDuration{0};   ///< Measurement Duration (2 octets)
+        uint8_t m_frameRequestType{0};       ///< Frame Request Type (1 octet)
+        Mac48Address m_macAddress;           ///< MAC Address (6 octets)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
      * @brief Request body for STA Statistics measurement (Figure 9-253)
      */
-    struct StaStatisticsRequestBody
+    class StaStatisticsRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for STA Statistics request (Table 9-147)
          */
@@ -659,12 +789,104 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        Mac48Address peerMacAddress;       //!< Peer MAC Address (6 octets)
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
-        uint8_t groupIdentity{0};          //!< Group Identity (1 octet)
+        /**
+         * @brief Set the Peer MAC Address field.
+         * @param peerMacAddress the peer MAC address
+         */
+        void SetPeerMacAddress(const Mac48Address& peerMacAddress)
+        {
+            m_peerMacAddress = peerMacAddress;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Peer MAC Address field.
+         * @return the peer MAC address
+         */
+        Mac48Address GetPeerMacAddress() const
+        {
+            return m_peerMacAddress;
+        }
+
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
+        {
+            m_randomizationInterval = randomizationInterval;
+        }
+
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
+        {
+            m_measurementDuration = measurementDuration;
+        }
+
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /**
+         * @brief Set the Group Identity field.
+         * @param groupIdentity the group identity
+         */
+        void SetGroupIdentity(uint8_t groupIdentity)
+        {
+            m_groupIdentity = groupIdentity;
+        }
+
+        /**
+         * @brief Get the Group Identity field.
+         * @return the group identity
+         */
+        uint8_t GetGroupIdentity() const
+        {
+            return m_groupIdentity;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        Mac48Address m_peerMacAddress;       ///< Peer MAC Address (6 octets)
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint16_t m_measurementDuration{0};   ///< Measurement Duration (2 octets)
+        uint8_t m_groupIdentity{0};          ///< Group Identity (1 octet)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
@@ -716,8 +938,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for Multicast Diagnostics measurement (Figure 9-273)
      */
-    struct MulticastDiagnosticsRequestBody
+    class MulticastDiagnosticsRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Multicast Diagnostics request (Table 9-153)
          */
@@ -727,11 +950,85 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
-        Mac48Address groupMacAddress;      //!< Group MAC Address (6 octets)
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
+        {
+            m_randomizationInterval = randomizationInterval;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
+        {
+            m_measurementDuration = measurementDuration;
+        }
+
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /**
+         * @brief Set the Group MAC Address field.
+         * @param groupMacAddress the group MAC address
+         */
+        void SetGroupMacAddress(const Mac48Address& groupMacAddress)
+        {
+            m_groupMacAddress = groupMacAddress;
+        }
+
+        /**
+         * @brief Get the Group MAC Address field.
+         * @return the group MAC address
+         */
+        Mac48Address GetGroupMacAddress() const
+        {
+            return m_groupMacAddress;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        std::optional<std::vector<uint8_t>> GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint16_t m_measurementDuration{0};   ///< Measurement Duration (2 octets)
+        Mac48Address m_groupMacAddress;      ///< Group MAC Address (6 octets)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**

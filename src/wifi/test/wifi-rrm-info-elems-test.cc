@@ -1605,12 +1605,12 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::FRAME);
             FrameBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 6;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.frameRequestType = 1;
-            body.macAddress = Mac48Address("00:11:22:33:44:55");
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(6);
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetFrameRequestType(1);
+            body.SetMacAddress(Mac48Address("00:11:22:33:44:55"));
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 18, "Frame size");
         }
@@ -1621,10 +1621,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::STA_STATISTICS);
             StaStatsBody body;
-            body.peerMacAddress = Mac48Address("00:11:22:33:44:55");
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.groupIdentity = 0;
+            body.SetPeerMacAddress(Mac48Address("00:11:22:33:44:55"));
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetGroupIdentity(0);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 16, "STA Statistics size");
         }
@@ -1662,9 +1662,9 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::MULTICAST_DIAGNOSTICS);
             MulticastBody body;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.groupMacAddress = Mac48Address("01:00:5e:00:00:01");
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetGroupMacAddress(Mac48Address("01:00:5e:00:00:01"));
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 15, "Multicast Diagnostics size");
         }
@@ -1843,12 +1843,12 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(40);
             elem.SetMeasurementType(MeasurementType::FRAME);
             FrameBody body;
-            body.operatingClass = 81;
-            body.channelNumber = 11;
-            body.randomizationInterval = 300;
-            body.measurementDuration = 400;
-            body.frameRequestType = 1;
-            body.macAddress = Mac48Address("00:11:22:33:44:55");
+            body.SetOperatingClass(81);
+            body.SetChannelNumber(11);
+            body.SetRandomizationInterval(300);
+            body.SetMeasurementDuration(400);
+            body.SetFrameRequestType(1);
+            body.SetMacAddress(Mac48Address("00:11:22:33:44:55"));
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -1859,10 +1859,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(50);
             elem.SetMeasurementType(MeasurementType::STA_STATISTICS);
             StaStatsBody body;
-            body.peerMacAddress = Mac48Address("aa:bb:cc:dd:ee:ff");
-            body.randomizationInterval = 100;
-            body.measurementDuration = 600;
-            body.groupIdentity = 10;
+            body.SetPeerMacAddress(Mac48Address("aa:bb:cc:dd:ee:ff"));
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(600);
+            body.SetGroupIdentity(10);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -1899,9 +1899,9 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(80);
             elem.SetMeasurementType(MeasurementType::MULTICAST_DIAGNOSTICS);
             MulticastBody body;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.groupMacAddress = Mac48Address("01:00:5e:00:00:01");
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetGroupMacAddress(Mac48Address("01:00:5e:00:00:01"));
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2169,10 +2169,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(55);
             elem.SetMeasurementType(MeasurementType::STA_STATISTICS);
             StaStatsBody body;
-            body.peerMacAddress = Mac48Address("aa:bb:cc:dd:ee:ff");
-            body.randomizationInterval = 300;
-            body.measurementDuration = 600;
-            body.groupIdentity = 16;
+            body.SetPeerMacAddress(Mac48Address("aa:bb:cc:dd:ee:ff"));
+            body.SetRandomizationInterval(300);
+            body.SetMeasurementDuration(600);
+            body.SetGroupIdentity(16);
             elem.SetBody(body);
 
             Buffer buf;
@@ -2183,10 +2183,10 @@ MeasurementRequestElementTest::DoRun()
             deserialized.Deserialize(buf.Begin());
 
             auto& b = deserialized.GetBody<StaStatsBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.peerMacAddress,
+            NS_TEST_EXPECT_MSG_EQ(b.GetPeerMacAddress(),
                                   Mac48Address("aa:bb:cc:dd:ee:ff"),
                                   "STA Stats peer MAC");
-            NS_TEST_EXPECT_MSG_EQ(b.groupIdentity, 16, "STA Stats group ID");
+            NS_TEST_EXPECT_MSG_EQ(b.GetGroupIdentity(), 16, "STA Stats group ID");
         }
 
         // Transmit Stream
