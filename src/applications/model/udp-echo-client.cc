@@ -4,9 +4,11 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 #include "udp-echo-client.h"
+
 #include "seq-ts-echo-header.h"
 
 #include "ns3/address-utils.h"
+#include "ns3/boolean.h"
 #include "ns3/log.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
@@ -15,7 +17,6 @@
 #include "ns3/socket.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/uinteger.h"
-#include "ns3/boolean.h"
 
 namespace ns3
 {
@@ -69,11 +70,11 @@ UdpEchoClient::GetTypeId()
                 UintegerValue(100),
                 MakeUintegerAccessor(&UdpEchoClient::SetDataSize, &UdpEchoClient::GetDataSize),
                 MakeUintegerChecker<uint32_t>())
-            .AddAttribute ("EnableSeqTsEchoHeader",
-                           "Enable use of SeqTsEchoHeader for sequence number and timestamps",
-                           BooleanValue (false),
-                           MakeBooleanAccessor (&UdpEchoClient::m_enableSeqTsEchoHeader),
-                           MakeBooleanChecker ())
+            .AddAttribute("EnableSeqTsEchoHeader",
+                          "Enable use of SeqTsEchoHeader for sequence number and timestamps",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&UdpEchoClient::m_enableSeqTsEchoHeader),
+                          MakeBooleanChecker())
             .AddTraceSource("Rx",
                             "A packet has been received",
                             MakeTraceSourceAccessor(&UdpEchoClient::m_rxTrace),
@@ -86,9 +87,10 @@ UdpEchoClient::GetTypeId()
                             "A packet has been received",
                             MakeTraceSourceAccessor(&UdpEchoClient::m_rxTraceWithAddresses),
                             "ns3::Packet::TwoAddressTracedCallback")
-            .AddTraceSource ("RxWithSeqTsEchoHeader", "A packet has been received",
-                             MakeTraceSourceAccessor (&UdpEchoClient::m_rxTraceWithSeqTsEcho),
-                             "ns3::UdpEchoClient::SeqTsEchoCallback");
+            .AddTraceSource("RxWithSeqTsEchoHeader",
+                            "A packet has been received",
+                            MakeTraceSourceAccessor(&UdpEchoClient::m_rxTraceWithSeqTsEcho),
+                            "ns3::UdpEchoClient::SeqTsEchoCallback");
     return tid;
 }
 
@@ -332,16 +334,16 @@ UdpEchoClient::Send()
         //
         if (m_enableSeqTsEchoHeader)
         {
-          SeqTsEchoHeader header;
-          header.SetSeq (m_sent);
-          header.SetTsValue (Simulator::Now ());
-          NS_ABORT_IF (m_size < header.GetSerializedSize ());
-          p = Create<Packet> (m_size - header.GetSerializedSize ());
-          p->AddHeader (header);
+            SeqTsEchoHeader header;
+            header.SetSeq(m_sent);
+            header.SetTsValue(Simulator::Now());
+            NS_ABORT_IF(m_size < header.GetSerializedSize());
+            p = Create<Packet>(m_size - header.GetSerializedSize());
+            p->AddHeader(header);
         }
         else
         {
-          p = Create<Packet>(m_size);
+            p = Create<Packet>(m_size);
         }
     }
     Address localAddress;
@@ -401,10 +403,11 @@ UdpEchoClient::HandleRead(Ptr<Socket> socket)
         if (m_enableSeqTsEchoHeader)
         {
             SeqTsEchoHeader header;
-            packet->RemoveHeader (header);
-            NS_LOG_DEBUG ("Seq=" << header.GetSeq () << " TsValue=" << header.GetTsValue ().As (Time::S) << " TsEchoReply=" << header.GetTsEchoReply ().As (Time::S));
-            header.SetTsValue(Simulator::Now () - header.GetTsEchoReply ());
-            m_rxTraceWithSeqTsEcho (packet, from, localAddress, header);
+            packet->RemoveHeader(header);
+            NS_LOG_DEBUG("Seq=" << header.GetSeq() << " TsValue=" << header.GetTsValue().As(Time::S)
+                                << " TsEchoReply=" << header.GetTsEchoReply().As(Time::S));
+            header.SetTsValue(Simulator::Now() - header.GetTsEchoReply());
+            m_rxTraceWithSeqTsEcho(packet, from, localAddress, header);
         }
     }
 }
