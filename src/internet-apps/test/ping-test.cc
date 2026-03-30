@@ -578,9 +578,9 @@ class PingIcmpv6NoRouteTestCase : public TestCase
      */
     void ReportTraceSink(const Ping::PingReport& report);
 
-    uint32_t m_dropCount{0};        ///< Number of expected DROP_NET_UNREACHABLE callbacks.
-    bool m_reportReceived{false};   ///< True when the Report trace callback is observed.
-    Ping::PingReport m_report{};    ///< Final Ping report sample captured from trace.
+    uint32_t m_dropCount{0};           ///< Number of expected DROP_NET_UNREACHABLE callbacks.
+    bool m_reportReceived{false};      ///< True when the Report trace callback is observed.
+    Ping::PingReport m_report{};       ///< Final Ping report sample captured from trace.
     bool m_wrongDropReasonSeen{false}; ///< True if a non-expected drop reason is observed.
 };
 
