@@ -766,6 +766,14 @@ Ipv4L3Protocol::Send(Ptr<Packet> packet,
         NS_LOG_LOGIC("Ipv4L3Protocol::Send case 1b:  passed in with route and valid gateway");
         int32_t interface = GetInterfaceForDevice(route->GetOutputDevice());
         m_sendOutgoingTrace(ipHeader, packet, interface);
+        if ((source.IsLinkLocal() && !destination.IsLinkLocal()) ||
+            (!source.IsLinkLocal() && destination.IsLinkLocal()))
+        {
+            NS_LOG_WARN(
+                "Cannot forward packets with src or dst IP in the link-local range.  Drop.");
+            m_dropTrace(ipHeader, packet, DROP_ROUTE_ERROR, this, 0);
+            return;
+        }
         if (m_enableDpd && ipHeader.GetDestination().IsMulticast())
         {
             UpdateDuplicate(packet, ipHeader);
@@ -950,6 +958,12 @@ Ipv4L3Protocol::SendRealOut(Ptr<Ipv4Route> route, Ptr<Packet> packet, const Ipv4
     }
     else
     {
+        if (ipHeader.GetDestination().IsLinkLocal())
+        {
+            NS_LOG_WARN("Cannot forward packets destined to link-local IPs. Drop.");
+            m_dropTrace(ipHeader, packet, DROP_NO_ROUTE, this, 0);
+            return;
+        }
         target = route->GetGateway();
         targetLabel = "gateway";
     }
@@ -1023,6 +1037,13 @@ Ipv4L3Protocol::IpForward(Ptr<Ipv4Route> rtentry, Ptr<const Packet> p, const Ipv
     Ipv4Header ipHeader = header;
     Ptr<Packet> packet = p->Copy();
     int32_t interface = GetInterfaceForDevice(rtentry->GetOutputDevice());
+    // Do not forward packets with src or dst in the link-local range
+    if (ipHeader.GetSource().IsLinkLocal() || ipHeader.GetDestination().IsLinkLocal())
+    {
+        NS_LOG_WARN("Cannot forward packets with src or dst in the link-local range");
+        m_dropTrace(header, packet, DROP_TTL_EXPIRED, this, interface);
+        return;
+    }
     if (ipHeader.GetTtl() <= 1)
     {
         // Do not reply to multicast/broadcast IP address
