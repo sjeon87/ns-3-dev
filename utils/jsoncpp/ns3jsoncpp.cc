@@ -3194,7 +3194,7 @@ InRange(double d, T min, U max)
     // an approximate range. Might fail on edge cases though. ~cdunn
     return d >= static_cast<double>(min) && d <= static_cast<double>(max);
 }
-#else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
+#else // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
 static inline double
 integerToDouble(Json::UInt64 value)
 {
@@ -4069,7 +4069,7 @@ Value::asDouble() const
     case uintValue:
 #if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
         return static_cast<double>(value_.uint_);
-#else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
+#else // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
         return integerToDouble(value_.uint_);
 #endif // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
     case realValue:
@@ -4094,7 +4094,7 @@ Value::asFloat() const
     case uintValue:
 #if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
         return static_cast<float>(value_.uint_);
-#else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
+#else // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
         // This can fail (silently?) if the value is bigger than MAX_FLOAT.
         return static_cast<float>(integerToDouble(value_.uint_));
 #endif // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
