@@ -353,7 +353,32 @@ Ping::Receive(Ptr<Socket> socket)
                 Icmpv6TimeExceeded timeExceeded;
                 packet->RemoveHeader(timeExceeded);
 
+                bool tracedDrop = false;
+                Ipv6Header innerIpv6Header;
+                if (packet->GetSize() >= innerIpv6Header.GetSerializedSize())
+                {
+                    packet->RemoveHeader(innerIpv6Header);
+                    if (innerIpv6Header.GetNextHeader() == Ipv6Header::IPV6_ICMPV6)
+                    {
+                        uint8_t innerType;
+                        packet->CopyData(&innerType, sizeof(innerType));
+                        if (innerType == Icmpv6Header::ICMPV6_ECHO_REQUEST)
+                        {
+                            Icmpv6Echo innerEcho(false);
+                            packet->RemoveHeader(innerEcho);
+                            if (innerEcho.GetId() == PING_ID && innerEcho.GetSeq() < m_sent.size())
+                            {
+                                m_dropTrace(innerEcho.GetSeq(), Ping::DropReason::DROP_TTL_EXPIRED);
+                                tracedDrop = true;
+                            }
+                        }
+                    }
+                }
+
                 NS_LOG_INFO("Received Time Exceeded from " << realFrom.GetIpv6());
+                NS_LOG_LOGIC("ICMPv6 Time Exceeded code="
+                             << static_cast<uint16_t>(timeExceeded.GetCode())
+                             << " tracedDrop=" << tracedDrop);
                 break;
             }
             default:

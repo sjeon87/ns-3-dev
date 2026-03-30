@@ -43,6 +43,7 @@
 #include "ns3/ipv4-interface-container.h"
 #include "ns3/ipv6-address-helper.h"
 #include "ns3/ipv6-interface-container.h"
+#include "ns3/ipv6-static-routing-helper.h"
 #include "ns3/log.h"
 #include "ns3/neighbor-cache-helper.h"
 #include "ns3/node-container.h"
@@ -410,6 +411,10 @@ PingTestCase::DropTraceSink(uint16_t seq, Ping::DropReason reason)
     {
         NS_LOG_DEBUG("Destination network not reachable " << seq);
     }
+    else if (reason == Ping::DROP_TTL_EXPIRED)
+    {
+        NS_LOG_DEBUG("Hop limit exceeded in transit " << seq);
+    }
 }
 
 void
@@ -541,6 +546,163 @@ PingTestCase::DoRun()
                               m_expectedTraceRtt,
                               "Traced Rtt events do not equal expected");
     }
+}
+
+/**
+ * @ingroup ping-test
+ * @ingroup tests
+ *
+ * @brief Test for Ping reaction to ICMPv6 time exceeded.
+ */
+class PingIcmpv6TimeExceededTestCase : public TestCase
+{
+  public:
+    /**
+     * Constructor.
+     */
+    PingIcmpv6TimeExceededTestCase();
+
+  private:
+    void DoTeardown() override;
+    void DoRun() override;
+
+    /**
+     * Trace Drop events.
+     * @param seq Sequence number.
+     * @param reason Drop reason.
+     */
+    void DropTraceSink(uint16_t seq, Ping::DropReason reason);
+
+    /**
+     * Trace Report generation events.
+     * @param report The report sample.
+     */
+    void ReportTraceSink(const Ping::PingReport& report);
+
+    uint32_t m_dropCount{0};           ///< Number of expected DROP_TTL_EXPIRED callbacks.
+    bool m_reportReceived{false};      ///< True when the Report trace callback is observed.
+    Ping::PingReport m_report{};       ///< Final Ping report sample captured from trace.
+    bool m_wrongDropReasonSeen{false}; ///< True if a non-expected drop reason is observed.
+};
+
+PingIcmpv6TimeExceededTestCase::PingIcmpv6TimeExceededTestCase()
+    : TestCase("11. Test Ping reaction to ICMPv6 time exceeded")
+{
+}
+
+// Callback function invoked when Ping detects a drop/error condition.
+// This validates that we receive the DROP_TTL_EXPIRED reason for the first request.
+void
+PingIcmpv6TimeExceededTestCase::DropTraceSink(uint16_t seq, Ping::DropReason reason)
+{
+    NS_LOG_FUNCTION(this << seq << static_cast<uint16_t>(reason));
+    NS_TEST_ASSERT_MSG_EQ(seq, 0, "Unexpected ICMP sequence for first ping request");
+    if (reason == Ping::DROP_TTL_EXPIRED)
+    {
+        m_dropCount++;
+    }
+    else
+    {
+        m_wrongDropReasonSeen = true;
+    }
+}
+
+// Callback function invoked when Ping finishes and emits its report trace.
+// We capture it to verify Tx/Rx/loss counters after simulation.
+void
+PingIcmpv6TimeExceededTestCase::ReportTraceSink(const Ping::PingReport& report)
+{
+    NS_LOG_FUNCTION(this << report.m_transmitted << report.m_received << report.m_loss);
+    m_reportReceived = true;
+    m_report = report;
+}
+
+// Test execution: create topology, configure Ping, run simulation, and verify results.
+void
+PingIcmpv6TimeExceededTestCase::DoRun()
+{
+    // Build a 3-node chain: node 0 (sender), node 1 (router), node 2 (destination-side).
+    NodeContainer nodes;
+    nodes.Create(3);
+
+    // Use the same simple point-to-point mode as other Ping tests.
+    SimpleNetDeviceHelper deviceHelper;
+    deviceHelper.SetChannel("ns3::SimpleChannel", "Delay", TimeValue(MilliSeconds(10)));
+    deviceHelper.SetDeviceAttribute("DataRate", DataRateValue(DataRate("1Gbps")));
+    deviceHelper.SetNetDevicePointToPointMode(true);
+
+    NodeContainer net01(nodes.Get(0), nodes.Get(1));
+    NetDeviceContainer devices01 = deviceHelper.Install(net01);
+    NodeContainer net12(nodes.Get(1), nodes.Get(2));
+    NetDeviceContainer devices12 = deviceHelper.Install(net12);
+
+    // IPv6-only setup for deterministic ICMPv6 behavior.
+    InternetStackHelper internetHelper;
+    internetHelper.SetIpv4StackInstall(false);
+    internetHelper.Install(nodes);
+
+    // Assign one /64 prefix per link.
+    Ipv6AddressHelper ipv6AddrHelper;
+    ipv6AddrHelper.SetBase(Ipv6Address("2001:1::"), Ipv6Prefix(64));
+    Ipv6InterfaceContainer interfaces01 = ipv6AddrHelper.Assign(devices01);
+    ipv6AddrHelper.SetBase(Ipv6Address("2001:2::"), Ipv6Prefix(64));
+    Ipv6InterfaceContainer interfaces12 = ipv6AddrHelper.Assign(devices12);
+
+    Ptr<Ipv6> ipv6Node0 = nodes.Get(0)->GetObject<Ipv6>();
+    Ptr<Ipv6> ipv6Node1 = nodes.Get(1)->GetObject<Ipv6>();
+
+    // Enable forwarding on router interfaces.
+    ipv6Node1->SetForwarding(1, true);
+    ipv6Node1->SetForwarding(2, true);
+    // Force hop limit to 1 so packet expires at node 1 while forwarding.
+    ipv6Node0->SetAttribute("DefaultTtl", UintegerValue(1));
+
+    // Route sender traffic through node 1.
+    Ipv6StaticRoutingHelper routing;
+    Ptr<Ipv6StaticRouting> staticRoutingNode0 = routing.GetStaticRouting(ipv6Node0);
+    staticRoutingNode0->SetDefaultRoute(interfaces01.GetAddress(1, 1), 1);
+
+    // Configure Ping: single probe to remote subnet through one forwarding hop.
+    Ptr<Ping> ping = CreateObject<Ping>();
+    ping->SetAttribute("VerboseMode", EnumValue(Ping::VerboseMode::SILENT));
+    ping->SetAttribute("Count", UintegerValue(1));
+    ping->SetAttribute("InterfaceAddress", AddressValue(interfaces01.GetAddress(0, 1)));
+    ping->SetAttribute("Destination", AddressValue(interfaces12.GetAddress(1, 1)));
+    ping->SetStartTime(Seconds(1));
+    ping->SetStopTime(Seconds(4));
+
+    // Install Ping and connect Drop/Report trace callbacks.
+    nodes.Get(0)->AddApplication(ping);
+    ping->TraceConnectWithoutContext(
+        "Drop",
+        MakeCallback(&PingIcmpv6TimeExceededTestCase::DropTraceSink, this));
+    ping->TraceConnectWithoutContext(
+        "Report",
+        MakeCallback(&PingIcmpv6TimeExceededTestCase::ReportTraceSink, this));
+
+    // Reduce neighbor-discovery timing noise for deterministic assertions.
+    NeighborCacheHelper neighborCacheHelper;
+    neighborCacheHelper.PopulateNeighborCache();
+
+    // Run with enough tail time for report emission.
+    Simulator::Stop(Seconds(5));
+    Simulator::Run();
+
+    // Validate expected Drop reason and final report counters.
+    NS_TEST_ASSERT_MSG_EQ(m_dropCount, 1, "Expected exactly one DROP_TTL_EXPIRED event");
+    NS_TEST_ASSERT_MSG_EQ(m_wrongDropReasonSeen,
+                          false,
+                          "Observed an unexpected Ping::DropReason value");
+    NS_TEST_ASSERT_MSG_EQ(m_reportReceived, true, "Expected one Ping report trace callback");
+    NS_TEST_ASSERT_MSG_EQ(m_report.m_transmitted, 1, "Unexpected transmitted packet count");
+    NS_TEST_ASSERT_MSG_EQ(m_report.m_received, 0, "Unexpected received packet count");
+    NS_TEST_ASSERT_MSG_EQ(m_report.m_loss, 100, "Unexpected packet loss percentage");
+}
+
+void
+PingIcmpv6TimeExceededTestCase::DoTeardown()
+{
+    Simulator::Destroy();
 }
 
 /**
@@ -933,6 +1095,9 @@ PingTestSuite::PingTestSuite()
     testcase10v6->CheckTraceTx(5);
     testcase10v6->SetDestinationAddress(Ipv6Address("2001:1::200:ff:fe00:2"));
     AddTestCase(testcase10v6, TestCase::Duration::QUICK);
+
+    auto testcase11v6 = new PingIcmpv6TimeExceededTestCase();
+    AddTestCase(testcase11v6, TestCase::Duration::QUICK);
 }
 
 static PingTestSuite pingTestSuite; //!< Static variable for test initialization

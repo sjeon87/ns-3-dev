@@ -70,6 +70,7 @@ class Ping : public Application
         DROP_TIMEOUT = 0,      //!< Response timed out
         DROP_HOST_UNREACHABLE, //!< Received ICMP Destination Host Unreachable
         DROP_NET_UNREACHABLE,  //!< Received ICMP Destination Network Unreachable
+        DROP_TTL_EXPIRED,      //!< Received ICMP Time Exceeded
     };
 
     /**
