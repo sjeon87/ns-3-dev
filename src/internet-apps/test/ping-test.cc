@@ -578,14 +578,10 @@ class PingIcmpv6NoRouteTestCase : public TestCase
      */
     void ReportTraceSink(const Ping::PingReport& report);
 
-    // Counter for Drop trace callbacks - should be exactly 1 when ICMPv6 no-route error received
-    uint32_t m_dropCount{0};
-    // Flag to track if the Ping Report trace was fired at simulation end
-    bool m_reportReceived{false};
-    // Storage for the final Ping statistics report (transmitted, received, loss)
-    Ping::PingReport m_report{};
-    // Safety flag: set to true if any unexpected DropReason is observed (test fails if true)
-    bool m_wrongDropReasonSeen{false};
+    uint32_t m_dropCount{0};        ///< Number of expected DROP_NET_UNREACHABLE callbacks.
+    bool m_reportReceived{false};   ///< True when the Report trace callback is observed.
+    Ping::PingReport m_report{};    ///< Final Ping report sample captured from trace.
+    bool m_wrongDropReasonSeen{false}; ///< True if a non-expected drop reason is observed.
 };
 
 PingIcmpv6NoRouteTestCase::PingIcmpv6NoRouteTestCase()
