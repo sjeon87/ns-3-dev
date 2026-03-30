@@ -1,3 +1,6 @@
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
+#pragma clang diagnostic ignored "-Wunused-function"
 /// Json-cpp amalgamated source (http://jsoncpp.sourceforge.net/).
 /// It is intended to be used with #include "json/json.h"
 
@@ -111,7 +114,7 @@ namespace ns3
 namespace Json
 {
 static inline char
-getDecimalPoint() [[maybe_unused]]
+getDecimalPoint()
 {
 #ifdef JSONCPP_NO_LOCALE_SUPPORT
     return '\0';
@@ -208,7 +211,7 @@ template <typename Iter>
 void
 fixNumericLocaleInput(Iter begin, Iter end)
 {
-    char decimalPoint = getDecimalPoint() [[maybe_unused]];
+    char decimalPoint = getDecimalPoint();
     if (decimalPoint == '\0' || decimalPoint == '.')
     {
         return;
@@ -4092,7 +4095,7 @@ Value::asFloat() const
 #if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
         return static_cast<float>(value_.uint_);
 #else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
-       // This can fail (silently?) if the value is bigger than MAX_FLOAT.
+        // This can fail (silently?) if the value is bigger than MAX_FLOAT.
         return static_cast<float>(integerToDouble(value_.uint_));
 #endif // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
     case realValue:
