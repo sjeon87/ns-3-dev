@@ -1782,6 +1782,7 @@ class JSON_API Reader
      * occurred during parsing.
      * @deprecated Use getFormattedErrorMessages() instead (typo fix).
      */
+    JSONCPP_DEPRECATED("Use getFormattedErrorMessages() instead.")
 
     /** @brief Returns a user friendly string that list errors in the parsed
      * document.

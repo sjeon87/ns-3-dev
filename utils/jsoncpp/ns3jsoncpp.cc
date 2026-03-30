@@ -111,7 +111,7 @@ namespace ns3
 namespace Json
 {
 static inline char
-getDecimalPoint()
+getDecimalPoint() [[maybe_unused]]
 {
 #ifdef JSONCPP_NO_LOCALE_SUPPORT
     return '\0';
@@ -208,7 +208,7 @@ template <typename Iter>
 void
 fixNumericLocaleInput(Iter begin, Iter end)
 {
-    char decimalPoint = getDecimalPoint();
+    char decimalPoint = getDecimalPoint() [[maybe_unused]];
     if (decimalPoint == '\0' || decimalPoint == '.')
     {
         return;
@@ -1309,6 +1309,8 @@ Reader::getLocationLineAndColumn(Location location) const
     jsoncpp_snprintf(buffer, sizeof(buffer), "Line %d, Column %d", line, column);
     return buffer;
 }
+
+// Deprecated. Preserved for backward compatibility
 
 String
 Reader::getFormattedErrorMessages() const
@@ -4090,7 +4092,7 @@ Value::asFloat() const
 #if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
         return static_cast<float>(value_.uint_);
 #else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
-       // This can fail (silently?) if the value is bigger than MAX_FLOAT.
+        // This can fail (silently?) if the value is bigger than MAX_FLOAT.
         return static_cast<float>(integerToDouble(value_.uint_));
 #endif // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
     case realValue:
