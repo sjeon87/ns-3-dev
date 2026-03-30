@@ -523,10 +523,10 @@ FdNetDevice::ForwardUp()
     // make sure that nobody messes with our packet.
     //
     m_promiscSnifferTrace(originalPacket);
+    m_macPromiscRxTrace(originalPacket);
 
     if (!m_promiscRxCallback.IsNull())
     {
-        m_macPromiscRxTrace(originalPacket);
         m_promiscRxCallback(this, packet, protocol, source, destination, packetType);
     }
 

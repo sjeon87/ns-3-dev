@@ -802,9 +802,10 @@ CsmaNetDevice::Receive(Ptr<const Packet> packet, Ptr<CsmaNetDevice> senderDevice
     // make sure that nobody messes with our packet.
     //
     m_promiscSnifferTrace(packet);
+    m_macPromiscRxTrace(packet);
+
     if (!m_promiscRxCallback.IsNull())
     {
-        m_macPromiscRxTrace(packet);
         m_promiscRxCallback(this,
                             pktCopy,
                             protocol,

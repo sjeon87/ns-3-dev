@@ -137,9 +137,9 @@ VirtualNetDevice::Receive(Ptr<Packet> packet,
     // make sure that nobody messes with our packet.
     //
     m_promiscSnifferTrace(packet);
+    m_macPromiscRxTrace(packet);
     if (!m_promiscRxCallback.IsNull())
     {
-        m_macPromiscRxTrace(packet);
         m_promiscRxCallback(this, packet, protocol, source, destination, packetType);
     }
 
