@@ -1,6 +1,10 @@
-*Copyright(c) 2014 Universitat Autònoma de Barcelona** SPDX - License - Identifier : GPL - 2.0 -
-                                                                                     only**** Author
-    : Rubén Martínez<rmartinez @deic.uab.cat>* /
+/* Copyright(c) 2014 Universitat Autònoma de Barcelona
+** SPDX - License - Identifier : GPL-2.0-only
+*
+*
+*
+* Author : Rubén Martínez<rmartinez @deic.uab.cat>
+*/
 
 //        Network topology
 //
@@ -10,8 +14,8 @@
 //          PointToPoint
 //
 // - Send a block of data from one service instance in node n0 to the other in node n1.
-// - Data is sent end-to-end through a LtpProtcol <-> UdpLayerAdapter <-> PointToPointLink <->
-// UdpLayerAdapter <-> LtpProtcol.
+// - Data is sent end-to-end through a LtpProtocol <-> UdpLayerAdapter <-> PointToPointLink <->
+// UdpLayerAdapter <-> LtpProtocol.
 // - Functions (ClientServiceInstanceNotificationsSnd and ClientServiceInstanceNotificationsRcv) are
 // used for tracing
 //
@@ -103,7 +107,7 @@ main(int argc, char* argv[])
     NodeContainer nodes;
     nodes.Create(2);
 
-    // Create point to point links and instell them on the nodes
+    // Create point to point links and install them on the nodes
     PointToPointHelper pointToPoint;
     pointToPoint.SetDeviceAttribute("DataRate", StringValue("500Kbps"));
     pointToPoint.SetChannelAttribute("Delay", StringValue("5ms"));
@@ -124,7 +128,7 @@ main(int argc, char* argv[])
     // protocol.
     uint64_t ClientServiceId = 0; // Bundle
 
-    // Creta a LtpIpResolution table to perform mappings between Ipv4 adresses and LtpEngineIDs
+    // Create a LtpIpResolution table to perform mappings between Ipv4 addresses and LtpEngineIDs
     Ptr<LtpIpResolutionTable> routing =
         CreateObjectWithAttributes<LtpIpResolutionTable>("Addressing", StringValue("Ipv4"));
 

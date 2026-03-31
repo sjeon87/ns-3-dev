@@ -57,7 +57,7 @@ enum CxReasonCode
     UNREACH = 1,    //!<  Unreachable Client Service
     RLEXC = 2,      //!<  Retransmit Limit Exceeded
     MISCOLORED = 3, //!<  RS with a GS offset or the opposite case
-    SYS_CNCLD = 4,  //!<  System Error Unexpect Termination
+    SYS_CNCLD = 4,  //!<  System Error Unexpected Termination
     RXMTCYCEXC = 5, //!<  Exceeded Retransmision Cycles Limit
     RESERVED = 6,   //!<  06-FF reserved.
 };
@@ -231,7 +231,7 @@ class LtpHeader : public Header
      */
     void SetVersion(uint8_t version);
     /**
-     * @param segmentType Segmentype enum value.
+     * @param segmentType SegmentType enum value.
      */
     void SetSegmentType(SegmentType segmentType);
     /**
@@ -273,7 +273,7 @@ class LtpHeader : public Header
      */
     SessionId GetSessionId() const;
     /**
-     * @return Extesion object
+     * @return Extension object
      * @param index Requested index
      */
     LtpExtension GetExtension(uint32_t index) const;
@@ -342,7 +342,7 @@ class LtpTrailer : public Trailer
      */
     void AddExtension(LtpExtension extension);
     /**
-     * @return Extesion object
+     * @return Extension object
      * @param index Requested index
      */
     LtpExtension GetExtension(uint32_t index) const;
@@ -421,7 +421,7 @@ class LtpContentHeader : public Header
      */
     void SetCxReason(CxReasonCode code);
     /**
-     * @brief Adds new reception claim and updates de reception claim counter.
+     * @brief Adds new reception claim and updates the reception claim counter.
      * @param claim Reception Claim object
      */
     void AddReceptionClaim(ReceptionClaim claim);
@@ -429,7 +429,7 @@ class LtpContentHeader : public Header
     /* Getter Methods */
 
     /**
-     * @return Segmentype enum value.
+     * @return SegmentType enum value.
      */
     SegmentType GetSegmentType() const;
     /**

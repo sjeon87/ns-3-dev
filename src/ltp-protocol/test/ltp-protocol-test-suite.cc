@@ -424,7 +424,7 @@ LtpQueueSetTestCase::SetTests()
     test.m_data = packet2;
     m_tests.Add(test);
 
-    /* Report packets have higher priority they should be the first ones to be dequed*/
+    /* Report packets have higher priority they should be the first ones to be dequeued*/
     header.SetSegmentType(LTPTYPE_RS);
     Ptr<ns3::Packet> packet3 = Create<ns3::Packet>();
     packet3->AddHeader(header);
@@ -447,7 +447,7 @@ LtpQueueSetTestCase::DoRun(void)
         TestVector<Ptr<ns3::Packet>> test = m_tests.Get(i);
         success = success & queue.Enqueue(test.m_data);
     }
-    /* Test 1: Check that all packets have been queued succesfully */
+    /* Test 1: Check that all packets have been queued successfully */
     NS_TEST_ASSERT_MSG_EQ(success, true, "Enqueuing failed");
 
     /* Test 2: Check size*/
@@ -639,7 +639,7 @@ class LtpProtocolAPITestCase : public TestCase
     LtpProtocolAPITestCase();
     virtual ~LtpProtocolAPITestCase();
 
-    void ClientServiceIntanceNotifications(SessionId id,
+    void ClientServiceInstanceNotifications(SessionId id,
                                            StatusNotificationCode code,
                                            std::vector<uint8_t> data,
                                            uint32_t dataLength,
@@ -661,7 +661,7 @@ LtpProtocolAPITestCase::~LtpProtocolAPITestCase()
 }
 
 void
-LtpProtocolAPITestCase::ClientServiceIntanceNotifications(SessionId id,
+LtpProtocolAPITestCase::ClientServiceInstanceNotifications(SessionId id,
                                                           StatusNotificationCode code,
                                                           std::vector<uint8_t> data,
                                                           uint32_t dataLength,
@@ -682,7 +682,7 @@ LtpProtocolAPITestCase::DoRun(void)
     /* Test 1: Register Client Service*/
     uint64_t id = 304;
     CallbackBase cb =
-        MakeCallback(&LtpProtocolAPITestCase::ClientServiceIntanceNotifications, this);
+        MakeCallback(&LtpProtocolAPITestCase::ClientServiceInstanceNotifications, this);
 
     bool test = prot->RegisterClientService(id, cb);
     NS_TEST_ASSERT_MSG_EQ(test, true, "New Client Service registration failed");

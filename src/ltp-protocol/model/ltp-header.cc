@@ -837,7 +837,7 @@ LtpContentHeader::Print(std::ostream& os) const
     }
     else
     {
-        os << " Unkown Segment Type";
+        os << " Unknown Segment Type";
     }
 
     os << ")";

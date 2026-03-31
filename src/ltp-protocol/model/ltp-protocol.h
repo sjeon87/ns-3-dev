@@ -90,10 +90,10 @@ class ClientServiceStatus : public Object
                       uint32_t offset);
 
     /*
-     * @brief This function reports session cancelation to a client service instance.
+     * @brief This function reports session cancellation to a client service instance.
      *  @param id Session Id.
      * @param code StatusNotificationCode
-     * @param cx Cancelation reason code
+     * @param cx Cancellation reason code
      **/
     void ReportCancelStatus(SessionId id, StatusNotificationCode code, CxReasonCode cx);
 
@@ -119,7 +119,7 @@ class ClientServiceStatus : public Object
     SessionId GetSession(uint32_t index);
 
   private:
-    std::vector<SessionId> m_activeSessions; //!< Client Service Instance Active Sesssions
+    std::vector<SessionId> m_activeSessions; //!< Client Service Instance Active Sessions
 
     TracedCallback<SessionId,
                    StatusNotificationCode,

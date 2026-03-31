@@ -412,7 +412,7 @@ class SessionStateRecord : public Object
         m_rcvSegments; //!< Track Received (receiver) or ACKed (sender) segments - First : Serial
                        //!< Number , Second: ReceptionClaims
 
-    bool m_redpartSucces; //!< Red part Transmitted/Received successfully
+    bool m_redpartSuccess; //!< Red part Transmitted/Received successfully
     bool m_blockSuccess;  //!< Full block Transmitted/Received successfully
     bool m_fullRedData;   //!< True if the block only contains red data
     bool m_fullGreenData; //!< True if the block only contains green data
@@ -474,7 +474,7 @@ class SenderSessionStateRecord : public SessionStateRecord
     bool IsRedPartAck() const;
     /*
      * @brief Get the block of data to be transmitted
-     * @return block data to be transmited.
+     * @return block data to be transmitted.
      */
     std::vector<uint8_t> GetBlockData();
     /*
@@ -482,7 +482,7 @@ class SenderSessionStateRecord : public SessionStateRecord
      * by offset and length.
      * @param offset starting index of the data.
      * @param length length of the data.
-     * @return block data to be transmited.
+     * @return block data to be transmitted.
      */
     std::vector<uint8_t> GetBlockData(uint32_t offset, uint32_t length);
 
