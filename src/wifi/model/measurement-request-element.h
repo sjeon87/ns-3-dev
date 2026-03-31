@@ -2034,6 +2034,14 @@ class MeasurementRequestElement : public WifiInformationElement
         }
 
         /**
+         * @brief Remove all Neighbor Report subelements.
+         */
+        void ClearNeighborReports()
+        {
+            m_neighborReports.clear();
+        }
+
+        /**
          * @brief Set the Vendor Specific subelement.
          * @param vendorSpecific the vendor specific data
          */
