@@ -42,6 +42,7 @@ set(source_files
     model/uinteger-16-probe.cc
     model/uinteger-32-probe.cc
     model/uinteger-8-probe.cc
+    model/flent-helper.cc
 )
 
 set(header_files
@@ -70,6 +71,7 @@ set(header_files
     model/uinteger-16-probe.h
     model/uinteger-32-probe.h
     model/uinteger-8-probe.h
+    model/flent-helper.h
 )
 
 build_lib(
