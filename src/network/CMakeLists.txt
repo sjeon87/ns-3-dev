@@ -66,6 +66,7 @@ set(source_files
     utils/queue-size.cc
     utils/queue.cc
     utils/radiotap-header.cc
+    utils/sdnv.cc
     utils/simple-channel.cc
     utils/simple-net-device.cc
     utils/sll-header.cc
@@ -145,6 +146,7 @@ set(header_files
     utils/queue-size.h
     utils/queue.h
     utils/radiotap-header.h
+    utils/sdnv.h
     utils/sequence-number.h
     utils/simple-channel.h
     utils/simple-net-device.h
@@ -170,6 +172,7 @@ build_lib(
     test/packet-test-suite.cc
     test/packetbb-test-suite.cc
     test/pcap-file-test-suite.cc
+    test/sdnv-test-suite.cc
     test/sequence-number-test-suite.cc
     test/test-data-rate.cc
 )
