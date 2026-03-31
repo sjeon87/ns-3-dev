@@ -433,7 +433,7 @@ FlentApplication::ProcessRawValues(void)
                 vNext = (*(--(m_output["raw_values"][rawValueName].end())))["val"].asDouble();
                 last = true;
             }
-            if (abs(t - tNext) <= maxDist)
+            if (std::abs(t - tNext) <= maxDist)
             {
                 if (tPrev == 0)
                 {
@@ -476,7 +476,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Destination", Ipv4AddressValue(hostAddr));
+        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(hostAddr));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_node->AddApplication(m_v4ping);
         m_output["raw_values"]["Ping (ms) ICMP"] = Json::Value(Json::arrayValue);
@@ -491,7 +491,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Destination", Ipv4AddressValue(hostAddr));
+        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(hostAddr));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_node->AddApplication(m_v4ping);
         ApplicationContainer pingContainer;
@@ -547,7 +547,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     {
         Ipv4Address localBindAddr = Ipv4Address::ConvertFrom(m_localBindAddress);
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Destination", Ipv4AddressValue(localBindAddr));
+        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(localBindAddr));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_hostNode->AddApplication(m_v4ping);
         ApplicationContainer pingContainer;
@@ -604,7 +604,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
         Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
 
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Destination", AddressValue(hostIpv4Address));
+        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(hostIpv4Address));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_node->AddApplication(m_v4ping);
         ApplicationContainer pingContainer;
@@ -631,8 +631,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
         uint32_t packetSize = 1024;
         uint32_t maxPacketCount = 10000;
         m_udpclient[0] = CreateObject<UdpEchoClient>();
-        m_udpclient[0]->SetAttribute("RemoteAddress", AddressValue(hostIpv4Address));
-        m_udpclient[0]->SetAttribute("RemotePort", UintegerValue(port));
+        m_udpclient[0]->SetAttribute("Remote", AddressValue(hostIpv4Address));
         m_udpclient[0]->SetAttribute("MaxPackets", UintegerValue(maxPacketCount));
         m_udpclient[0]->SetAttribute("Interval", TimeValue(m_stepSize));
         m_udpclient[0]->SetAttribute("PacketSize", UintegerValue(packetSize));
@@ -658,8 +657,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
         apps3.Start(m_startTime);
         apps3.Stop(m_stopTime);
         m_udpclient[1] = CreateObject<UdpEchoClient>();
-        m_udpclient[1]->SetAttribute("RemoteAddress", AddressValue(hostIpv4Address));
-        m_udpclient[1]->SetAttribute("RemotePort", UintegerValue(port));
+        m_udpclient[1]->SetAttribute("Remote", AddressValue(hostIpv4Address));
         m_udpclient[1]->SetAttribute("MaxPackets", UintegerValue(maxPacketCount));
         m_udpclient[1]->SetAttribute("Interval", TimeValue(m_stepSize));
         m_udpclient[1]->SetAttribute("PacketSize", UintegerValue(packetSize));
@@ -685,8 +683,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
         apps5.Start(m_startTime);
         apps5.Stop(m_stopTime);
         m_udpclient[2] = CreateObject<UdpEchoClient>();
-        m_udpclient[2]->SetAttribute("RemoteAddress", AddressValue(hostIpv4Address));
-        m_udpclient[2]->SetAttribute("RemotePort", UintegerValue(port));
+        m_udpclient[2]->SetAttribute("Remote", AddressValue(hostIpv4Address));
         m_udpclient[2]->SetAttribute("MaxPackets", UintegerValue(maxPacketCount));
         m_udpclient[2]->SetAttribute("Interval", TimeValue(m_stepSize));
         m_udpclient[2]->SetAttribute("PacketSize", UintegerValue(packetSize));
