@@ -89,12 +89,12 @@ RadioMeasurementRequestTest::DoRun()
         elem.SetMeasurementToken(1);
         elem.SetMeasurementType(MeasurementType::BEACON);
         MeasurementRequestElement::BeaconRequestBody body;
-        body.operatingClass = 81;
-        body.channelNumber = 6;
-        body.randomizationInterval = 100;
-        body.measurementDuration = 200;
-        body.measurementMode = 0;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.SetOperatingClass(81);
+        body.SetChannelNumber(6);
+        body.SetRandomizationInterval(100);
+        body.SetMeasurementDuration(200);
+        body.SetMeasurementMode(0);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
         elem.SetBody(body);
         hdr.AddMeasurementRequestElement(elem);
 
@@ -126,7 +126,11 @@ RadioMeasurementRequestTest::DoRun()
         MeasurementRequestElement elem1;
         elem1.SetMeasurementToken(1);
         elem1.SetMeasurementType(MeasurementType::BASIC);
-        elem1.SetBody(MeasurementRequestElement::BasicRequestBody{6, 0, 200});
+        MeasurementRequestElement::BasicRequestBody b1;
+        b1.SetChannelNumber(6);
+        b1.SetMeasurementStartTime(0);
+        b1.SetMeasurementDuration(200);
+        elem1.SetBody(b1);
         hdr.AddMeasurementRequestElement(elem1);
 
         // Element 2: Beacon request
@@ -134,10 +138,10 @@ RadioMeasurementRequestTest::DoRun()
         elem2.SetMeasurementToken(2);
         elem2.SetMeasurementType(MeasurementType::BEACON);
         MeasurementRequestElement::BeaconRequestBody body;
-        body.operatingClass = 115;
-        body.channelNumber = 36;
-        body.measurementDuration = 100;
-        body.bssid = Mac48Address("ff:ff:ff:ff:ff:ff");
+        body.SetOperatingClass(115);
+        body.SetChannelNumber(36);
+        body.SetMeasurementDuration(100);
+        body.SetBssid(Mac48Address("ff:ff:ff:ff:ff:ff"));
         elem2.SetBody(body);
         hdr.AddMeasurementRequestElement(elem2);
 
@@ -146,10 +150,10 @@ RadioMeasurementRequestTest::DoRun()
         elem3.SetMeasurementToken(3);
         elem3.SetMeasurementType(MeasurementType::CHANNEL_LOAD);
         MeasurementRequestElement::ChannelLoadRequestBody clBody;
-        clBody.operatingClass = 81;
-        clBody.channelNumber = 1;
-        clBody.randomizationInterval = 50;
-        clBody.measurementDuration = 300;
+        clBody.SetOperatingClass(81);
+        clBody.SetChannelNumber(1);
+        clBody.SetRandomizationInterval(50);
+        clBody.SetMeasurementDuration(300);
         elem3.SetBody(clBody);
         hdr.AddMeasurementRequestElement(elem3);
 
@@ -199,7 +203,11 @@ RadioMeasurementRequestTest::DoRun()
         MeasurementRequestElement elem;
         elem.SetMeasurementToken(255);
         elem.SetMeasurementType(MeasurementType::BASIC);
-        elem.SetBody(MeasurementRequestElement::BasicRequestBody{255, UINT64_MAX, UINT16_MAX});
+        MeasurementRequestElement::BasicRequestBody b;
+        b.SetChannelNumber(255);
+        b.SetMeasurementStartTime(UINT64_MAX);
+        b.SetMeasurementDuration(UINT16_MAX);
+        elem.SetBody(b);
         hdr.AddMeasurementRequestElement(elem);
 
         TestHeaderSerialization(hdr);
