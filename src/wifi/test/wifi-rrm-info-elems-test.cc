@@ -1635,7 +1635,7 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::LCI);
             LciBody body;
-            body.locationSubject = 0;
+            body.SetLocationSubject(0);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 6, "LCI size");
         }
@@ -1647,11 +1647,11 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::TRANSMIT_STREAM);
             TxStreamBody body;
-            body.randomizationInterval = 100;
-            body.measurementDuration = 200;
-            body.peerStaAddress = Mac48Address("00:11:22:33:44:55");
-            body.trafficIdentifier = 0;
-            body.bin0Range = 10;
+            body.SetRandomizationInterval(100);
+            body.SetMeasurementDuration(200);
+            body.SetPeerStaAddress(Mac48Address("00:11:22:33:44:55"));
+            body.SetTrafficIdentifier(0);
+            body.SetBin0Range(10);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 17, "Transmit Stream size");
         }
@@ -1873,7 +1873,7 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(60);
             elem.SetMeasurementType(MeasurementType::LCI);
             LciBody body;
-            body.locationSubject = 1;
+            body.SetLocationSubject(1);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -1884,11 +1884,11 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(70);
             elem.SetMeasurementType(MeasurementType::TRANSMIT_STREAM);
             TxStreamBody body;
-            body.randomizationInterval = 50;
-            body.measurementDuration = 100;
-            body.peerStaAddress = Mac48Address("00:11:22:33:44:55");
-            body.trafficIdentifier = 4;
-            body.bin0Range = 20;
+            body.SetRandomizationInterval(50);
+            body.SetMeasurementDuration(100);
+            body.SetPeerStaAddress(Mac48Address("00:11:22:33:44:55"));
+            body.SetTrafficIdentifier(4);
+            body.SetBin0Range(20);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2149,7 +2149,7 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(99);
             elem.SetMeasurementType(MeasurementType::LCI);
             LciBody body;
-            body.locationSubject = 2;
+            body.SetLocationSubject(2);
             elem.SetBody(body);
 
             Buffer buf;
@@ -2160,7 +2160,7 @@ MeasurementRequestElementTest::DoRun()
             deserialized.Deserialize(buf.Begin());
 
             auto& b = deserialized.GetBody<LciBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.locationSubject, 2, "LCI location subject");
+            NS_TEST_EXPECT_MSG_EQ(b.GetLocationSubject(), 2, "LCI location subject");
         }
 
         // STA Statistics
@@ -2195,11 +2195,11 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(77);
             elem.SetMeasurementType(MeasurementType::TRANSMIT_STREAM);
             TxStreamBody body;
-            body.randomizationInterval = 50;
-            body.measurementDuration = 100;
-            body.peerStaAddress = Mac48Address("00:11:22:33:44:55");
-            body.trafficIdentifier = 7;
-            body.bin0Range = 30;
+            body.SetRandomizationInterval(50);
+            body.SetMeasurementDuration(100);
+            body.SetPeerStaAddress(Mac48Address("00:11:22:33:44:55"));
+            body.SetTrafficIdentifier(7);
+            body.SetBin0Range(30);
             elem.SetBody(body);
 
             Buffer buf;
@@ -2210,11 +2210,11 @@ MeasurementRequestElementTest::DoRun()
             deserialized.Deserialize(buf.Begin());
 
             auto& b = deserialized.GetBody<TxStreamBody>();
-            NS_TEST_EXPECT_MSG_EQ(b.peerStaAddress,
+            NS_TEST_EXPECT_MSG_EQ(b.GetPeerStaAddress(),
                                   Mac48Address("00:11:22:33:44:55"),
                                   "TxStream peer STA");
-            NS_TEST_EXPECT_MSG_EQ(b.trafficIdentifier, 7, "TxStream TID");
-            NS_TEST_EXPECT_MSG_EQ(b.bin0Range, 30, "TxStream bin0 range");
+            NS_TEST_EXPECT_MSG_EQ(b.GetTrafficIdentifier(), 7, "TxStream TID");
+            NS_TEST_EXPECT_MSG_EQ(b.GetBin0Range(), 30, "TxStream bin0 range");
         }
     }
 
@@ -2665,8 +2665,8 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(5);
         elem.SetMeasurementType(MeasurementType::LCI);
         LciBody body;
-        body.locationSubject = 1;
-        body.azimuthRequest = MeasurementRequestElement::AzimuthRequest{9, 1};
+        body.SetLocationSubject(1);
+        body.SetAzimuthRequest(MeasurementRequestElement::AzimuthRequest{9, 1});
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2679,9 +2679,9 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<LciBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.azimuthRequest.has_value(), true, "Azimuth Request present");
-        NS_TEST_ASSERT_MSG_EQ(b.azimuthRequest->azimuthResolution, 9, "Azimuth resolution");
-        NS_TEST_ASSERT_MSG_EQ(b.azimuthRequest->azimuthType, 1, "Azimuth type");
+        NS_TEST_ASSERT_MSG_EQ(b.GetAzimuthRequest().has_value(), true, "Azimuth Request present");
+        NS_TEST_ASSERT_MSG_EQ(b.GetAzimuthRequest()->azimuthResolution, 9, "Azimuth resolution");
+        NS_TEST_ASSERT_MSG_EQ(b.GetAzimuthRequest()->azimuthType, 1, "Azimuth type");
     }
 
     // Test 6: FTM Range with Neighbor Report subelement (ID 52)
@@ -3038,8 +3038,8 @@ MeasurementRequestSubelementsTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             LciBody body;
-            body.locationSubject = 1;
-            body.azimuthRequest = MeasurementRequestElement::AzimuthRequest{9, 1};
+            body.SetLocationSubject(1);
+            body.SetAzimuthRequest(MeasurementRequestElement::AzimuthRequest{9, 1});
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
                                   MeasurementType::LCI,

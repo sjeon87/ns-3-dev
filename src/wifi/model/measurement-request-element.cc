@@ -379,16 +379,16 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, LciRequestBody>)
             {
                 size += 1; // LocationSubject(1)
-                if (body.azimuthRequest)
+                if (body.GetAzimuthRequest())
                 {
                     size += 3;
                 }
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, TransmitStreamRequestBody>)
             {
                 size += 12; // Rand(2)+Dur(2)+PeerSTA(6)+TID(1)+Bin0Range(1)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, MulticastDiagnosticsRequestBody>)
             {
@@ -549,26 +549,27 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, LciRequestBody>)
             {
-                start.WriteU8(body.locationSubject);
-                if (body.azimuthRequest)
+                start.WriteU8(body.GetLocationSubject());
+                if (body.GetAzimuthRequest())
                 {
                     start.WriteU8(
                         static_cast<uint8_t>(LciRequestBody::SubelementId::AZIMUTH_REQUEST));
                     start.WriteU8(1); // length
-                    uint8_t field = (body.azimuthRequest->azimuthResolution & 0x0F) |
-                                    ((body.azimuthRequest->azimuthType & 0x01) << 4);
+                    auto azimuth = body.GetAzimuthRequest();
+                    uint8_t field =
+                        (azimuth->azimuthResolution & 0x0F) | ((azimuth->azimuthType & 0x01) << 4);
                     start.WriteU8(field);
                 }
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, TransmitStreamRequestBody>)
             {
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU16(body.measurementDuration);
-                WriteTo(start, body.peerStaAddress);
-                start.WriteU8(body.trafficIdentifier);
-                start.WriteU8(body.bin0Range);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU16(body.GetMeasurementDuration());
+                WriteTo(start, body.GetPeerStaAddress());
+                start.WriteU8(body.GetTrafficIdentifier());
+                start.WriteU8(body.GetBin0Range());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, MulticastDiagnosticsRequestBody>)
             {
@@ -721,17 +722,19 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::LCI: {
         auto& body = std::get<LciRequestBody>(m_body);
-        body.locationSubject = i.ReadU8();
+        body.SetLocationSubject(i.ReadU8());
         bytesRead += 1;
         break;
     }
     case MeasurementType::TRANSMIT_STREAM: {
         auto& body = std::get<TransmitStreamRequestBody>(m_body);
-        body.randomizationInterval = i.ReadU16();
-        body.measurementDuration = i.ReadU16();
-        ReadFrom(i, body.peerStaAddress);
-        body.trafficIdentifier = i.ReadU8();
-        body.bin0Range = i.ReadU8();
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMeasurementDuration(i.ReadU16());
+        Mac48Address peerStaAddr;
+        ReadFrom(i, peerStaAddr);
+        body.SetPeerStaAddress(peerStaAddr);
+        body.SetTrafficIdentifier(i.ReadU8());
+        body.SetBin0Range(i.ReadU8());
         bytesRead += 12;
         break;
     }
@@ -840,7 +843,9 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                                       std::is_same_v<T, BeaconRequestBody> ||
                                       std::is_same_v<T, FrameRequestBody> ||
                                       std::is_same_v<T, StaStatisticsRequestBody> ||
-                                      std::is_same_v<T, MulticastDiagnosticsRequestBody>)
+                                      std::is_same_v<T, MulticastDiagnosticsRequestBody> ||
+                                      std::is_same_v<T, LciRequestBody> ||
+                                      std::is_same_v<T, TransmitStreamRequestBody>)
                         {
                             body.SetVendorSpecific(std::move(data));
                         }
@@ -912,8 +917,8 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
             {
                 auto& body = std::get<LciRequestBody>(m_body);
                 uint8_t field = i.ReadU8();
-                body.azimuthRequest = AzimuthRequest{static_cast<uint8_t>(field & 0x0F),
-                                                     static_cast<uint8_t>((field >> 4) & 0x01)};
+                body.SetAzimuthRequest(AzimuthRequest{static_cast<uint8_t>(field & 0x0F),
+                                                      static_cast<uint8_t>((field >> 4) & 0x01)});
                 handled = true;
             }
         }

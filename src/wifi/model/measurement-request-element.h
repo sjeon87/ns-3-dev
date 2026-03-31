@@ -982,8 +982,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for LCI measurement (Figure 9-260)
      */
-    struct LciRequestBody
+    class LciRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for LCI request (Table 9-149)
          */
@@ -996,17 +997,73 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t locationSubject{0}; //!< Location Subject (1 octet)
+        /**
+         * @brief Set the Location Subject field.
+         * @param locationSubject the location subject
+         */
+        void SetLocationSubject(uint8_t locationSubject)
+        {
+            m_locationSubject = locationSubject;
+        }
 
-        std::optional<AzimuthRequest> azimuthRequest;       //!< Azimuth Request subelement (ID 1)
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Location Subject field.
+         * @return the location subject
+         */
+        uint8_t GetLocationSubject() const
+        {
+            return m_locationSubject;
+        }
+
+        /**
+         * @brief Set the Azimuth Request subelement.
+         * @param azimuthRequest the azimuth request
+         */
+        void SetAzimuthRequest(AzimuthRequest azimuthRequest)
+        {
+            m_azimuthRequest = std::move(azimuthRequest);
+        }
+
+        /**
+         * @brief Get the Azimuth Request subelement.
+         * @return the azimuth request, or std::nullopt if not present
+         */
+        std::optional<AzimuthRequest> GetAzimuthRequest() const
+        {
+            return m_azimuthRequest;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_locationSubject{0};                   ///< Location Subject (1 octet)
+        std::optional<AzimuthRequest> m_azimuthRequest; ///< Azimuth Request subelement (ID 1)
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
      * @brief Request body for Transmit Stream measurement (Figure 9-266)
      */
-    struct TransmitStreamRequestBody
+    class TransmitStreamRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Transmit Stream request (Table 9-150)
          */
@@ -1016,13 +1073,122 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint16_t measurementDuration{0};   //!< Measurement Duration (2 octets)
-        Mac48Address peerStaAddress;       //!< Peer STA Address (6 octets)
-        uint8_t trafficIdentifier{0};      //!< Traffic Identifier (1 octet)
-        uint8_t bin0Range{0};              //!< Bin 0 Range (1 octet)
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
+        {
+            m_randomizationInterval = randomizationInterval;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
+        {
+            m_measurementDuration = measurementDuration;
+        }
+
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /**
+         * @brief Set the Peer STA Address field.
+         * @param peerStaAddress the peer STA MAC address
+         */
+        void SetPeerStaAddress(const Mac48Address& peerStaAddress)
+        {
+            m_peerStaAddress = peerStaAddress;
+        }
+
+        /**
+         * @brief Get the Peer STA Address field.
+         * @return the peer STA MAC address
+         */
+        Mac48Address GetPeerStaAddress() const
+        {
+            return m_peerStaAddress;
+        }
+
+        /**
+         * @brief Set the Traffic Identifier field.
+         * @param trafficIdentifier the traffic identifier
+         */
+        void SetTrafficIdentifier(uint8_t trafficIdentifier)
+        {
+            m_trafficIdentifier = trafficIdentifier;
+        }
+
+        /**
+         * @brief Get the Traffic Identifier field.
+         * @return the traffic identifier
+         */
+        uint8_t GetTrafficIdentifier() const
+        {
+            return m_trafficIdentifier;
+        }
+
+        /**
+         * @brief Set the Bin 0 Range field.
+         * @param bin0Range the bin 0 range
+         */
+        void SetBin0Range(uint8_t bin0Range)
+        {
+            m_bin0Range = bin0Range;
+        }
+
+        /**
+         * @brief Get the Bin 0 Range field.
+         * @return the bin 0 range
+         */
+        uint8_t GetBin0Range() const
+        {
+            return m_bin0Range;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint16_t m_measurementDuration{0};   ///< Measurement Duration (2 octets)
+        Mac48Address m_peerStaAddress;       ///< Peer STA Address (6 octets)
+        uint8_t m_trafficIdentifier{0};      ///< Traffic Identifier (1 octet)
+        uint8_t m_bin0Range{0};              ///< Bin 0 Range (1 octet)
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
