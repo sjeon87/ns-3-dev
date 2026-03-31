@@ -125,7 +125,7 @@ class LtpIpResolutionTable : public Object
      * @return true if the class instance found a match and was able to delete it */
     bool RemoveBinding(uint64_t LtpEngineId, Ipv6Address Addr, uint16_t port);
 
-    /* If there are multiple bindings, flag m_adddressMode
+    /* If there are multiple bindings, flag m_addressMode
      * controls whether the IPv4 or Ipv6 binding map
      *  is searched first, and the first entry that was added that matches
      * the requested EngineId will be used.

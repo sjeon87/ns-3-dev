@@ -179,7 +179,7 @@ class LtpConvergenceLayerAdapter : public Object
     Callback<void, SessionId>
         m_endOfBlockSent; //!< Callback used to notify that the EOB segment has been transmitted
     Callback<void, SessionId>
-        m_cancelSent; //!< Callback used to notify that a Cancelation segment has been transmitted
+        m_cancelSent; //!< Callback used to notify that a Cancellation segment has been transmitted
 };
 
 } // namespace ltp

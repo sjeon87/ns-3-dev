@@ -150,13 +150,13 @@ LtpProtocol::GetTypeId(void)
                           UintegerValue(20),
                           MakeUintegerAccessor(&LtpProtocol::m_rxProblemLimit),
                           MakeUintegerChecker<uint32_t>())
-            .AddAttribute("CancelationRtxLimit",
-                          "Maximum number of cancelation request retransmissions allowed",
+            .AddAttribute("CancellationRtxLimit",
+                          "Maximum number of cancellation request retransmissions allowed",
                           UintegerValue(20),
                           MakeUintegerAccessor(&LtpProtocol::m_cxRtxLimit),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("RetransCyclelimit",
-                          "Maximum number of cancelation cycle retransmissions allowed",
+                          "Maximum number of cancellation cycle retransmissions allowed",
                           UintegerValue(20),
                           MakeUintegerAccessor(&LtpProtocol::m_rtxCycleLimit),
                           MakeUintegerChecker<uint32_t>())
@@ -427,7 +427,7 @@ LtpProtocol::CloseSession(SessionId id)
 
         if (it->second->GetNPackets())
         {
-            // Buffer is not empty , schedule again to allow the transmission of buffered segments
+            // Buffer is not empty, schedule again to allow the transmission of buffered segments
             // and exit
             Simulator::Schedule(m_localDelays, &LtpProtocol::CloseSession, this, id);
             return;

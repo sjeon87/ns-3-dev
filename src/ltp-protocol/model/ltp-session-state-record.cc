@@ -35,7 +35,7 @@ SessionStateRecord::SessionStateRecord()
       m_firstRpSerialNumber(0),
       m_currentRpSerialNumber(0),
       m_rcvSegments(),
-      m_redpartSucces(false),
+      m_redpartSuccess(false),
       m_blockSuccess(false),
       m_fullRedData(false),
       m_fullGreenData(false),
@@ -66,7 +66,7 @@ SessionStateRecord::SessionStateRecord(uint64_t localLtpEngineId,
       m_firstRpSerialNumber(0),
       m_currentRpSerialNumber(0),
       m_rcvSegments(),
-      m_redpartSucces(false),
+      m_redpartSuccess(false),
       m_blockSuccess(false),
       m_fullRedData(false),
       m_fullGreenData(false),
@@ -359,14 +359,14 @@ bool
 SessionStateRecord::IsRedPartFinished() const
 {
     NS_LOG_FUNCTION(this);
-    return m_redpartSucces;
+    return m_redpartSuccess;
 }
 
 void
 SessionStateRecord::SetRedPartFinished()
 {
     NS_LOG_FUNCTION(this);
-    m_redpartSucces = true;
+    m_redpartSuccess = true;
 }
 
 bool

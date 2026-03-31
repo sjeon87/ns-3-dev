@@ -72,7 +72,7 @@ class LtpProtocolHelper
 
     /*
      * @brief Set base LtpIpResolutionTable that will be used in installed ltp protocol instances.
-     * @param rt pointer to resolution talbe.
+     * @param rt pointer to resolution table.
      */
     void SetLtpIpResolutionTable(Ptr<LtpIpResolutionTable> rt);
 

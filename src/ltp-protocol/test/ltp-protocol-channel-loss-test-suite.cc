@@ -188,7 +188,7 @@ LtpProtocolRetransTestCase::DoRun(void)
     // protocol.
     uint64_t ClientServiceId = 0; // Bundle
 
-    // Creta a LtpIpResolution table to perform mappings between Ipv4 adresses and LtpEngineIDs
+    // Creta a LtpIpResolution table to perform mappings between Ipv4 addresses and LtpEngineIDs
     Ptr<LtpIpResolutionTable> routing =
         CreateObjectWithAttributes<LtpIpResolutionTable>("Addressing", StringValue("Ipv4"));
 
