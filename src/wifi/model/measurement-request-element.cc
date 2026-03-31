@@ -398,12 +398,12 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, LocationCivicRequestBody>)
             {
                 size += 5; // LocSubject(1)+CivicType(1)+ServiceUnits(1)+ServiceInterval(2)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, LocationIdentifierRequestBody>)
             {
                 size += 4; // LocSubject(1)+ServiceUnits(1)+ServiceInterval(2)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, DirectionalChannelQualityRequestBody>)
             {
@@ -580,18 +580,18 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, LocationCivicRequestBody>)
             {
-                start.WriteU8(body.locationSubject);
-                start.WriteU8(body.civicLocationType);
-                start.WriteU8(body.locationServiceIntervalUnits);
-                start.WriteU16(body.locationServiceInterval);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU8(body.GetLocationSubject());
+                start.WriteU8(body.GetCivicLocationType());
+                start.WriteU8(body.GetLocationServiceIntervalUnits());
+                start.WriteU16(body.GetLocationServiceInterval());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, LocationIdentifierRequestBody>)
             {
-                start.WriteU8(body.locationSubject);
-                start.WriteU8(body.locationServiceIntervalUnits);
-                start.WriteU16(body.locationServiceInterval);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU8(body.GetLocationSubject());
+                start.WriteU8(body.GetLocationServiceIntervalUnits());
+                start.WriteU16(body.GetLocationServiceInterval());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, DirectionalChannelQualityRequestBody>)
             {
@@ -750,18 +750,18 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::LOCATION_CIVIC: {
         auto& body = std::get<LocationCivicRequestBody>(m_body);
-        body.locationSubject = i.ReadU8();
-        body.civicLocationType = i.ReadU8();
-        body.locationServiceIntervalUnits = i.ReadU8();
-        body.locationServiceInterval = i.ReadU16();
+        body.SetLocationSubject(i.ReadU8());
+        body.SetCivicLocationType(i.ReadU8());
+        body.SetLocationServiceIntervalUnits(i.ReadU8());
+        body.SetLocationServiceInterval(i.ReadU16());
         bytesRead += 5;
         break;
     }
     case MeasurementType::LOCATION_IDENTIFIER: {
         auto& body = std::get<LocationIdentifierRequestBody>(m_body);
-        body.locationSubject = i.ReadU8();
-        body.locationServiceIntervalUnits = i.ReadU8();
-        body.locationServiceInterval = i.ReadU16();
+        body.SetLocationSubject(i.ReadU8());
+        body.SetLocationServiceIntervalUnits(i.ReadU8());
+        body.SetLocationServiceInterval(i.ReadU16());
         bytesRead += 4;
         break;
     }
@@ -845,7 +845,9 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                                       std::is_same_v<T, StaStatisticsRequestBody> ||
                                       std::is_same_v<T, MulticastDiagnosticsRequestBody> ||
                                       std::is_same_v<T, LciRequestBody> ||
-                                      std::is_same_v<T, TransmitStreamRequestBody>)
+                                      std::is_same_v<T, TransmitStreamRequestBody> ||
+                                      std::is_same_v<T, LocationCivicRequestBody> ||
+                                      std::is_same_v<T, LocationIdentifierRequestBody>)
                         {
                             body.SetVendorSpecific(std::move(data));
                         }

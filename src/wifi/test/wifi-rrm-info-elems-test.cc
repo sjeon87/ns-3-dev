@@ -1674,7 +1674,8 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::LOCATION_CIVIC);
-            elem.SetBody(LocCivicBody{});
+            LocCivicBody body;
+            elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 10, "Location Civic size");
         }
 
@@ -1683,7 +1684,8 @@ MeasurementRequestElementTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::LOCATION_IDENTIFIER);
-            elem.SetBody(LocIdBody{});
+            LocIdBody body;
+            elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 9, "Location Identifier size");
         }
 
@@ -1912,11 +1914,44 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(90);
             elem.SetMeasurementType(MeasurementType::LOCATION_CIVIC);
             LocCivicBody body;
-            body.locationSubject = 1;
-            body.locationServiceIntervalUnits = 1;
-            body.locationServiceInterval = 60;
+            body.SetLocationSubject(1);
+            body.SetLocationServiceIntervalUnits(1);
+            body.SetLocationServiceInterval(60);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
+        }
+
+        // Location Civic with VendorSpecific subelement
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(91);
+            elem.SetMeasurementType(MeasurementType::LOCATION_CIVIC);
+            LocCivicBody body;
+            body.SetLocationSubject(2);
+            body.SetCivicLocationType(1);
+            body.SetLocationServiceIntervalUnits(1);
+            body.SetLocationServiceInterval(30);
+            body.SetVendorSpecific(std::vector<uint8_t>{0x11, 0x22, 0x33});
+            elem.SetBody(body);
+
+            TestHeaderSerialization(elem);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            auto& b = deserialized.GetBody<LocCivicBody>();
+            NS_TEST_ASSERT_MSG_EQ(b.GetVendorSpecific().has_value(),
+                                  true,
+                                  "Location Civic VendorSpecific present");
+            NS_TEST_ASSERT_MSG_EQ(b.GetVendorSpecific()->size(),
+                                  3,
+                                  "Location Civic VendorSpecific size");
+            NS_TEST_ASSERT_MSG_EQ((*b.GetVendorSpecific())[0], 0x11, "Location Civic VS byte 0");
+            NS_TEST_ASSERT_MSG_EQ((*b.GetVendorSpecific())[2], 0x33, "Location Civic VS byte 2");
         }
 
         // Location Identifier
@@ -1925,10 +1960,46 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(100);
             elem.SetMeasurementType(MeasurementType::LOCATION_IDENTIFIER);
             LocIdBody body;
-            body.locationServiceIntervalUnits = 2;
-            body.locationServiceInterval = 24;
+            body.SetLocationServiceIntervalUnits(2);
+            body.SetLocationServiceInterval(24);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
+        }
+
+        // Location Identifier with VendorSpecific subelement
+        {
+            MeasurementRequestElement elem;
+            elem.SetMeasurementToken(101);
+            elem.SetMeasurementType(MeasurementType::LOCATION_IDENTIFIER);
+            LocIdBody body;
+            body.SetLocationSubject(3);
+            body.SetLocationServiceIntervalUnits(2);
+            body.SetLocationServiceInterval(120);
+            body.SetVendorSpecific(std::vector<uint8_t>{0xAA, 0xBB});
+            elem.SetBody(body);
+
+            TestHeaderSerialization(elem);
+
+            Buffer buf;
+            buf.AddAtStart(elem.GetSerializedSize());
+            elem.Serialize(buf.Begin());
+
+            MeasurementRequestElement deserialized;
+            deserialized.Deserialize(buf.Begin());
+
+            auto& b = deserialized.GetBody<LocIdBody>();
+            NS_TEST_ASSERT_MSG_EQ(b.GetVendorSpecific().has_value(),
+                                  true,
+                                  "Location Identifier VendorSpecific present");
+            NS_TEST_ASSERT_MSG_EQ(b.GetVendorSpecific()->size(),
+                                  2,
+                                  "Location Identifier VendorSpecific size");
+            NS_TEST_ASSERT_MSG_EQ((*b.GetVendorSpecific())[0],
+                                  0xAA,
+                                  "Location Identifier VS byte 0");
+            NS_TEST_ASSERT_MSG_EQ((*b.GetVendorSpecific())[1],
+                                  0xBB,
+                                  "Location Identifier VS byte 1");
         }
 
         // Directional Channel Quality

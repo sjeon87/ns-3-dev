@@ -1290,8 +1290,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for Location Civic measurement (Figure 9-276)
      */
-    struct LocationCivicRequestBody
+    class LocationCivicRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Location Civic request (Table 9-156)
          */
@@ -1302,19 +1303,112 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t locationSubject{0};              //!< Location Subject (1 octet)
-        uint8_t civicLocationType{0};            //!< Civic Location Type (1 octet)
-        uint8_t locationServiceIntervalUnits{0}; //!< Location Service Interval Units (1 octet)
-        uint16_t locationServiceInterval{0};     //!< Location Service Interval (2 octets)
+        /**
+         * @brief Set the Location Subject field.
+         * @param locationSubject the location subject
+         */
+        void SetLocationSubject(uint8_t locationSubject)
+        {
+            m_locationSubject = locationSubject;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Location Subject field.
+         * @return the location subject
+         */
+        uint8_t GetLocationSubject() const
+        {
+            return m_locationSubject;
+        }
+
+        /**
+         * @brief Set the Civic Location Type field.
+         * @param civicLocationType the civic location type
+         */
+        void SetCivicLocationType(uint8_t civicLocationType)
+        {
+            m_civicLocationType = civicLocationType;
+        }
+
+        /**
+         * @brief Get the Civic Location Type field.
+         * @return the civic location type
+         */
+        uint8_t GetCivicLocationType() const
+        {
+            return m_civicLocationType;
+        }
+
+        /**
+         * @brief Set the Location Service Interval Units field.
+         * @param locationServiceIntervalUnits the location service interval units
+         */
+        void SetLocationServiceIntervalUnits(uint8_t locationServiceIntervalUnits)
+        {
+            m_locationServiceIntervalUnits = locationServiceIntervalUnits;
+        }
+
+        /**
+         * @brief Get the Location Service Interval Units field.
+         * @return the location service interval units
+         */
+        uint8_t GetLocationServiceIntervalUnits() const
+        {
+            return m_locationServiceIntervalUnits;
+        }
+
+        /**
+         * @brief Set the Location Service Interval field.
+         * @param locationServiceInterval the location service interval
+         */
+        void SetLocationServiceInterval(uint16_t locationServiceInterval)
+        {
+            m_locationServiceInterval = locationServiceInterval;
+        }
+
+        /**
+         * @brief Get the Location Service Interval field.
+         * @return the location service interval
+         */
+        uint16_t GetLocationServiceInterval() const
+        {
+            return m_locationServiceInterval;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_locationSubject{0};              ///< Location Subject (1 octet)
+        uint8_t m_civicLocationType{0};            ///< Civic Location Type (1 octet)
+        uint8_t m_locationServiceIntervalUnits{0}; ///< Location Service Interval Units (1 octet)
+        uint16_t m_locationServiceInterval{0};     ///< Location Service Interval (2 octets)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
      * @brief Request body for Location Identifier measurement (Figure 9-277)
      */
-    struct LocationIdentifierRequestBody
+    class LocationIdentifierRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Location Identifier request (Table 9-157)
          */
@@ -1325,11 +1419,85 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t locationSubject{0};              //!< Location Subject (1 octet)
-        uint8_t locationServiceIntervalUnits{0}; //!< Location Service Interval Units (1 octet)
-        uint16_t locationServiceInterval{0};     //!< Location Service Interval (2 octets)
+        /**
+         * @brief Set the Location Subject field.
+         * @param locationSubject the location subject
+         */
+        void SetLocationSubject(uint8_t locationSubject)
+        {
+            m_locationSubject = locationSubject;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Location Subject field.
+         * @return the location subject
+         */
+        uint8_t GetLocationSubject() const
+        {
+            return m_locationSubject;
+        }
+
+        /**
+         * @brief Set the Location Service Interval Units field.
+         * @param locationServiceIntervalUnits the location service interval units
+         */
+        void SetLocationServiceIntervalUnits(uint8_t locationServiceIntervalUnits)
+        {
+            m_locationServiceIntervalUnits = locationServiceIntervalUnits;
+        }
+
+        /**
+         * @brief Get the Location Service Interval Units field.
+         * @return the location service interval units
+         */
+        uint8_t GetLocationServiceIntervalUnits() const
+        {
+            return m_locationServiceIntervalUnits;
+        }
+
+        /**
+         * @brief Set the Location Service Interval field.
+         * @param locationServiceInterval the location service interval
+         */
+        void SetLocationServiceInterval(uint16_t locationServiceInterval)
+        {
+            m_locationServiceInterval = locationServiceInterval;
+        }
+
+        /**
+         * @brief Get the Location Service Interval field.
+         * @return the location service interval
+         */
+        uint16_t GetLocationServiceInterval() const
+        {
+            return m_locationServiceInterval;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_locationSubject{0};              ///< Location Subject (1 octet)
+        uint8_t m_locationServiceIntervalUnits{0}; ///< Location Service Interval Units (1 octet)
+        uint16_t m_locationServiceInterval{0};     ///< Location Service Interval (2 octets)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
