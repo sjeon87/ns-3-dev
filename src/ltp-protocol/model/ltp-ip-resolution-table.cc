@@ -39,9 +39,9 @@ LtpIpResolutionTable::GetTypeId(void)
             .AddConstructor<LtpIpResolutionTable>()
             .AddAttribute("Addressing",
                           "Ipv4 or Ipv6",
-                          EnumValue(Ipv4),
+                          EnumValue<AddressMode>(ns3::ltp::Ipv4),
                           MakeEnumAccessor<AddressMode>(&LtpIpResolutionTable::m_addressMode),
-                          MakeEnumChecker(Ipv4, "Ipv4", Ipv6, "Ipv6"));
+                          MakeEnumChecker<AddressMode>(Ipv4, "Ipv4", Ipv6, "Ipv6"));
     return tid;
 }
 

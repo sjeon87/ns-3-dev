@@ -146,7 +146,7 @@ LtpProtocolHelper::InstallAndLink(Ptr<Node> n)
 
     ltpProtocol->SetLinkStateCues(link);
 
-    EnumValue mode = 0;
+    EnumValue<AddressMode> mode(Ipv4);
     m_routingProtocol->GetAttribute("Addressing", mode);
 
     UintegerValue port = 0;

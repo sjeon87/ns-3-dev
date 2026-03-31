@@ -19,10 +19,7 @@ build_lib(
     model/ltp-session-state-record-impl.h
     model/ltp-session-state-record.h
     model/ltp-udp-convergence-layer-adapter.h
-  LIBRARIES_TO_LINK
-    ${libpoint-to-point}
-    ${libinternet}
-    ${libnetwork}
+  LIBRARIES_TO_LINK ${libpoint-to-point} ${libinternet} ${libnetwork}
   TEST_SOURCES test/ltp-protocol-channel-loss-test-suite.cc
                test/ltp-protocol-test-suite.cc
 )
