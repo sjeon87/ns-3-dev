@@ -49,7 +49,7 @@ enum SegmentType
 
 /**
  * @enum CxReasonCode
- * @brief LTP Cancelation Reason Code
+ * @brief LTP Cancellation Reason Code
  */
 enum CxReasonCode
 {

@@ -150,7 +150,7 @@ there are multiple versions allowing both ipv4 and ipv6.
 2. RemoveBinding(): ``ns3::ltp::LtpIpResolutionTable::RemoveBinding ()``  method removes a binding between Ip Address and a LTP Engine,
 there are multiple versions allowing both ipv4 and ipv6.
 
-3. GetRoute():  ``ns3::ltp::LtpIpResolutionTable::GetRoute (uint64_t ltpEngineId)`` acquire the corresponding Ip ddress binded to a LTP
+3. GetRoute():  ``ns3::ltp::LtpIpResolutionTable::GetRoute (uint64_t ltpEngineId)`` acquire the corresponding Ip address binded to a LTP
 engine id. If there are multiple bindings, internal flag m_addressMode controls whether the IPv4 or Ipv6 binding map is searched first,
 the first entry that matches the requested EngineId will be used.
 
