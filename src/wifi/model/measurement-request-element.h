@@ -1503,8 +1503,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for Directional Channel Quality measurement (Figure 9-278)
      */
-    struct DirectionalChannelQualityRequestBody
+    class DirectionalChannelQualityRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Directional Channel Quality request (Table 9-158)
          */
@@ -1516,23 +1517,169 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t operatingClass{0};        //!< Operating Class (1 octet)
-        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
-        uint8_t aid{0};                   //!< AID (1 octet)
-        uint8_t reserved{0};              //!< Reserved (1 octet)
-        uint8_t measurementMethod{0};     //!< Measurement Method (1 octet)
-        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
-        uint16_t measurementDuration{0};  //!< Measurement Duration (2 octets)
-        uint8_t numberOfTimeBlocks{0};    //!< Number of Time Blocks (1 octet)
+        /**
+         * @brief Set the Operating Class field.
+         * @param operatingClass the operating class
+         */
+        void SetOperatingClass(uint8_t operatingClass)
+        {
+            m_operatingClass = operatingClass;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Operating Class field.
+         * @return the operating class
+         */
+        uint8_t GetOperatingClass() const
+        {
+            return m_operatingClass;
+        }
+
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
+        {
+            m_channelNumber = channelNumber;
+        }
+
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /**
+         * @brief Set the AID field.
+         * @param aid the AID
+         */
+        void SetAid(uint8_t aid)
+        {
+            m_aid = aid;
+        }
+
+        /**
+         * @brief Get the AID field.
+         * @return the AID
+         */
+        uint8_t GetAid() const
+        {
+            return m_aid;
+        }
+
+        /**
+         * @brief Set the Measurement Method field.
+         * @param measurementMethod the measurement method
+         */
+        void SetMeasurementMethod(uint8_t measurementMethod)
+        {
+            m_measurementMethod = measurementMethod;
+        }
+
+        /**
+         * @brief Get the Measurement Method field.
+         * @return the measurement method
+         */
+        uint8_t GetMeasurementMethod() const
+        {
+            return m_measurementMethod;
+        }
+
+        /**
+         * @brief Set the Measurement Start Time field.
+         * @param measurementStartTime the measurement start time
+         */
+        void SetMeasurementStartTime(uint64_t measurementStartTime)
+        {
+            m_measurementStartTime = measurementStartTime;
+        }
+
+        /**
+         * @brief Get the Measurement Start Time field.
+         * @return the measurement start time
+         */
+        uint64_t GetMeasurementStartTime() const
+        {
+            return m_measurementStartTime;
+        }
+
+        /**
+         * @brief Set the Measurement Duration field.
+         * @param measurementDuration the measurement duration
+         */
+        void SetMeasurementDuration(uint16_t measurementDuration)
+        {
+            m_measurementDuration = measurementDuration;
+        }
+
+        /**
+         * @brief Get the Measurement Duration field.
+         * @return the measurement duration
+         */
+        uint16_t GetMeasurementDuration() const
+        {
+            return m_measurementDuration;
+        }
+
+        /**
+         * @brief Set the Number of Time Blocks field.
+         * @param numberOfTimeBlocks the number of time blocks
+         */
+        void SetNumberOfTimeBlocks(uint8_t numberOfTimeBlocks)
+        {
+            m_numberOfTimeBlocks = numberOfTimeBlocks;
+        }
+
+        /**
+         * @brief Get the Number of Time Blocks field.
+         * @return the number of time blocks
+         */
+        uint8_t GetNumberOfTimeBlocks() const
+        {
+            return m_numberOfTimeBlocks;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_operatingClass{0};        ///< Operating Class (1 octet)
+        uint8_t m_channelNumber{0};         ///< Channel Number (1 octet)
+        uint8_t m_aid{0};                   ///< AID (1 octet)
+        uint8_t m_measurementMethod{0};     ///< Measurement Method (1 octet)
+        uint64_t m_measurementStartTime{0}; ///< Measurement Start Time (8 octets)
+        uint16_t m_measurementDuration{0};  ///< Measurement Duration (2 octets)
+        uint8_t m_numberOfTimeBlocks{0};    ///< Number of Time Blocks (1 octet)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
      * @brief Request body for Directional Measurement (Figure 9-284)
      */
-    struct DirectionalMeasurementRequestBody
+    class DirectionalMeasurementRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Directional Measurement request (Table 9-160)
          */
@@ -1541,22 +1688,134 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t operatingClass{0};        //!< Operating Class (1 octet)
-        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
-        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
-        uint16_t measurementDurationPerDirection{
-            0}; //!< Measurement Duration Per Direction (2 octets)
-        uint8_t measurementMethodAndAntennaConfiguration{
-            0}; //!< Method and Antenna Configuration (1 octet)
+        /**
+         * @brief Set the Operating Class field.
+         * @param operatingClass the operating class
+         */
+        void SetOperatingClass(uint8_t operatingClass)
+        {
+            m_operatingClass = operatingClass;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Operating Class field.
+         * @return the operating class
+         */
+        uint8_t GetOperatingClass() const
+        {
+            return m_operatingClass;
+        }
+
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
+        {
+            m_channelNumber = channelNumber;
+        }
+
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /**
+         * @brief Set the Measurement Start Time field.
+         * @param measurementStartTime the measurement start time
+         */
+        void SetMeasurementStartTime(uint64_t measurementStartTime)
+        {
+            m_measurementStartTime = measurementStartTime;
+        }
+
+        /**
+         * @brief Get the Measurement Start Time field.
+         * @return the measurement start time
+         */
+        uint64_t GetMeasurementStartTime() const
+        {
+            return m_measurementStartTime;
+        }
+
+        /**
+         * @brief Set the Measurement Duration Per Direction field.
+         * @param measurementDurationPerDirection the measurement duration per direction
+         */
+        void SetMeasurementDurationPerDirection(uint16_t measurementDurationPerDirection)
+        {
+            m_measurementDurationPerDirection = measurementDurationPerDirection;
+        }
+
+        /**
+         * @brief Get the Measurement Duration Per Direction field.
+         * @return the measurement duration per direction
+         */
+        uint16_t GetMeasurementDurationPerDirection() const
+        {
+            return m_measurementDurationPerDirection;
+        }
+
+        /**
+         * @brief Set the Measurement Method and Antenna Configuration field.
+         * @param measurementMethodAndAntennaConfiguration the method and antenna configuration
+         */
+        void SetMeasurementMethodAndAntennaConfiguration(
+            uint8_t measurementMethodAndAntennaConfiguration)
+        {
+            m_measurementMethodAndAntennaConfiguration = measurementMethodAndAntennaConfiguration;
+        }
+
+        /**
+         * @brief Get the Measurement Method and Antenna Configuration field.
+         * @return the method and antenna configuration
+         */
+        uint8_t GetMeasurementMethodAndAntennaConfiguration() const
+        {
+            return m_measurementMethodAndAntennaConfiguration;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_operatingClass{0};        ///< Operating Class (1 octet)
+        uint8_t m_channelNumber{0};         ///< Channel Number (1 octet)
+        uint64_t m_measurementStartTime{0}; ///< Measurement Start Time (8 octets)
+        uint16_t m_measurementDurationPerDirection{
+            0}; ///< Measurement Duration Per Direction (2 octets)
+        uint8_t m_measurementMethodAndAntennaConfiguration{
+            0}; ///< Method and Antenna Configuration (1 octet)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
      * @brief Request body for Directional Statistics measurement (Figure 9-286)
      */
-    struct DirectionalStatisticsRequestBody
+    class DirectionalStatisticsRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Directional Statistics request (Table 9-161)
          */
@@ -1565,15 +1824,143 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint8_t operatingClass{0};        //!< Operating Class (1 octet)
-        uint8_t channelNumber{0};         //!< Channel Number (1 octet)
-        uint64_t measurementStartTime{0}; //!< Measurement Start Time (8 octets)
-        uint16_t measurementDurationPerDirection{
-            0};                                 //!< Measurement Duration Per Direction (2 octets)
-        uint8_t measurementMethod{0};           //!< Measurement Method (1 octet)
-        uint8_t directionalStatisticsBitmap{0}; //!< Directional Statistics Bitmap (1 octet)
+        /**
+         * @brief Set the Operating Class field.
+         * @param operatingClass the operating class
+         */
+        void SetOperatingClass(uint8_t operatingClass)
+        {
+            m_operatingClass = operatingClass;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Operating Class field.
+         * @return the operating class
+         */
+        uint8_t GetOperatingClass() const
+        {
+            return m_operatingClass;
+        }
+
+        /**
+         * @brief Set the Channel Number field.
+         * @param channelNumber the channel number
+         */
+        void SetChannelNumber(uint8_t channelNumber)
+        {
+            m_channelNumber = channelNumber;
+        }
+
+        /**
+         * @brief Get the Channel Number field.
+         * @return the channel number
+         */
+        uint8_t GetChannelNumber() const
+        {
+            return m_channelNumber;
+        }
+
+        /**
+         * @brief Set the Measurement Start Time field.
+         * @param measurementStartTime the measurement start time
+         */
+        void SetMeasurementStartTime(uint64_t measurementStartTime)
+        {
+            m_measurementStartTime = measurementStartTime;
+        }
+
+        /**
+         * @brief Get the Measurement Start Time field.
+         * @return the measurement start time
+         */
+        uint64_t GetMeasurementStartTime() const
+        {
+            return m_measurementStartTime;
+        }
+
+        /**
+         * @brief Set the Measurement Duration Per Direction field.
+         * @param measurementDurationPerDirection the measurement duration per direction
+         */
+        void SetMeasurementDurationPerDirection(uint16_t measurementDurationPerDirection)
+        {
+            m_measurementDurationPerDirection = measurementDurationPerDirection;
+        }
+
+        /**
+         * @brief Get the Measurement Duration Per Direction field.
+         * @return the measurement duration per direction
+         */
+        uint16_t GetMeasurementDurationPerDirection() const
+        {
+            return m_measurementDurationPerDirection;
+        }
+
+        /**
+         * @brief Set the Measurement Method field.
+         * @param measurementMethod the measurement method
+         */
+        void SetMeasurementMethod(uint8_t measurementMethod)
+        {
+            m_measurementMethod = measurementMethod;
+        }
+
+        /**
+         * @brief Get the Measurement Method field.
+         * @return the measurement method
+         */
+        uint8_t GetMeasurementMethod() const
+        {
+            return m_measurementMethod;
+        }
+
+        /**
+         * @brief Set the Directional Statistics Bitmap field.
+         * @param directionalStatisticsBitmap the directional statistics bitmap
+         */
+        void SetDirectionalStatisticsBitmap(uint8_t directionalStatisticsBitmap)
+        {
+            m_directionalStatisticsBitmap = directionalStatisticsBitmap;
+        }
+
+        /**
+         * @brief Get the Directional Statistics Bitmap field.
+         * @return the directional statistics bitmap
+         */
+        uint8_t GetDirectionalStatisticsBitmap() const
+        {
+            return m_directionalStatisticsBitmap;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint8_t m_operatingClass{0};        ///< Operating Class (1 octet)
+        uint8_t m_channelNumber{0};         ///< Channel Number (1 octet)
+        uint64_t m_measurementStartTime{0}; ///< Measurement Start Time (8 octets)
+        uint16_t m_measurementDurationPerDirection{
+            0};                                   ///< Measurement Duration Per Direction (2 octets)
+        uint8_t m_measurementMethod{0};           ///< Measurement Method (1 octet)
+        uint8_t m_directionalStatisticsBitmap{0}; ///< Directional Statistics Bitmap (1 octet)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**

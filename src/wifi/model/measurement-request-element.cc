@@ -408,17 +408,17 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, DirectionalChannelQualityRequestBody>)
             {
                 size += 16; // OpClass(1)+Ch(1)+AID(1)+Rsv(1)+Method(1)+Start(8)+Dur(2)+Blocks(1)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, DirectionalMeasurementRequestBody>)
             {
                 size += 13; // OpClass(1)+Ch(1)+Start(8)+Dur(2)+MethodAntenna(1)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, DirectionalStatisticsRequestBody>)
             {
                 size += 14; // OpClass(1)+Ch(1)+Start(8)+Dur(2)+Method(1)+Bitmap(1)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, FtmRangeRequestBody>)
             {
@@ -595,34 +595,34 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, DirectionalChannelQualityRequestBody>)
             {
-                start.WriteU8(body.operatingClass);
-                start.WriteU8(body.channelNumber);
-                start.WriteU8(body.aid);
-                start.WriteU8(body.reserved);
-                start.WriteU8(body.measurementMethod);
-                start.WriteU64(body.measurementStartTime);
-                start.WriteU16(body.measurementDuration);
-                start.WriteU8(body.numberOfTimeBlocks);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU8(body.GetOperatingClass());
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU8(body.GetAid());
+                start.WriteU8(0); // Reserved
+                start.WriteU8(body.GetMeasurementMethod());
+                start.WriteU64(body.GetMeasurementStartTime());
+                start.WriteU16(body.GetMeasurementDuration());
+                start.WriteU8(body.GetNumberOfTimeBlocks());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, DirectionalMeasurementRequestBody>)
             {
-                start.WriteU8(body.operatingClass);
-                start.WriteU8(body.channelNumber);
-                start.WriteU64(body.measurementStartTime);
-                start.WriteU16(body.measurementDurationPerDirection);
-                start.WriteU8(body.measurementMethodAndAntennaConfiguration);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU8(body.GetOperatingClass());
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU64(body.GetMeasurementStartTime());
+                start.WriteU16(body.GetMeasurementDurationPerDirection());
+                start.WriteU8(body.GetMeasurementMethodAndAntennaConfiguration());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, DirectionalStatisticsRequestBody>)
             {
-                start.WriteU8(body.operatingClass);
-                start.WriteU8(body.channelNumber);
-                start.WriteU64(body.measurementStartTime);
-                start.WriteU16(body.measurementDurationPerDirection);
-                start.WriteU8(body.measurementMethod);
-                start.WriteU8(body.directionalStatisticsBitmap);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU8(body.GetOperatingClass());
+                start.WriteU8(body.GetChannelNumber());
+                start.WriteU64(body.GetMeasurementStartTime());
+                start.WriteU16(body.GetMeasurementDurationPerDirection());
+                start.WriteU8(body.GetMeasurementMethod());
+                start.WriteU8(body.GetDirectionalStatisticsBitmap());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, FtmRangeRequestBody>)
             {
@@ -767,35 +767,35 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::DIRECTIONAL_CHANNEL_QUALITY: {
         auto& body = std::get<DirectionalChannelQualityRequestBody>(m_body);
-        body.operatingClass = i.ReadU8();
-        body.channelNumber = i.ReadU8();
-        body.aid = i.ReadU8();
-        body.reserved = i.ReadU8();
-        body.measurementMethod = i.ReadU8();
-        body.measurementStartTime = i.ReadU64();
-        body.measurementDuration = i.ReadU16();
-        body.numberOfTimeBlocks = i.ReadU8();
+        body.SetOperatingClass(i.ReadU8());
+        body.SetChannelNumber(i.ReadU8());
+        body.SetAid(i.ReadU8());
+        i.ReadU8(); // Reserved
+        body.SetMeasurementMethod(i.ReadU8());
+        body.SetMeasurementStartTime(i.ReadU64());
+        body.SetMeasurementDuration(i.ReadU16());
+        body.SetNumberOfTimeBlocks(i.ReadU8());
         bytesRead += 16;
         break;
     }
     case MeasurementType::DIRECTIONAL_MEASUREMENT: {
         auto& body = std::get<DirectionalMeasurementRequestBody>(m_body);
-        body.operatingClass = i.ReadU8();
-        body.channelNumber = i.ReadU8();
-        body.measurementStartTime = i.ReadU64();
-        body.measurementDurationPerDirection = i.ReadU16();
-        body.measurementMethodAndAntennaConfiguration = i.ReadU8();
+        body.SetOperatingClass(i.ReadU8());
+        body.SetChannelNumber(i.ReadU8());
+        body.SetMeasurementStartTime(i.ReadU64());
+        body.SetMeasurementDurationPerDirection(i.ReadU16());
+        body.SetMeasurementMethodAndAntennaConfiguration(i.ReadU8());
         bytesRead += 13;
         break;
     }
     case MeasurementType::DIRECTIONAL_STATISTICS: {
         auto& body = std::get<DirectionalStatisticsRequestBody>(m_body);
-        body.operatingClass = i.ReadU8();
-        body.channelNumber = i.ReadU8();
-        body.measurementStartTime = i.ReadU64();
-        body.measurementDurationPerDirection = i.ReadU16();
-        body.measurementMethod = i.ReadU8();
-        body.directionalStatisticsBitmap = i.ReadU8();
+        body.SetOperatingClass(i.ReadU8());
+        body.SetChannelNumber(i.ReadU8());
+        body.SetMeasurementStartTime(i.ReadU64());
+        body.SetMeasurementDurationPerDirection(i.ReadU16());
+        body.SetMeasurementMethod(i.ReadU8());
+        body.SetDirectionalStatisticsBitmap(i.ReadU8());
         bytesRead += 14;
         break;
     }
@@ -847,7 +847,10 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                                       std::is_same_v<T, LciRequestBody> ||
                                       std::is_same_v<T, TransmitStreamRequestBody> ||
                                       std::is_same_v<T, LocationCivicRequestBody> ||
-                                      std::is_same_v<T, LocationIdentifierRequestBody>)
+                                      std::is_same_v<T, LocationIdentifierRequestBody> ||
+                                      std::is_same_v<T, DirectionalChannelQualityRequestBody> ||
+                                      std::is_same_v<T, DirectionalMeasurementRequestBody> ||
+                                      std::is_same_v<T, DirectionalStatisticsRequestBody>)
                         {
                             body.SetVendorSpecific(std::move(data));
                         }

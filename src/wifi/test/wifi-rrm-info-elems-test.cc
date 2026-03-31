@@ -1695,11 +1695,11 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::DIRECTIONAL_CHANNEL_QUALITY);
             DirChQBody body;
-            body.operatingClass = 1;
-            body.channelNumber = 1;
-            body.aid = 1;
-            body.measurementDuration = 100;
-            body.numberOfTimeBlocks = 1;
+            body.SetOperatingClass(1);
+            body.SetChannelNumber(1);
+            body.SetAid(1);
+            body.SetMeasurementDuration(100);
+            body.SetNumberOfTimeBlocks(1);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 21, "Directional ChQ size");
         }
@@ -1710,9 +1710,9 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::DIRECTIONAL_MEASUREMENT);
             DirMeasBody body;
-            body.operatingClass = 1;
-            body.channelNumber = 1;
-            body.measurementDurationPerDirection = 100;
+            body.SetOperatingClass(1);
+            body.SetChannelNumber(1);
+            body.SetMeasurementDurationPerDirection(100);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 18, "Directional Measurement size");
         }
@@ -1723,9 +1723,9 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::DIRECTIONAL_STATISTICS);
             DirStatsBody body;
-            body.operatingClass = 1;
-            body.channelNumber = 1;
-            body.measurementDurationPerDirection = 100;
+            body.SetOperatingClass(1);
+            body.SetChannelNumber(1);
+            body.SetMeasurementDurationPerDirection(100);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 19, "Directional Statistics size");
         }
@@ -2008,13 +2008,13 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(110);
             elem.SetMeasurementType(MeasurementType::DIRECTIONAL_CHANNEL_QUALITY);
             DirChQBody body;
-            body.operatingClass = 1;
-            body.channelNumber = 1;
-            body.aid = 5;
-            body.measurementMethod = 1;
-            body.measurementStartTime = 1000;
-            body.measurementDuration = 200;
-            body.numberOfTimeBlocks = 4;
+            body.SetOperatingClass(1);
+            body.SetChannelNumber(1);
+            body.SetAid(5);
+            body.SetMeasurementMethod(1);
+            body.SetMeasurementStartTime(1000);
+            body.SetMeasurementDuration(200);
+            body.SetNumberOfTimeBlocks(4);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2025,10 +2025,10 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(120);
             elem.SetMeasurementType(MeasurementType::DIRECTIONAL_MEASUREMENT);
             DirMeasBody body;
-            body.operatingClass = 1;
-            body.channelNumber = 1;
-            body.measurementDurationPerDirection = 100;
-            body.measurementMethodAndAntennaConfiguration = 0x09;
+            body.SetOperatingClass(1);
+            body.SetChannelNumber(1);
+            body.SetMeasurementDurationPerDirection(100);
+            body.SetMeasurementMethodAndAntennaConfiguration(0x09);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2039,11 +2039,11 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(130);
             elem.SetMeasurementType(MeasurementType::DIRECTIONAL_STATISTICS);
             DirStatsBody body;
-            body.operatingClass = 1;
-            body.channelNumber = 1;
-            body.measurementDurationPerDirection = 100;
-            body.measurementMethod = 2;
-            body.directionalStatisticsBitmap = 0x0F;
+            body.SetOperatingClass(1);
+            body.SetChannelNumber(1);
+            body.SetMeasurementDurationPerDirection(100);
+            body.SetMeasurementMethod(2);
+            body.SetDirectionalStatisticsBitmap(0x0F);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
