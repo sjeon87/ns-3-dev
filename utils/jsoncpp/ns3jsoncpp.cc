@@ -1,6 +1,10 @@
-#pragma GCC diagnostic ignored "-Wunused-function"
+#ifdef __clang__
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #pragma clang diagnostic ignored "-Wunused-function"
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 /// Json-cpp amalgamated source (http://jsoncpp.sourceforge.net/).
 /// It is intended to be used with #include "json/json.h"
 
