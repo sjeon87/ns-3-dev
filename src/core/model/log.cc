@@ -210,6 +210,13 @@ LogComponent::EnvVarCheck()
 
     for (const auto& lev : flags)
     {
+        // Check if the flag starts with "filter_" (length 7)
+        if (lev.rfind("filter_", 0) == 0)
+        {
+            SetFilter(lev.substr(7)); // Extract everything after "filter_"
+            continue;
+        }
+
         if (lev == "**")
         {
             level |= LOG_LEVEL_ALL | LOG_PREFIX_ALL;
@@ -273,6 +280,35 @@ LogComponent::GetLevelLabel(const LogLevel level)
         return it->second;
     }
     return "unknown";
+}
+
+/**
+ * @brief Set a string filter for this LogComponent.
+ *
+ * @param [in] filter The string to filter by.
+ */
+void
+LogComponent::SetFilter(const std::string& filter)
+{
+    m_filter = filter;
+    m_hasFilter = true;
+}
+
+/**
+ * @brief Check if the message passes the filter.
+ *
+ * @param [in] message The message to check.
+ * @return \c true if the message passes the filter or if no filter is set.
+ */
+bool
+LogComponent::CheckFilter(const std::string& message) const
+{
+    if (!m_hasFilter)
+    {
+        return true; // Fast path: if no filter is set, allow everything
+    }
+    // Simple substring match for performance.
+    return message.find(m_filter) != std::string::npos;
 }
 
 void
@@ -451,6 +487,11 @@ CheckEnvironmentVariables()
         StringVector flags = SplitString(value, "|");
         for (const auto& flag : flags)
         {
+            if (flag.rfind("filter_", 0) == 0)
+            {
+                continue; // It is a valid filter flag, let it pass
+            }
+
             // Handle wild cards
             if (flag == "*" || flag == "**")
             {

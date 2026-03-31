@@ -46,11 +46,11 @@
  * Use the environment variable NS_LOG to define a ':'-separated list of
  * logging components to enable. For example (using bash syntax),
  * @code
- *   $ NS_LOG="OlsrAgent" ./ns3 run ...
+ * $ NS_LOG="OlsrAgent" ./ns3 run ...
  * @endcode
  * would enable one component at all log levels.
  * @code
- *   $NS_LOG="OlsrAgent:Ipv4L3Protocol" ./ns3 run ...
+ * $NS_LOG="OlsrAgent:Ipv4L3Protocol" ./ns3 run ...
  * @endcode
  * would enable two components, at all log levels, etc.
  * \c NS_LOG="*" will enable all available log components at all levels.
@@ -58,7 +58,7 @@
  * To control more selectively the log levels for each component, use
  * this syntax:
  * @code
- *   $ NS_LOG='Component1=func|warn:Component2=error|debug'
+ * $ NS_LOG='Component1=func|warn:Component2=error|debug'
  * @endcode
  * This example would enable the \c func, and \c warn log
  * levels for 'Component1' and the \c error and \c debug log levels
@@ -70,7 +70,7 @@
  * generally, use of (at least) NS_LOG_FUNCTION(this) is preferred,
  * with the any function parameters added:
  * @code
- *   NS_LOG_FUNCTION (this << arg1 << args);
+ * NS_LOG_FUNCTION (this << arg1 << args);
  * @endcode
  * Use NS_LOG_FUNCTION_NOARGS() only in static functions with no arguments.
  */
@@ -80,7 +80,7 @@ namespace ns3
 {
 
 /**
- *  Logging severity classes and levels.
+ * Logging severity classes and levels.
  */
 enum LogLevel
 {
@@ -177,16 +177,16 @@ void LogComponentDisableAll(LogLevel level);
  * outside of namespace ns3, and after the inclusion of
  * NS_LOG_COMPONENT_DEFINE, such as follows:
  * @code
- *   namespace ns3 {
- *     NS_LOG_COMPONENT_DEFINE ("...");
+ * namespace ns3 {
+ * NS_LOG_COMPONENT_DEFINE ("...");
  *
- *     // Definitions within the ns3 namespace
+ * // Definitions within the ns3 namespace
  *
- *   } // namespace ns3
+ * } // namespace ns3
  *
- *   using ns3::g_log;
+ * using ns3::g_log;
  *
- *   // Further definitions outside of the ns3 namespace
+ * // Further definitions outside of the ns3 namespace
  * @endcode
  *
  * @param [in] name The log component name.
@@ -325,8 +325,8 @@ class LogComponent
      * @param [in] name The user-visible name for this component.
      * @param [in] file The source code file which defined this LogComponent.
      * @param [in] mask LogLevels blocked for this LogComponent.  Blocking
-     *                  a log level helps prevent recursion by logging in
-     *                  functions which help implement the logging facility.
+     * a log level helps prevent recursion by logging in
+     * functions which help implement the logging facility.
      */
     LogComponent(const std::string& name, const std::string& file, const LogLevel mask = LOG_NONE);
 
@@ -351,29 +351,34 @@ class LogComponent
      * @return \c true if all levels are disabled.
      */
     bool IsNoneEnabled() const;
+
     /**
      * Enable this LogComponent at \c level
      *
      * @param [in] level The LogLevel to enable.
      */
     void Enable(const LogLevel level);
+
     /**
      * Disable logging at \c level for this LogComponent.
      *
      * @param [in] level The LogLevel to disable.
      */
     void Disable(const LogLevel level);
+
     /**
      * Get the name of this LogComponent.
      *
      * @return The name of this LogComponent.
      */
     std::string Name() const;
+
     /**
      * Get the compilation unit defining this LogComponent.
      * @returns The file name.
      */
     std::string File() const;
+
     /**
      * Get the string label for the given LogLevel.
      *
@@ -381,12 +386,35 @@ class LogComponent
      * @return The string label for \c level.
      */
     static std::string GetLevelLabel(const LogLevel level);
+
     /**
      * Prevent the enabling of a specific LogLevel.
      *
      * @param [in] level The LogLevel to block.
      */
     void SetMask(const LogLevel level);
+
+    /**
+     * Check if this LogComponent has an active string filter.
+     * @return \c true if a filter is set.
+     */
+    bool HasFilter() const
+    {
+        return m_hasFilter;
+    }
+
+    /**
+     * Set a string filter for this LogComponent.
+     * @param [in] filter The string to filter by.
+     */
+    void SetFilter(const std::string& filter);
+
+    /**
+     * Check if the message passes the filter.
+     * @param [in] message The message to check.
+     * @return \c true if the message passes the filter or if no filter is set.
+     */
+    bool CheckFilter(const std::string& message) const;
 
     /**
      * LogComponent name map.
@@ -421,6 +449,9 @@ class LogComponent
     int32_t m_mask;     //!< Blocked LogLevels.
     std::string m_name; //!< LogComponent name.
     std::string m_file; //!< File defining this LogComponent.
+
+    std::string m_filter;    //!< String to filter log messages by.
+    bool m_hasFilter{false}; //!< True if a filter is set.
 
     // end of class LogComponent
 };
