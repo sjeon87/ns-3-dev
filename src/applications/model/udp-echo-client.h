@@ -136,7 +136,7 @@ class UdpEchoClient : public SourceApplication
                                       const SeqTsEchoHeader& header);
 
   protected:
-    virtual void DoDispose(void);
+    void DoDispose(void) override;
 
   private:
     void DoStartApplication() override;
