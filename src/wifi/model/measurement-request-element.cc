@@ -423,16 +423,16 @@ MeasurementRequestElement::GetInformationFieldSize() const
             else if constexpr (std::is_same_v<T, FtmRangeRequestBody>)
             {
                 size += 3; // Rand(2)+MinAPCount(1)
-                for (const auto& nre : body.neighborReports)
+                for (const auto& nre : body.GetNeighborReports())
                 {
                     size += static_cast<uint16_t>(2 + (nre.GetSerializedSize() - 2));
                 }
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, MeasurementPauseRequestBody>)
             {
                 size += 2; // PauseTime(2)
-                size += VendorSpecificSize(body.vendorSpecific);
+                size += VendorSpecificSize(body.GetVendorSpecific());
             }
         },
         m_body);
@@ -626,15 +626,15 @@ MeasurementRequestElement::SerializeInformationField(Buffer::Iterator start) con
             }
             else if constexpr (std::is_same_v<T, FtmRangeRequestBody>)
             {
-                start.WriteU16(body.randomizationInterval);
-                start.WriteU8(body.minimumApCount);
-                SerializeNeighborReports(start, body.neighborReports);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU16(body.GetRandomizationInterval());
+                start.WriteU8(body.GetMinimumApCount());
+                SerializeNeighborReports(start, body.GetNeighborReports());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
             else if constexpr (std::is_same_v<T, MeasurementPauseRequestBody>)
             {
-                start.WriteU16(body.pauseTime);
-                SerializeVendorSpecific(start, body.vendorSpecific);
+                start.WriteU16(body.GetPauseTime());
+                SerializeVendorSpecific(start, body.GetVendorSpecific());
             }
         },
         m_body);
@@ -801,14 +801,14 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
     }
     case MeasurementType::FTM_RANGE: {
         auto& body = std::get<FtmRangeRequestBody>(m_body);
-        body.randomizationInterval = i.ReadU16();
-        body.minimumApCount = i.ReadU8();
+        body.SetRandomizationInterval(i.ReadU16());
+        body.SetMinimumApCount(i.ReadU8());
         bytesRead += 3;
         break;
     }
     case MeasurementType::MEASUREMENT_PAUSE: {
         auto& body = std::get<MeasurementPauseRequestBody>(m_body);
-        body.pauseTime = i.ReadU16();
+        body.SetPauseTime(i.ReadU16());
         bytesRead += 2;
         break;
     }
@@ -838,26 +838,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                     if constexpr (!std::is_same_v<T, std::monostate> &&
                                   !std::is_same_v<T, BasicRequestBody>)
                     {
-                        if constexpr (std::is_same_v<T, ChannelLoadRequestBody> ||
-                                      std::is_same_v<T, NoiseHistogramRequestBody> ||
-                                      std::is_same_v<T, BeaconRequestBody> ||
-                                      std::is_same_v<T, FrameRequestBody> ||
-                                      std::is_same_v<T, StaStatisticsRequestBody> ||
-                                      std::is_same_v<T, MulticastDiagnosticsRequestBody> ||
-                                      std::is_same_v<T, LciRequestBody> ||
-                                      std::is_same_v<T, TransmitStreamRequestBody> ||
-                                      std::is_same_v<T, LocationCivicRequestBody> ||
-                                      std::is_same_v<T, LocationIdentifierRequestBody> ||
-                                      std::is_same_v<T, DirectionalChannelQualityRequestBody> ||
-                                      std::is_same_v<T, DirectionalMeasurementRequestBody> ||
-                                      std::is_same_v<T, DirectionalStatisticsRequestBody>)
-                        {
-                            body.SetVendorSpecific(std::move(data));
-                        }
-                        else
-                        {
-                            body.vendorSpecific = std::move(data);
-                        }
+                        body.SetVendorSpecific(std::move(data));
                     }
                 },
                 m_body);
@@ -969,7 +950,7 @@ MeasurementRequestElement::DeserializeInformationField(Buffer::Iterator start, u
                 }
                 NeighborReportElement nre;
                 nre.Deserialize(nreBuf.Begin());
-                body.neighborReports.push_back(nre);
+                body.AddNeighborReport(nre);
                 handled = true;
             }
         }

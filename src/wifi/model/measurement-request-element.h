@@ -1966,8 +1966,9 @@ class MeasurementRequestElement : public WifiInformationElement
     /**
      * @brief Request body for FTM Range measurement (Figure 9-288)
      */
-    struct FtmRangeRequestBody
+    class FtmRangeRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for FTM Range request (Table 9-162)
          */
@@ -1978,18 +1979,94 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint16_t randomizationInterval{0}; //!< Randomization Interval (2 octets)
-        uint8_t minimumApCount{0};         //!< Minimum AP Count (1 octet)
+        /**
+         * @brief Set the Randomization Interval field.
+         * @param randomizationInterval the randomization interval
+         */
+        void SetRandomizationInterval(uint16_t randomizationInterval)
+        {
+            m_randomizationInterval = randomizationInterval;
+        }
 
-        std::vector<NeighborReportElement> neighborReports; //!< Neighbor Report subelements (ID 52)
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Randomization Interval field.
+         * @return the randomization interval
+         */
+        uint16_t GetRandomizationInterval() const
+        {
+            return m_randomizationInterval;
+        }
+
+        /**
+         * @brief Set the Minimum AP Count field.
+         * @param minimumApCount the minimum AP count
+         */
+        void SetMinimumApCount(uint8_t minimumApCount)
+        {
+            m_minimumApCount = minimumApCount;
+        }
+
+        /**
+         * @brief Get the Minimum AP Count field.
+         * @return the minimum AP count
+         */
+        uint8_t GetMinimumApCount() const
+        {
+            return m_minimumApCount;
+        }
+
+        /**
+         * @brief Add a Neighbor Report subelement.
+         * @param neighborReport the neighbor report element to add
+         */
+        void AddNeighborReport(const NeighborReportElement& neighborReport)
+        {
+            m_neighborReports.push_back(neighborReport);
+        }
+
+        /**
+         * @brief Get the Neighbor Report subelements.
+         * @return the neighbor report elements
+         */
+        const std::vector<NeighborReportElement>& GetNeighborReports() const
+        {
+            return m_neighborReports;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint16_t m_randomizationInterval{0}; ///< Randomization Interval (2 octets)
+        uint8_t m_minimumApCount{0};         ///< Minimum AP Count (1 octet)
+
+        std::vector<NeighborReportElement>
+            m_neighborReports; ///< Neighbor Report subelements (ID 52)
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**
      * @brief Request body for Measurement Pause (Figure 9-272)
      */
-    struct MeasurementPauseRequestBody
+    class MeasurementPauseRequestBody
     {
+      public:
         /**
          * @brief Subelement IDs for Measurement Pause request (Table 9-152)
          */
@@ -1998,9 +2075,47 @@ class MeasurementRequestElement : public WifiInformationElement
             VENDOR_SPECIFIC = 221,
         };
 
-        uint16_t pauseTime{0}; //!< Pause Time (2 octets)
+        /**
+         * @brief Set the Pause Time field.
+         * @param pauseTime the pause time
+         */
+        void SetPauseTime(uint16_t pauseTime)
+        {
+            m_pauseTime = pauseTime;
+        }
 
-        std::optional<std::vector<uint8_t>> vendorSpecific; //!< Vendor Specific subelement (ID 221)
+        /**
+         * @brief Get the Pause Time field.
+         * @return the pause time
+         */
+        uint16_t GetPauseTime() const
+        {
+            return m_pauseTime;
+        }
+
+        /**
+         * @brief Set the Vendor Specific subelement.
+         * @param vendorSpecific the vendor specific data
+         */
+        void SetVendorSpecific(std::vector<uint8_t> vendorSpecific)
+        {
+            m_vendorSpecific = std::move(vendorSpecific);
+        }
+
+        /**
+         * @brief Get the Vendor Specific subelement.
+         * @return the vendor specific data, or std::nullopt if not present
+         */
+        const std::optional<std::vector<uint8_t>>& GetVendorSpecific() const
+        {
+            return m_vendorSpecific;
+        }
+
+      private:
+        uint16_t m_pauseTime{0}; ///< Pause Time (2 octets)
+
+        std::optional<std::vector<uint8_t>>
+            m_vendorSpecific; ///< Vendor Specific subelement (ID 221)
     };
 
     /**

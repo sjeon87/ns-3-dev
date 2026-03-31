@@ -1736,8 +1736,8 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::FTM_RANGE);
             FtmBody body;
-            body.randomizationInterval = 100;
-            body.minimumApCount = 1;
+            body.SetRandomizationInterval(100);
+            body.SetMinimumApCount(1);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 8, "FTM Range size");
         }
@@ -1748,7 +1748,7 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(1);
             elem.SetMeasurementType(MeasurementType::MEASUREMENT_PAUSE);
             PauseBody body;
-            body.pauseTime = 100;
+            body.SetPauseTime(100);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetSerializedSize(), 7, "Measurement Pause size");
         }
@@ -2054,8 +2054,8 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(140);
             elem.SetMeasurementType(MeasurementType::FTM_RANGE);
             FtmBody body;
-            body.randomizationInterval = 100;
-            body.minimumApCount = 3;
+            body.SetRandomizationInterval(100);
+            body.SetMinimumApCount(3);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2066,7 +2066,7 @@ MeasurementRequestElementTest::DoRun()
             elem.SetMeasurementToken(150);
             elem.SetMeasurementType(MeasurementType::MEASUREMENT_PAUSE);
             PauseBody body;
-            body.pauseTime = 5000;
+            body.SetPauseTime(5000);
             elem.SetBody(body);
             TestHeaderSerialization(elem);
         }
@@ -2761,14 +2761,14 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(6);
         elem.SetMeasurementType(MeasurementType::FTM_RANGE);
         FtmBody body;
-        body.randomizationInterval = 100;
-        body.minimumApCount = 1;
+        body.SetRandomizationInterval(100);
+        body.SetMinimumApCount(1);
         NeighborReportElement nre;
         nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
         nre.SetOperatingClass(115);
         nre.SetChannelNumber(36);
         nre.SetPhyType(8);
-        body.neighborReports.push_back(nre);
+        body.AddNeighborReport(nre);
         elem.SetBody(body);
 
         TestHeaderSerialization(elem);
@@ -2781,8 +2781,8 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<FtmBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.neighborReports.size(), 1, "FTM Range neighbor count");
-        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[0].GetBssid(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetNeighborReports().size(), 1, "FTM Range neighbor count");
+        NS_TEST_ASSERT_MSG_EQ(b.GetNeighborReports()[0].GetBssid(),
                               Mac48Address("aa:bb:cc:dd:ee:ff"),
                               "FTM Range neighbor BSSID");
     }
@@ -2997,29 +2997,29 @@ MeasurementRequestSubelementsTest::DoRun()
         elem.SetMeasurementToken(13);
         elem.SetMeasurementType(MeasurementType::FTM_RANGE);
         FtmBody body;
-        body.randomizationInterval = 100;
-        body.minimumApCount = 3;
+        body.SetRandomizationInterval(100);
+        body.SetMinimumApCount(3);
 
         NeighborReportElement nre1;
         nre1.SetBssid(Mac48Address("aa:bb:cc:dd:ee:01"));
         nre1.SetOperatingClass(115);
         nre1.SetChannelNumber(36);
         nre1.SetPhyType(8);
-        body.neighborReports.push_back(nre1);
+        body.AddNeighborReport(nre1);
 
         NeighborReportElement nre2;
         nre2.SetBssid(Mac48Address("aa:bb:cc:dd:ee:02"));
         nre2.SetOperatingClass(115);
         nre2.SetChannelNumber(40);
         nre2.SetPhyType(8);
-        body.neighborReports.push_back(nre2);
+        body.AddNeighborReport(nre2);
 
         NeighborReportElement nre3;
         nre3.SetBssid(Mac48Address("aa:bb:cc:dd:ee:03"));
         nre3.SetOperatingClass(81);
         nre3.SetChannelNumber(6);
         nre3.SetPhyType(7);
-        body.neighborReports.push_back(nre3);
+        body.AddNeighborReport(nre3);
 
         elem.SetBody(body);
 
@@ -3033,17 +3033,17 @@ MeasurementRequestSubelementsTest::DoRun()
         deserialized.Deserialize(buf.Begin());
 
         auto& b = deserialized.GetBody<FtmBody>();
-        NS_TEST_ASSERT_MSG_EQ(b.neighborReports.size(), 3, "3 FTM Range neighbors");
-        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[0].GetBssid(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetNeighborReports().size(), 3, "3 FTM Range neighbors");
+        NS_TEST_ASSERT_MSG_EQ(b.GetNeighborReports()[0].GetBssid(),
                               Mac48Address("aa:bb:cc:dd:ee:01"),
                               "FTM NRE 0 BSSID");
-        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[1].GetBssid(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetNeighborReports()[1].GetBssid(),
                               Mac48Address("aa:bb:cc:dd:ee:02"),
                               "FTM NRE 1 BSSID");
-        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[2].GetBssid(),
+        NS_TEST_ASSERT_MSG_EQ(b.GetNeighborReports()[2].GetBssid(),
                               Mac48Address("aa:bb:cc:dd:ee:03"),
                               "FTM NRE 2 BSSID");
-        NS_TEST_ASSERT_MSG_EQ(b.neighborReports[2].GetChannelNumber(), 6, "FTM NRE 2 channel");
+        NS_TEST_ASSERT_MSG_EQ(b.GetNeighborReports()[2].GetChannelNumber(), 6, "FTM NRE 2 channel");
     }
 
     // Test 14: SetBody auto-syncs m_measurementType (validates Fix 1)
@@ -3121,14 +3121,14 @@ MeasurementRequestSubelementsTest::DoRun()
             MeasurementRequestElement elem;
             elem.SetMeasurementToken(1);
             FtmBody body;
-            body.randomizationInterval = 100;
-            body.minimumApCount = 1;
+            body.SetRandomizationInterval(100);
+            body.SetMinimumApCount(1);
             NeighborReportElement nre;
             nre.SetBssid(Mac48Address("aa:bb:cc:dd:ee:ff"));
             nre.SetOperatingClass(115);
             nre.SetChannelNumber(36);
             nre.SetPhyType(8);
-            body.neighborReports.push_back(nre);
+            body.AddNeighborReport(nre);
             elem.SetBody(body);
             NS_TEST_EXPECT_MSG_EQ(elem.GetMeasurementType(),
                                   MeasurementType::FTM_RANGE,
