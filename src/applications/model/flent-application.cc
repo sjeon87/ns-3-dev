@@ -476,7 +476,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(hostAddr));
+        m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_node->AddApplication(m_v4ping);
         m_output["raw_values"]["Ping (ms) ICMP"] = Json::Value(Json::arrayValue);
@@ -491,7 +491,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(hostAddr));
+        m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_node->AddApplication(m_v4ping);
         ApplicationContainer pingContainer;
@@ -547,7 +547,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     {
         Ipv4Address localBindAddr = Ipv4Address::ConvertFrom(m_localBindAddress);
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(localBindAddr));
+        m_v4ping->SetAttribute("Destination", AddressValue(m_localBindAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_hostNode->AddApplication(m_v4ping);
         ApplicationContainer pingContainer;
@@ -604,7 +604,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
         Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
 
         m_v4ping = CreateObject<Ping>();
-        m_v4ping->SetAttribute("Remote", Ipv4AddressValue(hostIpv4Address));
+        m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
         m_node->AddApplication(m_v4ping);
         ApplicationContainer pingContainer;
