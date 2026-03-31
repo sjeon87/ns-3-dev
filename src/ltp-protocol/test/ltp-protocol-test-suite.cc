@@ -640,12 +640,12 @@ class LtpProtocolAPITestCase : public TestCase
     virtual ~LtpProtocolAPITestCase();
 
     void ClientServiceInstanceNotifications(SessionId id,
-                                           StatusNotificationCode code,
-                                           std::vector<uint8_t> data,
-                                           uint32_t dataLength,
-                                           bool endFlag,
-                                           uint64_t srcLtpEngine,
-                                           uint32_t offset);
+                                            StatusNotificationCode code,
+                                            std::vector<uint8_t> data,
+                                            uint32_t dataLength,
+                                            bool endFlag,
+                                            uint64_t srcLtpEngine,
+                                            uint32_t offset);
 
   private:
     virtual void DoRun(void);
@@ -662,12 +662,12 @@ LtpProtocolAPITestCase::~LtpProtocolAPITestCase()
 
 void
 LtpProtocolAPITestCase::ClientServiceInstanceNotifications(SessionId id,
-                                                          StatusNotificationCode code,
-                                                          std::vector<uint8_t> data,
-                                                          uint32_t dataLength,
-                                                          bool endFlag,
-                                                          uint64_t srcLtpEngine,
-                                                          uint32_t offset)
+                                                           StatusNotificationCode code,
+                                                           std::vector<uint8_t> data,
+                                                           uint32_t dataLength,
+                                                           bool endFlag,
+                                                           uint64_t srcLtpEngine,
+                                                           uint32_t offset)
 {
     NS_LOG_UNCOND(id.GetSessionNumber() << " " << code);
     NS_TEST_ASSERT_MSG_EQ((code == SESSION_START), true, "Session Start Notification Failed");

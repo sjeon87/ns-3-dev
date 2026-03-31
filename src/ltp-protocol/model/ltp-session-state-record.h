@@ -413,9 +413,9 @@ class SessionStateRecord : public Object
                        //!< Number , Second: ReceptionClaims
 
     bool m_redpartSuccess; //!< Red part Transmitted/Received successfully
-    bool m_blockSuccess;  //!< Full block Transmitted/Received successfully
-    bool m_fullRedData;   //!< True if the block only contains red data
-    bool m_fullGreenData; //!< True if the block only contains green data
+    bool m_blockSuccess;   //!< Full block Transmitted/Received successfully
+    bool m_fullRedData;    //!< True if the block only contains red data
+    bool m_fullGreenData;  //!< True if the block only contains green data
 
     uint32_t m_redPartLength; //!< Length of the red part
     uint32_t m_lowBound;      //!< Smallest non acknowledged offset
