@@ -1,3 +1,6 @@
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wc2y-extensions"
+#endif
 /*
  * SPDX-License-Identifier: GPL-2.0-only
  *
