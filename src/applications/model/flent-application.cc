@@ -69,7 +69,7 @@ TraceReceivedPacket(uint32_t* counter, Ptr<const Packet> packet, const Address& 
 } // anonymous namespace
 
 TypeId
-FlentApplication::GetTypeId(void)
+FlentApplication::GetTypeId()
 {
     static TypeId tid =
         TypeId("ns3::FlentApplication")
@@ -125,7 +125,7 @@ FlentApplication::~FlentApplication()
 }
 
 void
-FlentApplication::DoInitialize(void)
+FlentApplication::DoInitialize()
 {
     NS_LOG_FUNCTION(this);
 
@@ -160,7 +160,7 @@ FlentApplication::DoInitialize(void)
 }
 
 void
-FlentApplication::DoDispose(void)
+FlentApplication::DoDispose()
 {
     NS_LOG_FUNCTION(this);
 
@@ -360,7 +360,7 @@ FlentApplication::GoodputSamplingDownload(std::string name, int i)
 }
 
 void
-FlentApplication::FillXValues(void)
+FlentApplication::FillXValues()
 {
     NS_LOG_DEBUG("Filling x values");
     double stepSize = m_stepSize.GetSeconds();
@@ -375,7 +375,7 @@ FlentApplication::FillXValues(void)
 }
 
 void
-FlentApplication::ProcessRawValues(void)
+FlentApplication::ProcessRawValues()
 {
     NS_LOG_DEBUG("Process Raw values");
     int steps = int(std::ceil(m_stopTime.GetSeconds() / m_stepSize.GetSeconds()));
@@ -463,7 +463,7 @@ FlentApplication::ProcessRawValues(void)
 
 // Application Methods
 void
-FlentApplication::StartApplication(void) // Called at time specified by Start
+FlentApplication::StartApplication() // Called at time specified by Start
 {
     NS_LOG_FUNCTION(this);
     m_currTime = (std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -475,7 +475,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     if (m_testName.compare("ping") == 0)
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
-        (void)hostAddr;
+        () hostAddr;
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -491,7 +491,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     else if (m_testName.compare("tcp_upload") == 0)
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
-        (void)hostAddr;
+        () hostAddr;
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -548,7 +548,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     else if (m_testName.compare("tcp_download") == 0)
     {
         Ipv4Address localBindAddr = Ipv4Address::ConvertFrom(m_localBindAddress);
-        (void)localBindAddr;
+        () localBindAddr;
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_localBindAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -604,9 +604,9 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     else if (m_testName.compare("rrul") == 0)
     {
         Ipv4Address hostIpv4Address = Ipv4Address::ConvertFrom(m_hostAddress);
-        (void)hostIpv4Address;
+        () hostIpv4Address;
         Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
-        (void)localIpv4Address;
+        () localIpv4Address;
 
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
@@ -995,7 +995,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
 }
 
 void
-FlentApplication::StopApplication(void) // Called at time specified by Stop
+FlentApplication::StopApplication() // Called at time specified by Stop
 {
     NS_LOG_FUNCTION(this);
     FillXValues();

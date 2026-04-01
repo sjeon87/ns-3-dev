@@ -39,10 +39,10 @@ class FlentApplicationRrul : public TestCase
 {
   public:
     FlentApplicationRrul();
-    virtual ~FlentApplicationRrul();
+    ~FlentApplicationRrul() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 };
 
 FlentApplicationRrul::FlentApplicationRrul()
@@ -55,7 +55,7 @@ FlentApplicationRrul::~FlentApplicationRrul()
 }
 
 void
-FlentApplicationRrul::DoRun(void)
+FlentApplicationRrul::DoRun()
 {
     std::string testName = "rrul";
     Time rtt = MilliSeconds(80);
@@ -134,8 +134,6 @@ FlentApplicationRrul::DoRun(void)
 
     Simulator::Run();
     Simulator::Destroy();
-
-    return;
 }
 
 /**
@@ -145,10 +143,10 @@ class FlentApplicationTcpUpload : public TestCase
 {
   public:
     FlentApplicationTcpUpload();
-    virtual ~FlentApplicationTcpUpload();
+    ~FlentApplicationTcpUpload() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 };
 
 FlentApplicationTcpUpload::FlentApplicationTcpUpload()
@@ -161,7 +159,7 @@ FlentApplicationTcpUpload::~FlentApplicationTcpUpload()
 }
 
 void
-FlentApplicationTcpUpload::DoRun(void)
+FlentApplicationTcpUpload::DoRun()
 {
     std::string testName = "tcp_upload";
     Time rtt = MilliSeconds(80);
@@ -240,8 +238,6 @@ FlentApplicationTcpUpload::DoRun(void)
 
     Simulator::Run();
     Simulator::Destroy();
-
-    return;
 }
 
 /**
@@ -251,10 +247,10 @@ class FlentApplicationTcpDownload : public TestCase
 {
   public:
     FlentApplicationTcpDownload();
-    virtual ~FlentApplicationTcpDownload();
+    ~FlentApplicationTcpDownload() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 };
 
 FlentApplicationTcpDownload::FlentApplicationTcpDownload()
@@ -267,7 +263,7 @@ FlentApplicationTcpDownload::~FlentApplicationTcpDownload()
 }
 
 void
-FlentApplicationTcpDownload::DoRun(void)
+FlentApplicationTcpDownload::DoRun()
 {
     std::string testName = "tcp_download";
     Time rtt = MilliSeconds(80);
@@ -346,8 +342,6 @@ FlentApplicationTcpDownload::DoRun(void)
 
     Simulator::Run();
     Simulator::Destroy();
-
-    return;
 }
 
 /**
@@ -357,10 +351,10 @@ class FlentApplicationPing : public TestCase
 {
   public:
     FlentApplicationPing();
-    virtual ~FlentApplicationPing();
+    ~FlentApplicationPing() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 };
 
 FlentApplicationPing::FlentApplicationPing()
@@ -373,7 +367,7 @@ FlentApplicationPing::~FlentApplicationPing()
 }
 
 void
-FlentApplicationPing::DoRun(void)
+FlentApplicationPing::DoRun()
 {
     std::string testName = "ping";
     Time rtt = MilliSeconds(80);
@@ -452,8 +446,6 @@ FlentApplicationPing::DoRun(void)
 
     Simulator::Run();
     Simulator::Destroy();
-
-    return;
 }
 
 /**
@@ -463,10 +455,10 @@ class FlentApplicationFileIntegrity : public TestCase
 {
   public:
     FlentApplicationFileIntegrity();
-    virtual ~FlentApplicationFileIntegrity();
+    ~FlentApplicationFileIntegrity() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 };
 
 FlentApplicationFileIntegrity::FlentApplicationFileIntegrity()
@@ -479,7 +471,7 @@ FlentApplicationFileIntegrity::~FlentApplicationFileIntegrity()
 }
 
 void
-FlentApplicationFileIntegrity::DoRun(void)
+FlentApplicationFileIntegrity::DoRun()
 {
     std::vector<std::string> flentFiles{"rrul.flent",
                                         "tcp_upload.flent",
@@ -520,7 +512,6 @@ FlentApplicationFileIntegrity::DoRun(void)
                                       " number of results and raw values does not match");
         }
     }
-    return;
 }
 
 /**
@@ -532,10 +523,10 @@ class FlentApplicationResults : public TestCase
 {
   public:
     FlentApplicationResults();
-    virtual ~FlentApplicationResults();
+    ~FlentApplicationResults() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 };
 
 FlentApplicationResults::FlentApplicationResults()
@@ -548,7 +539,7 @@ FlentApplicationResults::~FlentApplicationResults()
 }
 
 void
-FlentApplicationResults::DoRun(void)
+FlentApplicationResults::DoRun()
 {
     std::vector<std::string> flentFiles{"rrul.flent",
                                         "tcp_upload.flent",
@@ -734,7 +725,6 @@ FlentApplicationResults::DoRun(void)
                                       " Ping latency throughput should be greater than 80");
         }
     }
-    return;
 }
 
 class FlentApplicationTestSuite : public TestSuite
