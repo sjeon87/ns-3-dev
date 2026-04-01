@@ -240,7 +240,7 @@ FlentApplication::AddMetadata(Json::Value& j)
 }
 
 Ptr<Node>
-FlentApplication::GetHostNode(Ipv4Address hostAddress) const
+FlentApplication::GetHostNode([[maybe_unused]] Ipv4Address hostAddress) const
 {
     NS_LOG_FUNCTION(this << hostAddress);
 
@@ -474,7 +474,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
 
     if (m_testName.compare("ping") == 0)
     {
-        Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
+        [[maybe_unused]] Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -489,7 +489,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     }
     else if (m_testName.compare("tcp_upload") == 0)
     {
-        Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
+        [[maybe_unused]] Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -545,7 +545,7 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     }
     else if (m_testName.compare("tcp_download") == 0)
     {
-        Ipv4Address localBindAddr = Ipv4Address::ConvertFrom(m_localBindAddress);
+        [[maybe_unused]] Ipv4Address localBindAddr = Ipv4Address::ConvertFrom(m_localBindAddress);
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_localBindAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -600,8 +600,8 @@ FlentApplication::StartApplication(void) // Called at time specified by Start
     }
     else if (m_testName.compare("rrul") == 0)
     {
-        Ipv4Address hostIpv4Address = Ipv4Address::ConvertFrom(m_hostAddress);
-        Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
+        [[maybe_unused]] Ipv4Address hostIpv4Address = Ipv4Address::ConvertFrom(m_hostAddress);
+        [[maybe_unused]] Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
 
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
