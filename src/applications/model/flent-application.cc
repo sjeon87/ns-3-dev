@@ -475,7 +475,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
     if (m_testName.compare("ping") == 0)
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
-        () hostAddr;
+        (void)hostAddr;
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -491,7 +491,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
     else if (m_testName.compare("tcp_upload") == 0)
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
-        () hostAddr;
+        (void)hostAddr;
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -548,7 +548,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
     else if (m_testName.compare("tcp_download") == 0)
     {
         Ipv4Address localBindAddr = Ipv4Address::ConvertFrom(m_localBindAddress);
-        () localBindAddr;
+        (void)localBindAddr;
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_localBindAddress));
         m_v4ping->SetAttribute("Interval", TimeValue(m_stepSize));
@@ -604,9 +604,9 @@ FlentApplication::StartApplication() // Called at time specified by Start
     else if (m_testName.compare("rrul") == 0)
     {
         Ipv4Address hostIpv4Address = Ipv4Address::ConvertFrom(m_hostAddress);
-        () hostIpv4Address;
+        (void)hostIpv4Address;
         Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
-        () localIpv4Address;
+        (void)localIpv4Address;
 
         m_v4ping = CreateObject<Ping>();
         m_v4ping->SetAttribute("Destination", AddressValue(m_hostAddress));
