@@ -340,7 +340,7 @@ LtpProtocol::SignifyRedPartReception(SessionId id)
                 std::vector<uint8_t> packetData(raw_data, raw_data + size);
 
                 blockData.insert(blockData.end(), packetData.begin(), packetData.end());
-                delete raw_data;
+                delete[] raw_data;
             }
 
             if (header.GetSegmentType() == LTPTYPE_RD_CP_EORP_EOB)
@@ -400,7 +400,7 @@ LtpProtocol::SignifyGreenPartSegmentArrival(SessionId id)
             p->CopyData(raw_data, size);
 
             packetData.insert(packetData.end(), raw_data, raw_data + size);
-            delete raw_data;
+            delete[] raw_data;
         }
 
         itCls->second->ReportStatus(id,
@@ -553,7 +553,7 @@ LtpProtocol::Receive(Ptr<Packet> packet, Ptr<LtpConvergenceLayerAdapter> cla)
 
         srecv = CreateObject<ReceiverSessionStateRecord>(m_localEngineId,
                                                          itClients->first,
-                                                         itSessions->first,
+                                                         id,
                                                          m_uniformRandomVariable);
 
         /* Add to active sessions */
@@ -726,6 +726,8 @@ LtpProtocol::ReportSegmentTransmission(SessionId id, uint64_t cpSerialNum)
     Ptr<LtpConvergenceLayerAdapter> cla = itCla->second;
     Ptr<ReceiverSessionStateRecord> srecv = DynamicCast<ReceiverSessionStateRecord>(it->second);
 
+    cla->SetSessionId(id);
+
     Ptr<Packet> p = Create<Packet>();
     LtpHeader header;
     LtpContentHeader contentHeader;
@@ -769,6 +771,8 @@ LtpProtocol::ReportSegmentAckTransmission(SessionId id,
                                           Ptr<LtpConvergenceLayerAdapter> cla)
 {
     NS_LOG_FUNCTION(this << id << rpSerialNum << cla);
+
+    cla->SetSessionId(id);
 
     SessionStateRecords::iterator it = m_activeSessions.find(id);
 

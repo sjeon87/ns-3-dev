@@ -158,7 +158,10 @@ LtpUdpConvergenceLayerAdapter::Send(Ptr<Packet> p)
         }
         break;
     case LTPTYPE_GD_EOB:
-        m_endOfBlockSent(m_activeSessionId);
+        if (!m_endOfBlockSent.IsNull())
+        {
+            m_endOfBlockSent(m_activeSessionId);
+        }
         break;
     case LTPTYPE_RS:
         if (!m_reportSent.IsNull())
