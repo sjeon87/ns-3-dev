@@ -588,10 +588,7 @@ SessionStateRecord::StoreClaims(LtpContentHeader reportHeader)
 RedSegmentInfo
 SessionStateRecord::FindMissingClaims(uint32_t serialNum)
 {
-    NS_LOG_FUNCTION(this << serialNum);
-
     uint32_t last_upper = 0;
-
     std::set<LtpContentHeader::ReceptionClaim> report_claims = GetClaims(serialNum);
 
     RedSegmentInfo missing_claims;
@@ -602,20 +599,26 @@ SessionStateRecord::FindMissingClaims(uint32_t serialNum)
          it != report_claims.end();
          ++it)
     {
-        /* Assumes that reception claims are ordered */
         LtpContentHeader::ReceptionClaim claim = *it;
-
         if (last_upper != claim.offset)
         {
             LtpContentHeader::ReceptionClaim missing;
             missing.offset = last_upper;
             missing.length = claim.offset - last_upper;
-
             missing_claims.claims.insert(missing);
         }
-
         last_upper = claim.offset + claim.length;
     }
+
+    uint32_t redPartLength = GetRedPartLength();
+    if (redPartLength > 0 && last_upper < redPartLength)
+    {
+        LtpContentHeader::ReceptionClaim missing;
+        missing.offset = last_upper;
+        missing.length = redPartLength - last_upper;
+        missing_claims.claims.insert(missing);
+    }
+
     return missing_claims;
 }
 

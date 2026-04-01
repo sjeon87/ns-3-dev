@@ -1091,7 +1091,11 @@ SessionId::operator==(const SessionId& o) const
 bool
 SessionId::operator<(const SessionId& o) const
 {
-    return ((m_sessionNumber < o.m_sessionNumber) && (m_sessionOriginator < o.m_sessionOriginator));
+    if (m_sessionOriginator != o.m_sessionOriginator)
+    {
+        return m_sessionOriginator < o.m_sessionOriginator;
+    }
+    return m_sessionNumber < o.m_sessionNumber;
 }
 
 bool
