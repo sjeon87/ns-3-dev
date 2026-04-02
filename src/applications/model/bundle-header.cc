@@ -16,10 +16,10 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("BundleHeader");
 
-NS_OBJECT_ENSURE_REGISTERED("PrimaryBlockHeader");
-NS_OBJECT_ENSURE_REGISTERED("PayloadBlockHeader");
-NS_OBJECT_ENSURE_REGISTERED("BundleStatusReport");
-NS_OBJECT_ENSURE_REGISTERED("CustodySignal");
+NS_OBJECT_ENSURE_REGISTERED(PrimaryBlockHeader);
+NS_OBJECT_ENSURE_REGISTERED(PayloadBlockHeader);
+NS_OBJECT_ENSURE_REGISTERED(BundleStatusReport);
+NS_OBJECT_ENSURE_REGISTERED(CustodySignal);
 
 PrimaryBlockHeader::PrimaryBlockHeader()
     : m_creationTime{Simulator::Now()}
@@ -38,7 +38,7 @@ PrimaryBlockHeader::GetTypeId()
 }
 
 TypeId
-PrimaryBlockHeader::GetInstanceType() const
+PrimaryBlockHeader::GetInstanceTypeId() const
 {
     return GetTypeId();
 }
@@ -146,7 +146,7 @@ PayloadBlockHeader::GetTypeId()
 }
 
 TypeId
-PayloadBlockHeader::GetInstanceType() const
+PayloadBlockHeader::GetInstanceTypeId() const
 {
     return GetTypeId();
 }
@@ -205,7 +205,7 @@ BundleStatusReport::GetTypeId()
 }
 
 TypeId
-BundleStatusReport::GetInstanceType() const
+BundleStatusReport::GetInstanceTypeId() const
 {
     return GetTypeId();
 }
@@ -288,7 +288,7 @@ CustodySignal::GetTypeId()
 }
 
 TypeId
-CustodySignal::GetInstanceType() const
+CustodySignal::GetInstanceTypeId() const
 {
     return GetTypeId();
 }

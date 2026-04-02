@@ -29,7 +29,7 @@ class PrimaryBlockHeader : public Header
     PrimaryBlockHeader();
 
     static TypeId GetTypeId();
-    TypeId GetInstanceType() const override;
+    TypeId GetInstanceTypeId() const override;
     void Print(std::ostream& os) const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -74,7 +74,7 @@ class PayloadBlockHeader : public Header
     PayloadBlockHeader();
 
     static TypeId GetTypeId();
-    TypeId GetInstanceType() const override;
+    TypeId GetInstanceTypeId() const override;
     void Print(std::ostream& os) const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -93,7 +93,7 @@ class BundleStatusReport : public Header
     BundleStatusReport();
 
     static TypeId GetTypeId();
-    TypeId GetInstanceType() const override;
+    TypeId GetInstanceTypeId() const override;
     void Print(std::ostream& os) const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
@@ -116,10 +116,10 @@ class BundleStatusReport : public Header
 class CustodySignal : public Header
 {
   public:
-    BundleStatusReport();
+    CustodySignal();
 
     static TypeId GetTypeId();
-    TypeId GetInstanceType() const override;
+    TypeId GetInstanceTypeId() const override;
     void Print(std::ostream& os) const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
