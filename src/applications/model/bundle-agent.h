@@ -82,7 +82,7 @@ enum CUSTODY_FLAGS
 /**
  *
  * Each bundle stores a set of blocks. However in this implementation,
- * I'm going to assume that these blocks are just packets. I cant figure out what
+ * I'm going to assume that these blocks are just packets. I can't figure out what
  * the difference between a block and packet would be apart from the CBOR encoding
  * in RFC 9171, which I'm not sure yet is relevant to a simulation for complexity.
  *
