@@ -121,8 +121,8 @@ V4TraceRoute::StartApplication()
 
     if (m_verbose)
     {
-        NS_LOG_UNCOND("Traceroute to " << m_remote << ", " << m_maxTtl << " hops Max, " << m_size
-                                       << " bytes of data.");
+        std::cout << "Traceroute to " << m_remote << ", " << m_maxTtl << " hops Max, " << m_size
+                  << " bytes of data." << std::endl;
     }
 
     if (m_printStream)
@@ -168,7 +168,7 @@ V4TraceRoute::StopApplication()
 
     if (m_verbose)
     {
-        NS_LOG_UNCOND("\nTrace Complete");
+        std::cout << "\nTrace Complete" << std::endl;
     }
 
     if (m_printStream)
@@ -257,7 +257,8 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
                 {
                     if (m_verbose)
                     {
-                        NS_LOG_UNCOND(m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str());
+                        std::cout << m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str()
+                                  << std::endl;
                     }
 
                     if (m_printStream)
@@ -318,8 +319,8 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
 
                         if (m_probeCount == m_maxProbes)
                         {
-                            NS_LOG_UNCOND(m_ttl << " " << m_routeIpv4.str() << " "
-                                                << m_osRoute.str());
+                            std::cout << m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str()
+                                      << std::endl;
                             if (m_printStream)
                             {
                                 *m_printStream->GetStream() << m_ttl << " " << m_routeIpv4.str()
@@ -342,7 +343,7 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
             {
                 if (m_verbose)
                 {
-                    NS_LOG_UNCOND("\nTrace Complete");
+                    std::cout << "\nTrace Complete" << std::endl;
                 }
 
                 if (m_printStream)
@@ -436,7 +437,7 @@ V4TraceRoute::HandleWaitReplyTimeout()
     {
         if (m_verbose)
         {
-            NS_LOG_UNCOND(m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str());
+            std::cout << m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str() << std::endl;
         }
 
         if (m_printStream)
