@@ -118,6 +118,8 @@ TcpSocketState::TcpSocketState(const TcpSocketState& other)
       m_minRtt(other.m_minRtt),
       m_bytesInFlight(other.m_bytesInFlight),
       m_isCwndLimited(other.m_isCwndLimited),
+      m_maxBytesInFlight(other.m_maxBytesInFlight),
+      m_cwndUsageSeq(other.m_cwndUsageSeq),
       m_srtt(other.m_srtt),
       m_lastRtt(other.m_lastRtt),
       m_ecnMode(other.m_ecnMode),
@@ -127,6 +129,40 @@ TcpSocketState::TcpSocketState(const TcpSocketState& other)
       m_lastAckedSackedBytes(other.m_lastAckedSackedBytes)
 
 {
+}
+
+bool
+TcpSocketState::IsCwndLimited() const
+{
+    if (m_isCwndLimited)
+    {
+        return true;
+    }
+
+    if (m_cWnd < m_ssThresh)
+    {
+        return static_cast<uint64_t>(m_cWnd.Get()) < (2ULL * m_maxBytesInFlight);
+    }
+
+    return false;
+}
+
+void
+TcpSocketState::UpdateCwndUsage(const SequenceNumber32& sndUna,
+                                const SequenceNumber32& sndNxt,
+                                bool isCwndLimited,
+                                uint32_t bytesInFlight)
+{
+    // Update cwnd-limited accounting when entering a new usage window, when
+    // observing a cwnd-limited sample, or when seeing a stronger non-limited
+    // in-flight sample.
+    if (!(sndUna < m_cwndUsageSeq) || isCwndLimited ||
+        (!m_isCwndLimited && bytesInFlight > m_maxBytesInFlight))
+    {
+        m_isCwndLimited = isCwndLimited;
+        m_maxBytesInFlight = bytesInFlight;
+        m_cwndUsageSeq = sndNxt;
+    }
 }
 
 const char* const TcpSocketState::TcpCongStateName[TcpSocketState::CA_LAST_STATE] = {
