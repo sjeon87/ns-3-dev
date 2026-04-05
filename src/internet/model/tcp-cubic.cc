@@ -190,7 +190,7 @@ TcpCubic::IncreaseWindow(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
 {
     NS_LOG_FUNCTION(this << tcb << segmentsAcked);
 
-    if (!tcb->m_isCwndLimited)
+    if (!tcb->IsCwndLimited())
     {
         NS_LOG_DEBUG("No increase because current cwnd " << tcb->m_cWnd
                                                          << " is not limiting the flow");
