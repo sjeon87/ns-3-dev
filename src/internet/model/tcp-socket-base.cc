@@ -3390,12 +3390,11 @@ TcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withA
                      << m_endPoint6->GetPeerAddress() << ". Header " << header);
     }
 
-    // Signal to congestion control whether the cwnd is fully used
-    // This is a simple version of Linux tcp_cwnd_validate() but following
-    // the principle implemented in Linux that limits the updating of cwnd
-    // (in the congestion controls) when flight size is >= cwnd
-    // send will also be cwnd limited if less then one segment of cwnd is available
-    m_tcb->m_isCwndLimited = (m_tcb->m_cWnd < BytesInFlight() + m_tcb->m_segmentSize);
+    // Signal to congestion control whether the cwnd is fully used.
+    // Treat this transmission as cwnd-limited if less than one segment of cwnd
+    // is available.
+    uint32_t bytesInFlight = BytesInFlight();
+    bool isCwndLimited = (m_tcb->m_cWnd < bytesInFlight + m_tcb->m_segmentSize);
 
     UpdateRttHistory(seq, sz, isRetransmission);
 
@@ -3415,6 +3414,7 @@ TcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withA
     }
     // Update highTxMark
     m_tcb->m_highTxMark = std::max(seq + sz, m_tcb->m_highTxMark.Get());
+    UpdateCwndUsage(isCwndLimited, bytesInFlight);
     return sz;
 }
 
@@ -3600,6 +3600,12 @@ TcpSocketBase::SendPendingData(bool withAck)
     else
     {
         NS_LOG_DEBUG("SendPendingData no segments sent");
+
+        // Keep cwnd-limited accounting fresh even when no packet is sent due to
+        // transient window conditions.
+        uint32_t bytesInFlight = BytesInFlight();
+        bool isCwndLimited = (m_tcb->m_cWnd < bytesInFlight + m_tcb->m_segmentSize);
+        UpdateCwndUsage(isCwndLimited, bytesInFlight);
     }
     return nPacketsSent;
 }
@@ -4846,6 +4852,15 @@ TcpSocketBase::IsPacingEnabled() const
         }
     }
     return false;
+}
+
+void
+TcpSocketBase::UpdateCwndUsage(bool isCwndLimited, uint32_t bytesInFlight)
+{
+    m_tcb->UpdateCwndUsage(m_txBuffer->HeadSequence(),
+                           m_tcb->m_highTxMark,
+                           isCwndLimited,
+                           bytesInFlight);
 }
 
 void

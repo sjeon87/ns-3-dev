@@ -1360,6 +1360,14 @@ class TcpSocketBase : public TcpSocket
     void UpdatePacingRate();
 
     /**
+     * @brief Update cwnd-limited usage tracking
+     *
+     * @param isCwndLimited instantaneous cwnd-limited signal
+     * @param bytesInFlight an estimate of current in-flight bytes
+     */
+    void UpdateCwndUsage(bool isCwndLimited, uint32_t bytesInFlight);
+
+    /**
      * @brief Add Tags for the Socket
      * @param p Packet
      * @param isEct Whether the packet is allowed to be ECT capable
