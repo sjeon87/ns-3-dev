@@ -6,10 +6,8 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#ifndef BUNDLE_AGENT_H
-#define BUNDLE_AGENT_H
-
-#include <vector>
+#ifndef BUNDLE_FLAGS_H
+#define BUNDLE_FLAGS_H
 
 namespace ns3
 {
@@ -79,22 +77,6 @@ enum CUSTODY_FLAGS
     CT_CORRUPT_BLK
 };
 
-/**
- *
- * Each bundle stores a set of blocks. However in this implementation,
- * I'm going to assume that these blocks are just packets. I can't figure out what
- * the difference between a block and packet would be apart from the CBOR encoding
- * in RFC 9171, which I'm not sure yet is relevant to a simulation for complexity.
- *
- */
-class Bundle : public Object
-{
-    Bundle();
+}   // namespace ns3
 
-  private:
-    std::vector<Packet> m_blockList;
-};
-
-} // namespace ns3
-
-#endif /* BUNDLE_AGENT_H */
+#endif /* BUNDLE_FLAGS_H */
