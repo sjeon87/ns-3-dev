@@ -3394,7 +3394,7 @@ TcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withA
     // Treat this transmission as cwnd-limited if less than one segment of cwnd
     // is available.
     uint32_t bytesInFlight = BytesInFlight();
-    bool isCwndLimited = (m_tcb->m_cWnd < bytesInFlight + m_tcb->m_segmentSize);
+    bool isCwndLimited = (m_tcb->m_cWnd <= bytesInFlight + m_tcb->m_segmentSize);
 
     UpdateRttHistory(seq, sz, isRetransmission);
 
@@ -3604,7 +3604,7 @@ TcpSocketBase::SendPendingData(bool withAck)
         // Keep cwnd-limited accounting fresh even when no packet is sent due to
         // transient window conditions.
         uint32_t bytesInFlight = BytesInFlight();
-        bool isCwndLimited = (m_tcb->m_cWnd < bytesInFlight + m_tcb->m_segmentSize);
+        bool isCwndLimited = (m_tcb->m_cWnd <= bytesInFlight + m_tcb->m_segmentSize);
         UpdateCwndUsage(isCwndLimited, bytesInFlight);
     }
     return nPacketsSent;

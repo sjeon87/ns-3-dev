@@ -18,29 +18,31 @@ NS_LOG_COMPONENT_DEFINE("TcpCwndLimitedTestSuite");
 /**
  * @ingroup internet-test
  *
- * @brief Validate sticky cwnd-limited tracking within a usage window.
+ * @brief Validate per-window cwnd usage tracking.
  */
-class TcpCwndLimitedStickyTest : public TestCase
+class TcpPerWindowCwndUsageTrackingTest : public TestCase
 {
   public:
     /**
      * @brief Constructor.
      * @param name test name
      */
-    explicit TcpCwndLimitedStickyTest(const std::string& name);
+    explicit TcpPerWindowCwndUsageTrackingTest(const std::string& name);
 
   private:
     void DoRun() override;
 };
 
-TcpCwndLimitedStickyTest::TcpCwndLimitedStickyTest(const std::string& name)
+TcpPerWindowCwndUsageTrackingTest::TcpPerWindowCwndUsageTrackingTest(const std::string& name)
     : TestCase(name)
 {
 }
 
 void
-TcpCwndLimitedStickyTest::DoRun()
+TcpPerWindowCwndUsageTrackingTest::DoRun()
 {
+    // Scenario 1: First sample is cwnd-limited.
+    // The flow is currently utilizing its full window, so we record this state.
     Ptr<TcpSocketState> tcb = CreateObject<TcpSocketState>();
     tcb->m_segmentSize = 1000;
     tcb->m_cWnd = 10000;
@@ -58,11 +60,14 @@ TcpCwndLimitedStickyTest::DoRun()
                           cwndUsageEnd,
                           "Usage window sequence should follow sndNxt");
 
-    // Stay in the same usage window; a non-limited sample must not clear the sticky signal.
+    // Scenario 2: Stay in the same usage window; a non-limited sample must not clear the persisted
+    // cwnd-limited state. As long as SND.UNA hasn't advanced past the usage sequence, we are in the
+    // same window. We want the cwnd-limited signal to persist within the usage window so that
+    // growth isn't suppressed by transient fluctuations in in-flight bytes.
     tcb->UpdateCwndUsage(SequenceNumber32(2000), SequenceNumber32(12000), false, 4000);
     NS_TEST_ASSERT_MSG_EQ(tcb->m_isCwndLimited,
                           true,
-                          "Cwnd-limited signal should remain sticky in the same window");
+                          "Cwnd-limited signal should persist in the same window");
     NS_TEST_ASSERT_MSG_EQ(tcb->m_maxBytesInFlight,
                           9000,
                           "Max in-flight bytes should remain unchanged in the same window");
@@ -70,7 +75,9 @@ TcpCwndLimitedStickyTest::DoRun()
                           cwndUsageEnd,
                           "Usage window sequence should remain unchanged in the same window");
 
-    // New usage window begins once SND.UNA reaches the previously stored usage sequence.
+    // Scenario 3: New usage window begins once SND.UNA reaches the previously stored usage
+    // sequence. Advancing SND.UNA signals that the previous usage window has been fully
+    // acknowledged. This should clear the persisted state and start tracking from the new sample.
     tcb->UpdateCwndUsage(cwndUsageEnd, SequenceNumber32(12000), false, 4000);
     NS_TEST_ASSERT_MSG_EQ(tcb->m_isCwndLimited,
                           false,
@@ -109,6 +116,12 @@ TcpCwndLimitedSlowStartTest::TcpCwndLimitedSlowStartTest(const std::string& name
 void
 TcpCwndLimitedSlowStartTest::DoRun()
 {
+    // Scenario 1: Slow start fallback.
+    // Flow is in slow start (ssThresh=20000 > cWnd=7000).
+    // m_maxBytesInFlight=4000, so 2*maxBytesInFlight=8000.
+    // With cWnd=7000 < 8000, IsCwndLimited() should return true via the
+    // slow-start fallback, allowing cwnd growth to continue even if the
+    // explicit per-window tracking flag is false.
     Ptr<TcpSocketState> tcb = CreateObject<TcpSocketState>();
     tcb->m_segmentSize = 1000;
     tcb->m_isCwndLimited = false;
@@ -120,11 +133,18 @@ TcpCwndLimitedSlowStartTest::DoRun()
                           true,
                           "Slow start should be cwnd-limited if cwnd < 2 * maxBytesInFlight");
 
+    // Scenario 2: Slow start fallback should stop once cwnd reaches 2 * maxBytesInFlight.
+    // This prevents the fallback from allowing growth indefinitely if the
+    // flow is not actually limited.
     tcb->m_cWnd = 8000;
     NS_TEST_ASSERT_MSG_EQ(tcb->IsCwndLimited(),
                           false,
                           "Slow start fallback should stop once cwnd reaches 2 * maxBytesInFlight");
 
+    // Scenario 3: Congestion avoidance should not use slow-start fallback.
+    // Fallback is specifically a slow-start mechanism to ensure growth when
+    // samples are sparse. In congestion avoidance, we require a strict
+    // cwnd-limited measurement.
     tcb->m_ssThresh = 6000; // congestion avoidance
     NS_TEST_ASSERT_MSG_EQ(tcb->IsCwndLimited(),
                           false,
@@ -157,7 +177,9 @@ TcpCwndLimitedCongAvoidGateTest::TcpCwndLimitedCongAvoidGateTest(const std::stri
 void
 TcpCwndLimitedCongAvoidGateTest::DoRun()
 {
-    // Reno congestion avoidance should suppress growth when not cwnd-limited.
+    // Scenario 1: Reno congestion avoidance should suppress growth when not cwnd-limited.
+    // In congestion avoidance, we only increase cwnd if the flow is actually
+    // limited by the window (to avoid over-aggressive growth).
     Ptr<TcpSocketState> renoState = CreateObject<TcpSocketState>();
     renoState->m_segmentSize = 1000;
     renoState->m_cWnd = 1000;
@@ -171,13 +193,17 @@ TcpCwndLimitedCongAvoidGateTest::DoRun()
                           1000u,
                           "Reno should not grow cwnd when flow is not cwnd-limited");
 
+    // Scenario 2: Reno should grow cwnd when flow is cwnd-limited.
     renoState->m_isCwndLimited = true;
     reno->IncreaseWindow(renoState, 1);
     NS_TEST_ASSERT_MSG_EQ(renoState->m_cWnd.Get(),
                           2000u,
                           "Reno should grow cwnd when flow is cwnd-limited");
 
-    // Cubic should rely on IsCwndLimited(), not only on the sticky flag.
+    // Cubic should rely on IsCwndLimited(), not only on the per-window tracking flag.
+    // Cubic uses IsCwndLimited() to determine if it should enter the
+    // window-growth phase. Without the fallback trigger (maxBytesInFlight=0),
+    // it should be suppressed.
     Ptr<TcpSocketState> cubicState = CreateObject<TcpSocketState>();
     cubicState->m_segmentSize = 1000;
     cubicState->m_cWnd = 3000;
@@ -191,6 +217,9 @@ TcpCwndLimitedCongAvoidGateTest::DoRun()
                           3000u,
                           "Cubic should suppress growth when IsCwndLimited() is false");
 
+    // Scenario 4: Cubic should grow cwnd when IsCwndLimited() becomes true.
+    // By setting maxBytesInFlight such that cWnd < 2 * maxBytesInFlight,
+    // the slow-start fallback triggers, allowing growth.
     cubicState->m_maxBytesInFlight = 2000; // 3000 < 2 * 2000 => cwnd-limited in slow start
     cubic->IncreaseWindow(cubicState, 1);
     NS_TEST_ASSERT_MSG_EQ(cubicState->m_cWnd.Get(),
@@ -209,7 +238,8 @@ class TcpCwndLimitedTestSuite : public TestSuite
     TcpCwndLimitedTestSuite()
         : TestSuite("tcp-cwnd-limited-test", Type::UNIT)
     {
-        AddTestCase(new TcpCwndLimitedStickyTest("cwnd-limited sticky usage window behavior"),
+        AddTestCase(new TcpPerWindowCwndUsageTrackingTest(
+                        "cwnd-limited per-window usage tracking behavior"),
                     TestCase::Duration::QUICK);
         AddTestCase(new TcpCwndLimitedSlowStartTest("cwnd-limited slow-start fallback behavior"),
                     TestCase::Duration::QUICK);

@@ -5,6 +5,10 @@
  */
 #include "tcp-socket-state.h"
 
+#include "ns3/log.h"
+
+NS_LOG_COMPONENT_DEFINE("TcpSocketState");
+
 namespace ns3
 {
 
@@ -141,7 +145,9 @@ TcpSocketState::IsCwndLimited() const
 
     if (m_cWnd < m_ssThresh)
     {
-        return static_cast<uint64_t>(m_cWnd.Get()) < (2ULL * m_maxBytesInFlight);
+        // Note: multiplication is safe for cwnd values up to ~2 GB (well above
+        // practical ns-3 limits).
+        return m_cWnd.Get() < 2u * m_maxBytesInFlight;
     }
 
     return false;
@@ -153,12 +159,19 @@ TcpSocketState::UpdateCwndUsage(const SequenceNumber32& sndUna,
                                 bool isCwndLimited,
                                 uint32_t bytesInFlight)
 {
+    NS_LOG_FUNCTION(this << sndUna << sndNxt << isCwndLimited << bytesInFlight);
+
     // Update cwnd-limited accounting when entering a new usage window, when
     // observing a cwnd-limited sample, or when seeing a stronger non-limited
     // in-flight sample.
     if (!(sndUna < m_cwndUsageSeq) || isCwndLimited ||
         (!m_isCwndLimited && bytesInFlight > m_maxBytesInFlight))
     {
+        NS_LOG_INFO("Entering new cwnd usage window: sndUna="
+                    << sndUna << " sndNxt=" << sndNxt << " isCwndLimited=" << isCwndLimited
+                    << " bytesInFlight=" << bytesInFlight << " (was: isCwndLimited="
+                    << m_isCwndLimited << " maxBytesInFlight=" << m_maxBytesInFlight
+                    << " cwndUsageSeq=" << m_cwndUsageSeq << ")");
         m_isCwndLimited = isCwndLimited;
         m_maxBytesInFlight = bytesInFlight;
         m_cwndUsageSeq = sndNxt;
