@@ -9,8 +9,10 @@
 #define BUNDLE_HEADER_H
 
 #include "bundle-flags.h"
+
 #include "ns3/header.h"
 #include "ns3/nstime.h"
+
 #include <string>
 
 namespace ns3
@@ -21,12 +23,12 @@ namespace ns3
  *
  * @brief An implementation of the Primary Block Header for a BPv7 bundle.
  *
- * The primary block contains the basic parameters of the bundle, 
+ * The primary block contains the basic parameters of the bundle,
  * including routing information, timestamps, and processing flags.
  */
 class PrimaryBlockHeader : public Header
 {
-public:
+  public:
     PrimaryBlockHeader();
 
     /**
@@ -310,7 +312,7 @@ public:
      */
     void SetCustodianEID(const std::string& scheme, const std::string& ssp);
 
-private:
+  private:
     uint8_t m_version = 0;                  //!< Bundle Protocol version
     uint32_t m_procFlags = 0;               //!< Bundle processing control flags
     uint32_t m_blockLength = 0;             //!< Length of the primary block
@@ -340,7 +342,7 @@ private:
  */
 class PayloadBlockHeader : public Header
 {
-public:
+  public:
     PayloadBlockHeader();
 
     /**
@@ -416,10 +418,10 @@ public:
      */
     uint32_t GetBlockLength() const;
 
-private:
-    uint8_t m_blockType = 1;      //!< Block type identifier (Payload = 1)
-    uint8_t m_procFlags = 0;      //!< Block processing control flags
-    uint32_t m_blockLength = 0;   //!< Length of the payload block
+  private:
+    uint8_t m_blockType = 1;    //!< Block type identifier (Payload = 1)
+    uint8_t m_procFlags = 0;    //!< Block processing control flags
+    uint32_t m_blockLength = 0; //!< Length of the payload block
 };
 
 /**
@@ -427,12 +429,12 @@ private:
  *
  * @brief An implementation of the Bundle Status Report header.
  *
- * Used for administrative records reporting the status of a bundle 
+ * Used for administrative records reporting the status of a bundle
  * (e.g., received, forwarded, delivered, deleted).
  */
 class BundleStatusReport : public Header
 {
-public:
+  public:
     BundleStatusReport();
 
     /**
@@ -604,18 +606,18 @@ public:
      */
     uint32_t GetSourceID() const;
 
-private:
-    uint8_t m_statusFlags = 0;      //!< Status flags indicating the event
-    uint8_t m_reasonCode = 0;       //!< Reason code for the status
-    uint32_t m_fragmentOffset = 0;  //!< Fragment offset of the subject bundle
-    Time m_bundleReceipt;           //!< Timestamp for bundle receipt
-    Time m_custodyAccept;           //!< Timestamp for custody acceptance
-    Time m_bundleForward;           //!< Timestamp for bundle forwarding
-    Time m_bundleDelivery;          //!< Timestamp for bundle delivery
-    Time m_creationTime;            //!< Creation timestamp of subject bundle
-    uint32_t m_seq = 0;             //!< Sequence number of subject bundle
-    uint32_t m_lenSourceEID = 0;    //!< Source EID string length
-    uint32_t m_sourceID = 0;        //!< Source EID identifier
+  private:
+    uint8_t m_statusFlags = 0;     //!< Status flags indicating the event
+    uint8_t m_reasonCode = 0;      //!< Reason code for the status
+    uint32_t m_fragmentOffset = 0; //!< Fragment offset of the subject bundle
+    Time m_bundleReceipt;          //!< Timestamp for bundle receipt
+    Time m_custodyAccept;          //!< Timestamp for custody acceptance
+    Time m_bundleForward;          //!< Timestamp for bundle forwarding
+    Time m_bundleDelivery;         //!< Timestamp for bundle delivery
+    Time m_creationTime;           //!< Creation timestamp of subject bundle
+    uint32_t m_seq = 0;            //!< Sequence number of subject bundle
+    uint32_t m_lenSourceEID = 0;   //!< Source EID string length
+    uint32_t m_sourceID = 0;       //!< Source EID identifier
 };
 
 /**
@@ -623,12 +625,12 @@ private:
  *
  * @brief An implementation of the Custody Signal header.
  *
- * Used for administrative records reporting the acceptance or 
+ * Used for administrative records reporting the acceptance or
  * refusal of custody of a bundle.
  */
 class CustodySignal : public Header
 {
-public:
+  public:
     CustodySignal();
 
     /**
@@ -752,14 +754,14 @@ public:
      */
     uint32_t GetSourceID() const;
 
-private:
-    uint8_t m_statusFlags = 0;      //!< Status flags (accept/reject reason)
-    uint32_t m_fragmentOffset = 0;  //!< Fragment offset of the subject bundle
-    Time m_tos;                     //!< Time of signal generation
-    Time m_creationTime;            //!< Creation timestamp of subject bundle
-    uint32_t m_seq = 0;             //!< Sequence number of subject bundle
-    uint32_t m_lenSourceEID = 0;    //!< Source EID string length
-    uint32_t m_sourceID = 0;        //!< Source EID identifier
+  private:
+    uint8_t m_statusFlags = 0;     //!< Status flags (accept/reject reason)
+    uint32_t m_fragmentOffset = 0; //!< Fragment offset of the subject bundle
+    Time m_tos;                    //!< Time of signal generation
+    Time m_creationTime;           //!< Creation timestamp of subject bundle
+    uint32_t m_seq = 0;            //!< Sequence number of subject bundle
+    uint32_t m_lenSourceEID = 0;   //!< Source EID string length
+    uint32_t m_sourceID = 0;       //!< Source EID identifier
 };
 
 } // namespace ns3

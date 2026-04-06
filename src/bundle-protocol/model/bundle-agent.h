@@ -8,9 +8,9 @@
 #ifndef BUNDLE_AGENT_H
 #define BUNDLE_AGENT_H
 
-#include "bundle.h"
 #include "bundle-header.h"
 #include "bundle-storage-engine.h"
+#include "bundle.h"
 
 #include "ns3/event-id.h"
 #include "ns3/nstime.h"
@@ -28,8 +28,7 @@ class BundleCla;
 
 class BundleAgent : public Object
 {
-public:
-
+  public:
     /**
      * @brief Get the type ID.
      * @return the object TypeId
@@ -89,7 +88,8 @@ public:
                             uint32_t procFlags = 0);
 
     /**
-     * @brief Receieve a bundle from a destination, called by CLA when a bundle arrives from the network
+     * @brief Receieve a bundle from a destination, called by CLA when a bundle arrives from the
+     * network
      * @param bundle the bundle received
      * @return 0 on failure, 1 on success
      */
@@ -116,12 +116,18 @@ public:
      * @param reasonCode the reason to generate a status code
      * @return bundle with the status report
      */
-    Ptr<Bundle> GenerateStatusReport(Ptr<Bundle> bundle,
-                                     uint8_t statusFlags,
-                                     uint8_t reasonCode);
+    Ptr<Bundle> GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8_t reasonCode);
 
-private:
-    
+    /**
+     * @brief Attempt to forward any stored bundles destined for a specific EID.
+     * @param destinationEID The EID that just became available.
+     */
+    void ProcessBacklog(const std::string& destinationEID);
+
+    typedef Callback<void, Ptr<Bundle>> BundleReceiveCallback;
+    void SetReceiveCallback(BundleReceiveCallback cb);
+
+  private:
     /**
      * @brief Get the CLA for a destination EID
      * @param eid EID of destination
@@ -146,11 +152,11 @@ private:
      */
     bool IsLocalDestination(const std::string& eid) const;
 
-    std::string m_localEID;                                 //!< Local EID of process
-    uint32_t m_seqNumber = 0;                               //!< Sequence number of messages sent
-    Ptr<BundleStorageEngine> m_bundleStorageEngine;         //!< Storage engine for node
-    std::map<std::string, Ptr<BundleCla>> m_clas;           //!< Map of CLAs with destination EIDs
-    std::map<uint32_t, EventId> m_expiryEvents;             //!< Expiry event tracker
+    std::string m_localEID;                         //!< Local EID of process
+    uint32_t m_seqNumber = 0;                       //!< Sequence number of messages sent
+    Ptr<BundleStorageEngine> m_bundleStorageEngine; //!< Storage engine for node
+    std::map<std::string, Ptr<BundleCla>> m_clas;   //!< Map of CLAs with destination EIDs
+    std::map<uint32_t, EventId> m_expiryEvents;     //!< Expiry event tracker
 };
 
 } // namespace ns3

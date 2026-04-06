@@ -6,6 +6,7 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 #include "bundle-storage-engine.h"
+
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
@@ -70,8 +71,8 @@ BundleStorageEngine::StoreBundle(Ptr<Bundle> bundle)
 
     if (m_totalSize > 0 && m_currentSize + bundleSize > m_totalSize)
     {
-        NS_LOG_WARN("Storage full: cannot store bundle of size " << bundleSize
-                    << " (used=" << m_currentSize << " total=" << m_totalSize << ")");
+        NS_LOG_WARN("Storage full: cannot store bundle of size "
+                    << bundleSize << " (used=" << m_currentSize << " total=" << m_totalSize << ")");
         return 0;
     }
 
@@ -79,9 +80,8 @@ BundleStorageEngine::StoreBundle(Ptr<Bundle> bundle)
     m_bundleMap[handle] = bundle;
     m_currentSize += bundleSize;
 
-    NS_LOG_DEBUG("Stored bundle with handle " << handle
-                 << " size=" << bundleSize
-                 << " totalUsed=" << m_currentSize);
+    NS_LOG_DEBUG("Stored bundle with handle " << handle << " size=" << bundleSize
+                                              << " totalUsed=" << m_currentSize);
     return handle;
 }
 
@@ -124,9 +124,8 @@ BundleStorageEngine::DeleteBundle(uint32_t handle)
         m_currentSize -= bundleSize;
     }
 
-    NS_LOG_DEBUG("Deleted bundle handle=" << handle
-                 << " freed=" << bundleSize
-                 << " totalUsed=" << m_currentSize);
+    NS_LOG_DEBUG("Deleted bundle handle=" << handle << " freed=" << bundleSize
+                                          << " totalUsed=" << m_currentSize);
     return 0;
 }
 
@@ -141,8 +140,8 @@ BundleStorageEngine::GetExpiredBundles() const
     {
         if (entry.second->GetExpiry() <= now)
         {
-            NS_LOG_DEBUG("Bundle handle=" << entry.first
-                         << " expired at " << entry.second->GetExpiry().As(Time::S));
+            NS_LOG_DEBUG("Bundle handle=" << entry.first << " expired at "
+                                          << entry.second->GetExpiry().As(Time::S));
             expired.push_back(entry.second);
         }
     }

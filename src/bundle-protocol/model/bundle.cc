@@ -6,6 +6,7 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 #include "bundle.h"
+
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
@@ -164,6 +165,18 @@ Bundle::GetSourceEID() const
     std::string scheme = dict.substr(m_primaryHeader.GetSourceSchemeOffset());
     scheme = scheme.substr(0, scheme.find('\0'));
     std::string ssp = dict.substr(m_primaryHeader.GetSourceSSPOffset());
+    ssp = ssp.substr(0, ssp.find('\0'));
+    return scheme + ":" + ssp;
+}
+
+std::string
+Bundle::GetReportToEID() const
+{
+    NS_LOG_FUNCTION(this);
+    const std::string& dict = m_primaryHeader.GetDictionary();
+    std::string scheme = dict.substr(m_primaryHeader.GetReportToSchemeOffset());
+    scheme = scheme.substr(0, scheme.find('\0'));
+    std::string ssp = dict.substr(m_primaryHeader.GetReportToSSPOffset());
     ssp = ssp.substr(0, ssp.find('\0'));
     return scheme + ":" + ssp;
 }

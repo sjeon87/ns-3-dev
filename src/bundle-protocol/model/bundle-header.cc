@@ -6,6 +6,7 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 #include "bundle-header.h"
+
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
@@ -46,21 +47,17 @@ void
 PrimaryBlockHeader::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
-    os << "(version=" << (uint32_t)m_version
-       << " procFlags=" << m_procFlags
+    os << "(version=" << (uint32_t)m_version << " procFlags=" << m_procFlags
        << " blockLength=" << m_blockLength
        << " destinationSchemeOffset=" << m_destinationSchemeOffset
        << " destinationSSPOffset=" << m_destinationSSPOffset
-       << " sourceSchemeOffset=" << m_sourceSchemeOffset
-       << " sourceSSPOffset=" << m_sourceSSPOffset
+       << " sourceSchemeOffset=" << m_sourceSchemeOffset << " sourceSSPOffset=" << m_sourceSSPOffset
        << " reportToSchemeOffset=" << m_reportToSchemeOffset
        << " reportToSSPOffset=" << m_reportToSSPOffset
        << " custodianSchemeOffset=" << m_custodianSchemeOffset
        << " custodianSSPOffset=" << m_custodianSSPOffset
-       << " creationTime=" << m_creationTime.As(Time::S)
-       << " seq=" << m_seq
-       << " TTL=" << m_TTL.As(Time::S)
-       << " dictionaryLength=" << m_dictionaryLength
+       << " creationTime=" << m_creationTime.As(Time::S) << " seq=" << m_seq
+       << " TTL=" << m_TTL.As(Time::S) << " dictionaryLength=" << m_dictionaryLength
        << " dict=" << m_dictByteArray << ")";
 }
 
@@ -136,50 +133,185 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     return GetSerializedSize();
 }
 
-void PrimaryBlockHeader::SetVersion(uint8_t version)       { m_version = version; }
-uint8_t PrimaryBlockHeader::GetVersion() const             { return m_version; }
+void
+PrimaryBlockHeader::SetVersion(uint8_t version)
+{
+    m_version = version;
+}
 
-void PrimaryBlockHeader::SetProcFlags(uint32_t flags)      { m_procFlags = flags; }
-uint32_t PrimaryBlockHeader::GetProcFlags() const          { return m_procFlags; }
+uint8_t
+PrimaryBlockHeader::GetVersion() const
+{
+    return m_version;
+}
 
-void PrimaryBlockHeader::SetBlockLength(uint32_t length)   { m_blockLength = length; }
-uint32_t PrimaryBlockHeader::GetBlockLength() const        { return m_blockLength; }
+void
+PrimaryBlockHeader::SetProcFlags(uint32_t flags)
+{
+    m_procFlags = flags;
+}
 
-void PrimaryBlockHeader::SetDestinationSchemeOffset(uint16_t offset) { m_destinationSchemeOffset = offset; }
-uint16_t PrimaryBlockHeader::GetDestinationSchemeOffset() const      { return m_destinationSchemeOffset; }
+uint32_t
+PrimaryBlockHeader::GetProcFlags() const
+{
+    return m_procFlags;
+}
 
-void PrimaryBlockHeader::SetDestinationSSPOffset(uint16_t offset)    { m_destinationSSPOffset = offset; }
-uint16_t PrimaryBlockHeader::GetDestinationSSPOffset() const         { return m_destinationSSPOffset; }
+void
+PrimaryBlockHeader::SetBlockLength(uint32_t length)
+{
+    m_blockLength = length;
+}
 
-void PrimaryBlockHeader::SetSourceSchemeOffset(uint16_t offset)      { m_sourceSchemeOffset = offset; }
-uint16_t PrimaryBlockHeader::GetSourceSchemeOffset() const           { return m_sourceSchemeOffset; }
+uint32_t
+PrimaryBlockHeader::GetBlockLength() const
+{
+    return m_blockLength;
+}
 
-void PrimaryBlockHeader::SetSourceSSPOffset(uint16_t offset)         { m_sourceSSPOffset = offset; }
-uint16_t PrimaryBlockHeader::GetSourceSSPOffset() const              { return m_sourceSSPOffset; }
+void
+PrimaryBlockHeader::SetDestinationSchemeOffset(uint16_t offset)
+{
+    m_destinationSchemeOffset = offset;
+}
 
-void PrimaryBlockHeader::SetReportToSchemeOffset(uint16_t offset)    { m_reportToSchemeOffset = offset; }
-uint16_t PrimaryBlockHeader::GetReportToSchemeOffset() const         { return m_reportToSchemeOffset; }
+uint16_t
+PrimaryBlockHeader::GetDestinationSchemeOffset() const
+{
+    return m_destinationSchemeOffset;
+}
 
-void PrimaryBlockHeader::SetReportToSSPOffset(uint16_t offset)       { m_reportToSSPOffset = offset; }
-uint16_t PrimaryBlockHeader::GetReportToSSPOffset() const            { return m_reportToSSPOffset; }
+void
+PrimaryBlockHeader::SetDestinationSSPOffset(uint16_t offset)
+{
+    m_destinationSSPOffset = offset;
+}
 
-void PrimaryBlockHeader::SetCustodianSchemeOffset(uint16_t offset)   { m_custodianSchemeOffset = offset; }
-uint16_t PrimaryBlockHeader::GetCustodianSchemeOffset() const        { return m_custodianSchemeOffset; }
+uint16_t
+PrimaryBlockHeader::GetDestinationSSPOffset() const
+{
+    return m_destinationSSPOffset;
+}
 
-void PrimaryBlockHeader::SetCustodianSSPOffset(uint16_t offset)      { m_custodianSSPOffset = offset; }
-uint16_t PrimaryBlockHeader::GetCustodianSSPOffset() const           { return m_custodianSSPOffset; }
+void
+PrimaryBlockHeader::SetSourceSchemeOffset(uint16_t offset)
+{
+    m_sourceSchemeOffset = offset;
+}
 
-void PrimaryBlockHeader::SetCreationTime(Time t)           { m_creationTime = t; }
-Time PrimaryBlockHeader::GetCreationTime() const           { return m_creationTime; }
+uint16_t
+PrimaryBlockHeader::GetSourceSchemeOffset() const
+{
+    return m_sourceSchemeOffset;
+}
 
-void PrimaryBlockHeader::SetTTL(Time t)                    { m_TTL = t; }
-Time PrimaryBlockHeader::GetTTL() const                    { return m_TTL; }
+void
+PrimaryBlockHeader::SetSourceSSPOffset(uint16_t offset)
+{
+    m_sourceSSPOffset = offset;
+}
 
-void PrimaryBlockHeader::SetSequenceNumber(uint32_t seq)   { m_seq = seq; }
-uint32_t PrimaryBlockHeader::GetSequenceNumber() const     { return m_seq; }
+uint16_t
+PrimaryBlockHeader::GetSourceSSPOffset() const
+{
+    return m_sourceSSPOffset;
+}
 
-void PrimaryBlockHeader::SetDictionaryLength(uint32_t len) { m_dictionaryLength = len; }
-uint32_t PrimaryBlockHeader::GetDictionaryLength() const   { return m_dictionaryLength; }
+void
+PrimaryBlockHeader::SetReportToSchemeOffset(uint16_t offset)
+{
+    m_reportToSchemeOffset = offset;
+}
+
+uint16_t
+PrimaryBlockHeader::GetReportToSchemeOffset() const
+{
+    return m_reportToSchemeOffset;
+}
+
+void
+PrimaryBlockHeader::SetReportToSSPOffset(uint16_t offset)
+{
+    m_reportToSSPOffset = offset;
+}
+
+uint16_t
+PrimaryBlockHeader::GetReportToSSPOffset() const
+{
+    return m_reportToSSPOffset;
+}
+
+void
+PrimaryBlockHeader::SetCustodianSchemeOffset(uint16_t offset)
+{
+    m_custodianSchemeOffset = offset;
+}
+
+uint16_t
+PrimaryBlockHeader::GetCustodianSchemeOffset() const
+{
+    return m_custodianSchemeOffset;
+}
+
+void
+PrimaryBlockHeader::SetCustodianSSPOffset(uint16_t offset)
+{
+    m_custodianSSPOffset = offset;
+}
+
+uint16_t
+PrimaryBlockHeader::GetCustodianSSPOffset() const
+{
+    return m_custodianSSPOffset;
+}
+
+void
+PrimaryBlockHeader::SetCreationTime(Time t)
+{
+    m_creationTime = t;
+}
+
+Time
+PrimaryBlockHeader::GetCreationTime() const
+{
+    return m_creationTime;
+}
+
+void
+PrimaryBlockHeader::SetTTL(Time t)
+{
+    m_TTL = t;
+}
+
+Time
+PrimaryBlockHeader::GetTTL() const
+{
+    return m_TTL;
+}
+
+void
+PrimaryBlockHeader::SetSequenceNumber(uint32_t seq)
+{
+    m_seq = seq;
+}
+
+uint32_t
+PrimaryBlockHeader::GetSequenceNumber() const
+{
+    return m_seq;
+}
+
+void
+PrimaryBlockHeader::SetDictionaryLength(uint32_t len)
+{
+    m_dictionaryLength = len;
+}
+
+uint32_t
+PrimaryBlockHeader::GetDictionaryLength() const
+{
+    return m_dictionaryLength;
+}
 
 void
 PrimaryBlockHeader::SetDictionary(const std::string& dict)
@@ -270,7 +402,6 @@ PrimaryBlockHeader::SetCustodianEID(const std::string& scheme, const std::string
     m_dictionaryLength = m_dictByteArray.size();
 }
 
-
 PayloadBlockHeader::PayloadBlockHeader()
 {
     NS_LOG_FUNCTION(this);
@@ -296,8 +427,7 @@ void
 PayloadBlockHeader::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
-    os << "(blockType=" << (uint32_t)m_blockType
-       << " procFlags=" << (uint32_t)m_procFlags
+    os << "(blockType=" << (uint32_t)m_blockType << " procFlags=" << (uint32_t)m_procFlags
        << " blockLength=" << m_blockLength << ")";
 }
 
@@ -329,15 +459,41 @@ PayloadBlockHeader::Deserialize(Buffer::Iterator start)
     return GetSerializedSize();
 }
 
-void PayloadBlockHeader::SetBlockType(uint8_t type)        { m_blockType = type; }
-uint8_t PayloadBlockHeader::GetBlockType() const           { return m_blockType; }
+void
+PayloadBlockHeader::SetBlockType(uint8_t type)
+{
+    m_blockType = type;
+}
 
-void PayloadBlockHeader::SetProcFlags(uint8_t flags)       { m_procFlags = flags; }
-uint8_t PayloadBlockHeader::GetProcFlags() const           { return m_procFlags; }
+uint8_t
+PayloadBlockHeader::GetBlockType() const
+{
+    return m_blockType;
+}
 
-void PayloadBlockHeader::SetBlockLength(uint32_t length)   { m_blockLength = length; }
-uint32_t PayloadBlockHeader::GetBlockLength() const        { return m_blockLength; }
+void
+PayloadBlockHeader::SetProcFlags(uint8_t flags)
+{
+    m_procFlags = flags;
+}
 
+uint8_t
+PayloadBlockHeader::GetProcFlags() const
+{
+    return m_procFlags;
+}
+
+void
+PayloadBlockHeader::SetBlockLength(uint32_t length)
+{
+    m_blockLength = length;
+}
+
+uint32_t
+PayloadBlockHeader::GetBlockLength() const
+{
+    return m_blockLength;
+}
 
 BundleStatusReport::BundleStatusReport()
     : m_creationTime(Simulator::Now())
@@ -365,24 +521,20 @@ void
 BundleStatusReport::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
-    os << "(statusFlags=" << (uint32_t)m_statusFlags
-       << " reasonCode=" << (uint32_t)m_reasonCode
-       << " fragmentOffset=" << m_fragmentOffset
-       << " bundleReceipt=" << m_bundleReceipt.As(Time::S)
+    os << "(statusFlags=" << (uint32_t)m_statusFlags << " reasonCode=" << (uint32_t)m_reasonCode
+       << " fragmentOffset=" << m_fragmentOffset << " bundleReceipt=" << m_bundleReceipt.As(Time::S)
        << " custodyAccept=" << m_custodyAccept.As(Time::S)
        << " bundleForward=" << m_bundleForward.As(Time::S)
        << " bundleDelivery=" << m_bundleDelivery.As(Time::S)
-       << " creationTime=" << m_creationTime.As(Time::S)
-       << " seq=" << m_seq
-       << " lenSourceEID=" << m_lenSourceEID
-       << " sourceID=" << m_sourceID << ")";
+       << " creationTime=" << m_creationTime.As(Time::S) << " seq=" << m_seq
+       << " lenSourceEID=" << m_lenSourceEID << " sourceID=" << m_sourceID << ")";
 }
 
 uint32_t
 BundleStatusReport::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
-    return 1 + 1 + 4 + (8 * 4) + 4 + 4 + 4;
+    return 1 + 1 + 4 + (8 * 5) + 4 + 4 + 4;
 }
 
 void
@@ -422,39 +574,137 @@ BundleStatusReport::Deserialize(Buffer::Iterator start)
     return GetSerializedSize();
 }
 
-void BundleStatusReport::SetStatusFlags(uint8_t flags)         { m_statusFlags = flags; }
-uint8_t BundleStatusReport::GetStatusFlags() const             { return m_statusFlags; }
+void
+BundleStatusReport::SetStatusFlags(uint8_t flags)
+{
+    m_statusFlags = flags;
+}
 
-void BundleStatusReport::SetReasonCode(uint8_t code)           { m_reasonCode = code; }
-uint8_t BundleStatusReport::GetReasonCode() const              { return m_reasonCode; }
+uint8_t
+BundleStatusReport::GetStatusFlags() const
+{
+    return m_statusFlags;
+}
 
-void BundleStatusReport::SetFragmentOffset(uint32_t offset)    { m_fragmentOffset = offset; }
-uint32_t BundleStatusReport::GetFragmentOffset() const         { return m_fragmentOffset; }
+void
+BundleStatusReport::SetReasonCode(uint8_t code)
+{
+    m_reasonCode = code;
+}
 
-void BundleStatusReport::SetBundleReceiptTime(Time t)          { m_bundleReceipt = t; }
-Time BundleStatusReport::GetBundleReceiptTime() const          { return m_bundleReceipt; }
+uint8_t
+BundleStatusReport::GetReasonCode() const
+{
+    return m_reasonCode;
+}
 
-void BundleStatusReport::SetCustodyAcceptTime(Time t)          { m_custodyAccept = t; }
-Time BundleStatusReport::GetCustodyAcceptTime() const          { return m_custodyAccept; }
+void
+BundleStatusReport::SetFragmentOffset(uint32_t offset)
+{
+    m_fragmentOffset = offset;
+}
 
-void BundleStatusReport::SetBundleForwardTime(Time t)          { m_bundleForward = t; }
-Time BundleStatusReport::GetBundleForwardTime() const          { return m_bundleForward; }
+uint32_t
+BundleStatusReport::GetFragmentOffset() const
+{
+    return m_fragmentOffset;
+}
 
-void BundleStatusReport::SetBundleDeliveryTime(Time t)         { m_bundleDelivery = t; }
-Time BundleStatusReport::GetBundleDeliveryTime() const         { return m_bundleDelivery; }
+void
+BundleStatusReport::SetBundleReceiptTime(Time t)
+{
+    m_bundleReceipt = t;
+}
 
-void BundleStatusReport::SetCreationTime(Time t)               { m_creationTime = t; }
-Time BundleStatusReport::GetCreationTime() const               { return m_creationTime; }
+Time
+BundleStatusReport::GetBundleReceiptTime() const
+{
+    return m_bundleReceipt;
+}
 
-void BundleStatusReport::SetSequenceNumber(uint32_t seq)       { m_seq = seq; }
-uint32_t BundleStatusReport::GetSequenceNumber() const         { return m_seq; }
+void
+BundleStatusReport::SetCustodyAcceptTime(Time t)
+{
+    m_custodyAccept = t;
+}
 
-void BundleStatusReport::SetSourceEIDLength(uint32_t len)      { m_lenSourceEID = len; }
-uint32_t BundleStatusReport::GetSourceEIDLength() const        { return m_lenSourceEID; }
+Time
+BundleStatusReport::GetCustodyAcceptTime() const
+{
+    return m_custodyAccept;
+}
 
-void BundleStatusReport::SetSourceID(uint32_t id)              { m_sourceID = id; }
-uint32_t BundleStatusReport::GetSourceID() const               { return m_sourceID; }
+void
+BundleStatusReport::SetBundleForwardTime(Time t)
+{
+    m_bundleForward = t;
+}
 
+Time
+BundleStatusReport::GetBundleForwardTime() const
+{
+    return m_bundleForward;
+}
+
+void
+BundleStatusReport::SetBundleDeliveryTime(Time t)
+{
+    m_bundleDelivery = t;
+}
+
+Time
+BundleStatusReport::GetBundleDeliveryTime() const
+{
+    return m_bundleDelivery;
+}
+
+void
+BundleStatusReport::SetCreationTime(Time t)
+{
+    m_creationTime = t;
+}
+
+Time
+BundleStatusReport::GetCreationTime() const
+{
+    return m_creationTime;
+}
+
+void
+BundleStatusReport::SetSequenceNumber(uint32_t seq)
+{
+    m_seq = seq;
+}
+
+uint32_t
+BundleStatusReport::GetSequenceNumber() const
+{
+    return m_seq;
+}
+
+void
+BundleStatusReport::SetSourceEIDLength(uint32_t len)
+{
+    m_lenSourceEID = len;
+}
+
+uint32_t
+BundleStatusReport::GetSourceEIDLength() const
+{
+    return m_lenSourceEID;
+}
+
+void
+BundleStatusReport::SetSourceID(uint32_t id)
+{
+    m_sourceID = id;
+}
+
+uint32_t
+BundleStatusReport::GetSourceID() const
+{
+    return m_sourceID;
+}
 
 CustodySignal::CustodySignal()
     : m_creationTime(Simulator::Now())
@@ -482,13 +732,10 @@ void
 CustodySignal::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
-    os << "(statusFlags=" << (uint32_t)m_statusFlags
-       << " fragmentOffset=" << m_fragmentOffset
-       << " tos=" << m_tos.As(Time::S)
-       << " creationTime=" << m_creationTime.As(Time::S)
-       << " seq=" << m_seq
-       << " lenSourceEID=" << m_lenSourceEID
-       << " sourceID=" << m_sourceID << ")";
+    os << "(statusFlags=" << (uint32_t)m_statusFlags << " fragmentOffset=" << m_fragmentOffset
+       << " tos=" << m_tos.As(Time::S) << " creationTime=" << m_creationTime.As(Time::S)
+       << " seq=" << m_seq << " lenSourceEID=" << m_lenSourceEID << " sourceID=" << m_sourceID
+       << ")";
 }
 
 uint32_t
@@ -527,25 +774,88 @@ CustodySignal::Deserialize(Buffer::Iterator start)
     return GetSerializedSize();
 }
 
-void CustodySignal::SetStatusFlags(uint8_t flags)          { m_statusFlags = flags; }
-uint8_t CustodySignal::GetStatusFlags() const              { return m_statusFlags; }
+void
+CustodySignal::SetStatusFlags(uint8_t flags)
+{
+    m_statusFlags = flags;
+}
 
-void CustodySignal::SetFragmentOffset(uint32_t offset)     { m_fragmentOffset = offset; }
-uint32_t CustodySignal::GetFragmentOffset() const          { return m_fragmentOffset; }
+uint8_t
+CustodySignal::GetStatusFlags() const
+{
+    return m_statusFlags;
+}
 
-void CustodySignal::SetTimeOfSignal(Time t)                { m_tos = t; }
-Time CustodySignal::GetTimeOfSignal() const                { return m_tos; }
+void
+CustodySignal::SetFragmentOffset(uint32_t offset)
+{
+    m_fragmentOffset = offset;
+}
 
-void CustodySignal::SetCreationTime(Time t)                { m_creationTime = t; }
-Time CustodySignal::GetCreationTime() const                { return m_creationTime; }
+uint32_t
+CustodySignal::GetFragmentOffset() const
+{
+    return m_fragmentOffset;
+}
 
-void CustodySignal::SetSequenceNumber(uint32_t seq)        { m_seq = seq; }
-uint32_t CustodySignal::GetSequenceNumber() const          { return m_seq; }
+void
+CustodySignal::SetTimeOfSignal(Time t)
+{
+    m_tos = t;
+}
 
-void CustodySignal::SetSourceEIDLength(uint32_t len)       { m_lenSourceEID = len; }
-uint32_t CustodySignal::GetSourceEIDLength() const         { return m_lenSourceEID; }
+Time
+CustodySignal::GetTimeOfSignal() const
+{
+    return m_tos;
+}
 
-void CustodySignal::SetSourceID(uint32_t id)               { m_sourceID = id; }
-uint32_t CustodySignal::GetSourceID() const                { return m_sourceID; }
+void
+CustodySignal::SetCreationTime(Time t)
+{
+    m_creationTime = t;
+}
+
+Time
+CustodySignal::GetCreationTime() const
+{
+    return m_creationTime;
+}
+
+void
+CustodySignal::SetSequenceNumber(uint32_t seq)
+{
+    m_seq = seq;
+}
+
+uint32_t
+CustodySignal::GetSequenceNumber() const
+{
+    return m_seq;
+}
+
+void
+CustodySignal::SetSourceEIDLength(uint32_t len)
+{
+    m_lenSourceEID = len;
+}
+
+uint32_t
+CustodySignal::GetSourceEIDLength() const
+{
+    return m_lenSourceEID;
+}
+
+void
+CustodySignal::SetSourceID(uint32_t id)
+{
+    m_sourceID = id;
+}
+
+uint32_t
+CustodySignal::GetSourceID() const
+{
+    return m_sourceID;
+}
 
 } // namespace ns3

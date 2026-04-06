@@ -77,6 +77,6 @@ enum CUSTODY_FLAGS
     CT_CORRUPT_BLK
 };
 
-}   // namespace ns3
+} // namespace ns3
 
 #endif /* BUNDLE_FLAGS_H */

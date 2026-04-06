@@ -9,8 +9,9 @@
 #define BUNDLE_STORAGE_ENGINE_H
 
 #include "bundle.h"
+
 #include "ns3/object.h"
-#include "ns3/type-id.h"  
+#include "ns3/type-id.h"
 
 #include <map>
 #include <vector>
@@ -19,7 +20,7 @@ namespace ns3
 {
 
 /**
- * 
+ *
  * @ingroup dtn
  *
  * @brief Storage database engine for bundles
@@ -30,8 +31,7 @@ namespace ns3
  */
 class BundleStorageEngine : public Object
 {
-public:
-
+  public:
     /**
      * @brief Get the type ID.
      * @return the object TypeId
@@ -99,11 +99,11 @@ public:
      */
     bool HasBundle(uint32_t handle) const;
 
-private:
-    uint32_t m_currentSize = 0;                         //!< Current size of the engine
-    uint32_t m_totalSize = 0;                           //!< Total size of the engine
-    uint32_t m_nextHandle = 1;                          //!< Next available handle
-    std::map<uint32_t, Ptr<Bundle>> m_bundleMap;        //!< Map of all the bundles to handles
+  private:
+    uint32_t m_currentSize = 0;                  //!< Current size of the engine
+    uint32_t m_totalSize = 0;                    //!< Total size of the engine
+    uint32_t m_nextHandle = 1;                   //!< Next available handle
+    std::map<uint32_t, Ptr<Bundle>> m_bundleMap; //!< Map of all the bundles to handles
 };
 
 } // namespace ns3
