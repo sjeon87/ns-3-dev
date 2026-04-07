@@ -112,7 +112,7 @@ BundleAgent::RegisterCla(const std::string& destinationEID, Ptr<BundleCla> cla)
 {
     NS_LOG_FUNCTION(this << destinationEID << cla);
     cla->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, this));
-    
+
     auto ret = m_clas.insert(std::make_pair(destinationEID, cla));
 
     if (ret.second)
@@ -165,19 +165,19 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
 
     std::string destScheme = "dtn", destSsp = destinationEID;
     size_t destPos = destinationEID.find(':');
-    if (destPos != std::string::npos) {
+    if (destPos != std::string::npos)
+    {
         destScheme = destinationEID.substr(0, destPos);
         destSsp = destinationEID.substr(destPos + 1);
     }
 
     std::string srcScheme = "dtn", srcSsp = m_localEID;
     size_t srcPos = m_localEID.find(':');
-    if (srcPos != std::string::npos) {
+    if (srcPos != std::string::npos)
+    {
         srcScheme = m_localEID.substr(0, srcPos);
         srcSsp = m_localEID.substr(srcPos + 1);
     }
-
-
 
     PrimaryBlockHeader primary;
     primary.SetVersion(6);
@@ -186,7 +186,7 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     primary.SetTTL(ttl);
     primary.SetSequenceNumber(m_seqNumber++);
     primary.SetDestinationEID(destScheme, destSsp);
-    primary.SetSourceEID(srcScheme, srcSsp);  
+    primary.SetSourceEID(srcScheme, srcSsp);
     primary.SetReportToEID("dtn", reportToEID);
     primary.SetCustodianEID("dtn", "none");
     PayloadBlockHeader payloadHeader;
@@ -204,8 +204,8 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     if (IsLocalDestination(destinationEID))
     {
         NS_LOG_DEBUG("TransmitBundle: Destination is local, routing to self.");
-        RecvBundle(bundle); 
-        return 0; 
+        RecvBundle(bundle);
+        return 0;
     }
 
     uint32_t handle = m_bundleStorageEngine->StoreBundle(bundle);
@@ -372,8 +372,9 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
 
     if (bundle->IsAdminRecord())
     {
-        NS_LOG_DEBUG("GenerateStatusReport: Bundle is already an admin record. Suppressing report.");
-        return nullptr; 
+        NS_LOG_DEBUG(
+            "GenerateStatusReport: Bundle is already an admin record. Suppressing report.");
+        return nullptr;
     }
 
     BundleStatusReport report;

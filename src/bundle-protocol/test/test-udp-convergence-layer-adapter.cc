@@ -6,15 +6,14 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "ns3/test.h"
-#include "ns3/simulator.h"
-#include "ns3/node-container.h"
+#include "ns3/bundle.h"
+#include "ns3/inet-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv4-address.h"
-#include "ns3/inet-socket-address.h"
+#include "ns3/node-container.h"
 #include "ns3/packet.h"
-
-#include "ns3/bundle.h"
+#include "ns3/simulator.h"
+#include "ns3/test.h"
 #include "ns3/udp-convergence-layer-adapter.h"
 
 using namespace ns3;
@@ -27,18 +26,18 @@ using namespace ns3;
  */
 class UdpBundleClaTestCase : public TestCase
 {
-public:
+  public:
     UdpBundleClaTestCase();
     ~UdpBundleClaTestCase() override;
     void DoRun() override;
 
     uint32_t ReceiveBundleCallback(Ptr<Bundle> bundle);
 
-private:
+  private:
     uint32_t m_receivedBundles;
 };
 
-UdpBundleClaTestCase::UdpBundleClaTestCase() 
+UdpBundleClaTestCase::UdpBundleClaTestCase()
     : TestCase("UdpBundleCla Implementation"),
       m_receivedBundles(0)
 {
@@ -82,7 +81,7 @@ UdpBundleClaTestCase::DoRun()
 
     claB->SetRxCallback(MakeCallback(&UdpBundleClaTestCase::ReceiveBundleCallback, this));
 
-    Ptr<Packet> packet = Create<Packet>(100); 
+    Ptr<Packet> packet = Create<Packet>(100);
 
     Simulator::Schedule(Seconds(1.0), &UdpBundleCla::Send, claA, packet);
 

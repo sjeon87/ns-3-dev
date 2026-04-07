@@ -6,6 +6,7 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 #include "generic-convergence-layer-adapter.h"
+
 #include "ns3/log.h"
 
 namespace ns3
@@ -17,9 +18,7 @@ NS_OBJECT_ENSURE_REGISTERED(BundleCla);
 TypeId
 BundleCla::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::BundleCla")
-                            .SetParent<Object>()
-                            .SetGroupName("BundleProtocol");
+    static TypeId tid = TypeId("ns3::BundleCla").SetParent<Object>().SetGroupName("BundleProtocol");
     return tid;
 }
 

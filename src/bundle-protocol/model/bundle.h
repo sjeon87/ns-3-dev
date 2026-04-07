@@ -14,8 +14,8 @@
 #include "ns3/address.h"
 #include "ns3/buffer.h"
 #include "ns3/object.h"
-#include "ns3/type-id.h"
 #include "ns3/packet.h"
+#include "ns3/type-id.h"
 
 #include <vector>
 
@@ -128,9 +128,9 @@ class Bundle : public Object
     std::string GetReportToEID() const;
 
     /**
-      * @brief Checks whether the bundle is an Administrative Record (RFC 1971)
-      * @return bool whether bundle is Admin record
-      */
+     * @brief Checks whether the bundle is an Administrative Record (RFC 1971)
+     * @return bool whether bundle is Admin record
+     */
     bool IsAdminRecord() const;
 
   private:
