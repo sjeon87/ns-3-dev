@@ -7,6 +7,7 @@ build_lib(
     model/bundle-storage-engine.cc
     model/bundle.cc
     model/generic-convergence-layer-adapter.cc
+    model/tcp-convergence-layer-adapter.cc
     model/udp-convergence-layer-adapter.cc
   HEADER_FILES
     model/bundle-agent.h
@@ -16,6 +17,7 @@ build_lib(
     model/bundle.h
     model/bundle-protocol-flags.h
     model/generic-convergence-layer-adapter.h
+    model/tcp-convergence-layer-adapter.h
     model/udp-convergence-layer-adapter.h
   LIBRARIES_TO_LINK
   TEST_SOURCES
@@ -23,5 +25,6 @@ build_lib(
     test/test-bundle.cc
     test/test-bundle-storage-engine.cc
     test/test-bundle-agent.cc
+    test/test-tcp-convergence-layer-adapter.cc
     test/test-udp-convergence-layer-adapter.cc
 )
