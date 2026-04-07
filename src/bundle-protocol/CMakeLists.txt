@@ -1,11 +1,25 @@
 build_lib(
   LIBNAME bp
   SOURCE_FILES
-    model/bundle-header.cc
     model/bundle-agent.cc
+    model/bundle-header.cc
+    model/bundle-storage-engine.cc
+    model/bundle.cc
+    model/generic-convergence-layer-adapter.cc
+    model/udp-convergence-layer-adapter.cc
   HEADER_FILES
-    model/bundle-header.h
     model/bundle-agent.h
+    model/bundle-header.h
+    model/bundle-storage-engine.h
+    model/bundle.h
+    model/bundle-protocol-flags.h
+    model/generic-convergence-layer-adapter.h
+    model/udp-convergence-layer-adapter.h
   LIBRARIES_TO_LINK
   TEST_SOURCES
+    test/test-bundle-header.cc
+    test/test-bundle.cc
+    test/test-bundle-storage-engine.cc
+    test/test-bundle-agent.cc
+    test/test-udp-convergence-layer-adapter.cc
 )

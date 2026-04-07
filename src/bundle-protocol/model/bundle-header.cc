@@ -65,15 +65,6 @@ uint32_t
 PrimaryBlockHeader::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
-    // 1  (version)
-    // 4  (procFlags)
-    // 4  (blockLength)
-    // 2+2+2+2+2+2+2+2 = 16  (eight EID offset fields, 2 bytes each)
-    // 8  (creationTime)
-    // 4  (seq)
-    // 8  (TTL)
-    // 4  (dictionaryLength)
-    // variable (dictionary contents)
     return 1 + 4 + 4 + 16 + 8 + 4 + 8 + 4 + m_dictByteArray.size();
 }
 
@@ -98,7 +89,6 @@ PrimaryBlockHeader::Serialize(Buffer::Iterator start) const
     i.WriteHtonU64(m_TTL.GetTimeStep());
     i.WriteHtonU32(m_dictionaryLength);
     i.Write(reinterpret_cast<const uint8_t*>(m_dictByteArray.data()), m_dictByteArray.size());
-    // fragment fields intentionally omitted
 }
 
 uint32_t

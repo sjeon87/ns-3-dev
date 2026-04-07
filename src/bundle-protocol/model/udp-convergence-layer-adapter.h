@@ -8,7 +8,7 @@
 #ifndef UDP_BUNDLE_CLA_H
 #define UDP_BUNDLE_CLA_H
 
-#include "bundle-cla.h"
+#include "generic-convergence-layer-adapter.h"
 
 #include "ns3/address.h"
 #include "ns3/node.h"

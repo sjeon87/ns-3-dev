@@ -45,6 +45,12 @@ class BundleAgent : public Object
     void SetLocalEID(const std::string& eid);
 
     /**
+     * @brief Set the bundle storage engine
+     * @param bundleStorageEngine the bundle storage engine
+     */
+    void SetBundleStorageEngine(Ptr<BundleStorageEngine> bundleStorageEngine);
+
+    /**
      * @brief Get the local EID
      * @return the local node's EID
      */
@@ -127,6 +133,8 @@ class BundleAgent : public Object
     typedef Callback<void, Ptr<Bundle>> BundleReceiveCallback;
     void SetReceiveCallback(BundleReceiveCallback cb);
 
+    void SetStorageLimitFromAttribute(uint32_t limit);
+
   private:
     /**
      * @brief Get the CLA for a destination EID
@@ -157,6 +165,7 @@ class BundleAgent : public Object
     Ptr<BundleStorageEngine> m_bundleStorageEngine; //!< Storage engine for node
     std::map<std::string, Ptr<BundleCla>> m_clas;   //!< Map of CLAs with destination EIDs
     std::map<uint32_t, EventId> m_expiryEvents;     //!< Expiry event tracker
+    BundleReceiveCallback m_receiveCallback;
 };
 
 } // namespace ns3

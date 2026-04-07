@@ -15,6 +15,7 @@
 #include "ns3/buffer.h"
 #include "ns3/object.h"
 #include "ns3/type-id.h"
+#include "ns3/packet.h"
 
 #include <vector>
 
@@ -46,12 +47,6 @@ class Bundle : public Object
 
     Bundle();
     ~Bundle() override;
-
-    /**
-     * @brief Get the instance type ID.
-     * @return the instance TypeId
-     */
-    TypeId GetInstanceTypeId() const override;
 
     /**
      * @brief set the primary block header for the bundle
@@ -130,13 +125,13 @@ class Bundle : public Object
      * @brief Get the report to EID of the bundle
      * @return the report to EID
      */
-    std::string GetReportToEID() const
+    std::string GetReportToEID() const;
 
-        /**
-         * @brief Checks whether the bundle is an Administrative Record (RFC 1971)
-         * @return bool whether bundle is Admin record
-         */
-        bool isAdminRecord() const;
+    /**
+      * @brief Checks whether the bundle is an Administrative Record (RFC 1971)
+      * @return bool whether bundle is Admin record
+      */
+    bool IsAdminRecord() const;
 
   private:
     PrimaryBlockHeader m_primaryHeader; //!< The primary block's header

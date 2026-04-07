@@ -38,12 +38,6 @@ Bundle::GetTypeId()
     return tid;
 }
 
-TypeId
-Bundle::GetInstanceTypeId() const
-{
-    return GetTypeId();
-}
-
 void
 Bundle::SetPrimaryHeader(PrimaryBlockHeader h)
 {
@@ -182,7 +176,7 @@ Bundle::GetReportToEID() const
 }
 
 bool
-Bundle::isAdminRecord() const
+Bundle::IsAdminRecord() const
 {
     NS_LOG_FUNCTION(this);
     return (m_primaryHeader.GetProcFlags() >> ADMIN_RECORD) & 0x1;

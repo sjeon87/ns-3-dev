@@ -8,7 +8,7 @@
 #ifndef BUNDLE_HEADER_H
 #define BUNDLE_HEADER_H
 
-#include "bundle-flags.h"
+#include "bundle-protocol-flags.h"
 
 #include "ns3/header.h"
 #include "ns3/nstime.h"

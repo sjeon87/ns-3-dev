@@ -47,7 +47,7 @@ BundleAgent::GetTypeId()
             .AddConstructor<BundleAgent>()
             .AddAttribute("LocalEID",
                           "The endpoint ID of this bundle agent",
-                          StringValue("dtn:dtn://node0/"),
+                          StringValue("dtn://node0/"),
                           MakeStringAccessor(&BundleAgent::SetLocalEID, &BundleAgent::GetLocalEID),
                           MakeStringChecker())
             .AddAttribute("StorageLimit",
@@ -71,6 +71,13 @@ BundleAgent::SetLocalEID(const std::string& eid)
     {
         m_localEID = eid;
     }
+}
+
+void
+BundleAgent::SetBundleStorageEngine(Ptr<BundleStorageEngine> bundleStorageEngine)
+{
+    NS_LOG_FUNCTION(this << bundleStorageEngine);
+    m_bundleStorageEngine = bundleStorageEngine;
 }
 
 std::string
@@ -104,6 +111,8 @@ bool
 BundleAgent::RegisterCla(const std::string& destinationEID, Ptr<BundleCla> cla)
 {
     NS_LOG_FUNCTION(this << destinationEID << cla);
+    cla->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, this));
+    
     auto ret = m_clas.insert(std::make_pair(destinationEID, cla));
 
     if (ret.second)
@@ -154,14 +163,30 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     NS_LOG_FUNCTION(this << destinationEID << size);
     NS_ASSERT_MSG(!m_localEID.empty(), "LocalEID must be set before transmitting");
 
+    std::string destScheme = "dtn", destSsp = destinationEID;
+    size_t destPos = destinationEID.find(':');
+    if (destPos != std::string::npos) {
+        destScheme = destinationEID.substr(0, destPos);
+        destSsp = destinationEID.substr(destPos + 1);
+    }
+
+    std::string srcScheme = "dtn", srcSsp = m_localEID;
+    size_t srcPos = m_localEID.find(':');
+    if (srcPos != std::string::npos) {
+        srcScheme = m_localEID.substr(0, srcPos);
+        srcSsp = m_localEID.substr(srcPos + 1);
+    }
+
+
+
     PrimaryBlockHeader primary;
     primary.SetVersion(6);
     primary.SetProcFlags(procFlags);
     primary.SetCreationTime(Simulator::Now());
     primary.SetTTL(ttl);
     primary.SetSequenceNumber(m_seqNumber++);
-    primary.SetDestinationEID("dtn", destinationEID);
-    primary.SetSourceEID("dtn", m_localEID);
+    primary.SetDestinationEID(destScheme, destSsp);
+    primary.SetSourceEID(srcScheme, srcSsp);  
     primary.SetReportToEID("dtn", reportToEID);
     primary.SetCustodianEID("dtn", "none");
     PayloadBlockHeader payloadHeader;
@@ -175,6 +200,13 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     bundle->SetPrimaryHeader(primary);
     bundle->SetPayloadHeader(payloadHeader);
     bundle->SetPayload(payload);
+
+    if (IsLocalDestination(destinationEID))
+    {
+        NS_LOG_DEBUG("TransmitBundle: Destination is local, routing to self.");
+        RecvBundle(bundle); 
+        return 0; 
+    }
 
     uint32_t handle = m_bundleStorageEngine->StoreBundle(bundle);
     if (handle == 0)
@@ -229,11 +261,6 @@ BundleAgent::ForwardBundle(uint32_t handle)
         evIt->second.Cancel();
         m_expiryEvents.erase(evIt);
     }
-
-    if (!m_receiveCallback.IsNull())
-    {
-        m_receiveCallback(bundle);
-    }
     m_bundleStorageEngine->DeleteBundle(handle);
     return 0;
 }
@@ -250,6 +277,11 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
     if (IsLocalDestination(destination))
     {
         NS_LOG_DEBUG("RecvBundle: delivering bundle locally");
+
+        if (!m_receiveCallback.IsNull())
+        {
+            m_receiveCallback(bundle);
+        }
 
         uint32_t handle = m_bundleStorageEngine->StoreBundle(bundle);
         if (handle == 0)
@@ -337,6 +369,12 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
 {
     NS_LOG_FUNCTION(this << bundle << (uint32_t)statusFlags << (uint32_t)reasonCode);
     NS_ASSERT_MSG(bundle, "GenerateStatusReport called with null bundle");
+
+    if (bundle->IsAdminRecord())
+    {
+        NS_LOG_DEBUG("GenerateStatusReport: Bundle is already an admin record. Suppressing report.");
+        return nullptr; 
+    }
 
     BundleStatusReport report;
     report.SetStatusFlags(statusFlags);
