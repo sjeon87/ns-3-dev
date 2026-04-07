@@ -9,6 +9,7 @@
 #ifndef BUNDLE_H
 #define BUNDLE_H
 
+#include "bundle-block.h"
 #include "bundle-header.h"
 
 #include "ns3/address.h"
@@ -26,14 +27,13 @@ namespace ns3
  *
  * @ingroup dtn
  *
- * @brief An implementation of a bundle for Bpv7
+ * @brief An implementation of a bundle for BPv7
  *
- * Each bundle stores a set of blocks. However in this implementation,
- * I'm going to assume that these blocks are just buffers. I can't figure out what
- * the difference between a block and buffer would be apart from the CBOR encoding
- * in RFC 9171, which I'm not sure yet is relevant to a simulation for complexity.
- * For now, I'm just going to dump all the blocks into a buffer vector and then
- * convert them to packets that I send to the TCP/UDP/LTP layers through CLAs.
+ * A bundle is represented as an ordered vector of BundleBlock objects.
+ * The first block is always a PrimaryBlock, followed by one or more
+ * canonical blocks (e.g., PayloadBlock). This structure maps directly
+ * onto the RFC 5050 / RFC 9171 bundle format without requiring manual
+ * byte manipulation or CBOR encoding for simulation purposes.
  *
  */
 class Bundle : public Object
@@ -49,94 +49,97 @@ class Bundle : public Object
     ~Bundle() override;
 
     /**
-     * @brief set the primary block header for the bundle
-     * @param h the primary block header
+     * @brief Add a block to the end of the bundle's block vector.
+     * @param block the block to append
      */
-    void SetPrimaryHeader(PrimaryBlockHeader h);
+    void AddBlock(Ptr<BundleBlock> block);
 
     /**
-     * @brief Gets the currently attached primary
-     * block header
-     * @return PrimaryBlockHeader
+     * @brief Get the block at a given index.
+     * @param index the position in the block vector
+     * @return the BundleBlock at that index
      */
-    PrimaryBlockHeader GetPrimaryHeader() const;
+    Ptr<BundleBlock> GetBlock(uint32_t index) const;
 
     /**
-     * @brief set the primary block header for the bundle
-     * @param h the primary block header
+     * @brief Get the number of blocks in the bundle.
+     * @return the block count
      */
-    void SetPayloadHeader(PayloadBlockHeader h);
+    uint32_t GetBlockCount() const;
 
     /**
-     * @brief get the payload block header for the bundle
-     * @return PayloadBlockHeader
+     * @brief Get all blocks in the bundle.
+     * @return const reference to the block vector
      */
-    PayloadBlockHeader GetPayloadHeader() const;
+    const std::vector<Ptr<BundleBlock>>& GetBlocks() const;
 
     /**
-     * @brief set the payload for the bundle
-     * @param payload the payload for the bundle
+     * @brief Convenience accessor for the primary block.
+     * Assumes the first block is always a PrimaryBlock.
+     * @return Ptr to the PrimaryBlock, or nullptr if not set
      */
-    void SetPayload(Ptr<Packet> payload);
+    Ptr<PrimaryBlock> GetPrimaryBlock() const;
 
     /**
-     * @brief Get the payload for the bundle
-     * @return the payload for the bundle
+     * @brief Convenience accessor for the payload block.
+     * Searches the block vector for the first block with type 1.
+     * @return Ptr to the PayloadBlock, or nullptr if not found
      */
-    Ptr<Packet> GetPayload() const;
+    Ptr<PayloadBlock> GetPayloadBlock() const;
 
     /**
-     * @brief Get the total size of the bundle
-     * @return the total size for the bundle
+     * @brief Get the total serialized size of the bundle across all blocks.
+     * @return the total size in bytes
      */
     uint32_t GetTotalSize() const;
 
     /**
-     * @brief Serialize bundle into a packet
-     * @return the packet holding the serialization of the bundle
+     * @brief Serialize all blocks in the bundle into a single packet.
+     * Blocks are serialized in order and concatenated.
+     * @return the packet holding the full serialized bundle
      */
     Ptr<Packet> Serialize() const;
 
     /**
-     * @brief Deserialize packet into a bundle
-     * @param p the packet to deserialize bundle from
+     * @brief Deserialize a packet into the bundle's block vector.
+     * Reconstructs the PrimaryBlock first, then the PayloadBlock.
+     * @param p the packet to deserialize from
      */
     void Deserialize(Ptr<Packet> p);
 
     /**
-     * @brief Get the expiry time of the bundle
-     * @return the time to expire the bundle
+     * @brief Get the expiry time of the bundle.
+     * Derived from the primary block's creation time and TTL.
+     * @return the time at which the bundle expires
      */
     Time GetExpiry() const;
 
     /**
-     * @brief Get the destination EID of the bundle
-     * @return the destination EID
+     * @brief Get the destination EID of the bundle.
+     * @return the destination EID string
      */
     std::string GetDestinationEID() const;
 
     /**
-     * @brief Get the source EID of the bundle
-     * @return the source EID
+     * @brief Get the source EID of the bundle.
+     * @return the source EID string
      */
     std::string GetSourceEID() const;
 
     /**
-     * @brief Get the report to EID of the bundle
-     * @return the report to EID
+     * @brief Get the report-to EID of the bundle.
+     * @return the report-to EID string
      */
     std::string GetReportToEID() const;
 
     /**
-     * @brief Checks whether the bundle is an Administrative Record (RFC 1971)
-     * @return bool whether bundle is Admin record
+     * @brief Checks whether the bundle is an Administrative Record (RFC 5050).
+     * @return true if the bundle is an administrative record
      */
     bool IsAdminRecord() const;
 
   private:
-    PrimaryBlockHeader m_primaryHeader; //!< The primary block's header
-    PayloadBlockHeader m_payloadHeader; //!< The payload block's header
-    Ptr<Packet> m_payload;              //!< Bundle payload
+    std::vector<Ptr<BundleBlock>> m_blocks; //!< Ordered sequence of blocks comprising the bundle
 };
 
 } // namespace ns3

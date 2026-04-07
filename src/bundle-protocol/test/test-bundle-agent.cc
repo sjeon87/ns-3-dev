@@ -91,6 +91,9 @@ void
 BundleAgentTestCase::LocalReceiveCallback(Ptr<Bundle> bundle)
 {
     m_locallyReceivedCount++;
+
+    NS_TEST_ASSERT_MSG_NE(bundle->GetPrimaryBlock(), nullptr, "Primary block missing");
+    NS_TEST_ASSERT_MSG_NE(bundle->GetPayloadBlock(), nullptr, "Payload block missing");
 }
 
 void

@@ -5,28 +5,17 @@
  *
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
+
 #include "bundle.h"
 
 #include "ns3/log.h"
-#include "ns3/simulator.h"
 
 namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("Bundle");
+
 NS_OBJECT_ENSURE_REGISTERED(Bundle);
-
-Bundle::Bundle()
-    : m_payload(nullptr)
-{
-    NS_LOG_FUNCTION(this);
-}
-
-Bundle::~Bundle()
-{
-    NS_LOG_FUNCTION(this);
-    m_payload = nullptr;
-}
 
 TypeId
 Bundle::GetTypeId()
@@ -38,46 +27,68 @@ Bundle::GetTypeId()
     return tid;
 }
 
-void
-Bundle::SetPrimaryHeader(PrimaryBlockHeader h)
+Bundle::Bundle()
 {
     NS_LOG_FUNCTION(this);
-    m_primaryHeader = h;
 }
 
-PrimaryBlockHeader
-Bundle::GetPrimaryHeader() const
+Bundle::~Bundle()
 {
     NS_LOG_FUNCTION(this);
-    return m_primaryHeader;
 }
 
 void
-Bundle::SetPayloadHeader(PayloadBlockHeader h)
+Bundle::AddBlock(Ptr<BundleBlock> block)
 {
-    NS_LOG_FUNCTION(this);
-    m_payloadHeader = h;
+    NS_LOG_FUNCTION(this << block);
+    m_blocks.push_back(block);
 }
 
-PayloadBlockHeader
-Bundle::GetPayloadHeader() const
+Ptr<BundleBlock>
+Bundle::GetBlock(uint32_t index) const
 {
-    NS_LOG_FUNCTION(this);
-    return m_payloadHeader;
+    NS_LOG_FUNCTION(this << index);
+    NS_ASSERT_MSG(index < m_blocks.size(), "Block index out of range");
+    return m_blocks[index];
 }
 
-void
-Bundle::SetPayload(Ptr<Packet> payload)
-{
-    NS_LOG_FUNCTION(this << payload);
-    m_payload = payload;
-}
-
-Ptr<Packet>
-Bundle::GetPayload() const
+uint32_t
+Bundle::GetBlockCount() const
 {
     NS_LOG_FUNCTION(this);
-    return m_payload;
+    return m_blocks.size();
+}
+
+const std::vector<Ptr<BundleBlock>>&
+Bundle::GetBlocks() const
+{
+    NS_LOG_FUNCTION(this);
+    return m_blocks;
+}
+
+Ptr<PrimaryBlock>
+Bundle::GetPrimaryBlock() const
+{
+    NS_LOG_FUNCTION(this);
+    if (!m_blocks.empty())
+    {
+        return m_blocks[0]->GetObject<PrimaryBlock>();
+    }
+    return nullptr;
+}
+
+Ptr<PayloadBlock>
+Bundle::GetPayloadBlock() const
+{
+    NS_LOG_FUNCTION(this);
+    for (const auto& block : m_blocks)
+    {
+        if (block->GetBlockType() == 1)
+        {
+            return block->GetObject<PayloadBlock>();
+        }
+    }
+    return nullptr;
 }
 
 uint32_t
@@ -85,11 +96,9 @@ Bundle::GetTotalSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
-    size += m_primaryHeader.GetSerializedSize();
-    size += m_payloadHeader.GetSerializedSize();
-    if (m_payload)
+    for (const auto& block : m_blocks)
     {
-        size += m_payload->GetSize();
+        size += block->SerializeToPacket()->GetSize();
     }
     return size;
 }
@@ -98,18 +107,12 @@ Ptr<Packet>
 Bundle::Serialize() const
 {
     NS_LOG_FUNCTION(this);
-
-    Ptr<Packet> bundle;
-    if (m_payload)
+    Ptr<Packet> bundle = Create<Packet>();
+    for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
     {
-        bundle = m_payload->Copy();
+        Ptr<Packet> blockPacket = (*it)->SerializeToPacket();
+        bundle->AddAtEnd(blockPacket);
     }
-    else
-    {
-        bundle = Create<Packet>();
-    }
-    bundle->AddHeader(m_payloadHeader);
-    bundle->AddHeader(m_primaryHeader);
     return bundle;
 }
 
@@ -117,37 +120,42 @@ void
 Bundle::Deserialize(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
-    NS_ASSERT_MSG(p, "Bundle::Deserialize called with null packet");
+    m_blocks.clear();
 
     Ptr<Packet> copy = p->Copy();
 
-    uint32_t bytes = copy->RemoveHeader(m_primaryHeader);
-    NS_ASSERT_MSG(bytes == m_primaryHeader.GetSerializedSize(),
-                  "Primary header deserialization size mismatch");
+    Ptr<PrimaryBlock> primary = CreateObject<PrimaryBlock>();
+    primary->Deserialize(copy);
+    m_blocks.push_back(primary);
 
-    bytes = copy->RemoveHeader(m_payloadHeader);
-    NS_ASSERT_MSG(bytes == m_payloadHeader.GetSerializedSize(),
-                  "Payload header deserialization size mismatch");
-
-    m_payload = copy;
+    if (copy->GetSize() > 0)
+    {
+        Ptr<PayloadBlock> payload = CreateObject<PayloadBlock>();
+        payload->Deserialize(copy);
+        m_blocks.push_back(payload);
+    }
 }
 
 Time
 Bundle::GetExpiry() const
 {
     NS_LOG_FUNCTION(this);
-    return m_primaryHeader.GetCreationTime() + m_primaryHeader.GetTTL();
+    Ptr<PrimaryBlock> primary = GetPrimaryBlock();
+    NS_ASSERT_MSG(primary, "Bundle has no primary block");
+    const PrimaryBlockHeader& h = primary->GetHeader();
+    return h.GetCreationTime() + h.GetTTL();
 }
 
 std::string
 Bundle::GetDestinationEID() const
 {
     NS_LOG_FUNCTION(this);
-    const std::string& dict = m_primaryHeader.GetDictionary();
-    std::string scheme = dict.substr(m_primaryHeader.GetDestinationSchemeOffset());
-    scheme = scheme.substr(0, scheme.find('\0'));
-    std::string ssp = dict.substr(m_primaryHeader.GetDestinationSSPOffset());
-    ssp = ssp.substr(0, ssp.find('\0'));
+    Ptr<PrimaryBlock> primary = GetPrimaryBlock();
+    NS_ASSERT_MSG(primary, "Bundle has no primary block");
+    const PrimaryBlockHeader& h = primary->GetHeader();
+    const std::string& dict = h.GetDictionary();
+    std::string scheme = dict.c_str() + h.GetDestinationSchemeOffset();
+    std::string ssp = dict.c_str() + h.GetDestinationSSPOffset();
     return scheme + ":" + ssp;
 }
 
@@ -155,11 +163,12 @@ std::string
 Bundle::GetSourceEID() const
 {
     NS_LOG_FUNCTION(this);
-    const std::string& dict = m_primaryHeader.GetDictionary();
-    std::string scheme = dict.substr(m_primaryHeader.GetSourceSchemeOffset());
-    scheme = scheme.substr(0, scheme.find('\0'));
-    std::string ssp = dict.substr(m_primaryHeader.GetSourceSSPOffset());
-    ssp = ssp.substr(0, ssp.find('\0'));
+    Ptr<PrimaryBlock> primary = GetPrimaryBlock();
+    NS_ASSERT_MSG(primary, "Bundle has no primary block");
+    const PrimaryBlockHeader& h = primary->GetHeader();
+    const std::string& dict = h.GetDictionary();
+    std::string scheme = dict.c_str() + h.GetSourceSchemeOffset();
+    std::string ssp = dict.c_str() + h.GetSourceSSPOffset();
     return scheme + ":" + ssp;
 }
 
@@ -167,11 +176,12 @@ std::string
 Bundle::GetReportToEID() const
 {
     NS_LOG_FUNCTION(this);
-    const std::string& dict = m_primaryHeader.GetDictionary();
-    std::string scheme = dict.substr(m_primaryHeader.GetReportToSchemeOffset());
-    scheme = scheme.substr(0, scheme.find('\0'));
-    std::string ssp = dict.substr(m_primaryHeader.GetReportToSSPOffset());
-    ssp = ssp.substr(0, ssp.find('\0'));
+    Ptr<PrimaryBlock> primary = GetPrimaryBlock();
+    NS_ASSERT_MSG(primary, "Bundle has no primary block");
+    const PrimaryBlockHeader& h = primary->GetHeader();
+    const std::string& dict = h.GetDictionary();
+    std::string scheme = dict.c_str() + h.GetReportToSchemeOffset();
+    std::string ssp = dict.c_str() + h.GetReportToSSPOffset();
     return scheme + ":" + ssp;
 }
 
@@ -179,7 +189,9 @@ bool
 Bundle::IsAdminRecord() const
 {
     NS_LOG_FUNCTION(this);
-    return (m_primaryHeader.GetProcFlags() >> ADMIN_RECORD) & 0x1;
+    Ptr<PrimaryBlock> primary = GetPrimaryBlock();
+    NS_ASSERT_MSG(primary, "Bundle has no primary block");
+    return (primary->GetHeader().GetProcFlags() & 0x02) != 0;
 }
 
 } // namespace ns3

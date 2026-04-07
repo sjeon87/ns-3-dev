@@ -6,6 +6,7 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
+#include "ns3/bundle-block.h"
 #include "ns3/bundle.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
@@ -39,9 +40,10 @@ BundleTestCase::~BundleTestCase()
 void
 BundleTestCase::DoRun()
 {
-    // Testing header attachment
+    // Testing primary block and header attachment
+    Ptr<PrimaryBlock> pb = CreateObject<PrimaryBlock>();
+    PrimaryBlockHeader& pbb = pb->GetHeader();
 
-    PrimaryBlockHeader pbb;
     pbb.SetVersion(6);
     uint32_t procFlags = (1 << PBB_PROC_FLAGS::NO_FRAGMENT) | (1 << PBB_PROC_FLAGS::SINGLETON);
     pbb.SetProcFlags(procFlags);
@@ -53,22 +55,22 @@ BundleTestCase::DoRun()
     pbb.SetReportToEID("dtn", "none");
     pbb.SetCustodianEID("dtn", "none");
 
-    Bundle b;
-    b.SetPrimaryHeader(pbb);
+    Ptr<Bundle> b = CreateObject<Bundle>();
+    b->AddBlock(pb);
 
-    NS_TEST_ASSERT_MSG_EQ(b.GetPrimaryHeader().GetVersion(),
+    NS_TEST_ASSERT_MSG_EQ(b->GetPrimaryBlock()->GetHeader().GetVersion(),
                           6,
                           "PrimaryBlockHeader Version mismatch");
-    NS_TEST_ASSERT_MSG_EQ(b.GetPrimaryHeader().GetProcFlags(),
+    NS_TEST_ASSERT_MSG_EQ(b->GetPrimaryBlock()->GetHeader().GetProcFlags(),
                           procFlags,
                           "PrimaryBlockHeader ProcFlags mismatch");
-    NS_TEST_ASSERT_MSG_EQ(b.GetPrimaryHeader().GetCreationTime(),
+    NS_TEST_ASSERT_MSG_EQ(b->GetPrimaryBlock()->GetHeader().GetCreationTime(),
                           Seconds(10),
                           "PrimaryBlockHeader CreationTime mismatch");
-    NS_TEST_ASSERT_MSG_EQ(b.GetPrimaryHeader().GetTTL(),
+    NS_TEST_ASSERT_MSG_EQ(b->GetPrimaryBlock()->GetHeader().GetTTL(),
                           Seconds(3600),
                           "PrimaryBlockHeader TTL mismatch");
-    NS_TEST_ASSERT_MSG_EQ(b.GetPrimaryHeader().GetSequenceNumber(),
+    NS_TEST_ASSERT_MSG_EQ(b->GetPrimaryBlock()->GetHeader().GetSequenceNumber(),
                           42,
                           "PrimaryBlockHeader SequenceNumber mismatch");
 
@@ -76,10 +78,14 @@ BundleTestCase::DoRun()
 
     Ptr<Packet> payload = Create<Packet>(12);
     Ptr<Bundle> bundle = CreateObject<Bundle>();
-    bundle->SetPayload(payload);
-    Ptr<Packet> deserializedPayload = bundle->GetPayload();
 
-    NS_TEST_ASSERT_MSG_EQ(payload->GetSize(), deserializedPayload->GetSize(), "Payload mismatch");
+    Ptr<PayloadBlock> payloadBlock = CreateObject<PayloadBlock>();
+    payloadBlock->SetPayload(payload);
+    bundle->AddBlock(payloadBlock);
+
+    Ptr<Packet> retrievedPayload = bundle->GetPayloadBlock()->GetPayload();
+
+    NS_TEST_ASSERT_MSG_EQ(payload->GetSize(), retrievedPayload->GetSize(), "Payload mismatch");
 }
 
 /**

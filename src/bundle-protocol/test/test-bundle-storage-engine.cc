@@ -6,6 +6,7 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
+#include "ns3/bundle-block.h" // Added for PrimaryBlock and PayloadBlock
 #include "ns3/bundle-storage-engine.h"
 #include "ns3/bundle.h"
 #include "ns3/nstime.h"
@@ -42,7 +43,6 @@ BundleStorageEngineTestCase::DoRun()
 {
     Ptr<BundleStorageEngine> storageEngine = CreateObject<BundleStorageEngine>();
 
-    Ptr<Bundle> b1 = CreateObject<Bundle>();
     PrimaryBlockHeader pbb;
     pbb.SetVersion(6);
     uint32_t procFlags = (1 << PBB_PROC_FLAGS::NO_FRAGMENT) | (1 << PBB_PROC_FLAGS::SINGLETON);
@@ -55,9 +55,16 @@ BundleStorageEngineTestCase::DoRun()
     pbb.SetReportToEID("dtn", "none");
     pbb.SetCustodianEID("dtn", "none");
 
-    b1->SetPrimaryHeader(pbb);
+    Ptr<Bundle> b1 = CreateObject<Bundle>();
+
+    Ptr<PrimaryBlock> pb1 = CreateObject<PrimaryBlock>();
+    pb1->GetHeader() = pbb;
+    b1->AddBlock(pb1);
+
+    Ptr<PayloadBlock> pl1 = CreateObject<PayloadBlock>();
     Ptr<Packet> payload = Create<Packet>(12);
-    b1->SetPayload(payload);
+    pl1->SetPayload(payload);
+    b1->AddBlock(pl1);
 
     uint32_t b1Size = b1->GetTotalSize();
 
@@ -84,8 +91,14 @@ BundleStorageEngineTestCase::DoRun()
                           "RetrieveBundle should return null for invalid handle");
 
     Ptr<Bundle> b2 = CreateObject<Bundle>();
-    b2->SetPrimaryHeader(pbb);
-    b2->SetPayload(Create<Packet>(12));
+
+    Ptr<PrimaryBlock> pb2 = CreateObject<PrimaryBlock>();
+    pb2->GetHeader() = pbb;
+    b2->AddBlock(pb2);
+
+    Ptr<PayloadBlock> pl2 = CreateObject<PayloadBlock>();
+    pl2->SetPayload(Create<Packet>(12));
+    b2->AddBlock(pl2);
 
     uint32_t handle2 = storageEngine->StoreBundle(b2);
     NS_TEST_ASSERT_MSG_EQ(storageEngine->HasBundle(handle2), true, "Bundle 2 should be inserted");
@@ -94,8 +107,14 @@ BundleStorageEngineTestCase::DoRun()
                           "BundleEngine size not updated for second bundle");
 
     Ptr<Bundle> b3 = CreateObject<Bundle>();
-    b3->SetPrimaryHeader(pbb);
-    b3->SetPayload(Create<Packet>(12));
+
+    Ptr<PrimaryBlock> pb3 = CreateObject<PrimaryBlock>();
+    pb3->GetHeader() = pbb;
+    b3->AddBlock(pb3);
+
+    Ptr<PayloadBlock> pl3 = CreateObject<PayloadBlock>();
+    pl3->SetPayload(Create<Packet>(12));
+    b3->AddBlock(pl3);
 
     uint32_t handle3 = storageEngine->StoreBundle(b3);
     NS_TEST_ASSERT_MSG_EQ(handle3, 0, "Bundle 3 should be rejected due to capacity limits");

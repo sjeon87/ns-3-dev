@@ -196,10 +196,16 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
 
     Ptr<Packet> payload = Create<Packet>(data, size);
 
+    Ptr<PrimaryBlock> primaryBlock = CreateObject<PrimaryBlock>();
+    primaryBlock->GetHeader() = primary;
+
+    Ptr<PayloadBlock> payloadBlock = CreateObject<PayloadBlock>();
+    payloadBlock->GetHeader() = payloadHeader;
+    payloadBlock->SetPayload(payload);
+
     Ptr<Bundle> bundle = CreateObject<Bundle>();
-    bundle->SetPrimaryHeader(primary);
-    bundle->SetPayloadHeader(payloadHeader);
-    bundle->SetPayload(payload);
+    bundle->AddBlock(primaryBlock);
+    bundle->AddBlock(payloadBlock);
 
     if (IsLocalDestination(destinationEID))
     {
@@ -290,7 +296,7 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
             return 1;
         }
 
-        uint32_t flags = bundle->GetPrimaryHeader().GetProcFlags();
+        uint32_t flags = bundle->GetPrimaryBlock()->GetHeader().GetProcFlags();
         if ((flags >> BUNDLE_RECEPTION) & 0x1)
         {
             Ptr<Bundle> report = GenerateStatusReport(bundle, 1 << RECVD_BUNDLE, SR_NO_INFO);
@@ -348,7 +354,7 @@ BundleAgent::ExpireBundle(uint32_t handle)
     NS_LOG_DEBUG("ExpireBundle: bundle handle=" << handle << " destined for "
                                                 << bundle->GetDestinationEID() << " has expired");
 
-    uint32_t flags = bundle->GetPrimaryHeader().GetProcFlags();
+    uint32_t flags = bundle->GetPrimaryBlock()->GetHeader().GetProcFlags();
     if ((flags >> BUNDLE_DELETION) & 0x1)
     {
         Ptr<Bundle> report = GenerateStatusReport(bundle, 1 << DEL_BUNDLE, SR_LIFE_EXPIRE);
@@ -380,8 +386,8 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
     BundleStatusReport report;
     report.SetStatusFlags(statusFlags);
     report.SetReasonCode(reasonCode);
-    report.SetCreationTime(bundle->GetPrimaryHeader().GetCreationTime());
-    report.SetSequenceNumber(bundle->GetPrimaryHeader().GetSequenceNumber());
+    report.SetCreationTime(bundle->GetPrimaryBlock()->GetHeader().GetCreationTime());
+    report.SetSequenceNumber(bundle->GetPrimaryBlock()->GetHeader().GetSequenceNumber());
 
     Time now = Simulator::Now();
     if (statusFlags & (1 << RECVD_BUNDLE))
@@ -420,10 +426,16 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
     payloadHeader.SetBlockType(1);
     payloadHeader.SetBlockLength(reportPayload->GetSize());
 
+    Ptr<PrimaryBlock> reportPrimaryBlock = CreateObject<PrimaryBlock>();
+    reportPrimaryBlock->GetHeader() = primary;
+
+    Ptr<PayloadBlock> reportPayloadBlock = CreateObject<PayloadBlock>();
+    reportPayloadBlock->GetHeader() = payloadHeader;
+    reportPayloadBlock->SetPayload(reportPayload);
+
     Ptr<Bundle> reportBundle = CreateObject<Bundle>();
-    reportBundle->SetPrimaryHeader(primary);
-    reportBundle->SetPayloadHeader(payloadHeader);
-    reportBundle->SetPayload(reportPayload);
+    reportBundle->AddBlock(reportPrimaryBlock);
+    reportBundle->AddBlock(reportPayloadBlock);
 
     return reportBundle;
 }

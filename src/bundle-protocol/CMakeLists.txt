@@ -1,6 +1,7 @@
 build_lib(
   LIBNAME bp
   SOURCE_FILES
+    model/bundle-block.cc
     model/bundle-agent.cc
     model/bundle-header.cc
     model/bundle-storage-engine.cc
@@ -9,6 +10,7 @@ build_lib(
     model/udp-convergence-layer-adapter.cc
   HEADER_FILES
     model/bundle-agent.h
+    model/bundle-block.h
     model/bundle-header.h
     model/bundle-storage-engine.h
     model/bundle.h
