@@ -12,7 +12,7 @@
 
 #include "ns3/ipv4-header.h"
 #include "ns3/log.h"
-#include "ns3/node.h" // ADDED: Fixes the incomplete type 'class ns3::Node' error
+#include "ns3/node.h"
 #include "ns3/simulator.h"
 #include "ns3/udp-header.h"
 #include "ns3/udp-socket-factory.h"
@@ -239,7 +239,7 @@ SessionStateRecord::SessionStateRecord()
       m_highBound(0),
       m_rTxCnt(0),
       m_canceled(NOT_CANCELED),
-      m_canceledReason((CxReasonCode)0), // FIXED: Explicit cast from int to enum
+      m_canceledReason((CxReasonCode)0),
       m_suspended(false)
 {
     NS_LOG_FUNCTION(this);
@@ -270,7 +270,7 @@ SessionStateRecord::SessionStateRecord(Address localLtpEngine,
       m_highBound(0),
       m_rTxCnt(0),
       m_canceled(NOT_CANCELED),
-      m_canceledReason((CxReasonCode)0), // FIXED: Explicit cast from int to enum
+      m_canceledReason((CxReasonCode)0),
       m_suspended(false)
 {
     NS_LOG_FUNCTION(this << localLtpEngine << localClientServiceId << peerLtpEngine);
@@ -1188,7 +1188,7 @@ LtpBundleCla::CancelSession(SessionId id)
     SessionStateRecords::iterator it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
-        it->second->Cancel(LOCAL_CANCEL, (CxReasonCode)0); // FIXED: Explicit cast from int to enum
+        it->second->Cancel(LOCAL_CANCEL, (CxReasonCode)0);
         ClientServiceInstances::iterator itCls =
             m_activeClients.find(it->second->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())

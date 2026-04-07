@@ -854,11 +854,8 @@ class ReceiverSessionStateRecord : public SessionStateRecord
     std::queue<Ptr<Packet>> m_rxGreendBuffer;      //!< Storage for received green segments
 };
 
-// ==============================================================================
-// LtpBundleCla Adapter
-// ==============================================================================
-
-/** * @ingroup dtn
+/**
+ * @ingroup dtn
  *
  * @brief Ltp protocol core class. Contains the protocol logic and the
  * sender and receiver state machines.
@@ -882,8 +879,6 @@ class LtpBundleCla : public BundleCla
      */
     ~LtpBundleCla() override;
 
-    // --- 1. Core CLA Interface ---
-
     /**
      * @brief Setup a connection between a local and remote address.
      * @param node The local node instance where the sockets will be created.
@@ -903,8 +898,6 @@ class LtpBundleCla : public BundleCla
      * @return True if Setup() has been successfully called.
      */
     bool IsUp() const override;
-
-    // --- 2. Configuration & Properties ---
 
     /**
      * @brief Set the node associated with this LTP protocol instance.
@@ -954,8 +947,6 @@ class LtpBundleCla : public BundleCla
      */
     uint32_t GetRetransCycleLimit() const;
 
-    // --- 3. Session API ---
-
     /**
      * @brief Requests the cancellation of a specific session.
      * @param id Session Id of the session to cancel.
@@ -965,8 +956,6 @@ class LtpBundleCla : public BundleCla
   private:
     typedef std::map<SessionId, Ptr<SessionStateRecord>> SessionStateRecords;
     typedef std::map<uint64_t, Ptr<ClientServiceStatus>> ClientServiceInstances;
-
-    // --- Protocol Core Logic ---
 
     /**
      * @brief Encapsulate block data into MTU-sized transmission segments.
@@ -1007,8 +996,6 @@ class LtpBundleCla : public BundleCla
      */
     void CheckRedPartReceived(SessionId id);
 
-    // --- Transmission & Retransmission ---
-
     /**
      * @brief Fire a report segment over the network.
      * @param id The session ID.
@@ -1044,8 +1031,6 @@ class LtpBundleCla : public BundleCla
      */
     void RetransmitCheckpoint(SessionId id, RedSegmentInfo info);
 
-    // --- Socket & Network Handlers ---
-
     /**
      * @brief Handle raw incoming packets from the TCP/UDP socket.
      * @param socket The underlying ns3::Socket.
@@ -1057,8 +1042,6 @@ class LtpBundleCla : public BundleCla
      * @return The MTU in bytes.
      */
     virtual uint16_t GetMtu() const;
-
-    // --- Timers & State Updates ---
 
     /**
      * @brief Fire the timer to track checkpoint timeouts.
@@ -1079,8 +1062,6 @@ class LtpBundleCla : public BundleCla
      * @param id The session ID.
      */
     void SetEndOfBlockTransmission(SessionId id);
-
-    // --- Internal Getters/Setters ---
 
     /**
      * @brief Get the remote engine ID.
@@ -1105,8 +1086,6 @@ class LtpBundleCla : public BundleCla
      * @param id The active SessionId.
      */
     void SetSessionId(SessionId id);
-
-    // --- Callback Setters ---
 
     /**
      * @brief Set the callback for link-up events.
@@ -1153,44 +1132,31 @@ class LtpBundleCla : public BundleCla
         Time stop;  //!< Time the interval ends.
     };
 
-    // --- Network & Socket State ---
-    Ptr<Node> m_node;          //!< Local Node pointer.
-    Ptr<Socket> m_rcvSocket;   //!< Receiver Socket.
-    uint16_t m_keepAliveValue; //!< Keep-alive timeout.
-
-    // --- Protocol Configuration Limits ---
-    Address m_localEngineId;   //!< Local Engine Address.
-    uint32_t m_cpRtxLimit;     //!< Checkpoint Retx Limit.
-    uint32_t m_rpRtxLimit;     //!< Report Retx Limit.
-    uint32_t m_rxProblemLimit; //!< RX Problem Limit.
-    uint32_t m_cxRtxLimit;     //!< Cancel Retx Limit.
-    uint32_t m_rtxCycleLimit;  //!< Global Cycle Limit.
-    uint8_t m_version = 0;     //!< Engine Version.
-
-    // --- Protocol State ---
-    SessionId m_activeSessionId;            //!< Currently executing session.
-    SessionStateRecords m_activeSessions;   //!< Active record mappings.
-    ClientServiceInstances m_activeClients; //!< Active client mappings.
-
-    // --- Callbacks ---
+    Ptr<Node> m_node;                                           //!< Local Node pointer.
+    Ptr<Socket> m_rcvSocket;                                    //!< Receiver Socket.
+    uint16_t m_keepAliveValue;                                  //!< Keep-alive timeout.
+    Address m_localEngineId;                                    //!< Local Engine Address.
+    uint32_t m_cpRtxLimit;                                      //!< Checkpoint Retx Limit.
+    uint32_t m_rpRtxLimit;                                      //!< Report Retx Limit.
+    uint32_t m_rxProblemLimit;                                  //!< RX Problem Limit.
+    uint32_t m_cxRtxLimit;                                      //!< Cancel Retx Limit.
+    uint32_t m_rtxCycleLimit;                                   //!< Global Cycle Limit.
+    uint8_t m_version = 0;                                      //!< Engine Version.
+    SessionId m_activeSessionId;                                //!< Currently executing session.
+    SessionStateRecords m_activeSessions;                       //!< Active record mappings.
+    ClientServiceInstances m_activeClients;                     //!< Active client mappings.
     Callback<void, SessionId, RedSegmentInfo> m_checkpointSent; //!< Checkpoint trigger.
     Callback<void, SessionId, RedSegmentInfo> m_reportSent;     //!< Report trigger.
     Callback<void, SessionId> m_endOfBlockSent;                 //!< EOB trigger.
     Callback<void, SessionId> m_cancelSent;                     //!< Cancel trigger.
     Callback<void, Ptr<LtpBundleCla>> m_linkUp;                 //!< Link up trigger.
     Callback<void, Ptr<LtpBundleCla>> m_linkDown;               //!< Link down trigger.
-
-    // --- Timers & Scheduling ---
     Time m_localDelays;     //!< Computed local delay constraint.
     Time m_onewayLightTime; //!< Hard limit on light-time propagation.
     std::queue<ActivationInterval> m_localOperatingSchedule; //!< Active network windows.
 
     Address m_peerLtpEngineId; //!< Peer Engine ID.
 };
-
-// ==============================================================================
-// SessionStateRecord Template Implementations
-// ==============================================================================
 
 /**
  * @brief Template to assign an action to a specific protocol timer.
