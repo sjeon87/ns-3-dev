@@ -7,7 +7,7 @@
  */
 
 #include "ns3/bundle-header.h"
-#include "ns3/bundle-protocol-flags.h" 
+#include "ns3/bundle-protocol-flags.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
 #include "ns3/test.h"
@@ -41,7 +41,7 @@ void
 BundleHeaderTestCase::DoRun()
 {
     PrimaryBlockHeader pbb;
-    pbb.SetVersion(7); 
+    pbb.SetVersion(7);
     uint32_t procFlags = (1 << PBB_PROC_FLAGS::NO_FRAGMENT) | (1 << PBB_PROC_FLAGS::REQ_APP_ACK);
     pbb.SetProcFlags(procFlags);
     pbb.SetCrcType(1);
@@ -67,7 +67,9 @@ BundleHeaderTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ(pbb2.GetCreationTime(),
                           Seconds(10),
                           "PrimaryBlockHeader CreationTime mismatch");
-    NS_TEST_ASSERT_MSG_EQ(pbb2.GetLifetime(), Seconds(3600), "PrimaryBlockHeader Lifetime mismatch");
+    NS_TEST_ASSERT_MSG_EQ(pbb2.GetLifetime(),
+                          Seconds(3600),
+                          "PrimaryBlockHeader Lifetime mismatch");
     NS_TEST_ASSERT_MSG_EQ(pbb2.GetSequenceNumber(),
                           42,
                           "PrimaryBlockHeader SequenceNumber mismatch");
@@ -106,7 +108,7 @@ BundleHeaderTestCase::DoRun()
     BundleStatusReport bsr;
     bsr.SetStatusFlags(0x05);
     bsr.SetReasonCode(0x01);
-    bsr.SetSourceEID("dtn:node0"); 
+    bsr.SetSourceEID("dtn:node0");
     bsr.SetFragmentOffset(0);
     bsr.SetBundleReceiptTime(Seconds(15));
     bsr.SetCreationTime(Seconds(5));
@@ -123,7 +125,9 @@ BundleHeaderTestCase::DoRun()
                           "BundleStatusReport serialized size mismatch");
     NS_TEST_ASSERT_MSG_EQ(bsr2.GetStatusFlags(), 0x05, "BundleStatusReport StatusFlags mismatch");
     NS_TEST_ASSERT_MSG_EQ(bsr2.GetReasonCode(), 0x01, "BundleStatusReport ReasonCode mismatch");
-    NS_TEST_ASSERT_MSG_EQ(bsr2.GetSourceEID(), "dtn:node0", "BundleStatusReport SourceEID mismatch");
+    NS_TEST_ASSERT_MSG_EQ(bsr2.GetSourceEID(),
+                          "dtn:node0",
+                          "BundleStatusReport SourceEID mismatch");
     NS_TEST_ASSERT_MSG_EQ(bsr2.GetBundleReceiptTime(),
                           Seconds(15),
                           "BundleStatusReport ReceiptTime mismatch");

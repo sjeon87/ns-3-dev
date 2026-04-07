@@ -6,8 +6,8 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "ns3/bundle-block.h" 
-#include "ns3/bundle-protocol-flags.h" 
+#include "ns3/bundle-block.h"
+#include "ns3/bundle-protocol-flags.h"
 #include "ns3/bundle-storage-engine.h"
 #include "ns3/bundle.h"
 #include "ns3/nstime.h"
@@ -63,8 +63,8 @@ BundleStorageEngineTestCase::DoRun()
     b1->AddBlock(pb1);
 
     Ptr<PayloadBlock> pl1 = CreateObject<PayloadBlock>();
-    pl1->GetHeader().SetBlockNumber(2); 
-    pl1->GetHeader().SetCrcType(1);     
+    pl1->GetHeader().SetBlockNumber(2);
+    pl1->GetHeader().SetCrcType(1);
     Ptr<Packet> payload = Create<Packet>(12);
     pl1->SetPayload(payload);
     b1->AddBlock(pl1);

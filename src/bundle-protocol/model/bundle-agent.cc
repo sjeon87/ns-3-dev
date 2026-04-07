@@ -7,8 +7,8 @@
  */
 #include "bundle-agent.h"
 
+#include "bundle-protocol-flags.h"
 #include "generic-convergence-layer-adapter.h"
-#include "bundle-protocol-flags.h" 
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -165,13 +165,13 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     NS_ASSERT_MSG(!m_localEID.empty(), "LocalEID must be set before transmitting");
 
     PrimaryBlockHeader primary;
-    primary.SetVersion(7); 
+    primary.SetVersion(7);
     primary.SetProcFlags(procFlags);
     primary.SetCrcType(1);
     primary.SetCreationTime(Simulator::Now());
     primary.SetLifetime(ttl);
     primary.SetSequenceNumber(m_seqNumber++);
-    
+
     // BPv7 takes whole string EIDs directly
     primary.SetDestinationEID(destinationEID);
     primary.SetSourceEID(m_localEID);
@@ -180,7 +180,7 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     // BPv7 Payload Block Setup
     PayloadBlockHeader payloadHeader;
     payloadHeader.SetBlockType(1);
-    payloadHeader.SetBlockNumber(2); 
+    payloadHeader.SetBlockNumber(2);
     payloadHeader.SetProcFlags(0);
     payloadHeader.SetCrcType(1);
     payloadHeader.SetBlockLength(size);
@@ -346,7 +346,7 @@ BundleAgent::ExpireBundle(uint32_t handle)
                                                 << bundle->GetDestinationEID() << " has expired");
 
     uint32_t flags = bundle->GetPrimaryBlock()->GetHeader().GetProcFlags();
-    
+
     if (flags & (1 << REQ_REP_DEL))
     {
         Ptr<Bundle> report = GenerateStatusReport(bundle, (1 << DEL_BUNDLE), SR_LIFE_EXPIRE);
@@ -370,7 +370,8 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
 
     if (bundle->IsAdminRecord())
     {
-        NS_LOG_DEBUG("GenerateStatusReport: Bundle is already an admin record. Suppressing report.");
+        NS_LOG_DEBUG(
+            "GenerateStatusReport: Bundle is already an admin record. Suppressing report.");
         return nullptr;
     }
 
@@ -403,7 +404,7 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
     reportPayload->AddHeader(report);
 
     std::string reportDestination = bundle->GetReportToEID();
-    
+
     PrimaryBlockHeader primary;
     primary.SetVersion(7); // BPv7
     primary.SetProcFlags(1 << ADMIN_RECORD);

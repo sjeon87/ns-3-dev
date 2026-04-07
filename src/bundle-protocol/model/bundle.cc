@@ -7,7 +7,9 @@
  */
 
 #include "bundle.h"
+
 #include "bundle-protocol-flags.h"
+
 #include "ns3/log.h"
 
 namespace ns3

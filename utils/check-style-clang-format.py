@@ -269,8 +269,6 @@ def find_clang_format_path() -> str:
     @return Path to clang-format.
     """
 
-    return "/mnt/home/lagwanka/llvm-project/build/bin/clang-format"
-
     # Find exact version, starting from the most recent one
     for version in range(CLANG_FORMAT_MAX_VERSION, CLANG_FORMAT_MIN_VERSION - 1, -1):
         clang_format_path = shutil.which(f"clang-format-{version}")

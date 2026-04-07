@@ -31,7 +31,7 @@ namespace ns3
  *
  * A bundle is represented as an ordered vector of BundleBlock objects.
  * The first block is always a PrimaryBlock, followed by one or more
- * canonical blocks (e.g., PayloadBlock or Extension Blocks). This structure 
+ * canonical blocks (e.g., PayloadBlock or Extension Blocks). This structure
  * maps directly onto the RFC 9171 bundle format for simulation purposes.
  *
  */

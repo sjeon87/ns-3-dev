@@ -46,16 +46,11 @@ void
 PrimaryBlockHeader::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
-    os << "(version=" << (uint32_t)m_version 
-       << " procFlags=" << m_procFlags
-       << " crcType=" << (uint32_t)m_crcType 
-       << " destinationEID=" << m_destinationEID
-       << " sourceEID=" << m_sourceEID 
-       << " reportToEID=" << m_reportToEID
-       << " creationTime=" << m_creationTime.As(Time::S) 
-       << " seq=" << m_seq
-       << " lifetime=" << m_lifetime.As(Time::S) 
-       << " fragmentOffset=" << m_fragmentOffset
+    os << "(version=" << (uint32_t)m_version << " procFlags=" << m_procFlags
+       << " crcType=" << (uint32_t)m_crcType << " destinationEID=" << m_destinationEID
+       << " sourceEID=" << m_sourceEID << " reportToEID=" << m_reportToEID
+       << " creationTime=" << m_creationTime.As(Time::S) << " seq=" << m_seq
+       << " lifetime=" << m_lifetime.As(Time::S) << " fragmentOffset=" << m_fragmentOffset
        << " totalAppDataLength=" << m_totalAppDataLength << ")";
 }
 
@@ -136,39 +131,137 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     return GetSerializedSize();
 }
 
-void PrimaryBlockHeader::SetVersion(uint8_t version) { m_version = version; }
-uint8_t PrimaryBlockHeader::GetVersion() const { return m_version; }
+void
+PrimaryBlockHeader::SetVersion(uint8_t version)
+{
+    m_version = version;
+}
 
-void PrimaryBlockHeader::SetProcFlags(uint32_t flags) { m_procFlags = flags; }
-uint32_t PrimaryBlockHeader::GetProcFlags() const { return m_procFlags; }
+uint8_t
+PrimaryBlockHeader::GetVersion() const
+{
+    return m_version;
+}
 
-void PrimaryBlockHeader::SetCrcType(uint8_t crcType) { m_crcType = crcType; }
-uint8_t PrimaryBlockHeader::GetCrcType() const { return m_crcType; }
+void
+PrimaryBlockHeader::SetProcFlags(uint32_t flags)
+{
+    m_procFlags = flags;
+}
 
-void PrimaryBlockHeader::SetDestinationEID(const std::string& eid) { m_destinationEID = eid; }
-std::string PrimaryBlockHeader::GetDestinationEID() const { return m_destinationEID; }
+uint32_t
+PrimaryBlockHeader::GetProcFlags() const
+{
+    return m_procFlags;
+}
 
-void PrimaryBlockHeader::SetSourceEID(const std::string& eid) { m_sourceEID = eid; }
-std::string PrimaryBlockHeader::GetSourceEID() const { return m_sourceEID; }
+void
+PrimaryBlockHeader::SetCrcType(uint8_t crcType)
+{
+    m_crcType = crcType;
+}
 
-void PrimaryBlockHeader::SetReportToEID(const std::string& eid) { m_reportToEID = eid; }
-std::string PrimaryBlockHeader::GetReportToEID() const { return m_reportToEID; }
+uint8_t
+PrimaryBlockHeader::GetCrcType() const
+{
+    return m_crcType;
+}
 
-void PrimaryBlockHeader::SetCreationTime(Time t) { m_creationTime = t; }
-Time PrimaryBlockHeader::GetCreationTime() const { return m_creationTime; }
+void
+PrimaryBlockHeader::SetDestinationEID(const std::string& eid)
+{
+    m_destinationEID = eid;
+}
 
-void PrimaryBlockHeader::SetLifetime(Time t) { m_lifetime = t; }
-Time PrimaryBlockHeader::GetLifetime() const { return m_lifetime; }
+std::string
+PrimaryBlockHeader::GetDestinationEID() const
+{
+    return m_destinationEID;
+}
 
-void PrimaryBlockHeader::SetSequenceNumber(uint32_t seq) { m_seq = seq; }
-uint32_t PrimaryBlockHeader::GetSequenceNumber() const { return m_seq; }
+void
+PrimaryBlockHeader::SetSourceEID(const std::string& eid)
+{
+    m_sourceEID = eid;
+}
 
-void PrimaryBlockHeader::SetFragmentOffset(uint32_t offset) { m_fragmentOffset = offset; }
-uint32_t PrimaryBlockHeader::GetFragmentOffset() const { return m_fragmentOffset; }
+std::string
+PrimaryBlockHeader::GetSourceEID() const
+{
+    return m_sourceEID;
+}
 
-void PrimaryBlockHeader::SetTotalAppDataLength(uint32_t length) { m_totalAppDataLength = length; }
-uint32_t PrimaryBlockHeader::GetTotalAppDataLength() const { return m_totalAppDataLength; }
+void
+PrimaryBlockHeader::SetReportToEID(const std::string& eid)
+{
+    m_reportToEID = eid;
+}
 
+std::string
+PrimaryBlockHeader::GetReportToEID() const
+{
+    return m_reportToEID;
+}
+
+void
+PrimaryBlockHeader::SetCreationTime(Time t)
+{
+    m_creationTime = t;
+}
+
+Time
+PrimaryBlockHeader::GetCreationTime() const
+{
+    return m_creationTime;
+}
+
+void
+PrimaryBlockHeader::SetLifetime(Time t)
+{
+    m_lifetime = t;
+}
+
+Time
+PrimaryBlockHeader::GetLifetime() const
+{
+    return m_lifetime;
+}
+
+void
+PrimaryBlockHeader::SetSequenceNumber(uint32_t seq)
+{
+    m_seq = seq;
+}
+
+uint32_t
+PrimaryBlockHeader::GetSequenceNumber() const
+{
+    return m_seq;
+}
+
+void
+PrimaryBlockHeader::SetFragmentOffset(uint32_t offset)
+{
+    m_fragmentOffset = offset;
+}
+
+uint32_t
+PrimaryBlockHeader::GetFragmentOffset() const
+{
+    return m_fragmentOffset;
+}
+
+void
+PrimaryBlockHeader::SetTotalAppDataLength(uint32_t length)
+{
+    m_totalAppDataLength = length;
+}
+
+uint32_t
+PrimaryBlockHeader::GetTotalAppDataLength() const
+{
+    return m_totalAppDataLength;
+}
 
 PayloadBlockHeader::PayloadBlockHeader()
 {
@@ -195,10 +288,8 @@ void
 PayloadBlockHeader::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
-    os << "(blockType=" << (uint32_t)m_blockType 
-       << " blockNumber=" << m_blockNumber
-       << " procFlags=" << (uint32_t)m_procFlags
-       << " crcType=" << (uint32_t)m_crcType
+    os << "(blockType=" << (uint32_t)m_blockType << " blockNumber=" << m_blockNumber
+       << " procFlags=" << (uint32_t)m_procFlags << " crcType=" << (uint32_t)m_crcType
        << " blockLength=" << m_blockLength << ")";
 }
 
@@ -234,20 +325,65 @@ PayloadBlockHeader::Deserialize(Buffer::Iterator start)
     return GetSerializedSize();
 }
 
-void PayloadBlockHeader::SetBlockType(uint8_t type) { m_blockType = type; }
-uint8_t PayloadBlockHeader::GetBlockType() const { return m_blockType; }
+void
+PayloadBlockHeader::SetBlockType(uint8_t type)
+{
+    m_blockType = type;
+}
 
-void PayloadBlockHeader::SetBlockNumber(uint32_t number) { m_blockNumber = number; }
-uint32_t PayloadBlockHeader::GetBlockNumber() const { return m_blockNumber; }
+uint8_t
+PayloadBlockHeader::GetBlockType() const
+{
+    return m_blockType;
+}
 
-void PayloadBlockHeader::SetProcFlags(uint8_t flags) { m_procFlags = flags; }
-uint8_t PayloadBlockHeader::GetProcFlags() const { return m_procFlags; }
+void
+PayloadBlockHeader::SetBlockNumber(uint32_t number)
+{
+    m_blockNumber = number;
+}
 
-void PayloadBlockHeader::SetCrcType(uint8_t crcType) { m_crcType = crcType; }
-uint8_t PayloadBlockHeader::GetCrcType() const { return m_crcType; }
+uint32_t
+PayloadBlockHeader::GetBlockNumber() const
+{
+    return m_blockNumber;
+}
 
-void PayloadBlockHeader::SetBlockLength(uint32_t length) { m_blockLength = length; }
-uint32_t PayloadBlockHeader::GetBlockLength() const { return m_blockLength; }
+void
+PayloadBlockHeader::SetProcFlags(uint8_t flags)
+{
+    m_procFlags = flags;
+}
+
+uint8_t
+PayloadBlockHeader::GetProcFlags() const
+{
+    return m_procFlags;
+}
+
+void
+PayloadBlockHeader::SetCrcType(uint8_t crcType)
+{
+    m_crcType = crcType;
+}
+
+uint8_t
+PayloadBlockHeader::GetCrcType() const
+{
+    return m_crcType;
+}
+
+void
+PayloadBlockHeader::SetBlockLength(uint32_t length)
+{
+    m_blockLength = length;
+}
+
+uint32_t
+PayloadBlockHeader::GetBlockLength() const
+{
+    return m_blockLength;
+}
 
 BundleStatusReport::BundleStatusReport()
     : m_creationTime(Simulator::Now())
@@ -275,12 +411,9 @@ void
 BundleStatusReport::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
-    os << "(statusFlags=" << (uint32_t)m_statusFlags 
-       << " reasonCode=" << (uint32_t)m_reasonCode
-       << " sourceEID=" << m_sourceEID
-       << " creationTime=" << m_creationTime.As(Time::S) 
-       << " seq=" << m_seq
-       << " fragmentOffset=" << m_fragmentOffset 
+    os << "(statusFlags=" << (uint32_t)m_statusFlags << " reasonCode=" << (uint32_t)m_reasonCode
+       << " sourceEID=" << m_sourceEID << " creationTime=" << m_creationTime.As(Time::S)
+       << " seq=" << m_seq << " fragmentOffset=" << m_fragmentOffset
        << " bundleReceipt=" << m_bundleReceipt.As(Time::S)
        << " bundleForward=" << m_bundleForward.As(Time::S)
        << " bundleDelivery=" << m_bundleDelivery.As(Time::S)
@@ -346,34 +479,124 @@ BundleStatusReport::Deserialize(Buffer::Iterator start)
     return GetSerializedSize();
 }
 
-void BundleStatusReport::SetStatusFlags(uint8_t flags) { m_statusFlags = flags; }
-uint8_t BundleStatusReport::GetStatusFlags() const { return m_statusFlags; }
+void
+BundleStatusReport::SetStatusFlags(uint8_t flags)
+{
+    m_statusFlags = flags;
+}
 
-void BundleStatusReport::SetReasonCode(uint8_t code) { m_reasonCode = code; }
-uint8_t BundleStatusReport::GetReasonCode() const { return m_reasonCode; }
+uint8_t
+BundleStatusReport::GetStatusFlags() const
+{
+    return m_statusFlags;
+}
 
-void BundleStatusReport::SetSourceEID(const std::string& eid) { m_sourceEID = eid; }
-std::string BundleStatusReport::GetSourceEID() const { return m_sourceEID; }
+void
+BundleStatusReport::SetReasonCode(uint8_t code)
+{
+    m_reasonCode = code;
+}
 
-void BundleStatusReport::SetCreationTime(Time t) { m_creationTime = t; }
-Time BundleStatusReport::GetCreationTime() const { return m_creationTime; }
+uint8_t
+BundleStatusReport::GetReasonCode() const
+{
+    return m_reasonCode;
+}
 
-void BundleStatusReport::SetSequenceNumber(uint32_t seq) { m_seq = seq; }
-uint32_t BundleStatusReport::GetSequenceNumber() const { return m_seq; }
+void
+BundleStatusReport::SetSourceEID(const std::string& eid)
+{
+    m_sourceEID = eid;
+}
 
-void BundleStatusReport::SetFragmentOffset(uint32_t offset) { m_fragmentOffset = offset; }
-uint32_t BundleStatusReport::GetFragmentOffset() const { return m_fragmentOffset; }
+std::string
+BundleStatusReport::GetSourceEID() const
+{
+    return m_sourceEID;
+}
 
-void BundleStatusReport::SetBundleReceiptTime(Time t) { m_bundleReceipt = t; }
-Time BundleStatusReport::GetBundleReceiptTime() const { return m_bundleReceipt; }
+void
+BundleStatusReport::SetCreationTime(Time t)
+{
+    m_creationTime = t;
+}
 
-void BundleStatusReport::SetBundleForwardTime(Time t) { m_bundleForward = t; }
-Time BundleStatusReport::GetBundleForwardTime() const { return m_bundleForward; }
+Time
+BundleStatusReport::GetCreationTime() const
+{
+    return m_creationTime;
+}
 
-void BundleStatusReport::SetBundleDeliveryTime(Time t) { m_bundleDelivery = t; }
-Time BundleStatusReport::GetBundleDeliveryTime() const { return m_bundleDelivery; }
+void
+BundleStatusReport::SetSequenceNumber(uint32_t seq)
+{
+    m_seq = seq;
+}
 
-void BundleStatusReport::SetBundleDeletionTime(Time t) { m_bundleDeletion = t; }
-Time BundleStatusReport::GetBundleDeletionTime() const { return m_bundleDeletion; }
+uint32_t
+BundleStatusReport::GetSequenceNumber() const
+{
+    return m_seq;
+}
+
+void
+BundleStatusReport::SetFragmentOffset(uint32_t offset)
+{
+    m_fragmentOffset = offset;
+}
+
+uint32_t
+BundleStatusReport::GetFragmentOffset() const
+{
+    return m_fragmentOffset;
+}
+
+void
+BundleStatusReport::SetBundleReceiptTime(Time t)
+{
+    m_bundleReceipt = t;
+}
+
+Time
+BundleStatusReport::GetBundleReceiptTime() const
+{
+    return m_bundleReceipt;
+}
+
+void
+BundleStatusReport::SetBundleForwardTime(Time t)
+{
+    m_bundleForward = t;
+}
+
+Time
+BundleStatusReport::GetBundleForwardTime() const
+{
+    return m_bundleForward;
+}
+
+void
+BundleStatusReport::SetBundleDeliveryTime(Time t)
+{
+    m_bundleDelivery = t;
+}
+
+Time
+BundleStatusReport::GetBundleDeliveryTime() const
+{
+    return m_bundleDelivery;
+}
+
+void
+BundleStatusReport::SetBundleDeletionTime(Time t)
+{
+    m_bundleDeletion = t;
+}
+
+Time
+BundleStatusReport::GetBundleDeletionTime() const
+{
+    return m_bundleDeletion;
+}
 
 } // namespace ns3

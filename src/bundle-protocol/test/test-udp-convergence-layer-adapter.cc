@@ -6,8 +6,8 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "ns3/bundle.h"
 #include "ns3/bundle-block.h" // Added to construct blocks
+#include "ns3/bundle.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv4-address.h"
@@ -83,16 +83,16 @@ UdpBundleClaTestCase::DoRun()
     claB->SetRxCallback(MakeCallback(&UdpBundleClaTestCase::ReceiveBundleCallback, this));
 
     Ptr<Bundle> bundle = CreateObject<Bundle>();
-    
+
     Ptr<PrimaryBlock> pb = CreateObject<PrimaryBlock>();
-    pb->GetHeader().SetVersion(7); 
+    pb->GetHeader().SetVersion(7);
     pb->GetHeader().SetDestinationEID("dtn:nodeB");
     pb->GetHeader().SetSourceEID("dtn:nodeA");
     pb->GetHeader().SetReportToEID("dtn:none");
     bundle->AddBlock(pb);
 
     Ptr<PayloadBlock> pl = CreateObject<PayloadBlock>();
-    pl->GetHeader().SetBlockNumber(2); 
+    pl->GetHeader().SetBlockNumber(2);
     pl->GetHeader().SetCrcType(1);
     pl->SetPayload(Create<Packet>(100));
     bundle->AddBlock(pl);

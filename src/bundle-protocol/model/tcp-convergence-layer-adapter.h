@@ -9,9 +9,11 @@
 #define TCP_CONVERGENCE_LAYER_ADAPTER_H
 
 #include "generic-convergence-layer-adapter.h"
+
 #include "ns3/address.h"
 #include "ns3/node.h"
 #include "ns3/socket.h"
+
 #include <queue>
 #include <vector>
 
@@ -21,12 +23,13 @@ namespace ns3
 /**
  * @ingroup bundleProtocol
  *
- * @brief A Transmission Control Protocol (TCP) Convergence Layer Adapter (CLA) for the Bundle Protocol.
+ * @brief A Transmission Control Protocol (TCP) Convergence Layer Adapter (CLA) for the Bundle
+ * Protocol.
  *
  * This class implements a TCP-based CLA. It manages both an incoming listening socket (server-side)
  * and an outgoing connection socket (client-side) to facilitate bidirectional bundle transmission
- * over TCP within the ns-3 simulation environment. Bundles sent before the TCP 3-way handshake completes
- * are queued and automatically flushed upon successful connection establishment.
+ * over TCP within the ns-3 simulation environment. Bundles sent before the TCP 3-way handshake
+ * completes are queued and automatically flushed upon successful connection establishment.
  */
 class TcpBundleCla : public BundleCla
 {
@@ -59,7 +62,7 @@ class TcpBundleCla : public BundleCla
 
     /**
      * @brief Send a serialized bundle packet via the TCP connection.
-     * * If the TCP connection is fully established, the packet is sent immediately. 
+     * * If the TCP connection is fully established, the packet is sent immediately.
      * If the handshake is still pending, the packet is queued locally.
      * * @param packet The serialized bundle packet to send over the network.
      */
@@ -105,15 +108,17 @@ class TcpBundleCla : public BundleCla
      */
     void HandleRead(Ptr<Socket> socket);
 
-    Ptr<Socket> m_listenSocket;                     //!< Socket to listen for incoming connections
-    Ptr<Socket> m_sendSocket;                       //!< Socket to initiate outgoing connection
-    std::vector<Ptr<Socket>> m_acceptedSockets;     //!< List to track and keep alive incoming connection sockets
+    Ptr<Socket> m_listenSocket; //!< Socket to listen for incoming connections
+    Ptr<Socket> m_sendSocket;   //!< Socket to initiate outgoing connection
+    std::vector<Ptr<Socket>>
+        m_acceptedSockets; //!< List to track and keep alive incoming connection sockets
 
-    Address m_remoteAddress;                        //!< The destination address we are attempting to connect to
-    bool m_connected;                               //!< Flag indicating if the outgoing TCP connection is fully established
-    bool m_isUp;                                    //!< Flag indicating if the Setup method has been executed
-    
-    std::queue<Ptr<Packet>> m_sendQueue;            //!< Queue for packets generated before the connection is established
+    Address m_remoteAddress; //!< The destination address we are attempting to connect to
+    bool m_connected; //!< Flag indicating if the outgoing TCP connection is fully established
+    bool m_isUp;      //!< Flag indicating if the Setup method has been executed
+
+    std::queue<Ptr<Packet>>
+        m_sendQueue; //!< Queue for packets generated before the connection is established
 };
 
 } // namespace ns3

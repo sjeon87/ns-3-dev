@@ -6,16 +6,16 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "ns3/bundle.h"
 #include "ns3/bundle-block.h"
+#include "ns3/bundle.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/node-container.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
-#include "ns3/test.h"
 #include "ns3/tcp-convergence-layer-adapter.h"
+#include "ns3/test.h"
 
 using namespace ns3;
 
@@ -83,7 +83,7 @@ TcpBundleClaTestCase::DoRun()
     claB->SetRxCallback(MakeCallback(&TcpBundleClaTestCase::ReceiveBundleCallback, this));
 
     Ptr<Bundle> bundle = CreateObject<Bundle>();
-    
+
     Ptr<PrimaryBlock> pb = CreateObject<PrimaryBlock>();
     pb->GetHeader().SetVersion(7);
     pb->GetHeader().SetDestinationEID("dtn:nodeB");
@@ -93,7 +93,7 @@ TcpBundleClaTestCase::DoRun()
 
     Ptr<PayloadBlock> pl = CreateObject<PayloadBlock>();
     pl->GetHeader().SetBlockNumber(2);
-    pl->SetPayload(Create<Packet>(100)); 
+    pl->SetPayload(Create<Packet>(100));
     bundle->AddBlock(pl);
 
     Ptr<Packet> packetToSend = bundle->Serialize();

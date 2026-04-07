@@ -201,17 +201,17 @@ class PrimaryBlockHeader : public Header
     uint32_t GetTotalAppDataLength() const;
 
   private:
-    uint8_t m_version = 7;                  //!< Bundle Protocol version (7 for RFC 9171)
-    uint32_t m_procFlags = 0;               //!< Bundle processing control flags
-    uint8_t m_crcType = 0;                  //!< CRC Type (0 = None, 1 = CRC16, 2 = CRC32)
-    std::string m_destinationEID;           //!< Destination EID
-    std::string m_sourceEID;                //!< Source EID
-    std::string m_reportToEID;              //!< Report-to EID
-    Time m_creationTime;                    //!< Bundle creation time
-    uint32_t m_seq = 0;                     //!< Bundle sequence number
-    Time m_lifetime;                        //!< Bundle Lifetime (formerly TTL in BPv6)
-    uint32_t m_fragmentOffset = 0;          //!< Fragment offset (if fragmented)
-    uint32_t m_totalAppDataLength = 0;      //!< Total application data length
+    uint8_t m_version = 7;             //!< Bundle Protocol version (7 for RFC 9171)
+    uint32_t m_procFlags = 0;          //!< Bundle processing control flags
+    uint8_t m_crcType = 0;             //!< CRC Type (0 = None, 1 = CRC16, 2 = CRC32)
+    std::string m_destinationEID;      //!< Destination EID
+    std::string m_sourceEID;           //!< Source EID
+    std::string m_reportToEID;         //!< Report-to EID
+    Time m_creationTime;               //!< Bundle creation time
+    uint32_t m_seq = 0;                //!< Bundle sequence number
+    Time m_lifetime;                   //!< Bundle Lifetime (formerly TTL in BPv6)
+    uint32_t m_fragmentOffset = 0;     //!< Fragment offset (if fragmented)
+    uint32_t m_totalAppDataLength = 0; //!< Total application data length
 };
 
 /**
@@ -324,11 +324,11 @@ class PayloadBlockHeader : public Header
     uint32_t GetBlockLength() const;
 
   private:
-    uint8_t m_blockType = 1;     //!< Block type identifier (Payload = 1)
-    uint32_t m_blockNumber = 1;  //!< Unique block number
-    uint8_t m_procFlags = 0;     //!< Block processing control flags
-    uint8_t m_crcType = 0;       //!< CRC Type
-    uint32_t m_blockLength = 0;  //!< Length of the block data
+    uint8_t m_blockType = 1;    //!< Block type identifier (Payload = 1)
+    uint32_t m_blockNumber = 1; //!< Unique block number
+    uint8_t m_procFlags = 0;    //!< Block processing control flags
+    uint8_t m_crcType = 0;      //!< CRC Type
+    uint32_t m_blockLength = 0; //!< Length of the block data
 };
 
 /**

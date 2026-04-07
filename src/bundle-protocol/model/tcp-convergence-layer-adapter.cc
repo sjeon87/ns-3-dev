@@ -8,8 +8,8 @@
 #include "tcp-convergence-layer-adapter.h"
 
 #include "ns3/log.h"
-#include "ns3/tcp-socket-factory.h"
 #include "ns3/simulator.h"
+#include "ns3/tcp-socket-factory.h"
 
 namespace ns3
 {
@@ -64,27 +64,26 @@ TcpBundleCla::Setup(Ptr<Node> node, Address localAddress, Address remoteAddress)
     m_isUp = true;
 
     m_listenSocket = Socket::CreateSocket(node, TcpSocketFactory::GetTypeId());
-    
+
     if (m_listenSocket->Bind(localAddress) == -1)
     {
         NS_LOG_ERROR("Failed to bind TCP listen socket to " << localAddress);
         return;
     }
-    
+
     m_listenSocket->Listen();
-    m_listenSocket->SetAcceptCallback(
-        MakeCallback(&TcpBundleCla::ConnectionRequest, this),
-        MakeCallback(&TcpBundleCla::AcceptConnection, this));
+    m_listenSocket->SetAcceptCallback(MakeCallback(&TcpBundleCla::ConnectionRequest, this),
+                                      MakeCallback(&TcpBundleCla::AcceptConnection, this));
 
     m_sendSocket = Socket::CreateSocket(node, TcpSocketFactory::GetTypeId());
-    
-    m_sendSocket->SetConnectCallback(
-        MakeCallback(&TcpBundleCla::ConnectionSucceeded, this),
-        MakeCallback(&TcpBundleCla::ConnectionFailed, this));
+
+    m_sendSocket->SetConnectCallback(MakeCallback(&TcpBundleCla::ConnectionSucceeded, this),
+                                     MakeCallback(&TcpBundleCla::ConnectionFailed, this));
 
     m_sendSocket->Connect(m_remoteAddress);
 
-    NS_LOG_DEBUG("TcpBundleCla configured. Listening on " << localAddress << ", connecting to " << m_remoteAddress);
+    NS_LOG_DEBUG("TcpBundleCla configured. Listening on " << localAddress << ", connecting to "
+                                                          << m_remoteAddress);
 }
 
 void
@@ -149,7 +148,7 @@ TcpBundleCla::ConnectionRequest(Ptr<Socket> socket, const Address& from)
 {
     NS_LOG_FUNCTION(this << socket << from);
     NS_LOG_DEBUG("Accepting connection request from " << from);
-    return true; 
+    return true;
 }
 
 void
@@ -157,7 +156,7 @@ TcpBundleCla::AcceptConnection(Ptr<Socket> socket, const Address& from)
 {
     NS_LOG_FUNCTION(this << socket << from);
     NS_LOG_DEBUG("Connection accepted from " << from);
-    
+
     m_acceptedSockets.push_back(socket);
 
     socket->SetRecvCallback(MakeCallback(&TcpBundleCla::HandleRead, this));
@@ -173,13 +172,13 @@ TcpBundleCla::HandleRead(Ptr<Socket> socket)
 
     while ((packet = socket->RecvFrom(from)))
     {
-        if (packet->GetSize() == 0) 
+        if (packet->GetSize() == 0)
         {
-            break; 
+            break;
         }
 
         NS_LOG_DEBUG("Received TCP packet of size " << packet->GetSize() << " from " << from);
-        
+
         Ptr<Bundle> bundle = CreateObject<Bundle>();
         bundle->Deserialize(packet);
         ForwardUp(bundle);

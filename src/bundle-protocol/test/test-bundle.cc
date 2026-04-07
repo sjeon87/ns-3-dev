@@ -44,12 +44,12 @@ BundleTestCase::DoRun()
     Ptr<PrimaryBlock> pb = CreateObject<PrimaryBlock>();
     PrimaryBlockHeader& pbb = pb->GetHeader();
 
-    pbb.SetVersion(7); 
+    pbb.SetVersion(7);
     uint32_t procFlags = (1 << PBB_PROC_FLAGS::NO_FRAGMENT) | (1 << PBB_PROC_FLAGS::REQ_APP_ACK);
     pbb.SetProcFlags(procFlags);
     pbb.SetCrcType(1);
     pbb.SetCreationTime(Seconds(10));
-    pbb.SetLifetime(Seconds(3600)); 
+    pbb.SetLifetime(Seconds(3600));
     pbb.SetSequenceNumber(42);
     pbb.SetDestinationEID("dtn:node1");
     pbb.SetSourceEID("dtn:node0");
@@ -81,18 +81,18 @@ BundleTestCase::DoRun()
     Ptr<Bundle> bundle = CreateObject<Bundle>();
 
     Ptr<PayloadBlock> payloadBlock = CreateObject<PayloadBlock>();
-    
+
     payloadBlock->GetHeader().SetBlockNumber(2);
     payloadBlock->GetHeader().SetCrcType(1);
-    
+
     payloadBlock->SetPayload(payload);
     bundle->AddBlock(payloadBlock);
 
     Ptr<Packet> retrievedPayload = bundle->GetPayloadBlock()->GetPayload();
 
     NS_TEST_ASSERT_MSG_EQ(payload->GetSize(), retrievedPayload->GetSize(), "Payload mismatch");
-    NS_TEST_ASSERT_MSG_EQ(bundle->GetPayloadBlock()->GetHeader().GetBlockNumber(), 
-                          2, 
+    NS_TEST_ASSERT_MSG_EQ(bundle->GetPayloadBlock()->GetHeader().GetBlockNumber(),
+                          2,
                           "Payload Block Number mismatch");
 }
 
