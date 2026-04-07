@@ -10,12 +10,12 @@
 
 #include "ltp-convergence-layer-adapter.h"
 
-#include "ns3/log.h"
-#include "ns3/simulator.h"
 #include "ns3/ipv4-header.h"
+#include "ns3/log.h"
+#include "ns3/node.h" // ADDED: Fixes the incomplete type 'class ns3::Node' error
+#include "ns3/simulator.h"
 #include "ns3/udp-header.h"
 #include "ns3/udp-socket-factory.h"
-#include "ns3/node.h" // ADDED: Fixes the incomplete type 'class ns3::Node' error
 
 namespace ns3
 {
@@ -792,9 +792,11 @@ SenderSessionStateRecord::SenderSessionStateRecord(Address localLtpEngineId,
     NS_LOG_FUNCTION(this << localLtpEngineId << localClientServiceId << destinationClientService
                          << destinationLtpEngine << number);
 
-    m_sessionId = SessionId(0, number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER));
+    m_sessionId =
+        SessionId(0, number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER));
 
-    m_firstCpSerialNumber = number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER);
+    m_firstCpSerialNumber =
+        number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER);
     m_currentCpSerialNumber = m_firstCpSerialNumber;
     m_firstRpSerialNumber = 0;
     m_currentRpSerialNumber = 0;
@@ -896,7 +898,8 @@ ReceiverSessionStateRecord::ReceiverSessionStateRecord(Address localLtpEngineId,
     m_sessionId = session;
     m_firstCpSerialNumber = 0;
     m_currentCpSerialNumber = 0;
-    m_firstRpSerialNumber = number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER);
+    m_firstRpSerialNumber =
+        number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER);
     m_currentRpSerialNumber = m_firstRpSerialNumber;
 }
 
@@ -1041,12 +1044,12 @@ LtpBundleCla::Setup(Ptr<Node> node, Address localAddress, Address remoteAddress)
 
     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
     m_rcvSocket = Socket::CreateSocket(m_node, tid);
-    
+
     if (m_rcvSocket->Bind(localAddress) == -1)
     {
         NS_LOG_ERROR("Failed to bind LTP socket to local address");
     }
-    
+
     m_rcvSocket->SetRecvCallback(MakeCallback(&LtpBundleCla::HandleRead, this));
 }
 
@@ -1186,7 +1189,8 @@ LtpBundleCla::CancelSession(SessionId id)
     if (it != m_activeSessions.end())
     {
         it->second->Cancel(LOCAL_CANCEL, (CxReasonCode)0); // FIXED: Explicit cast from int to enum
-        ClientServiceInstances::iterator itCls = m_activeClients.find(it->second->GetLocalClientServiceId());
+        ClientServiceInstances::iterator itCls =
+            m_activeClients.find(it->second->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())
         {
             itCls->second->ReportStatus(id, RX_SESSION_CANCEL);
@@ -1280,9 +1284,11 @@ LtpBundleCla::EncapsulateBlockData(Address remoteAddress,
             contentHeader.SetSegmentType(type);
         }
         std::vector<uint8_t>::const_iterator start = data.begin() + offset;
-        std::vector<uint8_t>::const_iterator end = (offset + length > data.size()) ? data.end() : data.begin() + offset + length;
+        std::vector<uint8_t>::const_iterator end =
+            (offset + length > data.size()) ? data.end() : data.begin() + offset + length;
         std::vector<uint8_t> segmentData(start, end);
-        Ptr<Packet> packet = Create<Packet>((uint8_t*)segmentData.data(), (uint32_t)segmentData.size());
+        Ptr<Packet> packet =
+            Create<Packet>((uint8_t*)segmentData.data(), (uint32_t)segmentData.size());
         packet->AddHeader(contentHeader);
         packet->AddHeader(header);
         ssr->Enqueue(packet);
@@ -1306,7 +1312,8 @@ LtpBundleCla::CloseSession(SessionId id)
         }
         ssr->CancelTimer(CHECKPOINT);
         ssr->CancelTimer(REPORT);
-        ClientServiceInstances::iterator itCls = m_activeClients.find(ssr->GetLocalClientServiceId());
+        ClientServiceInstances::iterator itCls =
+            m_activeClients.find(ssr->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())
         {
             itCls->second->ReportStatus(id, SESSION_END);
@@ -1322,13 +1329,15 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
     SessionStateRecords::iterator it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
-        ClientServiceInstances::iterator itCls = m_activeClients.find(it->second->GetLocalClientServiceId());
+        ClientServiceInstances::iterator itCls =
+            m_activeClients.find(it->second->GetLocalClientServiceId());
         std::vector<uint8_t> blockData;
         bool EOB = false;
         Address remoteLtp = it->second->GetPeerLtpEngineId();
         if (it->second->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
         {
-            Ptr<ReceiverSessionStateRecord> ssr = DynamicCast<ReceiverSessionStateRecord>(it->second);
+            Ptr<ReceiverSessionStateRecord> ssr =
+                DynamicCast<ReceiverSessionStateRecord>(it->second);
             Ptr<Packet> p = 0;
             LtpHeader header;
             LtpContentHeader contentHeader;
@@ -1351,7 +1360,8 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
         }
         if (itCls != m_activeClients.end())
         {
-            itCls->second->ReportStatus(id, RED_PART_RCV, blockData, blockData.size(), EOB, remoteLtp);
+            itCls->second
+                ->ReportStatus(id, RED_PART_RCV, blockData, blockData.size(), EOB, remoteLtp);
         }
     }
 }
@@ -1365,7 +1375,8 @@ LtpBundleCla::SignifyGreenPartSegmentArrival(SessionId id)
     {
         return;
     }
-    ClientServiceInstances::iterator itCls = m_activeClients.find(it->second->GetLocalClientServiceId());
+    ClientServiceInstances::iterator itCls =
+        m_activeClients.find(it->second->GetLocalClientServiceId());
     if (it->second->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
     {
         Ptr<ReceiverSessionStateRecord> ssr = DynamicCast<ReceiverSessionStateRecord>(it->second);
@@ -1398,7 +1409,13 @@ LtpBundleCla::SignifyGreenPartSegmentArrival(SessionId id)
         }
         if (itCls != m_activeClients.end())
         {
-            itCls->second->ReportStatus(id, GP_SEGMENT_RCV, packetData, packetData.size(), EOB, remoteLtp, offset);
+            itCls->second->ReportStatus(id,
+                                        GP_SEGMENT_RCV,
+                                        packetData,
+                                        packetData.size(),
+                                        EOB,
+                                        remoteLtp,
+                                        offset);
         }
     }
 }
@@ -1452,7 +1469,9 @@ LtpBundleCla::ReportSegmentTransmission(SessionId id, uint64_t cpSerialNum)
     contentHeader.SetUpperBound(upperBound);
     contentHeader.SetLowerBound(lowerBound);
     std::set<LtpContentHeader::ReceptionClaim> claims = srecv->GetClaims(RpSerial);
-    for (std::set<LtpContentHeader::ReceptionClaim>::iterator itC = claims.begin(); itC != claims.end(); ++itC)
+    for (std::set<LtpContentHeader::ReceptionClaim>::iterator itC = claims.begin();
+         itC != claims.end();
+         ++itC)
     {
         contentHeader.AddReceptionClaim(*itC);
     }
@@ -1555,13 +1574,15 @@ LtpBundleCla::HandleRead(Ptr<Socket> socket)
         Ptr<SenderSessionStateRecord> ssend = 0;
         if (itSessions == m_activeSessions.end())
         {
-            ClientServiceInstances::iterator itClients = m_activeClients.find(contentHeader.GetClientServiceId());
+            ClientServiceInstances::iterator itClients =
+                m_activeClients.find(contentHeader.GetClientServiceId());
             if (itClients == m_activeClients.end())
             {
                 continue;
             }
             Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
-            srecv = CreateObject<ReceiverSessionStateRecord>(m_localEngineId, itClients->first, id, uv);
+            srecv =
+                CreateObject<ReceiverSessionStateRecord>(m_localEngineId, itClients->first, id, uv);
             std::pair<SessionId, Ptr<SessionStateRecord>> entry;
             entry = std::make_pair(id, DynamicCast<SessionStateRecord>(srecv));
             m_activeSessions.insert(m_activeSessions.begin(), entry);
@@ -1593,7 +1614,10 @@ LtpBundleCla::HandleRead(Ptr<Socket> socket)
                     claim.length = contentHeader.GetLength();
                     uint32_t upperBound = claim.offset + claim.length;
                     srecv->SetHighBound(upperBound);
-                    srecv->InsertClaim(srecv->GetRpCurrentSerialNumber(), srecv->GetLowBound(), srecv->GetHighBound(), claim);
+                    srecv->InsertClaim(srecv->GetRpCurrentSerialNumber(),
+                                       srecv->GetLowBound(),
+                                       srecv->GetHighBound(),
+                                       claim);
                 }
                 else
                 {
@@ -1625,7 +1649,8 @@ LtpBundleCla::HandleRead(Ptr<Socket> socket)
                 case LTPTYPE_GD_EOB:
                     srecv->SetBlockFinished();
                     SignifyGreenPartSegmentArrival(id);
-                    if ((srecv->IsRedPartFinished() && srecv->IsBlockFinished()) || srecv->IsFullGreen())
+                    if ((srecv->IsRedPartFinished() && srecv->IsBlockFinished()) ||
+                        srecv->IsFullGreen())
                     {
                         CloseSession(id);
                     }
@@ -1710,7 +1735,12 @@ LtpBundleCla::SetCheckPointTransmissionTimer(SessionId id, RedSegmentInfo info)
     {
         double rtt = m_onewayLightTime.GetSeconds() * 2 + m_localDelays.GetSeconds() * 2 + 1.0;
         Ptr<SessionStateRecord> ssr = it->second;
-        ssr->SetTimerFunction(&LtpBundleCla::RetransmitSegment, this, id, info, Seconds(rtt), CHECKPOINT);
+        ssr->SetTimerFunction(&LtpBundleCla::RetransmitSegment,
+                              this,
+                              id,
+                              info,
+                              Seconds(rtt),
+                              CHECKPOINT);
         ssr->StartTimer(CHECKPOINT);
     }
 }
@@ -1724,7 +1754,12 @@ LtpBundleCla::SetReportReTransmissionTimer(SessionId id, RedSegmentInfo info)
     {
         double rtt = m_onewayLightTime.GetSeconds() * 2 + m_localDelays.GetSeconds() * 2 + 1.0;
         Ptr<SessionStateRecord> ssr = it->second;
-        ssr->SetTimerFunction(&LtpBundleCla::RetransmitReport, this, id, info, Seconds(rtt), REPORT);
+        ssr->SetTimerFunction(&LtpBundleCla::RetransmitReport,
+                              this,
+                              id,
+                              info,
+                              Seconds(rtt),
+                              REPORT);
         ssr->StartTimer(REPORT);
     }
 }

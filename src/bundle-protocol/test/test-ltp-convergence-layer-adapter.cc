@@ -10,16 +10,16 @@
 
 #include "ns3/abort.h"
 #include "ns3/buffer.h"
-#include "ns3/log.h"
-#include "ns3/ltp-header.h"
-#include "ns3/ltp-convergence-layer-adapter.h"
 #include "ns3/bundle-agent.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/ipv4-address.h"
+#include "ns3/log.h"
+#include "ns3/ltp-convergence-layer-adapter.h"
+#include "ns3/ltp-header.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/sdnv.h"
 #include "ns3/string.h"
 #include "ns3/test.h"
-#include "ns3/inet-socket-address.h"
-#include "ns3/ipv4-address.h"
 
 using namespace ns3;
 
@@ -140,8 +140,8 @@ LtpHeaderTestCase::SetHeaderTests()
     header.AddExtension(m_extensions.Get(0).m_data);
 
     test.m_data = header;
-    test.m_expectedEncodedSz = 2 + m_sessionIds.Get(1).m_expectedEncodedSz +
-                               m_extensions.Get(0).m_expectedEncodedSz;
+    test.m_expectedEncodedSz =
+        2 + m_sessionIds.Get(1).m_expectedEncodedSz + m_extensions.Get(0).m_expectedEncodedSz;
 
     m_mainHeaderTests.Add(test);
 
@@ -169,8 +169,8 @@ LtpHeaderTestCase::SetTrailerTests()
     TestVector<LtpTrailer> test;
 
     test.m_data = trailer;
-    test.m_expectedEncodedSz = 3 * m_extensions.Get(0).m_expectedEncodedSz +
-                               m_extensions.Get(1).m_expectedEncodedSz;
+    test.m_expectedEncodedSz =
+        3 * m_extensions.Get(0).m_expectedEncodedSz + m_extensions.Get(1).m_expectedEncodedSz;
 
     m_mainTrailerTests.Add(test);
 }
@@ -314,7 +314,9 @@ LtpHeaderTestCase::DoRun(void)
 
         LtpTrailer trailer;
         trailer.Deserialize(buf.Begin());
-        NS_TEST_ASSERT_MSG_EQ((trailer == test.m_data), true, "Trailer serialization methods failed");
+        NS_TEST_ASSERT_MSG_EQ((trailer == test.m_data),
+                              true,
+                              "Trailer serialization methods failed");
     }
 
     for (uint32_t i = 0; i < m_mainContentHeaderTests.GetN(); i++)
@@ -332,7 +334,9 @@ LtpHeaderTestCase::DoRun(void)
         LtpContentHeader content;
         content.SetSegmentType(test.m_data.GetSegmentType());
         content.Deserialize(buf.Begin());
-        NS_TEST_ASSERT_MSG_EQ((content == test.m_data), true, "Content Header serialization methods failed");
+        NS_TEST_ASSERT_MSG_EQ((content == test.m_data),
+                              true,
+                              "Content Header serialization methods failed");
     }
 }
 
@@ -493,7 +497,8 @@ LtpSessionStateRecordTestCase::DoRun(void)
 
     bool test = ((id.GetSessionNumber() >= SessionStateRecord::MIN_INITIAL_SERIAL_NUMBER) &&
                  (id.GetSessionNumber() <= SessionStateRecord::MAX_INITIAL_SERIAL_NUMBER) &&
-                 id.GetSessionOriginator() == 0); // We default initialized SessionId to 0 in SenderSessionStateRecord setup
+                 id.GetSessionOriginator() ==
+                     0); // We default initialized SessionId to 0 in SenderSessionStateRecord setup
 
     NS_TEST_ASSERT_MSG_EQ(test, true, "Wrong result for sessionId generation");
 
@@ -551,9 +556,8 @@ LtpSessionStateRecordTestCase::DoRun(void)
     test = srecv->InsertClaim(srecv->GetRpCurrentSerialNumber(), lowerBound, upperBound, claim);
     NS_TEST_ASSERT_MSG_EQ(test, true, "Claim with new Report serial number not Inserted");
 
-    test =
-        ((srecv->GetRpCurrentSerialNumber() < SessionStateRecord::MAX_SERIAL_NUMBER + 1) &&
-         (srecv->GetRpCurrentSerialNumber() >= 1));
+    test = ((srecv->GetRpCurrentSerialNumber() < SessionStateRecord::MAX_SERIAL_NUMBER + 1) &&
+            (srecv->GetRpCurrentSerialNumber() >= 1));
 
     NS_TEST_ASSERT_MSG_EQ(test, true, "Wrong RP Serial Number");
 
@@ -621,13 +625,13 @@ BundleAgentLtpClaTestCase::DoRun(void)
     agent->SetLocalEID("dtn:nodeA");
 
     Ptr<LtpBundleCla> cla = CreateObject<LtpBundleCla>();
-    
+
     bool test = agent->RegisterCla("dtn:nodeB", cla);
     NS_TEST_ASSERT_MSG_EQ(test, true, "New CLA registration failed");
-    
+
     test = agent->RegisterCla("dtn:nodeB", cla);
     NS_TEST_ASSERT_MSG_EQ(test, false, "CLA registered twice");
-    
+
     Ptr<LtpBundleCla> cla2 = CreateObject<LtpBundleCla>();
     test = agent->RegisterCla("dtn:nodeC", cla2);
     NS_TEST_ASSERT_MSG_EQ(test, true, "Second CLA registration failed");

@@ -15,18 +15,18 @@
 #include "ltp-header.h"
 
 #include "ns3/address.h"
+#include "ns3/nstime.h"
 #include "ns3/object.h"
 #include "ns3/packet.h"
-#include "ns3/socket.h"
-#include "ns3/traced-callback.h"
-#include "ns3/nstime.h"
 #include "ns3/random-variable-stream.h"
+#include "ns3/socket.h"
 #include "ns3/timer.h"
+#include "ns3/traced-callback.h"
 
 #include <map>
 #include <queue>
-#include <vector>
 #include <set>
+#include <vector>
 
 namespace ns3
 {
@@ -37,13 +37,13 @@ namespace ns3
  */
 enum StatusNotificationCode
 {
-    SESSION_START = 0,      //!< Session has started
-    GP_SEGMENT_RCV = 1,     //!< Green part segment received
-    RED_PART_RCV = 2,       //!< Red part segment received
-    TX_COMPLETED = 3,       //!< Transmission successfully completed
-    TX_SESSION_CANCEL = 4,  //!< Transmission session canceled
-    RX_SESSION_CANCEL = 5,  //!< Reception session canceled
-    SESSION_END = 6         //!< Session has ended
+    SESSION_START = 0,     //!< Session has started
+    GP_SEGMENT_RCV = 1,    //!< Green part segment received
+    RED_PART_RCV = 2,      //!< Red part segment received
+    TX_COMPLETED = 3,      //!< Transmission successfully completed
+    TX_SESSION_CANCEL = 4, //!< Transmission session canceled
+    RX_SESSION_CANCEL = 5, //!< Reception session canceled
+    SESSION_END = 6        //!< Session has ended
 };
 
 /**
@@ -148,7 +148,7 @@ class LtpQueueSet : public Object
  *
  * @brief Class representing active client service instances registered within the LTP protocol.
  *
- * This class is used to keep track of active sessions that are being used by each 
+ * This class is used to keep track of active sessions that are being used by each
  * client service instance. It contains methods to report the changes on session status.
  */
 class ClientServiceStatus : public Object
@@ -299,7 +299,11 @@ class SessionStateRecord : public Object
      * @param type Type of timer to schedule.
      */
     template <typename MEM_PTR, typename OBJ_PTR, typename T1>
-    void SetTimerFunction(MEM_PTR memPtr, OBJ_PTR objPtr, T1 param, const Time delay, TimerCode type);
+    void SetTimerFunction(MEM_PTR memPtr,
+                          OBJ_PTR objPtr,
+                          T1 param,
+                          const Time delay,
+                          TimerCode type);
 
     /**
      * @brief Start the timer with two parameters.
@@ -311,7 +315,12 @@ class SessionStateRecord : public Object
      * @param type Type of timer to schedule.
      */
     template <typename MEM_PTR, typename OBJ_PTR, typename T1, typename T2>
-    void SetTimerFunction(MEM_PTR memPtr, OBJ_PTR objPtr, T1 param, T2 param2, const Time delay, TimerCode type);
+    void SetTimerFunction(MEM_PTR memPtr,
+                          OBJ_PTR objPtr,
+                          T1 param,
+                          T2 param2,
+                          const Time delay,
+                          TimerCode type);
 
     /**
      * @brief Start timer specified by parameter, if already running, it is stopped and restarted.
@@ -368,11 +377,15 @@ class SessionStateRecord : public Object
      * @param claim Reception claim including offset and length of the data.
      * @return True if inserted.
      */
-    bool InsertClaim(uint32_t serialNum, uint32_t low, uint32_t high, LtpContentHeader::ReceptionClaim claim);
+    bool InsertClaim(uint32_t serialNum,
+                     uint32_t low,
+                     uint32_t high,
+                     LtpContentHeader::ReceptionClaim claim);
 
     /**
      * @brief Store claims for a given serial number.
-     * @param reportHeader packet corresponding to a report (contains claims, bounds and serial number).
+     * @param reportHeader packet corresponding to a report (contains claims, bounds and serial
+     * number).
      * @return True if stored successfully.
      */
     bool StoreClaims(LtpContentHeader reportHeader);
@@ -419,7 +432,7 @@ class SessionStateRecord : public Object
      * @return Value before increase.
      */
     uint64_t IncrementCpCurrentSerialNumber();
-    
+
     /**
      * @brief Increment current Report serial number.
      * @return Value before increase.
@@ -445,12 +458,12 @@ class SessionStateRecord : public Object
      * @brief Signal that the block only contained red data.
      */
     void SetFullRed();
-    
+
     /**
      * @brief Signal that the block only contained green data.
      */
     void SetFullGreen();
-    
+
     /**
      * @brief Set length of the red part of the block.
      * @param len Length of red data.
@@ -493,31 +506,31 @@ class SessionStateRecord : public Object
      * @return Checkpoint Starting serial number
      */
     uint64_t GetCpStartSerialNumber() const;
-    
+
     /**
      * @brief Get the current checkpoint serial number.
      * @return Checkpoint current serial number
      */
     uint64_t GetCpCurrentSerialNumber() const;
-    
+
     /**
      * @brief Get the report starting serial number.
      * @return Report Starting serial number
      */
     uint64_t GetRpStartSerialNumber() const;
-    
+
     /**
      * @brief Get the current report serial number.
      * @return Report current serial number
      */
     uint64_t GetRpCurrentSerialNumber() const;
-    
+
     /**
      * @brief Get the peer LTP Engine ID.
      * @return Remote LTP engine ns3::Address
      */
     Address GetPeerLtpEngineId() const;
-    
+
     /**
      * @brief Get the local client service ID.
      * @return Local Client Service Instance id
@@ -529,31 +542,31 @@ class SessionStateRecord : public Object
      * @return true if Red part transmitted successfully, false otherwise
      */
     bool IsRedPartFinished() const;
-    
+
     /**
      * @brief Check if the entire block is finished.
      * @return true if whole data block transmitted successfully, false otherwise
      */
     bool IsBlockFinished() const;
-    
+
     /**
      * @brief Check if the session is canceled.
      * @return true if session has been canceled, false otherwise
      */
     bool IsCanceled() const;
-    
+
     /**
      * @brief Check if the session is suspended.
      * @return true if session is suspended, false if active.
      */
     bool IsSuspended() const;
-    
+
     /**
      * @brief Check if the block consists of entirely red data.
      * @return true if the block only contains red data, false if active.
      */
     bool IsFullRed() const;
-    
+
     /**
      * @brief Check if the block consists of entirely green data.
      * @return true if the block only contains green data, false if active.
@@ -585,9 +598,11 @@ class SessionStateRecord : public Object
     uint32_t GetRedPartLength() const;
 
     /* Constants */
-    static const uint32_t MIN_INITIAL_SERIAL_NUMBER = 1;      //!< Minimum bound for random serial number
-    static const uint32_t MAX_INITIAL_SERIAL_NUMBER = 16383;  //!< Maximum bound for random serial number
-    static const uint64_t MAX_SERIAL_NUMBER = 4294967296LLU;  //!< Absolute limit for a serial number before forced reset
+    static const uint32_t MIN_INITIAL_SERIAL_NUMBER = 1; //!< Minimum bound for random serial number
+    static const uint32_t MAX_INITIAL_SERIAL_NUMBER =
+        16383; //!< Maximum bound for random serial number
+    static const uint64_t MAX_SERIAL_NUMBER =
+        4294967296LLU; //!< Absolute limit for a serial number before forced reset
 
   protected:
     SessionId m_sessionId; //!< Session Identifier
@@ -603,15 +618,20 @@ class SessionStateRecord : public Object
     Timer m_CxTimer; //!< Cancel timer.
 
     /* Checkpoints*/
-    uint64_t m_firstCpSerialNumber;   //!< First checkpoint serial number chosen(sender)/received(receiver)
-    uint64_t m_currentCpSerialNumber; //!< Next checkpoint serial number (sender) / Last checkpoint received (receiver)
+    uint64_t
+        m_firstCpSerialNumber; //!< First checkpoint serial number chosen(sender)/received(receiver)
+    uint64_t m_currentCpSerialNumber; //!< Next checkpoint serial number (sender) / Last checkpoint
+                                      //!< received (receiver)
 
     /* Reception Reports */
-    uint64_t m_firstRpSerialNumber;   //!< First report serial number chosen(receiver)/received (sender)
-    uint64_t m_currentRpSerialNumber; //!< Next report serial number (receiver) / Last report received (sender)
+    uint64_t
+        m_firstRpSerialNumber; //!< First report serial number chosen(receiver)/received (sender)
+    uint64_t m_currentRpSerialNumber; //!< Next report serial number (receiver) / Last report
+                                      //!< received (sender)
 
     std::map<uint64_t, RedSegmentInfo>
-        m_rcvSegments; //!< Track Received (receiver) or ACKed (sender) segments - First : Serial Number , Second: ReceptionClaims
+        m_rcvSegments; //!< Track Received (receiver) or ACKed (sender) segments - First : Serial
+                       //!< Number , Second: ReceptionClaims
 
     bool m_redpartSuccess; //!< Red part Transmitted/Received successfully
     bool m_blockSuccess;   //!< Full block Transmitted/Received successfully
@@ -650,7 +670,7 @@ class SenderSessionStateRecord : public SessionStateRecord
      * @brief Default Constructor
      */
     SenderSessionStateRecord();
-    
+
     /**
      * @brief Constructs a Sender session state record for the given destination
      * @param localLtpEngineId Local LTP Engine ns3::Address
@@ -664,7 +684,7 @@ class SenderSessionStateRecord : public SessionStateRecord
                              uint64_t destinationClientService,
                              Address destinationLtpEngine,
                              Ptr<UniformRandomVariable> number);
-                             
+
     /**
      * @brief Default Destructor
      */
@@ -675,25 +695,25 @@ class SenderSessionStateRecord : public SessionStateRecord
      * @return Destination Client Service Instance
      */
     uint64_t GetDestination() const;
-    
+
     /**
      * @brief Get the number of checkpoint retransmissions.
      * @return Number of checkpoint retransmissions during this session.
      */
     uint64_t GetCpRtxNumber() const;
-    
+
     /**
      * @brief Check if the red part was successfully acknowledged.
      * @return true if Red part acknowledged successfully, false otherwise
      */
     bool IsRedPartAck() const;
-    
+
     /**
      * @brief Get the block of data to be transmitted.
      * @return block data to be transmitted.
      */
     std::vector<uint8_t> GetBlockData();
-    
+
     /**
      * @brief Get the block of data to be transmitted within the bounds specified
      * by offset and length.
@@ -708,12 +728,12 @@ class SenderSessionStateRecord : public SessionStateRecord
      * @param data vector containing the data.
      */
     void CopyBlockData(std::vector<uint8_t> data);
-    
+
     /**
      * @brief Signal the successful acknowledgment of the red part data.
      */
     void SetRedPartAck();
-    
+
     /**
      * @brief Increment Checkpoint retransmission counter.
      */
@@ -745,7 +765,7 @@ class ReceiverSessionStateRecord : public SessionStateRecord
      * @brief Default Constructor
      */
     ReceiverSessionStateRecord();
-    
+
     /**
      * @brief Constructs a Receiver session state record for the given destination
      * @param localLtpEngineId Local LTP Engine ns3::Address
@@ -757,7 +777,7 @@ class ReceiverSessionStateRecord : public SessionStateRecord
                                uint64_t localClientServiceId,
                                SessionId session,
                                Ptr<UniformRandomVariable> number);
-                               
+
     /**
      * @brief Default Destructor
      */
@@ -770,7 +790,7 @@ class ReceiverSessionStateRecord : public SessionStateRecord
      * @param p received packet.
      */
     void StoreRedDataSegment(Ptr<Packet> p);
-    
+
     /**
      * @brief Store a received green data segment in the inbound traffic queue.
      * @param p received packet.
@@ -782,7 +802,7 @@ class ReceiverSessionStateRecord : public SessionStateRecord
      * @return p received packet.
      */
     Ptr<Packet> RemoveRedDataSegment();
-    
+
     /**
      * @brief remove a received green data segment from the inbound traffic queue.
      * @return p received packet.
@@ -802,7 +822,7 @@ class ReceiverSessionStateRecord : public SessionStateRecord
      * @param offset higher bound.
      */
     void SetHighBound(uint32_t offset);
-    
+
     /**
      * @brief Increment Report retransmission counter.
      */
@@ -815,13 +835,13 @@ class ReceiverSessionStateRecord : public SessionStateRecord
      * @return Lower bound.
      */
     uint32_t GetLowBound() const;
-    
+
     /**
      * @brief Get higher bound of received data
      * @return High bound.
      */
     uint32_t GetHighBound() const;
-    
+
     /**
      * @brief Get the number of report retransmissions.
      * @return Number of checkpoint retransmissions during this session.
@@ -829,7 +849,7 @@ class ReceiverSessionStateRecord : public SessionStateRecord
     uint64_t GetRpRtxNumber() const;
 
   private:
-    uint64_t m_rpTxCnt; //!< Count Number of retransmitted reports.
+    uint64_t m_rpTxCnt;                            //!< Count Number of retransmitted reports.
     std::map<uint32_t, Ptr<Packet>> m_rxRedBuffer; //!< Storage for received red segments
     std::queue<Ptr<Packet>> m_rxGreendBuffer;      //!< Storage for received green segments
 };
@@ -944,10 +964,10 @@ class LtpBundleCla : public BundleCla
 
   private:
     typedef std::map<SessionId, Ptr<SessionStateRecord>> SessionStateRecords;
-    typedef std::map<uint64_t, Ptr<ClientServiceStatus>> ClientServiceInstances; 
+    typedef std::map<uint64_t, Ptr<ClientServiceStatus>> ClientServiceInstances;
 
     // --- Protocol Core Logic ---
-    
+
     /**
      * @brief Encapsulate block data into MTU-sized transmission segments.
      * @param remoteAddress The remote address.
@@ -956,62 +976,67 @@ class LtpBundleCla : public BundleCla
      * @param rdSize The size of the reliable red data part.
      * @param rtx Whether this is a retransmission.
      */
-    void EncapsulateBlockData(Address remoteAddress, Ptr<SessionStateRecord> ssr, Ptr<Packet> p, uint64_t rdSize, bool rtx = false);
-    
+    void EncapsulateBlockData(Address remoteAddress,
+                              Ptr<SessionStateRecord> ssr,
+                              Ptr<Packet> p,
+                              uint64_t rdSize,
+                              bool rtx = false);
+
     /**
      * @brief Terminate and clean up an active session.
      * @param id The session ID.
      */
     void CloseSession(SessionId id);
-    
+
     /**
      * @brief Formally indicate the complete reception of the red data block.
      * @param id The session ID.
      */
     void SignifyRedPartReception(SessionId id);
-    
+
     /**
      * @brief Formally indicate the arrival of a green data segment.
      * @param id The session ID.
      */
     void SignifyGreenPartSegmentArrival(SessionId id);
-    
+
     /**
-     * @brief Evaluate the session state to determine if all red data has been successfully received.
+     * @brief Evaluate the session state to determine if all red data has been successfully
+     * received.
      * @param id The session ID.
      */
     void CheckRedPartReceived(SessionId id);
 
     // --- Transmission & Retransmission ---
-    
+
     /**
      * @brief Fire a report segment over the network.
      * @param id The session ID.
      * @param cpSerialNum The checkpoint serial number.
      */
     void ReportSegmentTransmission(SessionId id, uint64_t cpSerialNum);
-    
+
     /**
      * @brief Transmit an acknowledgement for a received report segment.
      * @param id The session ID.
      * @param rpSerialNum The report serial number.
      */
     void ReportSegmentAckTransmission(SessionId id, uint64_t rpSerialNum);
-    
+
     /**
      * @brief Retransmit missing reliable segment data.
      * @param id The session ID.
      * @param info Red Segment data containing missing claim info.
      */
     void RetransmitSegment(SessionId id, RedSegmentInfo info);
-    
+
     /**
      * @brief Retransmit a missing report segment.
      * @param id The session ID.
      * @param info Red Segment info struct.
      */
     void RetransmitReport(SessionId id, RedSegmentInfo info);
-    
+
     /**
      * @brief Retransmit a missing checkpoint segment.
      * @param id The session ID.
@@ -1020,13 +1045,13 @@ class LtpBundleCla : public BundleCla
     void RetransmitCheckpoint(SessionId id, RedSegmentInfo info);
 
     // --- Socket & Network Handlers ---
-    
+
     /**
      * @brief Handle raw incoming packets from the TCP/UDP socket.
      * @param socket The underlying ns3::Socket.
      */
     void HandleRead(Ptr<Socket> socket);
-    
+
     /**
      * @brief Calculate the active Maximum Transmission Unit for this interface.
      * @return The MTU in bytes.
@@ -1034,21 +1059,21 @@ class LtpBundleCla : public BundleCla
     virtual uint16_t GetMtu() const;
 
     // --- Timers & State Updates ---
-    
+
     /**
      * @brief Fire the timer to track checkpoint timeouts.
      * @param id The session ID.
      * @param info The segment info being tracked.
      */
     void SetCheckPointTransmissionTimer(SessionId id, RedSegmentInfo info);
-    
+
     /**
      * @brief Fire the timer to track report timeouts.
      * @param id The session ID.
      * @param info The segment info being tracked.
      */
     void SetReportReTransmissionTimer(SessionId id, RedSegmentInfo info);
-    
+
     /**
      * @brief Indicate the transmission of the final block piece.
      * @param id The session ID.
@@ -1056,25 +1081,25 @@ class LtpBundleCla : public BundleCla
     void SetEndOfBlockTransmission(SessionId id);
 
     // --- Internal Getters/Setters ---
-    
+
     /**
      * @brief Get the remote engine ID.
      * @return The remote ns3::Address.
      */
     Address GetRemoteEngineId() const;
-    
+
     /**
      * @brief Set the remote engine ID.
      * @param id The remote ns3::Address.
      */
     void SetRemoteEngineId(Address id);
-    
+
     /**
      * @brief Get the session ID.
      * @return The active SessionId.
      */
     SessionId GetSessionId() const;
-    
+
     /**
      * @brief Set the session ID.
      * @param id The active SessionId.
@@ -1082,37 +1107,37 @@ class LtpBundleCla : public BundleCla
     void SetSessionId(SessionId id);
 
     // --- Callback Setters ---
-    
+
     /**
      * @brief Set the callback for link-up events.
      * @param cb Callback function.
      */
     void SetLinkUpCallback(Callback<void, Ptr<LtpBundleCla>> cb);
-    
+
     /**
      * @brief Set the callback for link-down events.
      * @param cb Callback function.
      */
     void SetLinkDownCallback(Callback<void, Ptr<LtpBundleCla>> cb);
-    
+
     /**
      * @brief Set the callback for checkpoint dispatch events.
      * @param cb Callback function.
      */
     void SetCheckPointSentCallback(Callback<void, SessionId, RedSegmentInfo> cb);
-    
+
     /**
      * @brief Set the callback for report dispatch events.
      * @param cb Callback function.
      */
     void SetReportSentCallback(Callback<void, SessionId, RedSegmentInfo> cb);
-    
+
     /**
      * @brief Set the callback for end-of-block dispatch events.
      * @param cb Callback function.
      */
     void SetEndOfBlockSentCallback(Callback<void, SessionId> cb);
-    
+
     /**
      * @brief Set the callback for cancellation dispatch events.
      * @param cb Callback function.
@@ -1129,9 +1154,9 @@ class LtpBundleCla : public BundleCla
     };
 
     // --- Network & Socket State ---
-    Ptr<Node> m_node;           //!< Local Node pointer.
-    Ptr<Socket> m_rcvSocket;    //!< Receiver Socket.
-    uint16_t m_keepAliveValue;  //!< Keep-alive timeout.
+    Ptr<Node> m_node;          //!< Local Node pointer.
+    Ptr<Socket> m_rcvSocket;   //!< Receiver Socket.
+    uint16_t m_keepAliveValue; //!< Keep-alive timeout.
 
     // --- Protocol Configuration Limits ---
     Address m_localEngineId;   //!< Local Engine Address.
@@ -1175,7 +1200,8 @@ class LtpBundleCla : public BundleCla
  * @param type Target timer definition.
  */
 template <typename FN>
-void SessionStateRecord::SetTimerFunction(FN fn, const Time delay, TimerCode type)
+void
+SessionStateRecord::SetTimerFunction(FN fn, const Time delay, TimerCode type)
 {
     switch (type)
     {
@@ -1206,7 +1232,11 @@ void SessionStateRecord::SetTimerFunction(FN fn, const Time delay, TimerCode typ
  * @param type Target timer definition.
  */
 template <typename MEM_PTR, typename OBJ_PTR>
-void SessionStateRecord::SetTimerFunction(MEM_PTR memPtr, OBJ_PTR objPtr, const Time delay, TimerCode type)
+void
+SessionStateRecord::SetTimerFunction(MEM_PTR memPtr,
+                                     OBJ_PTR objPtr,
+                                     const Time delay,
+                                     TimerCode type)
 {
     switch (type)
     {
@@ -1239,7 +1269,12 @@ void SessionStateRecord::SetTimerFunction(MEM_PTR memPtr, OBJ_PTR objPtr, const 
  * @param type Target timer definition.
  */
 template <typename MEM_PTR, typename OBJ_PTR, typename T1>
-void SessionStateRecord::SetTimerFunction(MEM_PTR memPtr, OBJ_PTR objPtr, T1 param, const Time delay, TimerCode type)
+void
+SessionStateRecord::SetTimerFunction(MEM_PTR memPtr,
+                                     OBJ_PTR objPtr,
+                                     T1 param,
+                                     const Time delay,
+                                     TimerCode type)
 {
     switch (type)
     {
@@ -1277,7 +1312,13 @@ void SessionStateRecord::SetTimerFunction(MEM_PTR memPtr, OBJ_PTR objPtr, T1 par
  * @param type Target timer definition.
  */
 template <typename MEM_PTR, typename OBJ_PTR, typename T1, typename T2>
-void SessionStateRecord::SetTimerFunction(MEM_PTR memPtr, OBJ_PTR objPtr, T1 param, T2 param2, const Time delay, TimerCode type)
+void
+SessionStateRecord::SetTimerFunction(MEM_PTR memPtr,
+                                     OBJ_PTR objPtr,
+                                     T1 param,
+                                     T2 param2,
+                                     const Time delay,
+                                     TimerCode type)
 {
     switch (type)
     {

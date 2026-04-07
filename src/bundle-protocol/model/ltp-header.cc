@@ -10,8 +10,9 @@
 
 #include "ltp-header.h"
 
+#include "sdnv.h"
+
 #include "ns3/log.h"
-#include "ns3/sdnv.h"
 #include "ns3/tag-buffer.h"
 
 NS_LOG_COMPONENT_DEFINE("LtpHeader");
