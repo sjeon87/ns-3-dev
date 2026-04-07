@@ -103,7 +103,7 @@ class BundleAgent : public Object
                             uint32_t procFlags = 0);
 
     /**
-     * @brief Receieve a bundle from a destination, called by CLA when a bundle arrives from the
+     * @brief Receive a bundle from a destination, called by CLA when a bundle arrives from the
      * network
      * @param bundle the bundle received
      * @return 0 on failure, 1 on success
