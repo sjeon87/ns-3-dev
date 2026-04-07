@@ -6,7 +6,8 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "ns3/bundle-block.h" // Added for PrimaryBlock and PayloadBlock
+#include "ns3/bundle-block.h" 
+#include "ns3/bundle-protocol-flags.h" 
 #include "ns3/bundle-storage-engine.h"
 #include "ns3/bundle.h"
 #include "ns3/nstime.h"
@@ -44,16 +45,16 @@ BundleStorageEngineTestCase::DoRun()
     Ptr<BundleStorageEngine> storageEngine = CreateObject<BundleStorageEngine>();
 
     PrimaryBlockHeader pbb;
-    pbb.SetVersion(6);
-    uint32_t procFlags = (1 << PBB_PROC_FLAGS::NO_FRAGMENT) | (1 << PBB_PROC_FLAGS::SINGLETON);
+    pbb.SetVersion(7); // BPv7
+    uint32_t procFlags = (1 << PBB_PROC_FLAGS::NO_FRAGMENT) | (1 << PBB_PROC_FLAGS::REQ_APP_ACK);
     pbb.SetProcFlags(procFlags);
+    pbb.SetCrcType(1);
     pbb.SetCreationTime(Seconds(10));
-    pbb.SetTTL(Seconds(3600));
+    pbb.SetLifetime(Seconds(3600));
     pbb.SetSequenceNumber(42);
-    pbb.SetDestinationEID("dtn", "node1");
-    pbb.SetSourceEID("dtn", "node0");
-    pbb.SetReportToEID("dtn", "none");
-    pbb.SetCustodianEID("dtn", "none");
+    pbb.SetDestinationEID("dtn:node1");
+    pbb.SetSourceEID("dtn:node0");
+    pbb.SetReportToEID("dtn:none");
 
     Ptr<Bundle> b1 = CreateObject<Bundle>();
 
@@ -62,6 +63,8 @@ BundleStorageEngineTestCase::DoRun()
     b1->AddBlock(pb1);
 
     Ptr<PayloadBlock> pl1 = CreateObject<PayloadBlock>();
+    pl1->GetHeader().SetBlockNumber(2); 
+    pl1->GetHeader().SetCrcType(1);     
     Ptr<Packet> payload = Create<Packet>(12);
     pl1->SetPayload(payload);
     b1->AddBlock(pl1);
@@ -97,6 +100,8 @@ BundleStorageEngineTestCase::DoRun()
     b2->AddBlock(pb2);
 
     Ptr<PayloadBlock> pl2 = CreateObject<PayloadBlock>();
+    pl2->GetHeader().SetBlockNumber(2);
+    pl2->GetHeader().SetCrcType(1);
     pl2->SetPayload(Create<Packet>(12));
     b2->AddBlock(pl2);
 
@@ -113,6 +118,8 @@ BundleStorageEngineTestCase::DoRun()
     b3->AddBlock(pb3);
 
     Ptr<PayloadBlock> pl3 = CreateObject<PayloadBlock>();
+    pl3->GetHeader().SetBlockNumber(2);
+    pl3->GetHeader().SetCrcType(1);
     pl3->SetPayload(Create<Packet>(12));
     b3->AddBlock(pl3);
 

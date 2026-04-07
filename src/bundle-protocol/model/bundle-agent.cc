@@ -8,6 +8,7 @@
 #include "bundle-agent.h"
 
 #include "generic-convergence-layer-adapter.h"
+#include "bundle-protocol-flags.h" 
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -47,7 +48,7 @@ BundleAgent::GetTypeId()
             .AddConstructor<BundleAgent>()
             .AddAttribute("LocalEID",
                           "The endpoint ID of this bundle agent",
-                          StringValue("dtn://node0/"),
+                          StringValue("dtn:node0"),
                           MakeStringAccessor(&BundleAgent::SetLocalEID, &BundleAgent::GetLocalEID),
                           MakeStringChecker())
             .AddAttribute("StorageLimit",
@@ -163,35 +164,25 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     NS_LOG_FUNCTION(this << destinationEID << size);
     NS_ASSERT_MSG(!m_localEID.empty(), "LocalEID must be set before transmitting");
 
-    std::string destScheme = "dtn", destSsp = destinationEID;
-    size_t destPos = destinationEID.find(':');
-    if (destPos != std::string::npos)
-    {
-        destScheme = destinationEID.substr(0, destPos);
-        destSsp = destinationEID.substr(destPos + 1);
-    }
-
-    std::string srcScheme = "dtn", srcSsp = m_localEID;
-    size_t srcPos = m_localEID.find(':');
-    if (srcPos != std::string::npos)
-    {
-        srcScheme = m_localEID.substr(0, srcPos);
-        srcSsp = m_localEID.substr(srcPos + 1);
-    }
-
     PrimaryBlockHeader primary;
-    primary.SetVersion(6);
+    primary.SetVersion(7); 
     primary.SetProcFlags(procFlags);
+    primary.SetCrcType(1);
     primary.SetCreationTime(Simulator::Now());
-    primary.SetTTL(ttl);
+    primary.SetLifetime(ttl);
     primary.SetSequenceNumber(m_seqNumber++);
-    primary.SetDestinationEID(destScheme, destSsp);
-    primary.SetSourceEID(srcScheme, srcSsp);
-    primary.SetReportToEID("dtn", reportToEID);
-    primary.SetCustodianEID("dtn", "none");
+    
+    // BPv7 takes whole string EIDs directly
+    primary.SetDestinationEID(destinationEID);
+    primary.SetSourceEID(m_localEID);
+    primary.SetReportToEID(reportToEID);
+
+    // BPv7 Payload Block Setup
     PayloadBlockHeader payloadHeader;
     payloadHeader.SetBlockType(1);
+    payloadHeader.SetBlockNumber(2); 
     payloadHeader.SetProcFlags(0);
+    payloadHeader.SetCrcType(1);
     payloadHeader.SetBlockLength(size);
 
     Ptr<Packet> payload = Create<Packet>(data, size);
@@ -297,9 +288,9 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
         }
 
         uint32_t flags = bundle->GetPrimaryBlock()->GetHeader().GetProcFlags();
-        if ((flags >> BUNDLE_RECEPTION) & 0x1)
+        if (flags & (1 << REQ_REP_RECV))
         {
-            Ptr<Bundle> report = GenerateStatusReport(bundle, 1 << RECVD_BUNDLE, SR_NO_INFO);
+            Ptr<Bundle> report = GenerateStatusReport(bundle, (1 << RECVD_BUNDLE), SR_NO_INFO);
             if (report)
             {
                 uint32_t reportHandle = m_bundleStorageEngine->StoreBundle(report);
@@ -355,9 +346,10 @@ BundleAgent::ExpireBundle(uint32_t handle)
                                                 << bundle->GetDestinationEID() << " has expired");
 
     uint32_t flags = bundle->GetPrimaryBlock()->GetHeader().GetProcFlags();
-    if ((flags >> BUNDLE_DELETION) & 0x1)
+    
+    if (flags & (1 << REQ_REP_DEL))
     {
-        Ptr<Bundle> report = GenerateStatusReport(bundle, 1 << DEL_BUNDLE, SR_LIFE_EXPIRE);
+        Ptr<Bundle> report = GenerateStatusReport(bundle, (1 << DEL_BUNDLE), SR_LIFE_EXPIRE);
         if (report)
         {
             uint32_t reportHandle = m_bundleStorageEngine->StoreBundle(report);
@@ -378,14 +370,14 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
 
     if (bundle->IsAdminRecord())
     {
-        NS_LOG_DEBUG(
-            "GenerateStatusReport: Bundle is already an admin record. Suppressing report.");
+        NS_LOG_DEBUG("GenerateStatusReport: Bundle is already an admin record. Suppressing report.");
         return nullptr;
     }
 
     BundleStatusReport report;
     report.SetStatusFlags(statusFlags);
     report.SetReasonCode(reasonCode);
+    report.SetSourceEID(bundle->GetSourceEID());
     report.SetCreationTime(bundle->GetPrimaryBlock()->GetHeader().GetCreationTime());
     report.SetSequenceNumber(bundle->GetPrimaryBlock()->GetHeader().GetSequenceNumber());
 
@@ -404,26 +396,29 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
     }
     if (statusFlags & (1 << DEL_BUNDLE))
     {
-        report.SetBundleReceiptTime(now);
+        report.SetBundleDeletionTime(now);
     }
 
     Ptr<Packet> reportPayload = Create<Packet>();
     reportPayload->AddHeader(report);
 
     std::string reportDestination = bundle->GetReportToEID();
+    
     PrimaryBlockHeader primary;
-    primary.SetVersion(6);
+    primary.SetVersion(7); // BPv7
     primary.SetProcFlags(1 << ADMIN_RECORD);
+    primary.SetCrcType(1);
     primary.SetCreationTime(now);
-    primary.SetTTL(Seconds(3600));
+    primary.SetLifetime(Seconds(3600));
     primary.SetSequenceNumber(m_seqNumber++);
-    primary.SetDestinationEID("dtn", reportDestination);
-    primary.SetSourceEID("dtn", m_localEID);
-    primary.SetReportToEID("dtn", "none");
-    primary.SetCustodianEID("dtn", "none");
+    primary.SetDestinationEID(reportDestination);
+    primary.SetSourceEID(m_localEID);
+    primary.SetReportToEID("dtn:none");
 
     PayloadBlockHeader payloadHeader;
     payloadHeader.SetBlockType(1);
+    payloadHeader.SetBlockNumber(2);
+    payloadHeader.SetCrcType(1);
     payloadHeader.SetBlockLength(reportPayload->GetSize());
 
     Ptr<PrimaryBlock> reportPrimaryBlock = CreateObject<PrimaryBlock>();

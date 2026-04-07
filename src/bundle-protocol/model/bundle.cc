@@ -7,7 +7,7 @@
  */
 
 #include "bundle.h"
-
+#include "bundle-protocol-flags.h"
 #include "ns3/log.h"
 
 namespace ns3
@@ -108,9 +108,9 @@ Bundle::Serialize() const
 {
     NS_LOG_FUNCTION(this);
     Ptr<Packet> bundle = Create<Packet>();
-    for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
+    for (const auto& block : m_blocks)
     {
-        Ptr<Packet> blockPacket = (*it)->SerializeToPacket();
+        Ptr<Packet> blockPacket = block->SerializeToPacket();
         bundle->AddAtEnd(blockPacket);
     }
     return bundle;
@@ -127,8 +127,7 @@ Bundle::Deserialize(Ptr<Packet> p)
     Ptr<PrimaryBlock> primary = CreateObject<PrimaryBlock>();
     primary->Deserialize(copy);
     m_blocks.push_back(primary);
-
-    if (copy->GetSize() > 0)
+    while (copy->GetSize() > 0)
     {
         Ptr<PayloadBlock> payload = CreateObject<PayloadBlock>();
         payload->Deserialize(copy);
@@ -143,7 +142,7 @@ Bundle::GetExpiry() const
     Ptr<PrimaryBlock> primary = GetPrimaryBlock();
     NS_ASSERT_MSG(primary, "Bundle has no primary block");
     const PrimaryBlockHeader& h = primary->GetHeader();
-    return h.GetCreationTime() + h.GetTTL();
+    return h.GetCreationTime() + h.GetLifetime();
 }
 
 std::string
@@ -152,11 +151,7 @@ Bundle::GetDestinationEID() const
     NS_LOG_FUNCTION(this);
     Ptr<PrimaryBlock> primary = GetPrimaryBlock();
     NS_ASSERT_MSG(primary, "Bundle has no primary block");
-    const PrimaryBlockHeader& h = primary->GetHeader();
-    const std::string& dict = h.GetDictionary();
-    std::string scheme = dict.c_str() + h.GetDestinationSchemeOffset();
-    std::string ssp = dict.c_str() + h.GetDestinationSSPOffset();
-    return scheme + ":" + ssp;
+    return primary->GetHeader().GetDestinationEID();
 }
 
 std::string
@@ -165,11 +160,7 @@ Bundle::GetSourceEID() const
     NS_LOG_FUNCTION(this);
     Ptr<PrimaryBlock> primary = GetPrimaryBlock();
     NS_ASSERT_MSG(primary, "Bundle has no primary block");
-    const PrimaryBlockHeader& h = primary->GetHeader();
-    const std::string& dict = h.GetDictionary();
-    std::string scheme = dict.c_str() + h.GetSourceSchemeOffset();
-    std::string ssp = dict.c_str() + h.GetSourceSSPOffset();
-    return scheme + ":" + ssp;
+    return primary->GetHeader().GetSourceEID();
 }
 
 std::string
@@ -178,11 +169,7 @@ Bundle::GetReportToEID() const
     NS_LOG_FUNCTION(this);
     Ptr<PrimaryBlock> primary = GetPrimaryBlock();
     NS_ASSERT_MSG(primary, "Bundle has no primary block");
-    const PrimaryBlockHeader& h = primary->GetHeader();
-    const std::string& dict = h.GetDictionary();
-    std::string scheme = dict.c_str() + h.GetReportToSchemeOffset();
-    std::string ssp = dict.c_str() + h.GetReportToSSPOffset();
-    return scheme + ":" + ssp;
+    return primary->GetHeader().GetReportToEID();
 }
 
 bool
@@ -191,7 +178,7 @@ Bundle::IsAdminRecord() const
     NS_LOG_FUNCTION(this);
     Ptr<PrimaryBlock> primary = GetPrimaryBlock();
     NS_ASSERT_MSG(primary, "Bundle has no primary block");
-    return (primary->GetHeader().GetProcFlags() & 0x02) != 0;
+    return (primary->GetHeader().GetProcFlags() & (1 << ADMIN_RECORD)) != 0;
 }
 
 } // namespace ns3

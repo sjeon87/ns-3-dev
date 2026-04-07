@@ -27,13 +27,12 @@ namespace ns3
  *
  * @ingroup dtn
  *
- * @brief An implementation of a bundle for BPv7
+ * @brief An implementation of a bundle for BPv7 (RFC 9171).
  *
  * A bundle is represented as an ordered vector of BundleBlock objects.
  * The first block is always a PrimaryBlock, followed by one or more
- * canonical blocks (e.g., PayloadBlock). This structure maps directly
- * onto the RFC 5050 / RFC 9171 bundle format without requiring manual
- * byte manipulation or CBOR encoding for simulation purposes.
+ * canonical blocks (e.g., PayloadBlock or Extension Blocks). This structure 
+ * maps directly onto the RFC 9171 bundle format for simulation purposes.
  *
  */
 class Bundle : public Object
@@ -102,14 +101,14 @@ class Bundle : public Object
 
     /**
      * @brief Deserialize a packet into the bundle's block vector.
-     * Reconstructs the PrimaryBlock first, then the PayloadBlock.
+     * Reconstructs the PrimaryBlock first, then subsequent blocks.
      * @param p the packet to deserialize from
      */
     void Deserialize(Ptr<Packet> p);
 
     /**
      * @brief Get the expiry time of the bundle.
-     * Derived from the primary block's creation time and TTL.
+     * Derived from the primary block's creation time and Lifetime (BPv7).
      * @return the time at which the bundle expires
      */
     Time GetExpiry() const;
@@ -133,7 +132,7 @@ class Bundle : public Object
     std::string GetReportToEID() const;
 
     /**
-     * @brief Checks whether the bundle is an Administrative Record (RFC 5050).
+     * @brief Checks whether the bundle is an Administrative Record.
      * @return true if the bundle is an administrative record
      */
     bool IsAdminRecord() const;

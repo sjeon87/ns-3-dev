@@ -7,6 +7,7 @@
  */
 
 #include "ns3/bundle.h"
+#include "ns3/bundle-block.h" // Added to construct blocks
 #include "ns3/inet-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv4-address.h"
@@ -81,9 +82,23 @@ UdpBundleClaTestCase::DoRun()
 
     claB->SetRxCallback(MakeCallback(&UdpBundleClaTestCase::ReceiveBundleCallback, this));
 
-    Ptr<Packet> packet = Create<Packet>(100);
+    Ptr<Bundle> bundle = CreateObject<Bundle>();
+    
+    Ptr<PrimaryBlock> pb = CreateObject<PrimaryBlock>();
+    pb->GetHeader().SetVersion(7); 
+    pb->GetHeader().SetDestinationEID("dtn:nodeB");
+    pb->GetHeader().SetSourceEID("dtn:nodeA");
+    pb->GetHeader().SetReportToEID("dtn:none");
+    bundle->AddBlock(pb);
 
-    Simulator::Schedule(Seconds(1.0), &UdpBundleCla::Send, claA, packet);
+    Ptr<PayloadBlock> pl = CreateObject<PayloadBlock>();
+    pl->GetHeader().SetBlockNumber(2); 
+    pl->GetHeader().SetCrcType(1);
+    pl->SetPayload(Create<Packet>(100));
+    bundle->AddBlock(pl);
+    Ptr<Packet> packetToSend = bundle->Serialize();
+
+    Simulator::Schedule(Seconds(1.0), &UdpBundleCla::Send, claA, packetToSend);
 
     Simulator::Stop(Seconds(2.0));
     Simulator::Run();
