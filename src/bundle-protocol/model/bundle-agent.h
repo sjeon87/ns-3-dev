@@ -26,6 +26,15 @@ namespace ns3
 
 class BundleCla;
 
+/**
+ * @ingroup dtn
+ *
+ * @brief An Agent handling the Bundle Protocol functionalities
+ *
+ * This class implements the Bundle Agent which handles the BPv7 functions. It
+ * is responsible for transmitting bundles through registered CLAs and relaying
+ * received bundles up the stack to a bundle protocol enabled application.
+ */
 class BundleAgent : public Object
 {
   public:

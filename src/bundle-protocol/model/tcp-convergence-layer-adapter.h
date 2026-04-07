@@ -21,7 +21,7 @@ namespace ns3
 {
 
 /**
- * @ingroup bundleProtocol
+ * @ingroup dtn
  *
  * @brief A Transmission Control Protocol (TCP) Convergence Layer Adapter (CLA) for the Bundle
  * Protocol.
