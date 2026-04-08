@@ -1,6 +1,7 @@
 build_lib(
   LIBNAME bundle-protocol
   SOURCE_FILES
+    helper/bundle-protocol-helper.cc
     model/bundle-block.cc
     model/bundle-agent.cc
     model/bundle-header.cc
@@ -13,6 +14,7 @@ build_lib(
     model/ltp-header.cc
     model/sdnv.cc
   HEADER_FILES
+    helper/bundle-protocol-helper.h
     model/bundle-agent.h
     model/bundle-block.h
     model/bundle-header.h

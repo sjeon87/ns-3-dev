@@ -1118,6 +1118,12 @@ LtpTrailer::operator==(const LtpTrailer& o) const
 }
 
 bool
+operator==(const LtpContentHeader::ReceptionClaim& a, const LtpContentHeader::ReceptionClaim& b)
+{
+    return ((a.length == b.length) && (a.offset == b.offset));
+}
+
+bool
 LtpContentHeader::operator==(const LtpContentHeader& o) const
 {
     bool result = false;
@@ -1160,12 +1166,6 @@ LtpContentHeader::operator==(const LtpContentHeader& o) const
         return result;
     }
     return false;
-}
-
-bool
-operator==(const LtpContentHeader::ReceptionClaim& a, const LtpContentHeader::ReceptionClaim& b)
-{
-    return ((a.length == b.length) && (a.offset == b.offset));
 }
 
 bool

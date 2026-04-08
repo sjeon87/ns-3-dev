@@ -16,6 +16,7 @@
 #include "ns3/simulator.h"
 #include "ns3/udp-header.h"
 #include "ns3/udp-socket-factory.h"
+#include "ns3/uinteger.h"
 
 namespace ns3
 {
@@ -1013,7 +1014,47 @@ LtpBundleCla::GetTypeId()
     static TypeId tid = TypeId("ns3::LtpBundleCla")
                             .SetParent<BundleCla>()
                             .SetGroupName("BundleProtocol")
-                            .AddConstructor<LtpBundleCla>();
+                            .AddConstructor<LtpBundleCla>()
+                            .AddAttribute("CheckPointRetransLimit",
+                                          "Limit for checkpoint retransmissions.",
+                                          UintegerValue(5),
+                                          MakeUintegerAccessor(&LtpBundleCla::m_cpRtxLimit),
+                                          MakeUintegerChecker<uint32_t>())
+                            .AddAttribute("ReportRetransLimit",
+                                          "Limit for report segment retransmissions.",
+                                          UintegerValue(5),
+                                          MakeUintegerAccessor(&LtpBundleCla::m_rpRtxLimit),
+                                          MakeUintegerChecker<uint32_t>())
+                            .AddAttribute("RxProblemLimit",
+                                          "Reception problem limit.",
+                                          UintegerValue(5),
+                                          MakeUintegerAccessor(&LtpBundleCla::m_rxProblemLimit),
+                                          MakeUintegerChecker<uint32_t>())
+                            .AddAttribute("CancellationRetransLimit",
+                                          "Limit for cancellation segment retransmissions.",
+                                          UintegerValue(5),
+                                          MakeUintegerAccessor(&LtpBundleCla::m_cxRtxLimit),
+                                          MakeUintegerChecker<uint32_t>())
+                            .AddAttribute("RetransCycleLimit",
+                                          "Global retransmission cycle limit.",
+                                          UintegerValue(5),
+                                          MakeUintegerAccessor(&LtpBundleCla::m_rtxCycleLimit),
+                                          MakeUintegerChecker<uint32_t>())
+                            .AddAttribute("EngineVersion",
+                                          "LTP Engine Version.",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&LtpBundleCla::m_version),
+                                          MakeUintegerChecker<uint8_t>())
+                            .AddAttribute("LocalDelays",
+                                          "Computed local delay constraint.",
+                                          TimeValue(Seconds(0)),
+                                          MakeTimeAccessor(&LtpBundleCla::m_localDelays),
+                                          MakeTimeChecker())
+                            .AddAttribute("OnewayLightTime",
+                                          "Hard limit on light-time propagation.",
+                                          TimeValue(Seconds(0)),
+                                          MakeTimeAccessor(&LtpBundleCla::SetOnewayLightTime),
+                                          MakeTimeChecker());
     return tid;
 }
 

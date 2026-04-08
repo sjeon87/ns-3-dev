@@ -1,5 +1,8 @@
 #include "ns3/applications-module.h"
 #include "ns3/bundle-agent.h"
+#include "ns3/bundle-block.h"
+#include "ns3/bundle-protocol-helper.h"
+#include "ns3/bundle.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/ltp-convergence-layer-adapter.h"
@@ -67,21 +70,31 @@ main(int argc, char* argv[])
     Ipv4Address earthIp = interfaces.GetAddress(0);
     Ipv4Address marsIp = interfaces.GetAddress(1);
 
-    Ptr<BundleAgent> earthAgent = CreateObject<BundleAgent>();
-    earthAgent->SetLocalEID("dtn:earth");
+    BundleAgentHelper earthAgentHelper;
+    earthAgentHelper.SetBpEndpointId("dtn:earth");
+
+    BundleAgentContainer earthAgents = earthAgentHelper.Install(earthNode);
+    Ptr<BundleAgent> earthAgent = earthAgents.Get(0);
     earthNode->AggregateObject(earthAgent);
 
-    Ptr<BundleAgent> marsAgent = CreateObject<BundleAgent>();
-    marsAgent->SetLocalEID("dtn:mars");
+    BundleAgentHelper marsAgentHelper;
+    marsAgentHelper.SetBpEndpointId("dtn:mars");
+
+    BundleAgentContainer marsAgents = marsAgentHelper.Install(marsNode);
+    Ptr<BundleAgent> marsAgent = marsAgents.Get(0);
     marsNode->AggregateObject(marsAgent);
 
-    Ptr<LtpBundleCla> earthCla = CreateObject<LtpBundleCla>();
-    earthCla->Setup(earthNode, InetSocketAddress(earthIp, 1113), InetSocketAddress(marsIp, 1113));
-    earthCla->SetOnewayLightTime(Seconds(300.0));
+    BundleClaHelper ltpHelper("ns3::LtpBundleCla");
+    ltpHelper.SetAttribute("OnewayLightTime", TimeValue(Seconds(300.0)));
 
-    Ptr<LtpBundleCla> marsCla = CreateObject<LtpBundleCla>();
+    BundleClaContainer earthClas = ltpHelper.Install(earthNode);
+    Ptr<LtpBundleCla> earthCla = DynamicCast<LtpBundleCla>(earthClas.Get(0));
+    earthCla->Setup(earthNode, InetSocketAddress(earthIp, 1113), InetSocketAddress(marsIp, 1113));
+
+    BundleClaContainer marsClas = ltpHelper.Install(marsNode);
+    Ptr<LtpBundleCla> marsCla = DynamicCast<LtpBundleCla>(marsClas.Get(0));
     marsCla->Setup(marsNode, InetSocketAddress(marsIp, 1113), InetSocketAddress(earthIp, 1113));
-    marsCla->SetOnewayLightTime(Seconds(300.0));
+
     Ptr<ClientServiceStatus> marsClientService = CreateObject<ClientServiceStatus>();
     marsCla->RegisterClientService(0, marsClientService);
 
