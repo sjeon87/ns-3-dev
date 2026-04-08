@@ -49,6 +49,12 @@ class BundleCla : public Object
     void SetRxCallback(RxCallback callback);
 
     /**
+     * @brief Fire callback registered
+     * @param callback The callback (usually bound to BundleAgent::RecvBundle)
+     */
+    uint32_t NotifyReception(Ptr<Bundle> bundle);
+
+    /**
      * @brief Send a serialized bundle packet out over the convergence layer.
      * * @param packet The serialized bundle to send.
      * * @note This is a pure virtual function and must be implemented by concrete CLAs.

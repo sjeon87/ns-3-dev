@@ -888,8 +888,14 @@ class LtpBundleCla : public BundleCla
     void Setup(Ptr<Node> node, Address localAddress, Address remoteAddress);
 
     /**
-     * @brief Send a serialized bundle packet via the LTP connection.
-     * @param packet The serialized bundle packet to send over the network.
+     * @brief Send a serialized segment via the LTP connection.
+     * @param packet The serialized segment to send over the network.
+     */
+    void SendSegment(Ptr<Packet> packet);
+
+    /**
+     * @brief Send a serialized bundle via the LTP connection.
+     * @param packet The serialized bundle to send over the network.
      */
     void Send(Ptr<Packet> packet) override;
 
@@ -948,10 +954,23 @@ class LtpBundleCla : public BundleCla
     uint32_t GetRetransCycleLimit() const;
 
     /**
+     * @brief Set the one way light time.
+     * @param owlt the one way light time
+     */
+    void SetOnewayLightTime(Time owlt);
+
+    /**
      * @brief Requests the cancellation of a specific session.
      * @param id Session Id of the session to cancel.
      */
     void CancelSession(SessionId id);
+
+    /**
+     * @brief Registers a client service
+     * @param id Session Id of the session to register client to.
+     * @param client Client to register
+     */
+    void RegisterClientService(uint64_t id, Ptr<ClientServiceStatus> client);
 
   private:
     typedef std::map<SessionId, Ptr<SessionStateRecord>> SessionStateRecords;

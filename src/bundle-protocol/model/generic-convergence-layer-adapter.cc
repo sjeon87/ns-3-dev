@@ -40,6 +40,17 @@ BundleCla::SetRxCallback(RxCallback callback)
     m_rxCallback = callback;
 }
 
+uint32_t
+BundleCla::NotifyReception(Ptr<Bundle> bundle)
+{
+    if (!m_rxCallback.IsNull())
+    {
+        m_rxCallback(bundle);
+        return 1;
+    }
+    return 0;
+}
+
 void
 BundleCla::ForwardUp(Ptr<Bundle> bundle)
 {

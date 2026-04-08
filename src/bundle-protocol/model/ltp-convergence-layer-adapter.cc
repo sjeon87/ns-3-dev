@@ -446,8 +446,8 @@ SessionStateRecord::InsertClaim(uint32_t serialNum,
     if (it == m_rcvSegments.end())
     {
         RedSegmentInfo info;
-        info.low_bound = 0;
-        info.high_bound = 0;
+        info.low_bound = low;
+        info.high_bound = high;
         info.claims.insert(claim);
 
         std::pair<uint64_t, RedSegmentInfo> entry;
@@ -1054,7 +1054,13 @@ LtpBundleCla::Setup(Ptr<Node> node, Address localAddress, Address remoteAddress)
 }
 
 void
-LtpBundleCla::Send(Ptr<Packet> p)
+LtpBundleCla::RegisterClientService(uint64_t id, Ptr<ClientServiceStatus> client)
+{
+    m_activeClients.insert(std::make_pair(id, client));
+}
+
+void
+LtpBundleCla::SendSegment(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
 
@@ -1116,6 +1122,41 @@ LtpBundleCla::Send(Ptr<Packet> p)
     default:
         break;
     }
+}
+
+void
+LtpBundleCla::Send(Ptr<Packet> p)
+{
+    NS_LOG_FUNCTION(this << p);
+
+    Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+    Ptr<SenderSessionStateRecord> ssend =
+        CreateObject<SenderSessionStateRecord>(m_localEngineId, 0, 0, GetRemoteEngineId(), uv);
+
+    SessionId id = ssend->GetSessionId();
+
+    m_activeSessions.insert(std::make_pair(id, ssend));
+    m_activeSessionId = id;
+
+    uint64_t rdSize = p->GetSize();
+
+    EncapsulateBlockData(GetRemoteEngineId(), ssend, p, rdSize, false);
+
+    Ptr<Packet> segment;
+    while ((segment = ssend->Dequeue()))
+    {
+        SendSegment(segment);
+    }
+
+    ssend->SetBlockFinished();
+
+    RedSegmentInfo info;
+    info.CpserialNum = ssend->GetCpCurrentSerialNumber();
+    info.RpserialNum = 0;
+    info.low_bound = 0;
+    info.high_bound = rdSize;
+
+    SetCheckPointTransmissionTimer(id, info);
 }
 
 bool
@@ -1362,6 +1403,14 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
         {
             itCls->second
                 ->ReportStatus(id, RED_PART_RCV, blockData, blockData.size(), EOB, remoteLtp);
+
+            if (!blockData.empty())
+            {
+                Ptr<Packet> assembledPacket = Create<Packet>(blockData.data(), blockData.size());
+                Ptr<Bundle> bundle = CreateObject<Bundle>();
+                bundle->Deserialize(assembledPacket);
+                NotifyReception(bundle);
+            }
         }
     }
 }
@@ -1430,6 +1479,10 @@ LtpBundleCla::CheckRedPartReceived(SessionId id)
         Ptr<ReceiverSessionStateRecord> ssr = DynamicCast<ReceiverSessionStateRecord>(it->second);
         if (ssr)
         {
+            if (ssr->GetRedPartLength() == 0)
+            {
+                return;
+            }
             RedSegmentInfo info = ssr->FindMissingClaims(ssr->GetRpCurrentSerialNumber());
             if (info.claims.size() == 0)
             {
@@ -1478,7 +1531,7 @@ LtpBundleCla::ReportSegmentTransmission(SessionId id, uint64_t cpSerialNum)
     p->AddHeader(contentHeader);
     p->AddHeader(header);
     srecv->StoreClaims(contentHeader);
-    Send(p);
+    SendSegment(p);
 }
 
 void
@@ -1501,12 +1554,12 @@ LtpBundleCla::ReportSegmentAckTransmission(SessionId id, uint64_t rpSerialNum)
         Ptr<SenderSessionStateRecord> ssr = DynamicCast<SenderSessionStateRecord>(it->second);
         if (ssr)
         {
-            Send(p);
+            SendSegment(p);
         }
     }
     else
     {
-        Send(p);
+        SendSegment(p);
     }
 }
 
@@ -1526,7 +1579,7 @@ LtpBundleCla::RetransmitSegment(SessionId id, RedSegmentInfo info)
             ssr->IncrementCpRtxNumber();
             while (Ptr<Packet> pkt = ssr->Dequeue())
             {
-                Send(pkt);
+                SendSegment(pkt);
             }
         }
     }
@@ -1574,6 +1627,10 @@ LtpBundleCla::HandleRead(Ptr<Socket> socket)
         Ptr<SenderSessionStateRecord> ssend = 0;
         if (itSessions == m_activeSessions.end())
         {
+            if (!LtpHeader::IsDataSegment(type))
+            {
+                continue;
+            }
             ClientServiceInstances::iterator itClients =
                 m_activeClients.find(contentHeader.GetClientServiceId());
             if (itClients == m_activeClients.end())
@@ -1713,17 +1770,8 @@ uint16_t
 LtpBundleCla::GetMtu() const
 {
     NS_LOG_FUNCTION(this);
-
-    Ptr<Socket> socket = Socket::CreateSocket(m_node, UdpSocketFactory::GetTypeId());
-    socket->Bind();
-    socket->Connect(GetRemoteEngineId());
-
-    Ipv4Header iph;
-    UdpHeader udph;
-
-    uint16_t mtu = socket->GetTxAvailable() - iph.GetSerializedSize() - udph.GetSerializedSize();
-
-    return mtu;
+    // MTU = 1500 bytes, IPv4 = 20 bytes, UDP = 8 bytes.
+    return 1472;
 }
 
 void
@@ -1851,6 +1899,12 @@ LtpBundleCla::SetCancellationCallback(Callback<void, SessionId> cb)
 {
     NS_LOG_FUNCTION(this);
     m_cancelSent = cb;
+}
+
+void
+LtpBundleCla::SetOnewayLightTime(Time owlt)
+{
+    m_onewayLightTime = owlt;
 }
 
 } // namespace ns3
