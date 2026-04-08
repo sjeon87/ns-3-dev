@@ -1153,7 +1153,6 @@ class LtpBundleCla : public BundleCla
 
     Ptr<Node> m_node;                                           //!< Local Node pointer.
     Ptr<Socket> m_rcvSocket;                                    //!< Receiver Socket.
-    uint16_t m_keepAliveValue;                                  //!< Keep-alive timeout.
     Address m_localEngineId;                                    //!< Local Engine Address.
     uint32_t m_cpRtxLimit;                                      //!< Checkpoint Retx Limit.
     uint32_t m_rpRtxLimit;                                      //!< Report Retx Limit.
