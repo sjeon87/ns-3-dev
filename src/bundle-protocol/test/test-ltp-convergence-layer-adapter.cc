@@ -472,9 +472,8 @@ LtpSessionStateRecordTestCase::TimerTest(uint32_t index)
 
     uint64_t actual = Simulator::Now().GetSeconds();
     uint64_t limit = test.total;
-    uint64_t tol = 0.005;
 
-    NS_TEST_ASSERT_MSG_EQ_TOL(actual, limit, tol, "Test1 Failed");
+    NS_TEST_ASSERT_MSG_EQ_TOL(actual, limit, 0.005, "Test1 Failed");
 }
 
 void
