@@ -99,6 +99,12 @@ class BundleStorageEngine : public Object
      */
     bool HasBundle(uint32_t handle) const;
 
+    /**
+     * @brief Returns a list of all bundle handles currently in storage
+     * @return vector of all stored bundle handles
+     */
+    std::vector<uint32_t> GetAllHandles() const;
+
   private:
     uint32_t m_currentSize = 0;                  //!< Current size of the engine
     uint32_t m_totalSize = 0;                    //!< Total size of the engine

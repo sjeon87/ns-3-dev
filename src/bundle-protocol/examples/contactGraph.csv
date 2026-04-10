@@ -1,0 +1,5 @@
+From,To,Start Time,End Time,Data Rate
+a contact +0 +12000 dtn://earth/dsn dtn://mars/mro 1000000
+a contact +0 +12000 dtn://mars/mro dtn://earth/dsn 1000000
+a contact +0 +12000 dtn://mars/mro dtn://mars/m2020 500000
+a contact +0 +12000 dtn://mars/m2020 dtn://mars/mro 500000

@@ -171,4 +171,20 @@ BundleStorageEngine::HasBundle(uint32_t handle) const
     return m_bundleMap.find(handle) != m_bundleMap.end();
 }
 
+std::vector<uint32_t>
+BundleStorageEngine::GetAllHandles() const
+{
+    NS_LOG_FUNCTION(this);
+    std::vector<uint32_t> handles;
+    
+    handles.reserve(m_bundleMap.size());
+
+    for (const auto& entry : m_bundleMap)
+    {
+        handles.push_back(entry.first);
+    }
+    
+    return handles;
+}
+
 } // namespace ns3

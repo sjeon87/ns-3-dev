@@ -98,12 +98,11 @@ main(int argc, char* argv[])
     Ptr<ClientServiceStatus> marsClientService = CreateObject<ClientServiceStatus>();
     marsCla->RegisterClientService(0, marsClientService);
 
-    earthAgent->RegisterCla("dtn:mars", earthCla);
-    marsAgent->RegisterCla("dtn:earth", marsCla);
-
     marsAgent->SetReceiveCallback(MakeCallback(&OnBundleReceived));
 
     Simulator::Schedule(Seconds(10.0), &SendDeepSpaceBundle, earthAgent, "dtn:mars");
+    Simulator::Schedule(Seconds(15.0), &ns3::BundleAgent::RegisterCla, earthAgent, "dtn:mars", earthCla);
+    Simulator::Schedule(Seconds(15.0), &ns3::BundleAgent::RegisterCla, marsAgent, "dtn:earth", marsCla);
 
     NS_LOG_INFO("Starting Deep Space Simulation...");
     Simulator::Stop(Seconds(1000.0));

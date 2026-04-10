@@ -9,6 +9,7 @@
 
 #include "bundle-protocol-flags.h"
 #include "generic-convergence-layer-adapter.h"
+#include "contact-graph-routing.h"
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -79,6 +80,17 @@ BundleAgent::SetBundleStorageEngine(Ptr<BundleStorageEngine> bundleStorageEngine
 {
     NS_LOG_FUNCTION(this << bundleStorageEngine);
     m_bundleStorageEngine = bundleStorageEngine;
+}
+
+void
+BundleAgent::SetContactGraph(Ptr<ContactGraph> contactGraph)
+{
+    NS_LOG_FUNCTION(this << contactGraph);
+    m_contactGraph = contactGraph;
+    
+    if (!m_backlogCheckEvent.IsPending()) {
+        m_backlogCheckEvent = Simulator::Schedule(Seconds(1.0), &BundleAgent::ProcessAllBacklog, this);
+    }
 }
 
 std::string
@@ -239,18 +251,33 @@ BundleAgent::ForwardBundle(uint32_t handle)
     }
 
     std::string destination = bundle->GetDestinationEID();
-    Ptr<BundleCla> cla = GetClaForDestination(destination);
+
+    if (!m_contactGraph) {
+        NS_LOG_WARN("ForwardBundle: No ContactGraph set! Cannot route.");
+        return 1;
+    }
+
+    std::string nextHopEID = m_contactGraph->GetNextHop(bundle, m_localEID);
+
+    if (nextHopEID.empty()) {
+        NS_LOG_DEBUG("ForwardBundle: No active route to " << destination << " yet. Bundle held.");
+        return 1;
+    }
+
+    Ptr<BundleCla> cla = GetClaForDestination(nextHopEID);
     if (!cla)
     {
-        NS_LOG_DEBUG("ForwardBundle: no CLA for " << destination << ", bundle held");
+        NS_LOG_DEBUG("ForwardBundle: no CLA for next hop " << nextHopEID << ", bundle held");
         return 1;
     }
 
     Ptr<Packet> packet = bundle->Serialize();
     cla->Send(packet);
 
-    NS_LOG_DEBUG("ForwardBundle: sent bundle handle=" << handle << " to " << destination
-                                                      << " size=" << packet->GetSize());
+    NS_LOG_DEBUG("ForwardBundle: sent bundle handle=" << handle 
+                 << " to final destination " << destination 
+                 << " via next hop " << nextHopEID 
+                 << " size=" << packet->GetSize());
 
     auto evIt = m_expiryEvents.find(handle);
     if (evIt != m_expiryEvents.end())
@@ -456,6 +483,23 @@ BundleAgent::ProcessBacklog(const std::string& destinationEID)
     {
         ForwardBundle(handle);
     }
+}
+
+void
+BundleAgent::ProcessAllBacklog()
+{
+    std::vector<uint32_t> pendingHandles = m_bundleStorageEngine->GetAllHandles();
+
+    if (!pendingHandles.empty())
+    {
+        NS_LOG_DEBUG("ProcessAllBacklog: Attempting to forward " << pendingHandles.size() << " stored bundles.");
+        for (uint32_t handle : pendingHandles)
+        {
+            ForwardBundle(handle);
+        }
+    }
+
+    m_backlogCheckEvent = Simulator::Schedule(Seconds(500.0), &BundleAgent::ProcessAllBacklog, this);
 }
 
 } // namespace ns3

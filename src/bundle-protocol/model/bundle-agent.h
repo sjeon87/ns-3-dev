@@ -25,6 +25,7 @@ namespace ns3
 {
 
 class BundleCla;
+class ContactGraph;
 
 /**
  * @ingroup dtn
@@ -58,6 +59,11 @@ class BundleAgent : public Object
      * @param bundleStorageEngine the bundle storage engine
      */
     void SetBundleStorageEngine(Ptr<BundleStorageEngine> bundleStorageEngine);
+
+    /**
+     * @brief Set the Contact Graph routing oracle
+     */
+    void SetContactGraph(Ptr<ContactGraph> contactGraph);
 
     /**
      * @brief Get the local EID
@@ -139,6 +145,8 @@ class BundleAgent : public Object
      */
     void ProcessBacklog(const std::string& destinationEID);
 
+    void ProcessAllBacklog();
+
     typedef Callback<void, Ptr<Bundle>> BundleReceiveCallback;
     void SetReceiveCallback(BundleReceiveCallback cb);
 
@@ -175,6 +183,8 @@ class BundleAgent : public Object
     std::map<std::string, Ptr<BundleCla>> m_clas;   //!< Map of CLAs with destination EIDs
     std::map<uint32_t, EventId> m_expiryEvents;     //!< Expiry event tracker
     BundleReceiveCallback m_receiveCallback;
+    Ptr<ContactGraph> m_contactGraph;   //!< Routing oracle
+    EventId m_backlogCheckEvent;        //!< Event to periodically check backlog
 };
 
 } // namespace ns3
