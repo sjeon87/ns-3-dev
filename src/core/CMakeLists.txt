@@ -168,6 +168,7 @@ set(source_files
     model/dbm.cc
     model/mhz.cc
     model/dbm-per-mhz.cc
+    model/unit-attribute-serialize.cc
     model/callback.cc
     model/names.cc
     model/vector.cc
@@ -294,6 +295,7 @@ set(header_files
     model/dbm.h
     model/mhz.h
     model/dbm-per-mhz.h
+    model/unit-attribute-serialize.h
     model/valgrind.h
     model/vector.h
     model/warnings.h
