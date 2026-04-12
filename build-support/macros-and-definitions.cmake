@@ -68,6 +68,24 @@ include(CheckFunctionExists)
 include(ProcessorCount)
 ProcessorCount(NumThreads)
 
+# Copy mp-units to build/include/mp-units, and install it
+file(COPY ${PROJECT_SOURCE_DIR}/third-party/mp-units/core/include/
+     DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include/
+)
+file(COPY ${PROJECT_SOURCE_DIR}/third-party/mp-units/systems/include/
+     DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include/
+)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/third-party/mp-units/core/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/
+)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/third-party/mp-units/systems/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/
+)
+add_compile_definitions(
+  MP_UNITS_API_CONTRACTS=0 MP_UNITS_HOSTED=1 MP_UNITS_API_STD_FORMAT=1
+  MP_UNITS_API_NATURAL_UNITS=1
+)
+
 macro(SUBDIRLIST result curdir)
   file(GLOB children RELATIVE ${curdir} ${curdir}/*)
   set(dirlist "")
