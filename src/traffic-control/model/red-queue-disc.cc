@@ -38,7 +38,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 /*
  * PORT NOTE: This code was ported from ns-2 (queue/red.cc).  Almost all
  * comments have also been ported from NS-2
