@@ -38,6 +38,9 @@
 #include "ns3/boolean.h"
 #include "ns3/data-rate.h"
 #include "ns3/error-model.h"
+#include "ns3/icmpv4-l4-protocol.h"
+#include "ns3/icmpv4.h"
+#include "ns3/inet-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv4-address-helper.h"
 #include "ns3/ipv4-interface-container.h"
@@ -555,6 +558,322 @@ class PingTestSuite : public TestSuite
     PingTestSuite();
 };
 
+/**
+ * @ingroup ping-test
+ * @ingroup tests
+ *
+ * @brief ping ICMPv4 Destination Unreachable reaction test
+ */
+class PingIcmpv4DestUnreachTestCase : public TestCase
+{
+  public:
+    /**
+     * Constructor.
+     */
+    PingIcmpv4DestUnreachTestCase();
+
+  private:
+    void DoRun() override;
+
+    /**
+     * Inject an ICMPv4 Destination Host Unreachable packet directed to ping node.
+     */
+    void InjectIcmpv4HostUnreachable();
+
+    /**
+     * Trace Drop events.
+     * @param seq Sequence number.
+     * @param reason Drop reason.
+     */
+    void DropTraceSink(uint16_t seq, Ping::DropReason reason);
+
+    /**
+     * Trace report generation.
+     * @param report Ping report.
+     */
+    void ReportTraceSink(const Ping::PingReport& report);
+
+    NodeContainer m_nodes;                   //!< The simulation nodes
+    Ipv4InterfaceContainer m_ipv4Interfaces; //!< The IPv4 interfaces
+    uint32_t m_dropHostUnreachable{0};       //!< Count of host-unreachable drops
+    uint32_t m_dropOther{0};                 //!< Count of any other drop reasons
+    bool m_reportObserved{false};            //!< True once report callback fires
+    Ping::PingReport m_report{};             //!< Captured report sample
+};
+
+PingIcmpv4DestUnreachTestCase::PingIcmpv4DestUnreachTestCase()
+    : TestCase("11. Test ping reaction to ICMPv4 Destination Host Unreachable")
+{
+}
+
+void
+PingIcmpv4DestUnreachTestCase::InjectIcmpv4HostUnreachable()
+{
+    Ptr<Socket> socket =
+        Socket::CreateSocket(m_nodes.Get(1), TypeId::LookupByName("ns3::Ipv4RawSocketFactory"));
+    socket->SetAttribute("Protocol", UintegerValue(Icmpv4L4Protocol::PROT_NUMBER));
+
+    // Quoted ICMP payload contains the echoed identifier/sequence from request.
+    constexpr uint16_t pingId = 0xbeef;
+    uint8_t quotedData[8] = {Icmpv4Header::ICMPV4_ECHO,
+                             0,
+                             0,
+                             0,
+                             static_cast<uint8_t>((pingId >> 8) & 0xff),
+                             static_cast<uint8_t>(pingId & 0xff),
+                             0,
+                             0};
+
+    Icmpv4DestinationUnreachable destUnreach;
+    Ipv4Header quotedIpHeader;
+    quotedIpHeader.SetSource(m_ipv4Interfaces.GetAddress(0));
+    quotedIpHeader.SetDestination(m_ipv4Interfaces.GetAddress(1));
+    quotedIpHeader.SetProtocol(Icmpv4L4Protocol::PROT_NUMBER);
+    quotedIpHeader.SetPayloadSize(8);
+    quotedIpHeader.SetTtl(64);
+    destUnreach.SetHeader(quotedIpHeader);
+    destUnreach.SetData(Create<Packet>(quotedData, sizeof(quotedData)));
+
+    Ptr<Packet> p = Create<Packet>();
+    p->AddHeader(destUnreach);
+
+    Icmpv4Header icmp;
+    icmp.SetType(Icmpv4Header::ICMPV4_DEST_UNREACH);
+    icmp.SetCode(Icmpv4DestinationUnreachable::ICMPV4_HOST_UNREACHABLE);
+    if (Node::ChecksumEnabled())
+    {
+        icmp.EnableChecksum();
+    }
+    p->AddHeader(icmp);
+
+    socket->SendTo(p, 0, InetSocketAddress(m_ipv4Interfaces.GetAddress(0), 0));
+}
+
+void
+PingIcmpv4DestUnreachTestCase::DropTraceSink(uint16_t seq, Ping::DropReason reason)
+{
+    if (reason == Ping::DROP_HOST_UNREACHABLE)
+    {
+        NS_TEST_ASSERT_MSG_EQ(seq, 0, "Expected host-unreachable to map to first echo request");
+        m_dropHostUnreachable++;
+    }
+    else
+    {
+        m_dropOther++;
+    }
+}
+
+void
+PingIcmpv4DestUnreachTestCase::ReportTraceSink(const Ping::PingReport& report)
+{
+    m_reportObserved = true;
+    m_report = report;
+}
+
+void
+PingIcmpv4DestUnreachTestCase::DoRun()
+{
+    m_nodes.Create(2);
+
+    SimpleNetDeviceHelper deviceHelper;
+    deviceHelper.SetChannel("ns3::SimpleChannel", "Delay", TimeValue(MilliSeconds(10)));
+    deviceHelper.SetDeviceAttribute("DataRate", DataRateValue(DataRate("1Gbps")));
+    deviceHelper.SetNetDevicePointToPointMode(true);
+    NetDeviceContainer devices = deviceHelper.Install(m_nodes);
+
+    InternetStackHelper internetHelper;
+    internetHelper.SetIpv6StackInstall(false);
+    internetHelper.Install(m_nodes);
+
+    Ipv4AddressHelper ipv4AddrHelper;
+    ipv4AddrHelper.SetBase("10.0.0.0", "255.255.255.0");
+    m_ipv4Interfaces = ipv4AddrHelper.Assign(devices);
+
+    Ptr<Ping> ping = CreateObject<Ping>();
+    ping->SetAttribute("InterfaceAddress", AddressValue(m_ipv4Interfaces.GetAddress(0)));
+    ping->SetAttribute("Destination", AddressValue(m_ipv4Interfaces.GetAddress(1)));
+    ping->SetAttribute("Count", UintegerValue(5));
+    ping->SetStartTime(Seconds(1));
+    ping->SetStopTime(Seconds(2.5));
+    m_nodes.Get(0)->AddApplication(ping);
+    ping->TraceConnectWithoutContext(
+        "Drop",
+        MakeCallback(&PingIcmpv4DestUnreachTestCase::DropTraceSink, this));
+    ping->TraceConnectWithoutContext(
+        "Report",
+        MakeCallback(&PingIcmpv4DestUnreachTestCase::ReportTraceSink, this));
+
+    // Inject ICMP shortly after first send (at 1.0s), before first reply arrival,
+    // to deterministically exercise unreachable error handling.
+    Simulator::Schedule(Seconds(1.01),
+                        &PingIcmpv4DestUnreachTestCase::InjectIcmpv4HostUnreachable,
+                        this);
+
+    Simulator::Stop(Seconds(3));
+    Simulator::Run();
+
+    NS_TEST_ASSERT_MSG_GT(m_dropHostUnreachable, 0, "Expected at least one host unreachable drop");
+    NS_TEST_ASSERT_MSG_EQ(m_reportObserved, true, "Expected ping report callback to fire");
+
+    Simulator::Destroy();
+}
+
+/**
+ * @ingroup ping-test
+ * @ingroup tests
+ *
+ * @brief ping ICMPv4 Destination Network Unreachable reaction test
+ */
+class PingIcmpv4NetUnreachTestCase : public TestCase
+{
+  public:
+    /**
+     * Constructor.
+     */
+    PingIcmpv4NetUnreachTestCase();
+
+  private:
+    void DoRun() override;
+
+    /**
+     * Inject an ICMPv4 Destination Network Unreachable packet directed to ping node.
+     */
+    void InjectIcmpv4NetUnreachable();
+
+    /**
+     * Trace Drop events.
+     * @param seq Sequence number.
+     * @param reason Drop reason.
+     */
+    void DropTraceSink(uint16_t seq, Ping::DropReason reason);
+
+    /**
+     * Trace report generation.
+     * @param report Ping report.
+     */
+    void ReportTraceSink(const Ping::PingReport& report);
+
+    NodeContainer m_nodes;                   //!< The simulation nodes
+    Ipv4InterfaceContainer m_ipv4Interfaces; //!< The IPv4 interfaces
+    uint32_t m_dropNetUnreachable{0};        //!< Count of net-unreachable drops
+    bool m_reportObserved{false};            //!< True once report callback fires
+};
+
+PingIcmpv4NetUnreachTestCase::PingIcmpv4NetUnreachTestCase()
+    : TestCase("12. Test ping reaction to ICMPv4 Destination Network Unreachable")
+{
+}
+
+void
+PingIcmpv4NetUnreachTestCase::InjectIcmpv4NetUnreachable()
+{
+    Ptr<Socket> socket =
+        Socket::CreateSocket(m_nodes.Get(1), TypeId::LookupByName("ns3::Ipv4RawSocketFactory"));
+    socket->SetAttribute("Protocol", UintegerValue(Icmpv4L4Protocol::PROT_NUMBER));
+
+    // Quoted ICMP payload contains the echoed identifier/sequence from request.
+    constexpr uint16_t pingId = 0xbeef;
+    uint8_t quotedData[8] = {Icmpv4Header::ICMPV4_ECHO,
+                             0,
+                             0,
+                             0,
+                             static_cast<uint8_t>((pingId >> 8) & 0xff),
+                             static_cast<uint8_t>(pingId & 0xff),
+                             0,
+                             0};
+
+    Icmpv4DestinationUnreachable destUnreach;
+    Ipv4Header quotedIpHeader;
+    quotedIpHeader.SetSource(m_ipv4Interfaces.GetAddress(0));
+    quotedIpHeader.SetDestination(m_ipv4Interfaces.GetAddress(1));
+    quotedIpHeader.SetProtocol(Icmpv4L4Protocol::PROT_NUMBER);
+    quotedIpHeader.SetPayloadSize(8);
+    quotedIpHeader.SetTtl(64);
+    destUnreach.SetHeader(quotedIpHeader);
+    destUnreach.SetData(Create<Packet>(quotedData, sizeof(quotedData)));
+
+    Ptr<Packet> p = Create<Packet>();
+    p->AddHeader(destUnreach);
+
+    Icmpv4Header icmp;
+    icmp.SetType(Icmpv4Header::ICMPV4_DEST_UNREACH);
+    icmp.SetCode(Icmpv4DestinationUnreachable::ICMPV4_NET_UNREACHABLE);
+    if (Node::ChecksumEnabled())
+    {
+        icmp.EnableChecksum();
+    }
+    p->AddHeader(icmp);
+
+    socket->SendTo(p, 0, InetSocketAddress(m_ipv4Interfaces.GetAddress(0), 0));
+}
+
+void
+PingIcmpv4NetUnreachTestCase::DropTraceSink(uint16_t seq, Ping::DropReason reason)
+{
+    if (reason == Ping::DROP_NET_UNREACHABLE)
+    {
+        NS_TEST_ASSERT_MSG_EQ(seq, 0, "Expected net-unreachable to map to first echo request");
+        m_dropNetUnreachable++;
+    }
+}
+
+void
+PingIcmpv4NetUnreachTestCase::ReportTraceSink(const Ping::PingReport& report)
+{
+    (void)report;
+    m_reportObserved = true;
+}
+
+void
+PingIcmpv4NetUnreachTestCase::DoRun()
+{
+    m_nodes.Create(2);
+
+    SimpleNetDeviceHelper deviceHelper;
+    deviceHelper.SetChannel("ns3::SimpleChannel", "Delay", TimeValue(MilliSeconds(10)));
+    deviceHelper.SetDeviceAttribute("DataRate", DataRateValue(DataRate("1Gbps")));
+    deviceHelper.SetNetDevicePointToPointMode(true);
+    NetDeviceContainer devices = deviceHelper.Install(m_nodes);
+
+    InternetStackHelper internetHelper;
+    internetHelper.SetIpv6StackInstall(false);
+    internetHelper.Install(m_nodes);
+
+    Ipv4AddressHelper ipv4AddrHelper;
+    ipv4AddrHelper.SetBase("10.0.0.0", "255.255.255.0");
+    m_ipv4Interfaces = ipv4AddrHelper.Assign(devices);
+
+    Ptr<Ping> ping = CreateObject<Ping>();
+    ping->SetAttribute("InterfaceAddress", AddressValue(m_ipv4Interfaces.GetAddress(0)));
+    ping->SetAttribute("Destination", AddressValue(m_ipv4Interfaces.GetAddress(1)));
+    ping->SetAttribute("Count", UintegerValue(5));
+    ping->SetStartTime(Seconds(1));
+    ping->SetStopTime(Seconds(2.5));
+    m_nodes.Get(0)->AddApplication(ping);
+    ping->TraceConnectWithoutContext(
+        "Drop",
+        MakeCallback(&PingIcmpv4NetUnreachTestCase::DropTraceSink, this));
+    ping->TraceConnectWithoutContext(
+        "Report",
+        MakeCallback(&PingIcmpv4NetUnreachTestCase::ReportTraceSink, this));
+
+    // Inject ICMP shortly after first send (at 1.0s), before first reply arrival,
+    // to deterministically exercise unreachable error handling.
+    Simulator::Schedule(Seconds(1.01),
+                        &PingIcmpv4NetUnreachTestCase::InjectIcmpv4NetUnreachable,
+                        this);
+
+    Simulator::Stop(Seconds(3));
+    Simulator::Run();
+
+    NS_TEST_ASSERT_MSG_GT(m_dropNetUnreachable,
+                          0,
+                          "Expected at least one network unreachable drop");
+    NS_TEST_ASSERT_MSG_EQ(m_reportObserved, true, "Expected ping report callback to fire");
+
+    Simulator::Destroy();
+}
+
 PingTestSuite::PingTestSuite()
     : TestSuite("ping", Type::UNIT)
 {
@@ -933,6 +1252,9 @@ PingTestSuite::PingTestSuite()
     testcase10v6->CheckTraceTx(5);
     testcase10v6->SetDestinationAddress(Ipv6Address("2001:1::200:ff:fe00:2"));
     AddTestCase(testcase10v6, TestCase::Duration::QUICK);
+
+    AddTestCase(new PingIcmpv4DestUnreachTestCase(), TestCase::Duration::QUICK);
+    AddTestCase(new PingIcmpv4NetUnreachTestCase(), TestCase::Duration::QUICK);
 }
 
 static PingTestSuite pingTestSuite; //!< Static variable for test initialization

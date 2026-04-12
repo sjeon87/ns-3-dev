@@ -247,7 +247,50 @@ Ping::Receive(Ptr<Socket> socket)
                 Icmpv4DestinationUnreachable destUnreach;
                 packet->RemoveHeader(destUnreach);
 
-                NS_LOG_INFO("Received Destination Unreachable from " << realFrom.GetIpv4());
+                const uint8_t code = icmp.GetCode();
+                if (code != Icmpv4DestinationUnreachable::ICMPV4_NET_UNREACHABLE &&
+                    code != Icmpv4DestinationUnreachable::ICMPV4_HOST_UNREACHABLE)
+                {
+                    NS_LOG_INFO("Received Destination Unreachable (code="
+                                << static_cast<uint32_t>(code) << ") from " << realFrom.GetIpv4());
+                    break;
+                }
+
+                uint8_t quotedPayload[8];
+                destUnreach.GetData(quotedPayload);
+
+                // The quoted ICMP payload contains ICMPv4 header (bytes 0-3),
+                // then echo identifier (bytes 4-5) and sequence number (bytes 6-7).
+                const uint16_t recvId = (static_cast<uint16_t>(quotedPayload[4]) << 8) |
+                                        static_cast<uint16_t>(quotedPayload[5]);
+                const uint16_t recvSeq = (static_cast<uint16_t>(quotedPayload[6]) << 8) |
+                                         static_cast<uint16_t>(quotedPayload[7]);
+
+                if (recvId != PING_ID || recvSeq >= m_sent.size())
+                {
+                    break;
+                }
+
+                if (!m_sent.at(recvSeq).acked)
+                {
+                    m_sent.at(recvSeq).acked = true;
+
+                    const bool isHostUnreachable =
+                        code == Icmpv4DestinationUnreachable::ICMPV4_HOST_UNREACHABLE;
+                    m_dropTrace(recvSeq,
+                                isHostUnreachable ? DropReason::DROP_HOST_UNREACHABLE
+                                                  : DropReason::DROP_NET_UNREACHABLE);
+
+                    if (m_verbose == VerboseMode::VERBOSE)
+                    {
+                        std::cout << "From " << realFrom.GetIpv4() << " icmp_seq=" << recvSeq
+                                  << " Destination " << (isHostUnreachable ? "Host" : "Network")
+                                  << " Unreachable\n";
+                    }
+                }
+
+                NS_LOG_INFO("Received Destination Unreachable (code="
+                            << static_cast<uint32_t>(code) << ") from " << realFrom.GetIpv4());
                 break;
             }
             case Icmpv4Header::ICMPV4_TIME_EXCEEDED: {
