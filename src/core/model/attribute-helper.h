@@ -375,6 +375,44 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
 /**
  * @ingroup attributehelper
  *
+ * Define the constructor, Set, Get, and Copy methods belonging to
+ * the attribute value class \pname{nameValue}
+ * of the underlying class \pname{type}, but \b not SerializeToString
+ * or DeserializeFromString.
+ *
+ * @param [in] type The underlying type name
+ * @param [in] name The token to use in defining the accessor name.
+ *
+ * Similar to ATTRIBUTE_VALUE_IMPLEMENT_WITH_NAME(), but omits
+ * SerializeToString and DeserializeFromString, which must be provided
+ * separately. Use this for types whose serialization format differs
+ * from their stream operator output (e.g., unit quantity wrappers that
+ * serialize as single tokens like "20_dBm" rather than the stream
+ * format "20 dBm").
+ *
+ * Typically invoked in the source file.
+ */
+#define ATTRIBUTE_VALUE_IMPLEMENT_QUANTITY_VALUE(type, name)                                       \
+    name##Value::name##Value(const type& value)                                                    \
+        : m_value(value)                                                                           \
+    {                                                                                              \
+    }                                                                                              \
+    void name##Value::Set(const type& v)                                                           \
+    {                                                                                              \
+        m_value = v;                                                                               \
+    }                                                                                              \
+    type name##Value::Get() const                                                                  \
+    {                                                                                              \
+        return m_value;                                                                            \
+    }                                                                                              \
+    Ptr<AttributeValue> name##Value::Copy() const                                                  \
+    {                                                                                              \
+        return ns3::Create<name##Value>(*this);                                                    \
+    }
+
+/**
+ * @ingroup attributehelper
+ *
  * Define the \c MaketypeChecker function for class \pname{type}.
  *
  * @param [in] type The name of the class
