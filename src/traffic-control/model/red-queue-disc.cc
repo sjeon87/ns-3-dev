@@ -38,7 +38,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 /*
  * PORT NOTE: This code was ported from ns-2 (queue/red.cc).  Almost all
  * comments have also been ported from NS-2
@@ -276,9 +275,9 @@ void
 RedQueueDisc::SetFengAdaptiveA(double a)
 {
     NS_LOG_FUNCTION(this << a);
-    m_a = a;
+    m_fengAlpha = a;
 
-    if (m_a != 3)
+    if (m_fengAlpha != 3)
     {
         NS_LOG_WARN("Alpha value does not follow the recommendations!");
     }
@@ -288,16 +287,16 @@ double
 RedQueueDisc::GetFengAdaptiveA()
 {
     NS_LOG_FUNCTION(this);
-    return m_a;
+    return m_fengAlpha;
 }
 
 void
 RedQueueDisc::SetFengAdaptiveB(double b)
 {
     NS_LOG_FUNCTION(this << b);
-    m_b = b;
+    m_fengBeta = b;
 
-    if (m_b != 2)
+    if (m_fengBeta != 2)
     {
         NS_LOG_WARN("Beta value does not follow the recommendations!");
     }
@@ -307,7 +306,7 @@ double
 RedQueueDisc::GetFengAdaptiveB()
 {
     NS_LOG_FUNCTION(this);
-    return m_b;
+    return m_fengBeta;
 }
 
 void
@@ -567,44 +566,44 @@ RedQueueDisc::InitializeParams()
 
 // Updating m_curMaxP, following the pseudocode
 // from: A Self-Configuring RED Gateway, INFOCOMM '99.
-// They recommend m_a = 3, and m_b = 2.
+// They recommend m_fengAlpha = 3, and m_fengBeta = 2.
 void
-RedQueueDisc::UpdateMaxPFeng(double newAve)
+RedQueueDisc::UpdateMaxPFeng(double newAvg)
 {
-    NS_LOG_FUNCTION(this << newAve);
+    NS_LOG_FUNCTION(this << newAvg);
 
-    if (m_minTh < newAve && newAve < m_maxTh)
+    if (m_minTh < newAvg && newAvg < m_maxTh)
     {
         m_fengStatus = Between;
     }
-    else if (newAve < m_minTh && m_fengStatus != Below)
+    else if (newAvg < m_minTh && m_fengStatus != Below)
     {
         m_fengStatus = Below;
-        m_curMaxP = m_curMaxP / m_a;
+        m_curMaxP = m_curMaxP / m_fengAlpha;
     }
-    else if (newAve > m_maxTh && m_fengStatus != Above)
+    else if (newAvg > m_maxTh && m_fengStatus != Above)
     {
         m_fengStatus = Above;
-        m_curMaxP = m_curMaxP * m_b;
+        m_curMaxP = m_curMaxP * m_fengBeta;
     }
 }
 
 // Update m_curMaxP to keep the average queue length within the target range.
 void
-RedQueueDisc::UpdateMaxP(double newAve)
+RedQueueDisc::UpdateMaxP(double newAvg)
 {
-    NS_LOG_FUNCTION(this << newAve);
+    NS_LOG_FUNCTION(this << newAvg);
 
     Time now = Simulator::Now();
     double m_targetRange = 0.4 * (m_maxTh - m_minTh);
     // AIMD rule to keep target Q~1/2(m_minTh + m_maxTh)
-    if (newAve < m_minTh + m_targetRange && m_curMaxP > m_bottom)
+    if (newAvg < m_minTh + m_part && m_curMaxP > m_bottom)
     {
         // we should increase the average queue size, so decrease m_curMaxP
         m_curMaxP = m_curMaxP * m_beta;
         m_lastSet = now;
     }
-    else if (newAve > m_maxTh - m_targetRange && m_top > m_curMaxP)
+    else if (newAvg > m_maxTh - m_part && m_top > m_curMaxP)
     {
         // we should decrease the average queue size, so increase m_curMaxP
         double alpha = m_alpha;
@@ -619,24 +618,24 @@ RedQueueDisc::UpdateMaxP(double newAve)
 
 // Compute the average queue size
 double
-RedQueueDisc::Estimator(uint32_t nQueued, uint32_t m, double qAvg, double qW)
+RedQueueDisc::Estimator(uint32_t nQueued, uint32_t m, double oldAvg, double qW)
 {
     NS_LOG_FUNCTION(this << nQueued << m << qAvg << qW);
 
-    double newAve = qAvg * std::pow(1.0 - qW, m);
-    newAve += qW * nQueued;
+    double newAvg = oldAvg * std::pow(1.0 - qW, m);
+    newAvg += qW * nQueued;
 
     Time now = Simulator::Now();
     if (m_isAdaptMaxP && now > m_lastSet + m_interval)
     {
-        UpdateMaxP(newAve);
+        UpdateMaxP(newAvg);
     }
     else if (m_isFengAdaptive)
     {
-        UpdateMaxPFeng(newAve); // Update m_curMaxP in MIMD fashion.
+        UpdateMaxPFeng(newAvg); // Update m_curMaxP in MIMD fashion.
     }
 
-    return newAve;
+    return newAvg;
 }
 
 // Check if packet p needs to be dropped due to probability mark
