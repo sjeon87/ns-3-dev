@@ -1,16 +1,25 @@
 #include "contact-parser.h"
+
+#include "ns3/data-rate.h"
 #include "ns3/log.h"
+#include "ns3/point-to-point-helper.h"
 #include "ns3/simulator.h"
+#include "ns3/string.h"
+
+#include <algorithm>
 #include <fstream>
-#include <sstream>
+#include <map>
 #include <set>
+#include <sstream>
 #include <vector>
 
-namespace ns3 {
+namespace ns3
+{
 
 NS_LOG_COMPONENT_DEFINE("ContactParser");
 
-struct ParsedContact {
+struct ParsedContact
+{
     std::string from;
     std::string to;
     double startTime;
@@ -18,13 +27,14 @@ struct ParsedContact {
     uint32_t rate;
 };
 
-bool 
+bool
 ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactGraph)
 {
     NS_LOG_FUNCTION(filename << contactGraph);
 
     std::ifstream file(filename);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         NS_LOG_ERROR("Failed to open contact file: " << filename);
         return false;
     }
@@ -33,27 +43,38 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
     std::vector<ParsedContact> contacts;
     std::set<std::string> uniqueNodes;
 
-    while (std::getline(file, line)) {
-        if (line.empty() || line.find("a contact") == std::string::npos) {
-            continue;
-        }
-
+    while (std::getline(file, line))
+    {
         std::istringstream iss(line);
-        std::string action, type, startStr, endStr, fromNode, toNode;
-        double rateDouble;
+        std::string action, type;
+        iss >> action >> type;
 
-        iss >> action >> type >> startStr >> endStr >> fromNode >> toNode >> rateDouble;
+        if (action == "a" && type == "contact")
+        {
+            std::string startStr, endStr, fromUri, toUri;
+            double rateDouble;
+            iss >> startStr >> endStr >> fromUri >> toUri >> rateDouble;
+            if (!startStr.empty() && startStr[0] == '+')
+            {
+                startStr.erase(0, 1);
+            }
+            if (!endStr.empty() && endStr[0] == '+')
+            {
+                endStr.erase(0, 1);
+            }
 
-        if (action == "a" && type == "contact") {
-            uint32_t rate = static_cast<uint32_t>(rateDouble);
-            
             double startSeconds = std::stod(startStr);
             double endSeconds = std::stod(endStr);
+            uint32_t rate = static_cast<uint32_t>(rateDouble);
 
-            contacts.push_back({fromNode, toNode, startSeconds, endSeconds, rate});
-            
-            uniqueNodes.insert(fromNode);
-            uniqueNodes.insert(toNode);
+            if (startSeconds == endSeconds)
+            {
+                continue;
+            }
+
+            contacts.push_back({fromUri, toUri, startSeconds, endSeconds, rate});
+            uniqueNodes.insert(fromUri);
+            uniqueNodes.insert(toUri);
         }
     }
 
@@ -62,27 +83,137 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
     std::vector<std::string> eidList(uniqueNodes.begin(), uniqueNodes.end());
     contactGraph->InitializeMap(eidList);
 
-    for (const auto& contact : contacts) {
-        
+    for (const auto& contact : contacts)
+    {
         Time tStart = Seconds(contact.startTime);
         Time tEnd = Seconds(contact.endTime);
 
-        Simulator::Schedule(tStart, 
-                            &ContactGraph::AddContact, 
-                            contactGraph, 
-                            contact.from, 
-                            contact.to, 
+        Simulator::Schedule(tStart,
+                            &ContactGraph::AddContact,
+                            contactGraph,
+                            contact.from,
+                            contact.to,
                             contact.rate);
 
-        Simulator::Schedule(tEnd, 
-                            &ContactGraph::RemoveContact, 
-                            contactGraph, 
-                            contact.from, 
+        Simulator::Schedule(tEnd,
+                            &ContactGraph::RemoveContact,
+                            contactGraph,
+                            contact.from,
                             contact.to);
     }
 
-    NS_LOG_INFO("Successfully scheduled " << contacts.size() << " contacts across " << uniqueNodes.size() << " unique nodes.");
+    NS_LOG_INFO("Successfully scheduled " << contacts.size() << " contacts across "
+                                          << uniqueNodes.size() << " unique nodes.");
     return true;
+}
+
+std::vector<NetDeviceContainer>
+ContactParser::CreateP2pLinks(const std::string& filename,
+                              NodeContainer nodes,
+                              const std::vector<std::string>& nodeUris)
+{
+    NS_LOG_FUNCTION(filename);
+    std::vector<NetDeviceContainer> createdDevices;
+
+    std::map<std::string, uint32_t> uriToIndex;
+    for (uint32_t i = 0; i < nodeUris.size(); ++i)
+    {
+        uriToIndex[nodeUris[i]] = i;
+    }
+
+    std::ifstream file(filename);
+    if (!file.is_open())
+    {
+        NS_LOG_ERROR("Failed to open file to create P2P links: " << filename);
+        return createdDevices;
+    }
+
+    std::string line;
+
+    struct LinkProps
+    {
+        double dataRate = 0.0;
+        double delaySec = 0.0;
+    };
+
+    std::map<std::pair<uint32_t, uint32_t>, LinkProps> linkMap;
+
+    while (std::getline(file, line))
+    {
+        std::istringstream iss(line);
+        std::string action, type;
+        iss >> action >> type;
+
+        if (action == "a" && (type == "contact" || type == "range"))
+        {
+            std::string startStr, endStr, fromUri, toUri;
+            double value;
+
+            iss >> startStr >> endStr >> fromUri >> toUri >> value;
+
+            if (uriToIndex.find(fromUri) == uriToIndex.end() ||
+                uriToIndex.find(toUri) == uriToIndex.end())
+            {
+                continue;
+            }
+
+            uint32_t u = uriToIndex[fromUri];
+            uint32_t v = uriToIndex[toUri];
+            uint32_t minNode = std::min(u, v);
+            uint32_t maxNode = std::max(u, v);
+            auto key = std::make_pair(minNode, maxNode);
+
+            if (type == "contact")
+            {
+                if (value > linkMap[key].dataRate)
+                {
+                    linkMap[key].dataRate = value;
+                }
+            }
+            else if (type == "range")
+            {
+                if (value > linkMap[key].delaySec)
+                {
+                    linkMap[key].delaySec = value;
+                }
+            }
+        }
+    }
+    file.close();
+
+    for (const auto& pair : linkMap)
+    {
+        uint32_t u = pair.first.first;
+        uint32_t v = pair.first.second;
+        double rate = pair.second.dataRate;
+        double delay = pair.second.delaySec;
+
+        if (u >= nodes.GetN() || v >= nodes.GetN())
+        {
+            continue;
+        }
+
+        if (rate > 0)
+        {
+            PointToPointHelper p2p;
+            p2p.SetDeviceAttribute("DataRate",
+                                   DataRateValue(DataRate(static_cast<uint64_t>(rate))));
+            p2p.SetChannelAttribute("Delay", TimeValue(Seconds(delay)));
+
+            NodeContainer linkNodes;
+            linkNodes.Add(nodes.Get(u));
+            linkNodes.Add(nodes.Get(v));
+
+            NetDeviceContainer devices = p2p.Install(linkNodes);
+            createdDevices.push_back(devices);
+
+            NS_LOG_INFO("Installed P2P channel between "
+                        << nodeUris[u] << " and " << nodeUris[v] << " | Rate: "
+                        << static_cast<uint64_t>(rate) << " bps | Delay: " << delay << " s");
+        }
+    }
+
+    return createdDevices;
 }
 
 } // namespace ns3

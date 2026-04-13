@@ -9,31 +9,32 @@
 #ifndef CONTACT_GRAPH_ROUTING_H
 #define CONTACT_GRAPH_ROUTING_H
 
-#include "ns3/object.h"
-#include "ns3/nstime.h"
-#include "ns3/bundle.h"
+#include "bundle.h"
 
-#include <vector>
-#include <string>
-#include <map>
+#include "ns3/nstime.h"
+#include "ns3/object.h"
+
 #include <limits>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace ns3
 {
 
-struct ContactEdge {
+struct ContactEdge
+{
     uint32_t toNode;
     uint32_t dataRate;
 };
 
 class ContactGraphParser : public Object
 {
-
 };
 
 class ContactGraph : public Object
 {
-public:
+  public:
     static TypeId GetTypeId();
 
     ContactGraph();
@@ -47,10 +48,10 @@ public:
 
     std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID);
 
-private:
+  private:
     std::vector<std::vector<ContactEdge>> m_adjList;
     std::map<std::string, uint32_t> m_nodeMap;
-    std::map<uint32_t, std::string> m_reverseNodeMap; 
+    std::map<uint32_t, std::string> m_reverseNodeMap;
     uint32_t m_size;
 };
 

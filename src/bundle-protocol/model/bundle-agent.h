@@ -1,9 +1,14 @@
 /*
- * Copyright (c) 2026 Michigan State University
+ * Copyright (c) 2008 INRIA
+ *                  2013 University of New Brunswick
+ *                  2026 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- * Author: Ishaan Lagwankar <lagwanka@msu.edu>
+ * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ *           Dizhi Zhou <dizhi.zhou@gmail.com>
+ *           Gerard Garcia <ggarcia@deic.uab.cat>
+ *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
 #ifndef BUNDLE_AGENT_H
 #define BUNDLE_AGENT_H
@@ -183,8 +188,8 @@ class BundleAgent : public Object
     std::map<std::string, Ptr<BundleCla>> m_clas;   //!< Map of CLAs with destination EIDs
     std::map<uint32_t, EventId> m_expiryEvents;     //!< Expiry event tracker
     BundleReceiveCallback m_receiveCallback;
-    Ptr<ContactGraph> m_contactGraph;   //!< Routing oracle
-    EventId m_backlogCheckEvent;        //!< Event to periodically check backlog
+    Ptr<ContactGraph> m_contactGraph; //!< Routing oracle
+    EventId m_backlogCheckEvent;      //!< Event to periodically check backlog
 };
 
 } // namespace ns3

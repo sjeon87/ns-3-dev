@@ -7,6 +7,7 @@
  *
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  *           Dizhi Zhou <dizhi.zhou@gmail.com>
+ *           Gerard Garcia <ggarcia@deic.uab.cat>
  *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
 

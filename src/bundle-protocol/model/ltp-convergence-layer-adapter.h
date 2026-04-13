@@ -1,13 +1,17 @@
 /*
- * Copyright (c) 2014 Universitat Autònoma de Barcelona
- * 2026 Michigan State University
+ * Copyright (c) 2008 INRIA
+ *                  2013 University of New Brunswick
+ *                  2014 Universitat Autònoma de Barcelona
+ *                  2026 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- * Author: Rubén Martínez <rmartinez@deic.uab.cat>
- * Ishaan Lagwankar <lagwanka@msu.edu>
+ * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ *           Dizhi Zhou <dizhi.zhou@gmail.com>
+ *           Gerard Garcia <ggarcia@deic.uab.cat>
+ *           Rubén Martínez <rmartinez@deic.uab.cat>
+ *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
-
 #ifndef LTP_CONVERGENCE_LAYER_ADAPTER_H
 #define LTP_CONVERGENCE_LAYER_ADAPTER_H
 

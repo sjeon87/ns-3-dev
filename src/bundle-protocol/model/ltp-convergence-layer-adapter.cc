@@ -1,13 +1,17 @@
 /*
- * Copyright (c) 2014 Universitat Autònoma de Barcelona
- * 2026 Michigan State University
+ * Copyright (c) 2008 INRIA
+ *                  2013 University of New Brunswick
+ *                  2014 Universitat Autònoma de Barcelona
+ *                  2026 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- * Author: Rubén Martínez <rmartinez@deic.uab.cat>
- * Ishaan Lagwankar <lagwanka@msu.edu>
+ * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ *           Dizhi Zhou <dizhi.zhou@gmail.com>
+ *           Gerard Garcia <ggarcia@deic.uab.cat>
+ *           Rubén Martínez <rmartinez@deic.uab.cat>
+ *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
-
 #include "ltp-convergence-layer-adapter.h"
 
 #include "ns3/ipv4-header.h"
@@ -1181,6 +1185,12 @@ LtpBundleCla::Send(Ptr<Packet> p)
 
     uint64_t rdSize = p->GetSize();
 
+    uint8_t* buffer = new uint8_t[rdSize];
+    p->CopyData(buffer, rdSize);
+    std::vector<uint8_t> data(buffer, buffer + rdSize);
+    ssend->CopyBlockData(data);
+    delete[] buffer;
+
     EncapsulateBlockData(GetRemoteEngineId(), ssend, p, rdSize, false);
 
     Ptr<Packet> segment;
@@ -1444,14 +1454,13 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
         {
             itCls->second
                 ->ReportStatus(id, RED_PART_RCV, blockData, blockData.size(), EOB, remoteLtp);
-
-            if (!blockData.empty())
-            {
-                Ptr<Packet> assembledPacket = Create<Packet>(blockData.data(), blockData.size());
-                Ptr<Bundle> bundle = CreateObject<Bundle>();
-                bundle->Deserialize(assembledPacket);
-                NotifyReception(bundle);
-            }
+        }
+        if (!blockData.empty())
+        {
+            Ptr<Packet> assembledPacket = Create<Packet>(blockData.data(), blockData.size());
+            Ptr<Bundle> bundle = CreateObject<Bundle>();
+            bundle->Deserialize(assembledPacket);
+            NotifyReception(bundle);
         }
     }
 }
@@ -1622,6 +1631,7 @@ LtpBundleCla::RetransmitSegment(SessionId id, RedSegmentInfo info)
             {
                 SendSegment(pkt);
             }
+            SetCheckPointTransmissionTimer(id, info);
         }
     }
 }
@@ -1672,15 +1682,11 @@ LtpBundleCla::HandleRead(Ptr<Socket> socket)
             {
                 continue;
             }
-            ClientServiceInstances::iterator itClients =
-                m_activeClients.find(contentHeader.GetClientServiceId());
-            if (itClients == m_activeClients.end())
-            {
-                continue;
-            }
             Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
-            srecv =
-                CreateObject<ReceiverSessionStateRecord>(m_localEngineId, itClients->first, id, uv);
+            srecv = CreateObject<ReceiverSessionStateRecord>(m_localEngineId,
+                                                             contentHeader.GetClientServiceId(),
+                                                             id,
+                                                             uv);
             std::pair<SessionId, Ptr<SessionStateRecord>> entry;
             entry = std::make_pair(id, DynamicCast<SessionStateRecord>(srecv));
             m_activeSessions.insert(m_activeSessions.begin(), entry);

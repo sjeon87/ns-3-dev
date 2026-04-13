@@ -3,15 +3,14 @@
 #include "ns3/bundle-block.h"
 #include "ns3/bundle-protocol-helper.h"
 #include "ns3/bundle.h"
+#include "ns3/contact-graph-helper.h"
+#include "ns3/contact-graph-routing.h"
+#include "ns3/contact-parser.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/ltp-convergence-layer-adapter.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
-#include "ns3/csma-module.h" 
-
-#include "ns3/contact-graph-helper.h"
-#include "ns3/contact-graph-routing.h"
 
 using namespace ns3;
 
@@ -35,7 +34,8 @@ void
 OnBundleReceived(Ptr<Bundle> bundle)
 {
     NS_LOG_INFO("==================================================");
-    NS_LOG_INFO("SUCCESS! Destination received the Bundle at " << Simulator::Now().GetSeconds() << "s");
+    NS_LOG_INFO("SUCCESS! Destination received the Bundle at " << Simulator::Now().GetSeconds()
+                                                               << "s");
     NS_LOG_INFO("Source EID: " << bundle->GetSourceEID());
     NS_LOG_INFO("Destination EID: " << bundle->GetDestinationEID());
 
@@ -50,52 +50,47 @@ OnBundleReceived(Ptr<Bundle> bundle)
 int
 main(int argc, char* argv[])
 {
-    LogComponentEnable("MarsRelayNetworkExample", LOG_LEVEL_INFO);
+    LogComponentEnable("MarsRelayNetworkExample", LOG_LEVEL_ALL);
     LogComponentEnable("BundleAgent", LOG_LEVEL_ALL);
     LogComponentEnable("ContactGraph", LOG_LEVEL_ALL);
-    LogComponentEnable("BundleStorageEngine", LOG_LEVEL_ALL);
-    LogComponentEnable("ContactGraphHelper", LOG_LEVEL_INFO);
-    LogComponentEnable("ContactParser", LOG_LEVEL_INFO);
 
-    std::vector<std::string> mrnEids = {
-        "dtn://earth/dsn",
-        "dtn://mars/mro",
-        "dtn://mars/ody",
-        "dtn://mars/mvn",
-        "dtn://mars/tgo",
-        "dtn://mars/msl",
-        "dtn://mars/m2020",
-        "dtn://mars/insight",
-        "dtn://mars/ingenuity"
-    };
+    std::string contactPlanPath =
+        "/mnt/home/lagwanka/ns-3-dev/src/bundle-protocol/examples/contactGraph.csv";
+
+    std::vector<std::string> mrnEids = {"dtn://earth/dsn",
+                                        "dtn://mars/mro",
+                                        "dtn://mars/ody",
+                                        "dtn://mars/mvn",
+                                        "dtn://mars/tgo",
+                                        "dtn://mars/msl",
+                                        "dtn://mars/m2020",
+                                        "dtn://mars/insight",
+                                        "dtn://mars/ingenuity"};
     uint32_t numNodes = mrnEids.size();
 
     ContactGraphHelper cgrHelper;
-    cgrHelper.SetContactPlan("/mnt/home/lagwanka/ns-3-dev/src/bundle-protocol/examples/contactGraph.csv");
+    cgrHelper.SetContactPlan(contactPlanPath);
     Ptr<ContactGraph> contactGraph = cgrHelper.Install();
 
     NodeContainer nodes;
     nodes.Create(numNodes);
 
-    CsmaHelper csma;
-    csma.SetChannelAttribute("DataRate", StringValue("100Mbps"));
-    csma.SetChannelAttribute("Delay", TimeValue(MilliSeconds(1)));
-    NetDeviceContainer devices = csma.Install(nodes);
-
     InternetStackHelper stack;
     stack.Install(nodes);
 
+    std::vector<NetDeviceContainer> p2pLinks =
+        ContactParser::CreateP2pLinks(contactPlanPath, nodes, mrnEids);
+
     Ipv4AddressHelper address;
-    address.SetBase("10.1.1.0", "255.255.255.0");
-    Ipv4InterfaceContainer interfaces = address.Assign(devices);
+    address.SetBase("10.1.1.0", "255.255.255.252");
 
     BundleAgentHelper agentHelper;
     BundleClaHelper ltpHelper("ns3::LtpBundleCla");
-    ltpHelper.SetAttribute("OnewayLightTime", TimeValue(Seconds(300.0))); 
+    ltpHelper.SetAttribute("OnewayLightTime", TimeValue(Seconds(1500.0)));
 
     std::vector<Ptr<BundleAgent>> agents(numNodes);
 
-    for (uint32_t i = 0; i < numNodes; ++i) 
+    for (uint32_t i = 0; i < numNodes; ++i)
     {
         Ptr<Node> node = nodes.Get(i);
         std::string eid = mrnEids[i];
@@ -109,37 +104,44 @@ main(int argc, char* argv[])
         agents[i]->SetReceiveCallback(MakeCallback(&OnBundleReceived));
     }
 
-    for (uint32_t i = 0; i < numNodes; ++i) 
+    for (uint32_t k = 0; k < p2pLinks.size(); ++k)
     {
-        for (uint32_t j = 0; j < numNodes; ++j) 
-        {
-            if (i == j) continue; 
+        NetDeviceContainer link = p2pLinks[k];
 
-            BundleClaContainer clas = ltpHelper.Install(nodes.Get(i));
-            Ptr<LtpBundleCla> cla = DynamicCast<LtpBundleCla>(clas.Get(0));
-            
-            Ipv4Address myIp = interfaces.GetAddress(i);
-            Ipv4Address targetIp = interfaces.GetAddress(j);
+        Ipv4InterfaceContainer interfaces = address.Assign(link);
+        address.NewNetwork();
 
-            uint16_t localPort = 10000 + (i * 100) + j;
-            uint16_t remotePort = 10000 + (j * 100) + i;
-            
-            cla->Setup(nodes.Get(i), InetSocketAddress(myIp, localPort), InetSocketAddress(targetIp, remotePort));
+        Ptr<Node> node0 = link.Get(0)->GetNode();
+        Ptr<Node> node1 = link.Get(1)->GetNode();
 
-            agents[i]->RegisterCla(mrnEids[j], cla);
-        }
+        uint32_t id0 = node0->GetId();
+        uint32_t id1 = node1->GetId();
+
+        Ipv4Address ip0 = interfaces.GetAddress(0);
+        Ipv4Address ip1 = interfaces.GetAddress(1);
+
+        uint16_t port0 = 10000 + (id0 * 100) + id1;
+        uint16_t port1 = 10000 + (id1 * 100) + id0;
+
+        BundleClaContainer clas0 = ltpHelper.Install(node0);
+        Ptr<LtpBundleCla> cla0 = DynamicCast<LtpBundleCla>(clas0.Get(0));
+        cla0->Setup(node0, InetSocketAddress(ip0, port0), InetSocketAddress(ip1, port1));
+        agents[id0]->RegisterCla(mrnEids[id1], cla0);
+
+        BundleClaContainer clas1 = ltpHelper.Install(node1);
+        Ptr<LtpBundleCla> cla1 = DynamicCast<LtpBundleCla>(clas1.Get(0));
+        cla1->Setup(node1, InetSocketAddress(ip1, port1), InetSocketAddress(ip0, port0));
+        agents[id1]->RegisterCla(mrnEids[id0], cla1);
     }
 
     Ptr<BundleAgent> dsnAgent = agents[0];
-    std::string destinationEid = "dtn://mars/m2020";
+    std::string destinationEid = "dtn://mars/ingenuity";
 
     Simulator::Schedule(Seconds(10.0), &SendDeepSpaceBundle, dsnAgent, destinationEid);
 
-    // Simulator::Schedule(Seconds(5000.0), &SendDeepSpaceBundle, dsnAgent, "dtn://mars/ingenuity");
-
     NS_LOG_INFO("Starting Deep Space MRN Simulation...");
-    
-    Simulator::Stop(Seconds(12000.0));
+
+    Simulator::Stop(Seconds(20000.0));
     Simulator::Run();
     Simulator::Destroy();
 

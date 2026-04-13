@@ -1,5 +1,25 @@
-From,To,Start Time,End Time,Data Rate
-a contact +0 +12000 dtn://earth/dsn dtn://mars/mro 1000000
-a contact +0 +12000 dtn://mars/mro dtn://earth/dsn 1000000
-a contact +0 +12000 dtn://mars/mro dtn://mars/m2020 500000
-a contact +0 +12000 dtn://mars/m2020 dtn://mars/mro 500000
+Start Time,End Time,From,To,DataRate
+a contact +0 +20000 dtn://earth/dsn dtn://mars/mro 2000000
+a range +0 +20000 dtn://earth/dsn dtn://mars/mro 600.0
+a contact +0 +20000 dtn://mars/mro dtn://earth/dsn 2000000
+a range +0 +20000 dtn://mars/mro dtn://earth/dsn 600.0
+a contact +0 +20000 dtn://earth/dsn dtn://mars/ody 1000000
+a range +0 +20000 dtn://earth/dsn dtn://mars/ody 600.0
+a contact +0 +20000 dtn://mars/ody dtn://earth/dsn 1000000
+a range +0 +20000 dtn://mars/ody dtn://earth/dsn 600.0
+a contact +0 +20000 dtn://mars/mro dtn://mars/m2020 2000000
+a range +0 +20000 dtn://mars/mro dtn://mars/m2020 0.001
+a contact +0 +20000 dtn://mars/m2020 dtn://mars/mro 2000000
+a range +0 +20000 dtn://mars/m2020 dtn://mars/mro 0.001
+a contact +0 +20000 dtn://mars/mro dtn://mars/msl 2000000
+a range +0 +20000 dtn://mars/mro dtn://mars/msl 0.001
+a contact +0 +20000 dtn://mars/msl dtn://mars/mro 2000000
+a range +0 +20000 dtn://mars/msl dtn://mars/mro 0.001
+a contact +0 +20000 dtn://mars/ody dtn://mars/m2020 1000000
+a range +0 +20000 dtn://mars/ody dtn://mars/m2020 0.001
+a contact +0 +20000 dtn://mars/m2020 dtn://mars/ody 1000000
+a range +0 +20000 dtn://mars/m2020 dtn://mars/ody 0.001
+a contact +0 +20000 dtn://mars/m2020 dtn://mars/ingenuity 250000
+a range +0 +20000 dtn://mars/m2020 dtn://mars/ingenuity 0.00001
+a contact +0 +20000 dtn://mars/ingenuity dtn://mars/m2020 250000
+a range +0 +20000 dtn://mars/ingenuity dtn://mars/m2020 0.00001

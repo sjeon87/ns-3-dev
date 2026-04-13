@@ -10,14 +10,16 @@
 #define CONTACT_GRAPH_HELPER_H
 
 #include "ns3/ptr.h"
+
 #include <string>
 
-namespace ns3 {
+namespace ns3
+{
 class ContactGraph;
 
-class ContactGraphHelper 
+class ContactGraphHelper
 {
-public:
+  public:
     ContactGraphHelper();
     ~ContactGraphHelper() = default;
 
@@ -28,13 +30,13 @@ public:
     void SetContactPlan(const std::string& filename);
 
     /**
-     * @brief Creates the ContactGraph, parses the file, schedules the events, 
+     * @brief Creates the ContactGraph, parses the file, schedules the events,
      * and returns the initialized graph object.
      * @return A smart pointer to the configured ContactGraph.
      */
     Ptr<ContactGraph> Install();
 
-private:
+  private:
     std::string m_filename;
 };
 
