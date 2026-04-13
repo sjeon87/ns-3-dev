@@ -68,12 +68,13 @@ include(CheckFunctionExists)
 include(ProcessorCount)
 ProcessorCount(NumThreads)
 
-# Copy mp-units to build/include/mp-units, and install it
+# Copy mp-units to a separate system-include directory so that it is added with
+# -isystem (suppressing third-party warnings/errors from clang-tidy).
 file(COPY ${PROJECT_SOURCE_DIR}/third-party/mp-units/core/include/
-     DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include/
+     DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include-system/
 )
 file(COPY ${PROJECT_SOURCE_DIR}/third-party/mp-units/systems/include/
-     DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include/
+     DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include-system/
 )
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third-party/mp-units/core/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/
