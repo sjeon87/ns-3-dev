@@ -511,6 +511,21 @@ def load_modules():
     del variant, path_to_lib
     cppyy.add_include_path(f"{prefix}/include")
 
+    # Add mp-units header-only library include path and compile definitions.
+    # mp-units headers are copied to include-system/ by CMake and added to the
+    # C++ build with -isystem, but cppyy needs them added explicitly.
+    mp_units_include = f"{prefix}/include-system"
+    if os.path.isdir(mp_units_include):
+        cppyy.add_include_path(mp_units_include)
+        cppyy.cppdef("""
+            #ifndef MP_UNITS_API_CONTRACTS
+            #define MP_UNITS_API_CONTRACTS 0
+            #define MP_UNITS_HOSTED 1
+            #define MP_UNITS_API_STD_FORMAT 1
+            #define MP_UNITS_API_NATURAL_UNITS 1
+            #endif
+        """)
+
     known_include_dirs = set()
     # We then need to include all include directories for dependencies
     for library in libraries_to_load:
