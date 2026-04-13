@@ -94,7 +94,7 @@ class TcpL4Protocol : public IpL4Protocol
     // NOTE: API from here should not be removed, only added. Be backward-compatible!
 
     /**
-     * @brief Create a TCP socket using the TypeId set by SocketType attribute
+     * @brief Create a TCP socket using the TypeId set by CongestionType attribute
      *
      * @return A smart Socket pointer to a TcpSocket allocated by this instance
      * of the TCP protocol
@@ -330,13 +330,27 @@ class TcpL4Protocol : public IpL4Protocol
     Ipv4EndPointDemux* m_endPoints;  //!< A list of IPv4 end points.
     Ipv6EndPointDemux* m_endPoints6; //!< A list of IPv6 end points.
     TypeId m_rttTypeId;              //!< The RTT Estimator TypeId
-    TypeId m_congestionTypeId;       //!< The socket TypeId
+    TypeId m_congestionTypeId;       //!< The congestion control algorithm TypeId
     TypeId m_recoveryTypeId;         //!< The recovery TypeId
     std::unordered_map<uint64_t, Ptr<TcpSocketBase>>
         m_sockets;             //!< Unordered map of socket IDs and corresponding sockets
     uint64_t m_socketIndex{0}; //!< index of the next socket to be created
     IpL4Protocol::DownTargetCallback m_downTarget;   //!< Callback to send packets over IPv4
     IpL4Protocol::DownTargetCallback6 m_downTarget6; //!< Callback to send packets over IPv6
+
+    /**
+     * @brief Set the congestion control algorithm TypeId (deprecated SocketType attribute).
+     * Only forwards to m_congestionTypeId if tid differs from the default (TcpCubic),
+     * to avoid overwriting a user-set CongestionType during attribute initialization.
+     * @param tid The TypeId
+     */
+    void SetSocketTypeId(TypeId tid);
+
+    /**
+     * @brief Get the congestion control algorithm TypeId (deprecated SocketType attribute).
+     * @return The TypeId
+     */
+    TypeId GetSocketTypeId() const;
 
     /**
      * @brief Send a packet via TCP (IPv4)
