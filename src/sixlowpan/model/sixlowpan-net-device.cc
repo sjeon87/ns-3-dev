@@ -1210,8 +1210,10 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
                     size += CompressLowPanUdpNhc(packet, m_omitUdpChecksum);
                 }
             }
-            else if (nextHeader == Ipv6Header::IPV6_ICMPV6 && m_compressionType == GHC)
+            else if (nextHeader == Ipv6Header::IPV6_ICMPV6)
             {
+                // CanCompressLowPanNhc(ICMPV6) is only true when m_compressionType == GHC,
+                // so the check here would be redundant.
                 iphcHeader.SetNh(true);
                 size += CompressLowPanGhcIcmpv6(packet,
                                                 ipHeader.GetSource(),
@@ -1224,34 +1226,22 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
             }
             else
             {
+                // Extension header. Try GHC first (if enabled); fall back to
+                // standard NHC; if both fail, emit the next-header inline.
+                uint32_t sizeGhc = 0;
                 if (m_compressionType == GHC)
                 {
-                    uint32_t sizeGhc = CompressLowPanGhcNhc(packet,
-                                                            nextHeader,
-                                                            src,
-                                                            dst,
-                                                            ipHeader.GetSource(),
-                                                            ipHeader.GetDestination());
-                    if (sizeGhc)
-                    {
-                        iphcHeader.SetNh(true);
-                        size += sizeGhc;
-                    }
-                    else
-                    {
-                        // GHC compression failed, fallback to standard NHC
-                        uint32_t sizeNhc = CompressLowPanNhc(packet, nextHeader, src, dst);
-                        if (sizeNhc)
-                        {
-                            iphcHeader.SetNh(true);
-                            size += sizeNhc;
-                        }
-                        else
-                        {
-                            iphcHeader.SetNh(false);
-                            iphcHeader.SetNextHeader(nextHeader);
-                        }
-                    }
+                    sizeGhc = CompressLowPanGhcNhc(packet,
+                                                   nextHeader,
+                                                   src,
+                                                   dst,
+                                                   ipHeader.GetSource(),
+                                                   ipHeader.GetDestination());
+                }
+                if (sizeGhc)
+                {
+                    iphcHeader.SetNh(true);
+                    size += sizeGhc;
                 }
                 else
                 {
@@ -1579,7 +1569,7 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
 }
 
 bool
-SixLowPanNetDevice::CanCompressLowPanNhc(uint8_t nextHeader)
+SixLowPanNetDevice::CanCompressLowPanNhc(uint8_t nextHeader) const
 {
     bool ret = false;
 
@@ -1922,14 +1912,17 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
                                                                      dst,
                                                                      ipHeader.GetSource(),
                                                                      ipHeader.GetDestination());
-            if (retval.second)
-            {
-                return true;
-            }
-            else
-            {
-                ipHeader.SetNextHeader(retval.first);
-            }
+            // GHC decompression is stateless (no context table), so unlike
+            // stateful IPHC the only way retval.second can be true is a
+            // malformed bytecode stream on the wire. Assert rather than
+            // silently discarding the packet: this points to either a bug
+            // in the local compressor, a protocol-violating peer, or a
+            // test input accident - all of which should surface loudly
+            // during simulation development.
+            NS_ASSERT_MSG(!retval.second,
+                          "GHC decompression failed on LOWPAN_GHC_EXT stream: "
+                          "malformed bytecode sequence.");
+            ipHeader.SetNextHeader(retval.first);
         }
         else
         {
@@ -3448,21 +3441,17 @@ SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
     }
     ghcHeader.SetBlob(compressed, compressedLen);
 
-    // If next header is also compressible, compress it recursively
+    // If next header is also compressible, compress it recursively.
+    // This function is only reachable when m_compressionType == GHC (enforced by
+    // the callers in CompressLowPanIphc and by the GHC dispatch table), so
+    // no GHC guards are needed inside the recursive branches.
     if (nhCompressed)
     {
         if (nextHeader == Ipv6Header::IPV6_UDP)
         {
-            if (m_compressionType == GHC)
-            {
-                size += CompressLowPanGhcUdp(packet, m_omitUdpChecksum, srcAddress, dstAddress);
-            }
-            else
-            {
-                size += CompressLowPanUdpNhc(packet, m_omitUdpChecksum);
-            }
+            size += CompressLowPanGhcUdp(packet, m_omitUdpChecksum, srcAddress, dstAddress);
         }
-        else if (nextHeader == Ipv6Header::IPV6_ICMPV6 && m_compressionType == GHC)
+        else if (nextHeader == Ipv6Header::IPV6_ICMPV6)
         {
             size += CompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
         }
@@ -3472,6 +3461,8 @@ SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
         }
         else
         {
+            // Extension header: GHC first, fall back to standard NHC, then
+            // inline next-header if both fail.
             uint32_t sizeGhc =
                 CompressLowPanGhcNhc(packet, nextHeader, src, dst, srcAddress, dstAddress);
             if (sizeGhc)

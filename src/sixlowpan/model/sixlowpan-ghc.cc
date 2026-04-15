@@ -6,6 +6,10 @@
  * Author: Usham Roy <ushamroy80@gmail.com>
  *
  * 6LoWPAN-GHC: Generic Header Compression - RFC 7400
+ *
+ * Provenance: Original implementation written from scratch by the author,
+ * following RFC 7400 (Bormann, November 2014) as the sole normative reference.
+ * No code was borrowed from any prior third-party implementation.
  */
 
 #include "sixlowpan-ghc.h"
@@ -76,26 +80,13 @@ SixLowPanGhcEngine::ClassifyBytecode(uint8_t byte)
     }
     else if ((byte & 0xF0) == 0x80)
     {
-        // 1000nnnn - Zero insertion (nnnn > 0) or reserved
-        if (byte == 0x80)
-        {
-            // 10000000 is reserved (n=0 would mean insert 2 zeros but spec
-            // says n=0 in this pattern is reserved - actually per RFC section 3
-            // "1000nnnn" with n ranging 0-15 inserts n+2 zeros.
-            // Re-reading RFC: 10000000 inserts 0+2 = 2 zeros. Valid.
-            return GhcBytecodeType::ZERO_INSERT;
-        }
+        // 1000nnnn - Zero insertion: emits nnnn+2 zero bytes (RFC 7400 Section 3).
         return GhcBytecodeType::ZERO_INSERT;
     }
     else if (byte == 0x90)
     {
         // 10010000 - Stop code
         return GhcBytecodeType::STOP_CODE;
-    }
-    else if ((byte & 0xF0) == 0x90 && byte != 0x90)
-    {
-        // 1001nnnn where nnnn > 0 - Reserved
-        return GhcBytecodeType::RESERVED;
     }
     else if ((byte & 0xE0) == 0xA0)
     {
@@ -109,7 +100,7 @@ SixLowPanGhcEngine::ClassifyBytecode(uint8_t byte)
     }
     else
     {
-        // 011xxxxx - Reserved
+        // 1001nnnn (nnnn > 0) and 011xxxxx - Reserved per RFC 7400 Section 3.
         return GhcBytecodeType::RESERVED;
     }
 }
@@ -501,11 +492,64 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
 
     while (inPos < inputLen)
     {
-        // Strategy 1: Check for zero runs
+        // Evaluate both ZERO_INSERT and BACKREF at this position and pick the
+        // one that consumes more input bytes. A backref that covers the zero
+        // run PLUS following non-zero bytes (e.g., matching the "00 00 00 00
+        // 01" pattern in the static dictionary) is strictly better than a
+        // zero-insert that stops at the zero prefix, because it consumes the
+        // trailing bytes in the same opcode budget instead of forcing them
+        // into a separate literal run. This is the case flagged by Tommaso
+        // Pecorella on MR !2802 for Fig.13 (suboptimal "82 03 01" vs optimal
+        // "de 02").
         uint32_t zeros = CountZeros(input + inPos, inputLen - inPos);
+
+        uint32_t matchOffset = 0;
+        uint32_t matchLength = 0;
+        bool haveMatch = FindLongestMatch(buffer,
+                                          bufPos,
+                                          input + inPos,
+                                          inputLen - inPos,
+                                          matchOffset,
+                                          matchLength);
+        // GHC backreference encoding requires offset >= length; clamp
+        // overlapping matches from the LZ77 match finder.
+        if (haveMatch && matchOffset < matchLength)
+        {
+            matchLength = matchOffset;
+        }
+        if (matchLength < 2)
+        {
+            haveMatch = false;
+        }
+
+        // Prefer BACKREF if it strictly covers more input than ZERO_INSERT
+        // (or if no zero run is available). Ties go to ZERO_INSERT since its
+        // encoding is simpler (no offset math, no extended args).
+        const bool preferBackref = haveMatch && (zeros < 2 || matchLength > zeros);
+
+        if (preferBackref)
+        {
+            if (!flushLiterals())
+            {
+                return 0;
+            }
+
+            uint32_t savedOutPos = outPos;
+            if (EmitBackref(output, outPos, outputMaxLen, matchLength, matchOffset))
+            {
+                // Advance buffer with matched data
+                std::memcpy(buffer + bufPos, input + inPos, matchLength);
+                bufPos += matchLength;
+                inPos += matchLength;
+                continue;
+            }
+            // Backref encoding failed (e.g., offset too large even with
+            // extended args); rewind and fall back to zero-insert or literal.
+            outPos = savedOutPos;
+        }
+
         if (zeros >= 2)
         {
-            // Flush any pending literals first
             if (!flushLiterals())
             {
                 return 0;
@@ -530,54 +574,6 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
                 zeros -= emit;
             }
             continue;
-        }
-
-        // Strategy 2: Check for backreference match in dictionary + output
-        uint32_t matchOffset = 0;
-        uint32_t matchLength = 0;
-
-        if (FindLongestMatch(buffer,
-                             bufPos,
-                             input + inPos,
-                             inputLen - inPos,
-                             matchOffset,
-                             matchLength))
-        {
-            // GHC backreference encoding requires offset >= length.
-            // Clamp overlapping matches from the LZ77 match finder.
-            if (matchOffset < matchLength)
-            {
-                matchLength = matchOffset;
-            }
-            if (matchLength < 2)
-            {
-                // Too short after clamping — treat current byte as literal
-                literalBuf.push_back(input[inPos]);
-                buffer[bufPos++] = input[inPos];
-                inPos++;
-                continue;
-            }
-            // Flush any pending literals first
-            if (!flushLiterals())
-            {
-                return 0;
-            }
-
-            // Try to emit backref
-            uint32_t savedOutPos = outPos;
-            if (EmitBackref(output, outPos, outputMaxLen, matchLength, matchOffset))
-            {
-                // Advance buffer with matched data
-                std::memcpy(buffer + bufPos, input + inPos, matchLength);
-                bufPos += matchLength;
-                inPos += matchLength;
-                continue;
-            }
-            else
-            {
-                // Backref encoding failed, fall through to literal
-                outPos = savedOutPos;
-            }
         }
 
         // Strategy 3: Accumulate as literal
@@ -846,10 +842,8 @@ SixLowPanGhcUdp::GetSerializedSize() const
         size += 4; // 2 + 2
         break;
     case PORTS_ALL_SRC_LAST_DST:
-        size += 3; // 2 + 1
-        break;
     case PORTS_LAST_SRC_ALL_DST:
-        size += 3; // 1 + 2
+        size += 3; // 2 + 1 or 1 + 2
         break;
     case PORTS_LAST_SRC_LAST_DST:
         size += 1; // 4-bit + 4-bit packed

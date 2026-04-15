@@ -9,6 +9,7 @@
  */
 
 #include "ns3/boolean.h"
+#include "ns3/enum.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/log.h"
@@ -24,9 +25,11 @@
 #include "ns3/test.h"
 #include "ns3/udp-socket-factory.h"
 
+#include <array>
 #include <cstring>
 #include <limits>
 #include <string>
+#include <vector>
 
 using namespace ns3;
 
@@ -61,30 +64,38 @@ SixlowpanGhcEngineTest::DoRun()
 
     // Test 1: Data with lots of zeros (should compress well via zero-insert)
     {
-        uint8_t input[] = {0x3a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x12, 0x34,
-                           0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-        uint32_t inputLen = sizeof(input);
+        auto input = std::to_array<uint8_t>({0x3a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                             0x80, 0x00, 0x12, 0x34, 0x00, 0x01, 0x00, 0x01,
+                                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+        const auto inputLen = static_cast<uint32_t>(input.size());
 
-        uint8_t compressed[256];
-        uint32_t compLen =
-            SixLowPanGhcEngine::Compress(srcAddr, dstAddr, input, inputLen, compressed, 256, false);
+        std::array<uint8_t, 256> compressed{};
+        const auto compBufLen = static_cast<uint32_t>(compressed.size());
+        uint32_t compLen = SixLowPanGhcEngine::Compress(srcAddr,
+                                                        dstAddr,
+                                                        input.data(),
+                                                        inputLen,
+                                                        compressed.data(),
+                                                        compBufLen,
+                                                        false);
 
         // Should produce some compressed output (or 0 if no benefit)
         if (compLen > 0)
         {
             NS_TEST_ASSERT_MSG_LT(compLen, inputLen, "Compressed size should be less than input");
 
-            uint8_t decompressed[1280];
+            std::array<uint8_t, 1280> decompressed{};
+            const auto decompBufLen = static_cast<uint32_t>(decompressed.size());
             uint32_t decompLen = SixLowPanGhcEngine::Decompress(srcAddr,
                                                                 dstAddr,
-                                                                compressed,
+                                                                compressed.data(),
                                                                 compLen,
-                                                                decompressed,
-                                                                1280,
+                                                                decompressed.data(),
+                                                                decompBufLen,
                                                                 false);
 
             NS_TEST_ASSERT_MSG_EQ(decompLen, inputLen, "Decompressed length must match original");
-            NS_TEST_ASSERT_MSG_EQ(std::memcmp(input, decompressed, inputLen),
+            NS_TEST_ASSERT_MSG_EQ(std::memcmp(input.data(), decompressed.data(), inputLen),
                                   0,
                                   "Decompressed data must match original");
         }
@@ -93,43 +104,50 @@ SixlowpanGhcEngineTest::DoRun()
     // Test 2: Data that matches the static dictionary
     {
         // Include bytes from static dictionary: 0x16, 0xfe, 0xfd, 0x17...
-        uint8_t input[] = {0x16,
-                           0xfe,
-                           0xfd,
-                           0x17,
-                           0xfe,
-                           0xfd,
-                           0x00,
-                           0x01,
-                           0x00,
-                           0x00,
-                           0x00,
-                           0x00,
-                           0x00,
-                           0x01,
-                           0x00,
-                           0x00};
-        uint32_t inputLen = sizeof(input);
+        auto input = std::to_array<uint8_t>({0x16,
+                                             0xfe,
+                                             0xfd,
+                                             0x17,
+                                             0xfe,
+                                             0xfd,
+                                             0x00,
+                                             0x01,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x01,
+                                             0x00,
+                                             0x00});
+        const auto inputLen = static_cast<uint32_t>(input.size());
 
-        uint8_t compressed[256];
-        uint32_t compLen =
-            SixLowPanGhcEngine::Compress(srcAddr, dstAddr, input, inputLen, compressed, 256, false);
+        std::array<uint8_t, 256> compressed{};
+        const auto compBufLen = static_cast<uint32_t>(compressed.size());
+        uint32_t compLen = SixLowPanGhcEngine::Compress(srcAddr,
+                                                        dstAddr,
+                                                        input.data(),
+                                                        inputLen,
+                                                        compressed.data(),
+                                                        compBufLen,
+                                                        false);
 
         if (compLen > 0)
         {
-            uint8_t decompressed[1280];
+            std::array<uint8_t, 1280> decompressed{};
+            const auto decompBufLen = static_cast<uint32_t>(decompressed.size());
             uint32_t decompLen = SixLowPanGhcEngine::Decompress(srcAddr,
                                                                 dstAddr,
-                                                                compressed,
+                                                                compressed.data(),
                                                                 compLen,
-                                                                decompressed,
-                                                                1280,
+                                                                decompressed.data(),
+                                                                decompBufLen,
                                                                 false);
 
             NS_TEST_ASSERT_MSG_EQ(decompLen,
                                   inputLen,
                                   "Dictionary match: decompressed length must match");
-            NS_TEST_ASSERT_MSG_EQ(std::memcmp(input, decompressed, inputLen),
+            NS_TEST_ASSERT_MSG_EQ(std::memcmp(input.data(), decompressed.data(), inputLen),
                                   0,
                                   "Dictionary match: decompressed data must match");
         }
@@ -138,28 +156,38 @@ SixlowpanGhcEngineTest::DoRun()
     // Test 3: Data with address-derived dictionary match
     {
         // Use bytes that match the source IPv6 address (first 16 bytes of dictionary)
-        uint8_t srcBuf[16];
-        srcAddr.GetBytes(srcBuf);
+        std::array<uint8_t, 16> srcBuf{};
+        srcAddr.GetBytes(srcBuf.data());
+        const auto srcBufLen = static_cast<uint32_t>(srcBuf.size());
 
-        uint8_t compressed[256];
-        uint32_t compLen =
-            SixLowPanGhcEngine::Compress(srcAddr, dstAddr, srcBuf, 16, compressed, 256, false);
+        std::array<uint8_t, 256> compressed{};
+        const auto compBufLen = static_cast<uint32_t>(compressed.size());
+        uint32_t compLen = SixLowPanGhcEngine::Compress(srcAddr,
+                                                        dstAddr,
+                                                        srcBuf.data(),
+                                                        srcBufLen,
+                                                        compressed.data(),
+                                                        compBufLen,
+                                                        false);
 
         if (compLen > 0)
         {
-            NS_TEST_ASSERT_MSG_LT(compLen, 16u, "Address data should compress significantly");
+            NS_TEST_ASSERT_MSG_LT(compLen, srcBufLen, "Address data should compress significantly");
 
-            uint8_t decompressed[1280];
+            std::array<uint8_t, 1280> decompressed{};
+            const auto decompBufLen = static_cast<uint32_t>(decompressed.size());
             uint32_t decompLen = SixLowPanGhcEngine::Decompress(srcAddr,
                                                                 dstAddr,
-                                                                compressed,
+                                                                compressed.data(),
                                                                 compLen,
-                                                                decompressed,
-                                                                1280,
+                                                                decompressed.data(),
+                                                                decompBufLen,
                                                                 false);
 
-            NS_TEST_ASSERT_MSG_EQ(decompLen, 16u, "Address match: decompressed length must match");
-            NS_TEST_ASSERT_MSG_EQ(std::memcmp(srcBuf, decompressed, 16),
+            NS_TEST_ASSERT_MSG_EQ(decompLen,
+                                  srcBufLen,
+                                  "Address match: decompressed length must match");
+            NS_TEST_ASSERT_MSG_EQ(std::memcmp(srcBuf.data(), decompressed.data(), srcBufLen),
                                   0,
                                   "Address match: decompressed data must match");
         }
@@ -167,26 +195,33 @@ SixlowpanGhcEngineTest::DoRun()
 
     // Test 4: Stop Code handling for extension headers
     {
-        uint8_t input[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
-        uint32_t inputLen = sizeof(input);
+        auto input = std::to_array<uint8_t>({0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
+        const auto inputLen = static_cast<uint32_t>(input.size());
 
-        uint8_t compressed[256];
-        uint32_t compLen =
-            SixLowPanGhcEngine::Compress(srcAddr, dstAddr, input, inputLen, compressed, 256, true);
+        std::array<uint8_t, 256> compressed{};
+        const auto compBufLen = static_cast<uint32_t>(compressed.size());
+        uint32_t compLen = SixLowPanGhcEngine::Compress(srcAddr,
+                                                        dstAddr,
+                                                        input.data(),
+                                                        inputLen,
+                                                        compressed.data(),
+                                                        compBufLen,
+                                                        true);
 
         if (compLen > 0)
         {
-            uint8_t decompressed[1280];
+            std::array<uint8_t, 1280> decompressed{};
+            const auto decompBufLen = static_cast<uint32_t>(decompressed.size());
             uint32_t decompLen = SixLowPanGhcEngine::Decompress(srcAddr,
                                                                 dstAddr,
-                                                                compressed,
+                                                                compressed.data(),
                                                                 compLen,
-                                                                decompressed,
-                                                                1280,
+                                                                decompressed.data(),
+                                                                decompBufLen,
                                                                 true);
 
             NS_TEST_ASSERT_MSG_EQ(decompLen, inputLen, "Stop code: decompressed length must match");
-            NS_TEST_ASSERT_MSG_EQ(std::memcmp(input, decompressed, inputLen),
+            NS_TEST_ASSERT_MSG_EQ(std::memcmp(input.data(), decompressed.data(), inputLen),
                                   0,
                                   "Stop code: decompressed data must match");
         }
@@ -252,8 +287,9 @@ SixlowpanGhcHeaderTest::DoRun()
         SixLowPanGhcExtension original;
         original.SetEid(SixLowPanGhcExtension::EID_HOPBYHOP_OPTIONS_H);
         original.SetNh(true);
-        uint8_t blob[] = {0x01, 0x02, 0x03, 0x90}; // 3 literal bytes + stop code
-        original.SetBlob(blob, 4);
+        // 3 literal bytes + stop code
+        auto blob = std::to_array<uint8_t>({0x01, 0x02, 0x03, 0x90});
+        original.SetBlob(blob.data(), static_cast<uint32_t>(blob.size()));
 
         // Serialize
         Buffer buf;
@@ -270,9 +306,11 @@ SixlowpanGhcHeaderTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ(decoded.GetNh(), true, "NH flag must match");
         NS_TEST_ASSERT_MSG_EQ(decoded.GetBlobLength(), 4u, "Blob length must match");
 
-        uint8_t decodedBlob[256];
-        decoded.CopyBlob(decodedBlob, 256);
-        NS_TEST_ASSERT_MSG_EQ(std::memcmp(blob, decodedBlob, 4), 0, "Blob data must match");
+        std::array<uint8_t, 256> decodedBlob{};
+        decoded.CopyBlob(decodedBlob.data(), static_cast<uint32_t>(decodedBlob.size()));
+        NS_TEST_ASSERT_MSG_EQ(std::memcmp(blob.data(), decodedBlob.data(), blob.size()),
+                              0,
+                              "Blob data must match");
 
         // Check dispatch type
         NS_TEST_ASSERT_MSG_EQ(decoded.GetNhcDispatchType(),
@@ -308,8 +346,8 @@ SixlowpanGhcHeaderTest::DoRun()
     // Test GHC ICMPv6 Header
     {
         SixLowPanGhcIcmpv6 original;
-        uint8_t blob[] = {0x05, 0x80, 0x00, 0x12, 0x34, 0x84};
-        original.SetBlob(blob, 6);
+        auto blob = std::to_array<uint8_t>({0x05, 0x80, 0x00, 0x12, 0x34, 0x84});
+        original.SetBlob(blob.data(), static_cast<uint32_t>(blob.size()));
 
         Buffer buf;
         buf.AddAtStart(original.GetSerializedSize());
@@ -323,9 +361,11 @@ SixlowpanGhcHeaderTest::DoRun()
                               SixLowPanDispatch::LOWPAN_GHC_ICMPV6,
                               "Dispatch type must be LOWPAN_GHC_ICMPV6");
 
-        uint8_t decodedBlob[256];
-        decoded.CopyBlob(decodedBlob, 256);
-        NS_TEST_ASSERT_MSG_EQ(std::memcmp(blob, decodedBlob, 6), 0, "Blob data must match");
+        std::array<uint8_t, 256> decodedBlob{};
+        decoded.CopyBlob(decodedBlob.data(), static_cast<uint32_t>(decodedBlob.size()));
+        NS_TEST_ASSERT_MSG_EQ(std::memcmp(blob.data(), decodedBlob.data(), blob.size()),
+                              0,
+                              "Blob data must match");
     }
 
     // Test 6CIO Option Header
@@ -383,15 +423,38 @@ SixlowpanGhcHeaderTest::DoRun()
  */
 class SixlowpanGhcUdpImplTest : public TestCase
 {
-    Ptr<Packet> m_receivedPacket;
+    Ptr<Packet> m_receivedPacket; ///< The received packet.
 
+    /**
+     * @brief Schedule-friendly wrapper that performs the actual send.
+     * @param [in] socket The sending socket.
+     * @param [in] to Destination address in text form.
+     */
     void DoSendData(Ptr<Socket> socket, std::string to);
+
+    /**
+     * @brief Schedule data to be sent through the socket.
+     * @param [in] socket The sending socket.
+     * @param [in] to Destination address in text form.
+     */
     void SendData(Ptr<Socket> socket, std::string to);
 
   public:
     void DoRun() override;
     SixlowpanGhcUdpImplTest();
+
+    /**
+     * @brief Receive data callback.
+     * @param [in] socket The receiving socket.
+     * @param [in] packet The received packet.
+     * @param [in] from The sender address.
+     */
     void ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from);
+
+    /**
+     * @brief Receive data from the socket's RX buffer.
+     * @param [in] socket The receiving socket.
+     */
     void ReceivePkt(Ptr<Socket> socket);
 };
 
@@ -418,11 +481,15 @@ void
 SixlowpanGhcUdpImplTest::DoSendData(Ptr<Socket> socket, std::string to)
 {
     Address realTo = Inet6SocketAddress(Ipv6Address(to.c_str()), 1234);
-    uint8_t buffer[128] = "GHC RFC 7400 compression test - Generic Header Compression for "
-                          "6LoWPAN IPv6 over Low-Power Wireless Personal Area Networks.";
+    const char* msg = "GHC RFC 7400 compression test - Generic Header Compression for "
+                      "6LoWPAN IPv6 over Low-Power Wireless Personal Area Networks.";
+    std::array<uint8_t, 128> buffer{};
+    std::memcpy(buffer.data(), msg, std::strlen(msg));
 
-    Ptr<Packet> packet = Create<Packet>(buffer, 128);
-    NS_TEST_EXPECT_MSG_EQ(socket->SendTo(packet, 0, realTo), 128, "Send should succeed");
+    Ptr<Packet> packet = Create<Packet>(buffer.data(), static_cast<uint32_t>(buffer.size()));
+    NS_TEST_EXPECT_MSG_EQ(socket->SendTo(packet, 0, realTo),
+                          static_cast<int>(buffer.size()),
+                          "Send should succeed");
 }
 
 void
@@ -454,7 +521,7 @@ SixlowpanGhcUdpImplTest::DoRun()
         rxNode->AddDevice(rxDev);
 
         Ptr<SixLowPanNetDevice> rxSix = CreateObject<SixLowPanNetDevice>();
-        rxSix->SetAttribute("UseGhc", BooleanValue(true));
+        rxSix->SetAttribute("CompressionType", EnumValue(SixLowPanNetDevice::GHC));
         rxNode->AddDevice(rxSix);
         rxSix->SetNetDevice(rxDev);
 
@@ -477,7 +544,7 @@ SixlowpanGhcUdpImplTest::DoRun()
         txNode->AddDevice(txDev);
 
         Ptr<SixLowPanNetDevice> txSix = CreateObject<SixLowPanNetDevice>();
-        txSix->SetAttribute("UseGhc", BooleanValue(true));
+        txSix->SetAttribute("CompressionType", EnumValue(SixLowPanNetDevice::GHC));
         txNode->AddDevice(txSix);
         txSix->SetNetDevice(txDev);
 
@@ -511,16 +578,288 @@ SixlowpanGhcUdpImplTest::DoRun()
     SendData(txSocket, "2001:0100::1");
     NS_TEST_EXPECT_MSG_EQ(m_receivedPacket->GetSize(), 128, "Received packet size must match");
 
-    uint8_t rxBuffer[128];
-    uint8_t txBuffer[128] = "GHC RFC 7400 compression test - Generic Header Compression for "
-                            "6LoWPAN IPv6 over Low-Power Wireless Personal Area Networks.";
-    m_receivedPacket->CopyData(rxBuffer, 128);
-    NS_TEST_EXPECT_MSG_EQ(std::memcmp(rxBuffer, txBuffer, 128),
-                          0,
-                          "Received data must match sent data");
+    std::array<uint8_t, 128> rxBuffer{};
+    std::array<uint8_t, 128> txBuffer{};
+    const char* msg = "GHC RFC 7400 compression test - Generic Header Compression for "
+                      "6LoWPAN IPv6 over Low-Power Wireless Personal Area Networks.";
+    std::memcpy(txBuffer.data(), msg, std::strlen(msg));
+    m_receivedPacket->CopyData(rxBuffer.data(), static_cast<uint32_t>(rxBuffer.size()));
+    NS_TEST_EXPECT_MSG_EQ((rxBuffer == txBuffer), true, "Received data must match sent data");
 
     m_receivedPacket->RemoveAllByteTags();
     Simulator::Destroy();
+}
+
+// ============================================================================
+//  Test 4: RFC 7400 Appendix A Test Vectors
+// ============================================================================
+
+/**
+ * @ingroup sixlowpan-tests
+ * @brief RFC 7400 Appendix A test vectors (Figures 8 - 17).
+ *
+ * For every one of the ten worked examples in RFC 7400 Appendix A the test
+ * carries three reference byte arrays: the source/destination IPv6 addresses
+ * (extracted from the example's IP header, seeding the GHC dictionary), the
+ * original uncompressed payload (RefUncomp), and the RFC-provided compressed
+ * form (RefComp).
+ *
+ * For each vector, the test runs two steps in the order suggested by the
+ * RFC 7400 authors:
+ *
+ *   1. Compress(RefUncomp) -> MyComp. Because RFC 7400 LZ77 does not mandate
+ *      a unique encoding (different compressors may select different but
+ *      equally valid matches), MyComp is not required to match RefComp
+ *      byte-for-byte. The test only asserts that MyComp is non-empty and
+ *      fits in the output buffer.
+ *
+ *   2. Decompress(MyComp) -> MyUncomp. The round-trip must recover
+ *      RefUncomp byte-for-byte: this is the primary correctness check for
+ *      codec consistency and is strict.
+ *
+ * A third independent check decompresses RefComp (the RFC-provided stream)
+ * and verifies that it recovers RefUncomp; this validates interoperability
+ * of the decompressor with third-party (and typically optimal) encodings.
+ */
+class SixlowpanGhcAppendixATest : public TestCase
+{
+  public:
+    SixlowpanGhcAppendixATest();
+    void DoRun() override;
+
+  private:
+    /**
+     * @brief One RFC 7400 Appendix A reference vector.
+     *
+     * Uses std::vector<uint8_t> for the byte arrays so that the compressed
+     * and uncompressed sizes travel with the data (per RFC 7400 guidance:
+     * lexicographic std::vector comparison makes size + content checks
+     * implicit).
+     */
+    struct Vector
+    {
+        /// Figure number / short description.
+        std::string label;
+        /// Source IPv6 address (text form).
+        std::string src;
+        /// Destination IPv6 address (text form).
+        std::string dst;
+        /// Original (uncompressed) payload.
+        std::vector<uint8_t> payload;
+        /// RFC-provided compressed bytes.
+        std::vector<uint8_t> compressed;
+    };
+
+    /**
+     * @brief Run one reference vector through Compress and Decompress.
+     * @param [in] v The reference vector.
+     */
+    void RunVector(const Vector& v);
+};
+
+SixlowpanGhcAppendixATest::SixlowpanGhcAppendixATest()
+    : TestCase("GHC RFC 7400 Appendix A test vectors (Figures 8-17)")
+{
+}
+
+void
+SixlowpanGhcAppendixATest::RunVector(const Vector& v)
+{
+    Ipv6Address srcAddr(v.src.c_str());
+    Ipv6Address dstAddr(v.dst.c_str());
+    const std::string& tag = v.label;
+
+    // --- Step 1: Compress RefUncomp into MyComp ------------------------------
+    // Per RFC 7400, LZ77 is not a unique encoding: different compressors can
+    // produce different but equally valid compressed streams. MyComp is
+    // therefore not required to match RefComp byte-for-byte; we only assert
+    // that it is non-empty and fits in the output buffer.
+    std::array<uint8_t, 512> myCompBuf{};
+    const auto myPayloadLen = static_cast<uint32_t>(v.payload.size());
+    const auto myCompBufLen = static_cast<uint32_t>(myCompBuf.size());
+    uint32_t myCompLen = SixLowPanGhcEngine::Compress(srcAddr,
+                                                      dstAddr,
+                                                      v.payload.data(),
+                                                      myPayloadLen,
+                                                      myCompBuf.data(),
+                                                      myCompBufLen);
+    NS_TEST_EXPECT_MSG_GT(myCompLen, 0u, tag + ": compressor produced empty output");
+    NS_TEST_EXPECT_MSG_LT(myCompLen, myCompBufLen, tag + ": compressed fits in buffer");
+
+    std::vector<uint8_t> myComp(myCompBuf.begin(), myCompBuf.begin() + myCompLen);
+
+    // --- Step 2: Decompress MyComp into MyUncomp; must equal RefUncomp ------
+    // This round-trip is the primary correctness check. The codec must
+    // recover the original payload byte-for-byte regardless of whether
+    // MyComp matches RefComp exactly.
+    std::array<uint8_t, 512> myUncompBuf{};
+    const auto myUncompBufLen = static_cast<uint32_t>(myUncompBuf.size());
+    uint32_t myUncompLen = SixLowPanGhcEngine::Decompress(srcAddr,
+                                                          dstAddr,
+                                                          myComp.data(),
+                                                          myCompLen,
+                                                          myUncompBuf.data(),
+                                                          myUncompBufLen);
+    std::vector<uint8_t> myUncomp(myUncompBuf.begin(), myUncompBuf.begin() + myUncompLen);
+    NS_TEST_EXPECT_MSG_EQ((myUncomp == v.payload),
+                          true,
+                          tag + ": round-trip must recover original payload");
+
+    // --- Step 3: Decompress RefComp; must equal RefUncomp --------------------
+    // Independent interop check: our decompressor must handle the RFC-
+    // provided (optimal) encoding produced by a third-party compressor.
+    std::array<uint8_t, 512> refUncompBuf{};
+    const auto refCompLen = static_cast<uint32_t>(v.compressed.size());
+    const auto refUncompBufLen = static_cast<uint32_t>(refUncompBuf.size());
+    uint32_t refUncompLen = SixLowPanGhcEngine::Decompress(srcAddr,
+                                                           dstAddr,
+                                                           v.compressed.data(),
+                                                           refCompLen,
+                                                           refUncompBuf.data(),
+                                                           refUncompBufLen);
+    std::vector<uint8_t> refUncomp(refUncompBuf.begin(), refUncompBuf.begin() + refUncompLen);
+    NS_TEST_EXPECT_MSG_EQ((refUncomp == v.payload),
+                          true,
+                          tag + ": decompressed RFC reference must equal payload");
+}
+
+void
+SixlowpanGhcAppendixATest::DoRun()
+{
+    // clang-format off
+    const std::vector<Vector> vectors = {
+        // ---- Figure 8: A Simple RPL Example ----------------------------------
+        {"Fig 8 (RPL simple)",
+         "fe80::21c:daff:fe00:2024",
+         "ff02::1a",
+         {0x9b, 0x00, 0x6b, 0xde, 0x00, 0x00, 0x00, 0x00},
+         {0x04, 0x9b, 0x00, 0x6b, 0xde, 0x82}},
+
+        // ---- Figure 9: A Longer RPL Example ----------------------------------
+        {"Fig 9 (RPL longer)",
+         "fe80::21c:daff:fe00:3023",
+         "ff02::1a",
+         {0x9b, 0x01, 0x7a, 0x5f, 0x00, 0xf0, 0x01, 0x00, 0x88, 0x00, 0x00, 0x00,
+          0x20, 0x02, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
+          0xfe, 0x00, 0xfa, 0xce, 0x04, 0x0e, 0x00, 0x14, 0x09, 0xff, 0x00, 0x00,
+          0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x1e, 0x80, 0x20,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
+          0x20, 0x02, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
+          0xfe, 0x00, 0xfa, 0xce, 0x03, 0x0e, 0x40, 0x00, 0xff, 0xff, 0xff, 0xff,
+          0x20, 0x02, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00},
+         {0x06, 0x9b, 0x01, 0x7a, 0x5f, 0x00, 0xf0, 0xc7, 0x01, 0x88, 0x81, 0x04,
+          0x20, 0x02, 0x0d, 0xb8, 0x85, 0xa7, 0xc9, 0x08, 0xfa, 0xce, 0x04, 0x0e,
+          0x00, 0x14, 0x09, 0xff, 0xa4, 0xda, 0x83, 0x06, 0x08, 0x1e, 0x80, 0x20,
+          0xff, 0xff, 0xc0, 0xd0, 0x82, 0xb4, 0xf0, 0x03, 0x03, 0x0e, 0x40, 0xc7,
+          0xa3, 0xc9, 0xa2, 0xf0}},
+
+        // ---- Figure 10: A RPL DAO Message ------------------------------------
+        {"Fig 10 (RPL DAO)",
+         "2002:db8::ff:fe00:3344",
+         "2002:db8::ff:fe00:1122",
+         {0x9b, 0x02, 0x58, 0x7d, 0x01, 0x80, 0x00, 0xf1, 0x05, 0x12, 0x00, 0x80,
+          0x20, 0x02, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
+          0xfe, 0x00, 0x33, 0x44, 0x06, 0x14, 0x00, 0x80, 0xf1, 0x00, 0xfe, 0x80,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xfe, 0x00,
+          0x11, 0x22},
+         {0x0c, 0x9b, 0x02, 0x58, 0x7d, 0x01, 0x80, 0x00, 0xf1, 0x05, 0x12, 0x00,
+          0x80, 0xb5, 0xf4, 0x08, 0x06, 0x14, 0x00, 0x80, 0xf1, 0x00, 0xfe, 0x80,
+          0x87, 0xa7, 0xdd}},
+
+        // ---- Figure 11: An ND Neighbor Solicitation --------------------------
+        {"Fig 11 (ND NS)",
+         "2002:db8::ff:fe00:3bd3",
+         "fe80::21c:daff:fe00:3023",
+         {0x87, 0x00, 0xa7, 0x68, 0x00, 0x00, 0x00, 0x00, 0xfe, 0x80, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x02, 0x1c, 0xda, 0xff, 0xfe, 0x00, 0x30, 0x23,
+          0x01, 0x01, 0x3b, 0xd3, 0x00, 0x00, 0x00, 0x00, 0x1f, 0x02, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x06, 0x00, 0x1c, 0xda, 0xff, 0xfe, 0x00, 0x20, 0x24},
+         {0x04, 0x87, 0x00, 0xa7, 0x68, 0x82, 0xb3, 0xf0, 0x04, 0x01, 0x01, 0x3b,
+          0xd3, 0x82, 0x02, 0x1f, 0x02, 0x83, 0x02, 0x06, 0x00, 0xa2, 0xdb, 0x02,
+          0x20, 0x24}},
+
+        // ---- Figure 12: An ND Neighbor Advertisement -------------------------
+        {"Fig 12 (ND NA)",
+         "fe80::21c:daff:fe00:3023",
+         "2002:db8::ff:fe00:3bd3",
+         {0x88, 0x00, 0x26, 0x6c, 0xc0, 0x00, 0x00, 0x00, 0xfe, 0x80, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x02, 0x1c, 0xda, 0xff, 0xfe, 0x00, 0x30, 0x23,
+          0x02, 0x01, 0xfa, 0xce, 0x00, 0x00, 0x00, 0x00, 0x1f, 0x02, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x06, 0x00, 0x1c, 0xda, 0xff, 0xfe, 0x00, 0x20, 0x24},
+         {0x05, 0x88, 0x00, 0x26, 0x6c, 0xc0, 0x81, 0xb5, 0xf0, 0x04, 0x02, 0x01,
+          0xfa, 0xce, 0x82, 0x02, 0x1f, 0x02, 0x83, 0x02, 0x06, 0x00, 0xa2, 0xdb,
+          0x02, 0x20, 0x24}},
+
+        // ---- Figure 13: An ND Router Solicitation ----------------------------
+        {"Fig 13 (ND RS)",
+         "fe80::aede:4800:0:1",
+         "ff02::2",
+         {0x85, 0x00, 0x90, 0x65, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0xac, 0xde,
+          0x48, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+         {0x04, 0x85, 0x00, 0x90, 0x65, 0xde, 0x02, 0x02, 0xac, 0xa5, 0xeb, 0x84}},
+
+        // ---- Figure 14: An ND Router Advertisement ---------------------------
+        {"Fig 14 (ND RA)",
+         "fe80::1034:ff:fe00:1122",
+         "fe80::aede:4800:0:1",
+         {0x86, 0x00, 0x55, 0xc9, 0x40, 0x00, 0x0f, 0xa0, 0x1c, 0x5a, 0x38, 0x17,
+          0x00, 0x00, 0x07, 0xd0, 0x01, 0x01, 0x11, 0x22, 0x00, 0x00, 0x00, 0x00,
+          0x03, 0x04, 0x40, 0x40, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0x00, 0x00, 0x00, 0x00, 0x20, 0x02, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x02, 0x40, 0x10,
+          0x00, 0x00, 0x03, 0xe8, 0x20, 0x02, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
+          0x21, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20, 0x02, 0x0d, 0xb8,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x11, 0x22},
+         {0x0c, 0x86, 0x00, 0x55, 0xc9, 0x40, 0x00, 0x0f, 0xa0, 0x1c, 0x5a, 0x38,
+          0x17, 0x80, 0x06, 0x07, 0xd0, 0x01, 0x01, 0x11, 0x22, 0x82, 0x06, 0x03,
+          0x04, 0x40, 0x40, 0xff, 0xff, 0xc0, 0xd0, 0x82, 0x04, 0x20, 0x02, 0x0d,
+          0xb8, 0x8a, 0x04, 0x20, 0x02, 0x40, 0x10, 0xa4, 0xcb, 0x01, 0xe8, 0xa2,
+          0xf0, 0x02, 0x21, 0x03, 0xa9, 0xe6, 0xb3, 0xcd, 0xaf, 0xdb}},
+
+        // ---- Figure 15: A DTLS Application Data Packet -----------------------
+        {"Fig 15 (DTLS AppData)",
+         "::",
+         "::",
+         {0x17, 0xfe, 0xfd, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+          0x1d, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x09, 0xb2, 0x0e,
+          0x82, 0xc1, 0x6e, 0xb6, 0x96, 0xc5, 0x1f, 0x36, 0x8d, 0x17, 0x61, 0xe2,
+          0xb5, 0xd4, 0x22, 0xd4, 0xed, 0x2b},
+         {0xb0, 0xd1, 0x01, 0x1d, 0xf2, 0x15, 0x09, 0xb2, 0x0e, 0x82, 0xc1, 0x6e,
+          0xb6, 0x96, 0xc5, 0x1f, 0x36, 0x8d, 0x17, 0x61, 0xe2, 0xb5, 0xd4, 0x22,
+          0xd4, 0xed, 0x2b}},
+
+        // ---- Figure 16: Another DTLS Application Data Packet -----------------
+        {"Fig 16 (DTLS AppData 2)",
+         "::",
+         "::",
+         {0x17, 0xfe, 0xfd, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00,
+          0x16, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0xae, 0xa0, 0x15,
+          0x56, 0x67, 0x92, 0x4d, 0xff, 0x8a, 0x24, 0xe4, 0xcb, 0x35, 0xb9},
+         {0xb0, 0xc3, 0x03, 0x05, 0x00, 0x16, 0xf2, 0x0e, 0xae, 0xa0, 0x15, 0x56,
+          0x67, 0x92, 0x4d, 0xff, 0x8a, 0x24, 0xe4, 0xcb, 0x35, 0xb9}},
+
+        // ---- Figure 17: A DTLS Handshake Packet (Client Hello) ---------------
+        {"Fig 17 (DTLS ClientHello)",
+         "::",
+         "::",
+         {0x16, 0xfe, 0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x36, 0x01, 0x00, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x2a, 0xfe, 0xfd, 0x51, 0x52, 0xed, 0x79, 0xa4, 0x20, 0xc9, 0x62, 0x56,
+          0x11, 0x47, 0xc9, 0x39, 0xee, 0x6c, 0xc0, 0xa4, 0xfe, 0xc6, 0x89, 0x2f,
+          0x32, 0x26, 0x9a, 0x16, 0x4e, 0x31, 0x7e, 0x9f, 0x20, 0x92, 0x92, 0x00,
+          0x00, 0x00, 0x02, 0xc0, 0xa8, 0x01, 0x00},
+         {0xa1, 0xcd, 0x87, 0x01, 0x36, 0xa1, 0xcd, 0x01, 0x2a, 0x85, 0x23, 0x2a,
+          0xfe, 0xfd, 0x51, 0x52, 0xed, 0x79, 0xa4, 0x20, 0xc9, 0x62, 0x56, 0x11,
+          0x47, 0xc9, 0x39, 0xee, 0x6c, 0xc0, 0xa4, 0xfe, 0xc6, 0x89, 0x2f, 0x32,
+          0x26, 0x9a, 0x16, 0x4e, 0x31, 0x7e, 0x9f, 0x20, 0x92, 0x92, 0x81, 0x05,
+          0x02, 0xc0, 0xa8, 0x01, 0x00}},
+    };
+    // clang-format on
+
+    for (const auto& v : vectors)
+    {
+        RunVector(v);
+    }
 }
 
 // ============================================================================
@@ -543,6 +882,7 @@ SixlowpanGhcTestSuite::SixlowpanGhcTestSuite()
     AddTestCase(new SixlowpanGhcEngineTest(), TestCase::Duration::QUICK);
     AddTestCase(new SixlowpanGhcHeaderTest(), TestCase::Duration::QUICK);
     AddTestCase(new SixlowpanGhcUdpImplTest(), TestCase::Duration::QUICK);
+    AddTestCase(new SixlowpanGhcAppendixATest(), TestCase::Duration::QUICK);
 }
 
 static SixlowpanGhcTestSuite g_sixlowpanGhcTestSuite;

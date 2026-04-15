@@ -7,6 +7,12 @@
  *
  * 6LoWPAN-GHC: Generic Header Compression for IPv6 over
  * Low-Power Wireless Personal Area Networks (6LoWPANs) - RFC 7400
+ *
+ * Provenance: This is an original implementation written from scratch
+ * by the author, following RFC 7400 (Bormann, November 2014) as the sole
+ * normative specification. No code was borrowed or ported from any prior
+ * third-party implementation. The existing RFC 6282 IPHC/NHC code paths
+ * in SixLowPanNetDevice were used as a stylistic reference only.
  */
 
 #ifndef SIXLOWPAN_GHC_H
@@ -345,6 +351,12 @@ class SixLowPanGhcExtension : public Header
     static constexpr uint8_t NH_MASK = 0x01;
 };
 
+/**
+ * @brief Stream insertion operator.
+ * @param [in,out] os The reference to the output stream.
+ * @param [in] header The SixLowPanGhcExtension header.
+ * @return The reference to the output stream.
+ */
 std::ostream& operator<<(std::ostream& os, const SixLowPanGhcExtension& header);
 
 // ============================================================================
@@ -381,24 +393,82 @@ class SixLowPanGhcUdp : public Header
 
     SixLowPanGhcUdp();
 
+    /**
+     * @brief Get the type ID.
+     * @return The object TypeId.
+     */
     static TypeId GetTypeId();
+
     TypeId GetInstanceTypeId() const override;
     void Print(std::ostream& os) const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
     uint32_t Deserialize(Buffer::Iterator start) override;
 
+    /**
+     * @brief Get the NhcDispatch type.
+     * @return The NhcDispatch type (LOWPAN_GHC_UDP).
+     */
     SixLowPanDispatch::NhcDispatch_e GetNhcDispatchType() const;
 
+    /**
+     * @brief Set the port compression mode.
+     * @param [in] port The port compression mode.
+     */
     void SetPorts(Ports_e port);
+
+    /**
+     * @brief Get the port compression mode.
+     * @return The port compression mode.
+     */
     Ports_e GetPorts() const;
+
+    /**
+     * @brief Set the source port.
+     * @param [in] port The source port.
+     */
     void SetSrcPort(uint16_t port);
+
+    /**
+     * @brief Get the source port.
+     * @return The source port.
+     */
     uint16_t GetSrcPort() const;
+
+    /**
+     * @brief Set the destination port.
+     * @param [in] port The destination port.
+     */
     void SetDstPort(uint16_t port);
+
+    /**
+     * @brief Get the destination port.
+     * @return The destination port.
+     */
     uint16_t GetDstPort() const;
+
+    /**
+     * @brief Set the checksum elision flag (C bit).
+     * @param [in] cField True if checksum is elided.
+     */
     void SetC(bool cField);
+
+    /**
+     * @brief Get the checksum elision flag (C bit).
+     * @return True if checksum is elided.
+     */
     bool GetC() const;
+
+    /**
+     * @brief Set the UDP checksum.
+     * @param [in] checksum The UDP checksum value.
+     */
     void SetChecksum(uint16_t checksum);
+
+    /**
+     * @brief Get the UDP checksum.
+     * @return The UDP checksum value.
+     */
     uint16_t GetChecksum() const;
 
   private:
@@ -412,6 +482,12 @@ class SixLowPanGhcUdp : public Header
     static constexpr uint8_t P_MASK = 0x03;       //!< Port compression mask
 };
 
+/**
+ * @brief Stream insertion operator.
+ * @param [in,out] os The reference to the output stream.
+ * @param [in] header The SixLowPanGhcUdp header.
+ * @return The reference to the output stream.
+ */
 std::ostream& operator<<(std::ostream& os, const SixLowPanGhcUdp& header);
 
 // ============================================================================
@@ -442,13 +518,22 @@ class SixLowPanGhcIcmpv6 : public Header
   public:
     SixLowPanGhcIcmpv6();
 
+    /**
+     * @brief Get the type ID.
+     * @return The object TypeId.
+     */
     static TypeId GetTypeId();
+
     TypeId GetInstanceTypeId() const override;
     void Print(std::ostream& os) const override;
     uint32_t GetSerializedSize() const override;
     void Serialize(Buffer::Iterator start) const override;
     uint32_t Deserialize(Buffer::Iterator start) override;
 
+    /**
+     * @brief Get the NhcDispatch type.
+     * @return The NhcDispatch type (LOWPAN_GHC_ICMPV6).
+     */
     SixLowPanDispatch::NhcDispatch_e GetNhcDispatchType() const;
 
     /**
@@ -478,6 +563,12 @@ class SixLowPanGhcIcmpv6 : public Header
     uint8_t m_blob[256];                            //!< GHC compressed bytecodes
 };
 
+/**
+ * @brief Stream insertion operator.
+ * @param [in,out] os The reference to the output stream.
+ * @param [in] header The SixLowPanGhcIcmpv6 header.
+ * @return The reference to the output stream.
+ */
 std::ostream& operator<<(std::ostream& os, const SixLowPanGhcIcmpv6& header);
 
 // ============================================================================
@@ -505,6 +596,10 @@ class SixLowPan6Cio : public Header
   public:
     SixLowPan6Cio();
 
+    /**
+     * @brief Get the type ID.
+     * @return The object TypeId.
+     */
     static TypeId GetTypeId();
     TypeId GetInstanceTypeId() const override;
     void Print(std::ostream& os) const override;
@@ -532,6 +627,12 @@ class SixLowPan6Cio : public Header
     uint32_t m_flags; //!< Flags field (variable, up to 48 bits per RFC)
 };
 
+/**
+ * @brief Stream insertion operator.
+ * @param [in,out] os The reference to the output stream.
+ * @param [in] header The SixLowPan6Cio header.
+ * @return The reference to the output stream.
+ */
 std::ostream& operator<<(std::ostream& os, const SixLowPan6Cio& header);
 
 } // namespace ns3
