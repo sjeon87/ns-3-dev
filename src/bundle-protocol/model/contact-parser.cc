@@ -11,8 +11,8 @@
 #include <map>
 #include <set>
 #include <sstream>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 namespace ns3
 {
@@ -48,20 +48,32 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
         std::istringstream iss(line);
         std::string action;
         std::string type;
-        
+
         if (iss >> action >> type && action == "a" && (type == "contact" || type == "range"))
         {
-            std::string startStr, endStr, fromUri, toUri;
-            double valueDouble; 
+            std::string startStr;
+            std::string endStr;
+            std::string fromUri;
+            std::string toUri;
+            double valueDouble;
             iss >> startStr >> endStr >> fromUri >> toUri >> valueDouble;
 
-            if (!startStr.empty() && startStr[0] == '+') startStr.erase(0, 1);
-            if (!endStr.empty() && endStr[0] == '+') endStr.erase(0, 1);
+            if (!startStr.empty() && startStr[0] == '+')
+            {
+                startStr.erase(0, 1);
+            }
+            if (!endStr.empty() && endStr[0] == '+')
+            {
+                endStr.erase(0, 1);
+            }
 
             double startSeconds = std::stod(startStr);
             double endSeconds = std::stod(endStr);
 
-            if (startSeconds == endSeconds) continue;
+            if (startSeconds == endSeconds)
+            {
+                continue;
+            }
 
             ContactKey key = std::make_tuple(fromUri, toUri, startSeconds, endSeconds);
 
@@ -99,8 +111,9 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
         Simulator::Schedule(tEnd, &ContactGraph::RemoveContact, contactGraph, from, to);
     }
 
-    NS_LOG_INFO("Successfully scheduled " << contactMap.size() << " combined contacts/ranges across "
-                                          << uniqueNodes.size() << " unique nodes.");
+    NS_LOG_INFO("Successfully scheduled "
+                << contactMap.size() << " combined contacts/ranges across " << uniqueNodes.size()
+                << " unique nodes.");
     return true;
 }
 

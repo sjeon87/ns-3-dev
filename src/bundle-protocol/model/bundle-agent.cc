@@ -133,8 +133,8 @@ BundleAgent::RegisterCla(const std::string& destinationEID, Ptr<BundleCla> cla)
     {
         NS_LOG_DEBUG("Registered new CLA for " << destinationEID
                                                << ". Checking entire storage backlog...");
-                                               
-        ProcessAllBacklog(); 
+
+        ProcessAllBacklog();
     }
 
     return ret.second;

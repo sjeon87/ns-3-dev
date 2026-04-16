@@ -62,11 +62,10 @@ class ContactGraph : public Object
     const std::vector<ContactWindow>& GetContactWindows() const;
 
     std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID);
-    
+
     uint32_t FindIndex(const std::string& eid) const;
 
   private:
-
     std::vector<std::string> m_eidList;
     std::vector<std::vector<ContactEdge>> m_adjList;
     std::vector<ContactWindow> m_contactWindows;

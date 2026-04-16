@@ -132,10 +132,10 @@ ContactGraph::AddTimedContact(const std::string& fromEID,
                               Time startTime,
                               Time endTime,
                               uint32_t dataRate,
-                              Time delay) 
+                              Time delay)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID << startTime << endTime << dataRate << delay);
-    m_contactWindows.push_back({fromEID, toEID, startTime, endTime, dataRate, delay}); 
+    m_contactWindows.push_back({fromEID, toEID, startTime, endTime, dataRate, delay});
 }
 
 const std::vector<ContactWindow>&
