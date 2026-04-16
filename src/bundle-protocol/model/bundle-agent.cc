@@ -92,12 +92,6 @@ BundleAgent::SetContactGraph(Ptr<ContactGraph> contactGraph)
 {
     NS_LOG_FUNCTION(this << contactGraph);
     m_contactGraph = contactGraph;
-
-    if (!m_backlogCheckEvent.IsPending())
-    {
-        m_backlogCheckEvent =
-            Simulator::Schedule(Seconds(1.0), &BundleAgent::ProcessAllBacklog, this);
-    }
 }
 
 std::string
@@ -138,8 +132,9 @@ BundleAgent::RegisterCla(const std::string& destinationEID, Ptr<BundleCla> cla)
     if (ret.second)
     {
         NS_LOG_DEBUG("Registered new CLA for " << destinationEID
-                                               << ". Checking storage backlog...");
-        ProcessBacklog(destinationEID);
+                                               << ". Checking entire storage backlog...");
+                                               
+        ProcessAllBacklog(); 
     }
 
     return ret.second;

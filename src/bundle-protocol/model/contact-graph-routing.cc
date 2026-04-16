@@ -49,6 +49,19 @@ ContactGraph::~ContactGraph()
     NS_LOG_FUNCTION(this);
 }
 
+uint32_t
+ContactGraph::FindIndex(const std::string& eid) const
+{
+    for (uint32_t i = 0; i < m_eidList.size(); i++)
+    {
+        if (m_eidList[i] == eid)
+        {
+            return i;
+        }
+    }
+    return m_size;
+}
+
 void
 ContactGraph::InitializeMap(const std::vector<std::string>& eidList)
 {
@@ -62,13 +75,8 @@ ContactGraph::InitializeMap(const std::vector<std::string>& eidList)
         return;
     }
 
+    m_eidList = eidList;
     m_adjList.assign(m_size, std::vector<ContactEdge>());
-
-    for (size_t i = 0; i < eidList.size(); i++)
-    {
-        m_nodeMap[eidList[i]] = i;
-        m_reverseNodeMap[i] = eidList[i];
-    }
 }
 
 void
@@ -76,17 +84,14 @@ ContactGraph::AddContact(const std::string& fromEID, const std::string& toEID, u
 {
     NS_LOG_FUNCTION(this << fromEID << toEID << dataRate);
 
-    auto it1 = m_nodeMap.find(fromEID);
-    auto it2 = m_nodeMap.find(toEID);
+    uint32_t node1 = FindIndex(fromEID);
+    uint32_t node2 = FindIndex(toEID);
 
-    if (it1 == m_nodeMap.end() || it2 == m_nodeMap.end())
+    if (node1 == m_size || node2 == m_size)
     {
         NS_LOG_ERROR("AddContact failed: EIDs not found.");
         return;
     }
-
-    uint32_t node1 = it1->second;
-    uint32_t node2 = it2->second;
 
     if (node1 >= m_adjList.size() || node2 >= m_adjList.size())
     {
@@ -101,16 +106,13 @@ ContactGraph::RemoveContact(const std::string& fromEID, const std::string& toEID
 {
     NS_LOG_FUNCTION(this << fromEID << toEID);
 
-    auto it1 = m_nodeMap.find(fromEID);
-    auto it2 = m_nodeMap.find(toEID);
+    uint32_t node1 = FindIndex(fromEID);
+    uint32_t node2 = FindIndex(toEID);
 
-    if (it1 == m_nodeMap.end() || it2 == m_nodeMap.end())
+    if (node1 == m_size || node2 == m_size)
     {
         return;
     }
-
-    uint32_t node1 = it1->second;
-    uint32_t node2 = it2->second;
 
     if (node1 >= m_adjList.size() || node2 >= m_adjList.size())
     {
@@ -124,6 +126,24 @@ ContactGraph::RemoveContact(const std::string& fromEID, const std::string& toEID
                 edges.end());
 }
 
+void
+ContactGraph::AddTimedContact(const std::string& fromEID,
+                              const std::string& toEID,
+                              Time startTime,
+                              Time endTime,
+                              uint32_t dataRate,
+                              Time delay) 
+{
+    NS_LOG_FUNCTION(this << fromEID << toEID << startTime << endTime << dataRate << delay);
+    m_contactWindows.push_back({fromEID, toEID, startTime, endTime, dataRate, delay}); 
+}
+
+const std::vector<ContactWindow>&
+ContactGraph::GetContactWindows() const
+{
+    return m_contactWindows;
+}
+
 std::string
 ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
 {
@@ -131,17 +151,14 @@ ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
 
     std::string destEID = bundle->GetDestinationEID();
 
-    auto startIt = m_nodeMap.find(currEID);
-    auto destIt = m_nodeMap.find(destEID);
+    uint32_t startNode = FindIndex(currEID);
+    uint32_t destNode = FindIndex(destEID);
 
-    if (startIt == m_nodeMap.end() || destIt == m_nodeMap.end())
+    if (startNode == m_size || destNode == m_size)
     {
         NS_LOG_ERROR("GetNextHop failed: Unknown start or destination EID.");
         return "";
     }
-
-    uint32_t startNode = startIt->second;
-    uint32_t destNode = destIt->second;
 
     using PQueueItem = std::pair<double, uint32_t>;
     std::priority_queue<PQueueItem, std::vector<PQueueItem>, std::less<>> pq;
@@ -171,7 +188,6 @@ ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
         for (const auto& edge : m_adjList[u])
         {
             uint32_t v = edge.toNode;
-
             double pathCapacity = std::min(capacity[u], static_cast<double>(edge.dataRate));
 
             if (pathCapacity > capacity[v])
@@ -199,7 +215,7 @@ ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
         }
     }
 
-    return m_reverseNodeMap[currPathNode];
+    return m_eidList[currPathNode];
 }
 
 } // namespace ns3

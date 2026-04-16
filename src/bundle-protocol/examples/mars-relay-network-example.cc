@@ -8,13 +8,23 @@
 #include "ns3/contact-parser.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
+#include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/ltp-convergence-layer-adapter.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/inet-socket-address.h"
+
+#include <map>
+#include <string>
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("MarsRelayNetworkExample");
+
+struct LinkElements {
+    Ptr<LtpBundleCla> cla;
+    Ptr<PointToPointNetDevice> device;
+};
 
 void
 SendDeepSpaceBundle(Ptr<BundleAgent> agent, std::string destEid)
@@ -47,6 +57,29 @@ OnBundleReceived(Ptr<Bundle> bundle)
     NS_LOG_INFO("==================================================");
 }
 
+void
+LinkUp(Ptr<BundleAgent> agent, std::string destEid, Ptr<LtpBundleCla> cla, Ptr<PointToPointNetDevice> device, uint32_t dataRate, Time delay)
+{
+    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() 
+                           << "s: Contact UP - Registering CLA for " << destEid 
+                           << " at " << dataRate << " bps with delay " << delay.GetSeconds() << "s");
+
+    device->SetAttribute("DataRate", DataRateValue(DataRate(dataRate)));
+    device->GetChannel()->SetAttribute("Delay", TimeValue(delay)); 
+
+    agent->RegisterCla(destEid, cla);
+}
+
+void
+LinkDown(Ptr<BundleAgent> agent, std::string destEid, Ptr<PointToPointNetDevice> device)
+{
+    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() 
+                           << "s: Contact DOWN - Unregistering CLA for " << destEid);
+                           
+    agent->UnregisterCla(destEid);
+    device->SetAttribute("DataRate", DataRateValue(DataRate(0)));
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -77,17 +110,13 @@ main(int argc, char* argv[])
     InternetStackHelper stack;
     stack.Install(nodes);
 
-    std::vector<NetDeviceContainer> p2pLinks =
-        ContactParser::CreateP2pLinks(contactPlanPath, nodes, mrnEids);
-
     Ipv4AddressHelper address;
     address.SetBase("10.1.1.0", "255.255.255.252");
 
     BundleAgentHelper agentHelper;
-    BundleClaHelper ltpHelper("ns3::LtpBundleCla");
-    ltpHelper.SetAttribute("OnewayLightTime", TimeValue(Seconds(1500.0)));
-
-    std::vector<Ptr<BundleAgent>> agents(numNodes);
+    
+    std::map<std::string, Ptr<BundleAgent>> agentMap;
+    std::map<std::pair<std::string, std::string>, LinkElements> linkMap;
 
     for (uint32_t i = 0; i < numNodes; ++i)
     {
@@ -96,44 +125,75 @@ main(int argc, char* argv[])
 
         agentHelper.SetBpEndpointId(eid);
         BundleAgentContainer agentContainer = agentHelper.Install(node);
-        agents[i] = agentContainer.Get(0);
-        node->AggregateObject(agents[i]);
+        Ptr<BundleAgent> agent = agentContainer.Get(0);
+        node->AggregateObject(agent);
 
-        agents[i]->SetContactGraph(contactGraph);
-        agents[i]->SetReceiveCallback(MakeCallback(&OnBundleReceived));
+        agent->SetContactGraph(contactGraph);
+        agent->SetReceiveCallback(MakeCallback(&OnBundleReceived));
+        
+        agentMap[eid] = agent;
     }
 
-    for (uint32_t k = 0; k < p2pLinks.size(); ++k)
+    PointToPointHelper p2p;
+    p2p.SetDeviceAttribute("DataRate", StringValue("1bps")); 
+    p2p.SetChannelAttribute("Delay", StringValue("1ms")); 
+
+    uint16_t ltpPort = 1113; 
+
+    for (uint32_t i = 0; i < numNodes; ++i)
     {
-        const NetDeviceContainer& link = p2pLinks[k];
+        for (uint32_t j = i + 1; j < numNodes; ++j)
+        {
+            NetDeviceContainer devices = p2p.Install(nodes.Get(i), nodes.Get(j));
+            
+            Ipv4InterfaceContainer ifaces = address.Assign(devices);
+            address.NewNetwork();
 
-        Ipv4InterfaceContainer interfaces = address.Assign(link);
-        address.NewNetwork();
+            Ptr<PointToPointNetDevice> devI = DynamicCast<PointToPointNetDevice>(devices.Get(0));
+            Ptr<PointToPointNetDevice> devJ = DynamicCast<PointToPointNetDevice>(devices.Get(1));
 
-        Ptr<Node> node0 = link.Get(0)->GetNode();
-        Ptr<Node> node1 = link.Get(1)->GetNode();
+            Ptr<LtpBundleCla> claI = CreateObject<LtpBundleCla>(); 
+            Ptr<LtpBundleCla> claJ = CreateObject<LtpBundleCla>();
 
-        uint32_t id0 = node0->GetId();
-        uint32_t id1 = node1->GetId();
+            InetSocketAddress addrI(ifaces.GetAddress(0), ltpPort);
+            InetSocketAddress addrJ(ifaces.GetAddress(1), ltpPort);
 
-        Ipv4Address ip0 = interfaces.GetAddress(0);
-        Ipv4Address ip1 = interfaces.GetAddress(1);
+            claI->Setup(nodes.Get(i), addrI, addrJ);
+            claJ->Setup(nodes.Get(j), addrJ, addrI);
 
-        uint16_t port0 = 10000 + (id0 * 100) + id1;
-        uint16_t port1 = 10000 + (id1 * 100) + id0;
-
-        BundleClaContainer clas0 = ltpHelper.Install(node0);
-        Ptr<LtpBundleCla> cla0 = DynamicCast<LtpBundleCla>(clas0.Get(0));
-        cla0->Setup(node0, InetSocketAddress(ip0, port0), InetSocketAddress(ip1, port1));
-        agents[id0]->RegisterCla(mrnEids[id1], cla0);
-
-        BundleClaContainer clas1 = ltpHelper.Install(node1);
-        Ptr<LtpBundleCla> cla1 = DynamicCast<LtpBundleCla>(clas1.Get(0));
-        cla1->Setup(node1, InetSocketAddress(ip1, port1), InetSocketAddress(ip0, port0));
-        agents[id1]->RegisterCla(mrnEids[id0], cla1);
+            std::string eidI = mrnEids[i];
+            std::string eidJ = mrnEids[j];
+            
+            linkMap[{eidI, eidJ}] = {claI, devI};
+            linkMap[{eidJ, eidI}] = {claJ, devJ};
+        }
     }
 
-    Ptr<BundleAgent> dsnAgent = agents[0];
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+
+    const auto& contactWindows = contactGraph->GetContactWindows();
+    
+    for (const auto& window : contactWindows)
+    {
+        auto linkIt = linkMap.find({window.fromEID, window.toEID});
+        auto agentIt = agentMap.find(window.fromEID);
+
+        if (linkIt != linkMap.end() && agentIt != agentMap.end())
+        {
+            LinkElements link = linkIt->second;
+            Ptr<BundleAgent> srcAgent = agentIt->second;
+            
+            Simulator::Schedule(window.startTime, &LinkUp, srcAgent, window.toEID, link.cla, link.device, window.dataRate, window.delay);
+            Simulator::Schedule(window.endTime, &LinkDown, srcAgent, window.toEID, link.device);
+        }
+        else
+        {
+            NS_LOG_WARN("Skipping schedule: Cannot find physical link or agent for " 
+                        << window.fromEID << " to " << window.toEID);
+        }
+    }
+
+    Ptr<BundleAgent> dsnAgent = agentMap["dtn://earth/dsn"];
     std::string destinationEid = "dtn://mars/ingenuity";
 
     Simulator::Schedule(Seconds(10.0), &SendDeepSpaceBundle, dsnAgent, destinationEid);

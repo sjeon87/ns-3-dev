@@ -10,7 +10,6 @@
  *           Gerard Garcia <ggarcia@deic.uab.cat>
  *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
-
 #ifndef CONTACT_GRAPH_ROUTING_H
 #define CONTACT_GRAPH_ROUTING_H
 
@@ -20,7 +19,6 @@
 #include "ns3/object.h"
 
 #include <limits>
-#include <map>
 #include <string>
 #include <vector>
 
@@ -33,33 +31,47 @@ struct ContactEdge
     uint32_t dataRate;
 };
 
-class ContactGraphParser : public Object
+struct ContactWindow
 {
+    std::string fromEID;
+    std::string toEID;
+    Time startTime;
+    Time endTime;
+    uint32_t dataRate;
+    Time delay;
 };
 
 class ContactGraph : public Object
 {
   public:
     static TypeId GetTypeId();
-
     ContactGraph();
     ~ContactGraph() override;
 
     void InitializeMap(const std::vector<std::string>& eidList);
 
     void AddContact(const std::string& fromEID, const std::string& toEID, uint32_t dataRate);
-
     void RemoveContact(const std::string& fromEID, const std::string& toEID);
 
+    void AddTimedContact(const std::string& fromEID,
+                         const std::string& toEID,
+                         Time startTime,
+                         Time endTime,
+                         uint32_t dataRate,
+                         Time delay);
+    const std::vector<ContactWindow>& GetContactWindows() const;
+
     std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID);
+    
+    uint32_t FindIndex(const std::string& eid) const;
 
   private:
+
+    std::vector<std::string> m_eidList;
     std::vector<std::vector<ContactEdge>> m_adjList;
-    std::map<std::string, uint32_t> m_nodeMap;
-    std::map<uint32_t, std::string> m_reverseNodeMap;
+    std::vector<ContactWindow> m_contactWindows;
     uint32_t m_size;
 };
 
 } // namespace ns3
-
 #endif /* CONTACT_GRAPH_ROUTING_H */

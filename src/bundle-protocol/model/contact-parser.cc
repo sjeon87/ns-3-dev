@@ -12,19 +12,19 @@
 #include <set>
 #include <sstream>
 #include <vector>
+#include <tuple>
 
 namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("ContactParser");
 
-struct ParsedContact
+using ContactKey = std::tuple<std::string, std::string, double, double>;
+
+struct ContactData
 {
-    std::string from;
-    std::string to;
-    double startTime;
-    double endTime;
-    uint32_t rate;
+    uint32_t rate = 0;
+    double delaySeconds = 0.0;
 };
 
 bool
@@ -40,7 +40,7 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
     }
 
     std::string line;
-    std::vector<ParsedContact> contacts;
+    std::map<ContactKey, ContactData> contactMap;
     std::set<std::string> uniqueNodes;
 
     while (std::getline(file, line))
@@ -48,35 +48,32 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
         std::istringstream iss(line);
         std::string action;
         std::string type;
-        iss >> action >> type;
-
-        if (action == "a" && type == "contact")
+        
+        if (iss >> action >> type && action == "a" && (type == "contact" || type == "range"))
         {
-            std::string startStr;
-            std::string endStr;
-            std::string fromUri;
-            std::string toUri;
-            double rateDouble;
-            iss >> startStr >> endStr >> fromUri >> toUri >> rateDouble;
-            if (!startStr.empty() && startStr[0] == '+')
-            {
-                startStr.erase(0, 1);
-            }
-            if (!endStr.empty() && endStr[0] == '+')
-            {
-                endStr.erase(0, 1);
-            }
+            std::string startStr, endStr, fromUri, toUri;
+            double valueDouble; 
+            iss >> startStr >> endStr >> fromUri >> toUri >> valueDouble;
+
+            if (!startStr.empty() && startStr[0] == '+') startStr.erase(0, 1);
+            if (!endStr.empty() && endStr[0] == '+') endStr.erase(0, 1);
 
             double startSeconds = std::stod(startStr);
             double endSeconds = std::stod(endStr);
-            auto rate = static_cast<uint32_t>(rateDouble);
 
-            if (startSeconds == endSeconds)
+            if (startSeconds == endSeconds) continue;
+
+            ContactKey key = std::make_tuple(fromUri, toUri, startSeconds, endSeconds);
+
+            if (type == "contact")
             {
-                continue;
+                contactMap[key].rate = static_cast<uint32_t>(valueDouble);
+            }
+            else if (type == "range")
+            {
+                contactMap[key].delaySeconds = valueDouble;
             }
 
-            contacts.push_back({fromUri, toUri, startSeconds, endSeconds, rate});
             uniqueNodes.insert(fromUri);
             uniqueNodes.insert(toUri);
         }
@@ -87,141 +84,24 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
     std::vector<std::string> eidList(uniqueNodes.begin(), uniqueNodes.end());
     contactGraph->InitializeMap(eidList);
 
-    for (const auto& contact : contacts)
+    for (const auto& kv : contactMap)
     {
-        Time tStart = Seconds(contact.startTime);
-        Time tEnd = Seconds(contact.endTime);
+        std::string from = std::get<0>(kv.first);
+        std::string to = std::get<1>(kv.first);
+        Time tStart = Seconds(std::get<2>(kv.first));
+        Time tEnd = Seconds(std::get<3>(kv.first));
+        uint32_t rate = kv.second.rate;
+        Time delay = Seconds(kv.second.delaySeconds);
 
-        Simulator::Schedule(tStart,
-                            &ContactGraph::AddContact,
-                            contactGraph,
-                            contact.from,
-                            contact.to,
-                            contact.rate);
+        contactGraph->AddTimedContact(from, to, tStart, tEnd, rate, delay);
 
-        Simulator::Schedule(tEnd,
-                            &ContactGraph::RemoveContact,
-                            contactGraph,
-                            contact.from,
-                            contact.to);
+        Simulator::Schedule(tStart, &ContactGraph::AddContact, contactGraph, from, to, rate);
+        Simulator::Schedule(tEnd, &ContactGraph::RemoveContact, contactGraph, from, to);
     }
 
-    NS_LOG_INFO("Successfully scheduled " << contacts.size() << " contacts across "
+    NS_LOG_INFO("Successfully scheduled " << contactMap.size() << " combined contacts/ranges across "
                                           << uniqueNodes.size() << " unique nodes.");
     return true;
-}
-
-std::vector<NetDeviceContainer>
-ContactParser::CreateP2pLinks(const std::string& filename,
-                              NodeContainer nodes,
-                              const std::vector<std::string>& nodeUris)
-{
-    NS_LOG_FUNCTION(filename);
-    std::vector<NetDeviceContainer> createdDevices;
-
-    std::map<std::string, uint32_t> uriToIndex;
-    for (uint32_t i = 0; i < nodeUris.size(); ++i)
-    {
-        uriToIndex[nodeUris[i]] = i;
-    }
-
-    std::ifstream file(filename);
-    if (!file.is_open())
-    {
-        NS_LOG_ERROR("Failed to open file to create P2P links: " << filename);
-        return createdDevices;
-    }
-
-    std::string line;
-
-    struct LinkProps
-    {
-        double dataRate = 0.0;
-        double delaySec = 0.0;
-    };
-
-    std::map<std::pair<uint32_t, uint32_t>, LinkProps> linkMap;
-
-    while (std::getline(file, line))
-    {
-        std::istringstream iss(line);
-        std::string action;
-        std::string type;
-        iss >> action >> type;
-
-        if (action == "a" && (type == "contact" || type == "range"))
-        {
-            std::string startStr;
-            std::string endStr;
-            std::string fromUri;
-            std::string toUri;
-            double value;
-
-            iss >> startStr >> endStr >> fromUri >> toUri >> value;
-
-            if (uriToIndex.find(fromUri) == uriToIndex.end() ||
-                uriToIndex.find(toUri) == uriToIndex.end())
-            {
-                continue;
-            }
-
-            uint32_t u = uriToIndex[fromUri];
-            uint32_t v = uriToIndex[toUri];
-            uint32_t minNode = std::min(u, v);
-            uint32_t maxNode = std::max(u, v);
-            auto key = std::make_pair(minNode, maxNode);
-
-            if (type == "contact")
-            {
-                if (value > linkMap[key].dataRate)
-                {
-                    linkMap[key].dataRate = value;
-                }
-            }
-            else if (type == "range")
-            {
-                if (value > linkMap[key].delaySec)
-                {
-                    linkMap[key].delaySec = value;
-                }
-            }
-        }
-    }
-    file.close();
-
-    for (const auto& pair : linkMap)
-    {
-        uint32_t u = pair.first.first;
-        uint32_t v = pair.first.second;
-        double rate = pair.second.dataRate;
-        double delay = pair.second.delaySec;
-
-        if (u >= nodes.GetN() || v >= nodes.GetN())
-        {
-            continue;
-        }
-
-        if (rate > 0)
-        {
-            PointToPointHelper p2p;
-            p2p.SetDeviceAttribute("DataRate",
-                                   DataRateValue(DataRate(static_cast<uint64_t>(rate))));
-            p2p.SetChannelAttribute("Delay", TimeValue(Seconds(delay)));
-
-            NodeContainer linkNodes;
-            linkNodes.Add(nodes.Get(u));
-            linkNodes.Add(nodes.Get(v));
-
-            NetDeviceContainer devices = p2p.Install(linkNodes);
-            createdDevices.push_back(devices);
-
-            NS_LOG_INFO("Installed P2P channel between "
-                        << nodeUris[u] << " and " << nodeUris[v] << " | Rate: "
-                        << static_cast<uint64_t>(rate) << " bps | Delay: " << delay << " s");
-        }
-    }
-
-    return createdDevices;
 }
 
 } // namespace ns3
