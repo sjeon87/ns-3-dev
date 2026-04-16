@@ -150,8 +150,8 @@ there are multiple versions allowing both ipv4 and ipv6.
 2. RemoveBinding(): ``ns3::ltp::LtpIpResolutionTable::RemoveBinding ()``  method removes a binding between Ip Address and a LTP Engine,
 there are multiple versions allowing both ipv4 and ipv6.
 
-3. GetRoute():  ``ns3::ltp::LtpIpResolutionTable::GetRoute (uint64_t ltpEngineId)`` acquire the corresponding Ip ddress binded to a LTP
-engine id. If there are multiple bindings, internal flag m_adddressMode controls whether the IPv4 or Ipv6 binding map is searched first,
+3. GetRoute():  ``ns3::ltp::LtpIpResolutionTable::GetRoute (uint64_t ltpEngineId)`` acquire the corresponding Ip address binded to a LTP
+engine id. If there are multiple bindings, internal flag m_addressMode controls whether the IPv4 or Ipv6 binding map is searched first,
 the first entry that matches the requested EngineId will be used.
 
 4. PrintRoute(): ``ns3::ltp::LtpIpResolutionTable::GetRoute (uint64_t ltpEngineId)`` prints bindings.
@@ -188,7 +188,7 @@ LtpProtocol most relevant attributes:
 * "LocalEngineId" : Defines the engine id used by this object.
 * "CheckPointRtxLimit": Defines the maximum number of checkpoint retransmissions allowed per session.
 * "ReportSegmentRtxLimit":  Defines the maximum number of report retransmissions allowed per session.
-* "LocalProcessingDelays": Define the interval of time required for processing operations (queueing/dequeing).
+* "LocalProcessingDelays": Define the interval of time required for processing operations (queueing/dequeuing).
 * "OneWayLightTime": Defines the time required for transmitted data to reach the destination.
 
 LtpConvergenceLayerAdapter most relevant attribute:
