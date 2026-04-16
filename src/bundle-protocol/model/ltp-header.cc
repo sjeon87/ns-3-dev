@@ -261,7 +261,7 @@ LtpHeader::IsRedDataSegment(SegmentType type)
 {
     NS_LOG_FUNCTION(type);
     return (type == LTPTYPE_RD) || (type == LTPTYPE_RD_CP) || (type == LTPTYPE_RD_CP_EORP) ||
-        (type == LTPTYPE_RD_CP_EORP_EOB);
+           (type == LTPTYPE_RD_CP_EORP_EOB);
 }
 
 bool
@@ -269,7 +269,7 @@ LtpHeader::IsGreenDataSegment(SegmentType type)
 {
     NS_LOG_FUNCTION(type);
     return (type == LTPTYPE_GD) || (type == LTPTYPE_GD_UF1) || (type == LTPTYPE_GD_UF2) ||
-        (type == LTPTYPE_GD_EOB);
+           (type == LTPTYPE_GD_EOB);
 }
 
 SessionId::SessionId()

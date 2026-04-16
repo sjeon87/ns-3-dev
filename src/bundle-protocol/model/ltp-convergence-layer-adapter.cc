@@ -567,9 +567,7 @@ SessionStateRecord::FindMissingClaims(uint32_t serialNum)
     missing_claims.high_bound = GetRedPartLength();
     missing_claims.low_bound = 0;
 
-    for (auto it = report_claims.begin();
-         it != report_claims.end();
-         ++it)
+    for (auto it = report_claims.begin(); it != report_claims.end(); ++it)
     {
         LtpContentHeader::ReceptionClaim claim = *it;
         if (last_upper != claim.offset)
@@ -1281,8 +1279,7 @@ LtpBundleCla::CancelSession(SessionId id)
     if (it != m_activeSessions.end())
     {
         it->second->Cancel(LOCAL_CANCEL, (CxReasonCode)0);
-        auto itCls =
-            m_activeClients.find(it->second->GetLocalClientServiceId());
+        auto itCls = m_activeClients.find(it->second->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())
         {
             itCls->second->ReportStatus(id, RX_SESSION_CANCEL);
@@ -1376,8 +1373,7 @@ LtpBundleCla::EncapsulateBlockData(Address remoteAddress,
             contentHeader.SetSegmentType(type);
         }
         auto start = data.begin() + offset;
-        auto end =
-            (offset + length > data.size()) ? data.end() : data.begin() + offset + length;
+        auto end = (offset + length > data.size()) ? data.end() : data.begin() + offset + length;
         std::vector<uint8_t> segmentData(start, end);
         Ptr<Packet> packet =
             Create<Packet>((uint8_t*)segmentData.data(), (uint32_t)segmentData.size());
@@ -1404,8 +1400,7 @@ LtpBundleCla::CloseSession(SessionId id)
         }
         ssr->CancelTimer(CHECKPOINT);
         ssr->CancelTimer(REPORT);
-        auto itCls =
-            m_activeClients.find(ssr->GetLocalClientServiceId());
+        auto itCls = m_activeClients.find(ssr->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())
         {
             itCls->second->ReportStatus(id, SESSION_END);
@@ -1421,8 +1416,7 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
     auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
-        auto itCls =
-            m_activeClients.find(it->second->GetLocalClientServiceId());
+        auto itCls = m_activeClients.find(it->second->GetLocalClientServiceId());
         std::vector<uint8_t> blockData;
         bool EOB = false;
         Address remoteLtp = it->second->GetPeerLtpEngineId();
@@ -1474,8 +1468,7 @@ LtpBundleCla::SignifyGreenPartSegmentArrival(SessionId id)
     {
         return;
     }
-    auto itCls =
-        m_activeClients.find(it->second->GetLocalClientServiceId());
+    auto itCls = m_activeClients.find(it->second->GetLocalClientServiceId());
     if (it->second->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
     {
         Ptr<ReceiverSessionStateRecord> ssr = DynamicCast<ReceiverSessionStateRecord>(it->second);
@@ -1572,9 +1565,7 @@ LtpBundleCla::ReportSegmentTransmission(SessionId id, uint64_t cpSerialNum)
     contentHeader.SetUpperBound(upperBound);
     contentHeader.SetLowerBound(lowerBound);
     std::set<LtpContentHeader::ReceptionClaim> claims = srecv->GetClaims(RpSerial);
-    for (auto itC = claims.begin();
-         itC != claims.end();
-         ++itC)
+    for (auto itC = claims.begin(); itC != claims.end(); ++itC)
     {
         contentHeader.AddReceptionClaim(*itC);
     }
