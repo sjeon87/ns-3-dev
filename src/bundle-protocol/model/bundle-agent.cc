@@ -13,6 +13,7 @@
 #include "bundle-agent.h"
 
 #include "bundle-protocol-flags.h"
+#include "contact-graph-routing.h"
 #include "generic-convergence-layer-adapter.h"
 
 #include "ns3/log.h"
@@ -84,6 +85,19 @@ BundleAgent::SetBundleStorageEngine(Ptr<BundleStorageEngine> bundleStorageEngine
 {
     NS_LOG_FUNCTION(this << bundleStorageEngine);
     m_bundleStorageEngine = bundleStorageEngine;
+}
+
+void
+BundleAgent::SetContactGraph(Ptr<ContactGraph> contactGraph)
+{
+    NS_LOG_FUNCTION(this << contactGraph);
+    m_contactGraph = contactGraph;
+
+    if (!m_backlogCheckEvent.IsPending())
+    {
+        m_backlogCheckEvent =
+            Simulator::Schedule(Seconds(1.0), &BundleAgent::ProcessAllBacklog, this);
+    }
 }
 
 std::string
@@ -245,7 +259,13 @@ BundleAgent::ForwardBundle(uint32_t handle)
 
     std::string destination = bundle->GetDestinationEID();
 
-    std::string nextHopEID = destination;
+    if (!m_contactGraph)
+    {
+        NS_LOG_WARN("ForwardBundle: No ContactGraph set! Cannot route.");
+        return 1;
+    }
+
+    std::string nextHopEID = m_contactGraph->GetNextHop(bundle, m_localEID);
 
     if (nextHopEID.empty())
     {

@@ -2,11 +2,14 @@ build_lib(
   LIBNAME bundle-protocol
   SOURCE_FILES
     helper/bundle-protocol-helper.cc
+    helper/contact-graph-helper.cc
     model/bundle-block.cc
     model/bundle-agent.cc
     model/bundle-header.cc
     model/bundle-storage-engine.cc
     model/bundle.cc
+    model/contact-graph-routing.cc
+    model/contact-parser.cc
     model/generic-convergence-layer-adapter.cc
     model/ltp-convergence-layer-adapter.cc
     model/tcp-convergence-layer-adapter.cc
@@ -15,12 +18,15 @@ build_lib(
     model/sdnv.cc
   HEADER_FILES
     helper/bundle-protocol-helper.h
+    helper/contact-graph-helper.h
     model/bundle-agent.h
     model/bundle-block.h
     model/bundle-header.h
     model/bundle-storage-engine.h
     model/bundle.h
     model/bundle-protocol-flags.h
+    model/contact-graph-routing.h
+    model/contact-parser.h
     model/generic-convergence-layer-adapter.h
     model/ltp-convergence-layer-adapter.h
     model/tcp-convergence-layer-adapter.h
@@ -35,6 +41,7 @@ build_lib(
     test/test-bundle-storage-engine.cc
     test/test-bundle-agent.cc
     test/test-ltp-convergence-layer-adapter.cc
+    test/test-sdnv.cc
     test/test-tcp-convergence-layer-adapter.cc
     test/test-udp-convergence-layer-adapter.cc
 )
