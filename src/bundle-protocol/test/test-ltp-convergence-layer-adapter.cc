@@ -1,27 +1,32 @@
 /*
- * Copyright (c) 2014 Universitat Autònoma de Barcelona
+ * Copyright (c) 2008 INRIA
+ *                  2013 University of New Brunswick
+ *                  2014 Universitat Autònoma de Barcelona
+ *                  2026 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- *
- *
- * Author: Rubén Martínez <rmartinez@deic.uab.cat>
+ * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
+ *           Dizhi Zhou <dizhi.zhou@gmail.com>
+ *           Gerard Garcia <ggarcia@deic.uab.cat>
+ *           Rubén Martínez <rmartinez@deic.uab.cat>
+ *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
 #include "ns3/abort.h"
 #include "ns3/buffer.h"
+#include "ns3/bundle-agent.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/ipv4-address.h"
 #include "ns3/log.h"
+#include "ns3/ltp-convergence-layer-adapter.h"
 #include "ns3/ltp-header.h"
-#include "ns3/ltp-protocol.h"
-#include "ns3/ltp-queue-set.h"
-#include "ns3/ltp-session-state-record.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/sdnv.h"
 #include "ns3/string.h"
 #include "ns3/test.h"
 
 using namespace ns3;
-using namespace ltp;
 
 NS_LOG_COMPONENT_DEFINE("LtpProtocolTests");
 
@@ -40,8 +45,6 @@ class LtpHeaderTestCase : public TestCase
     void SetTrailerTests();
     void SetContentHeaderTests();
 
-    void SerializeTests();
-
     template <class T>
     class TestVector
     {
@@ -57,24 +60,21 @@ class LtpHeaderTestCase : public TestCase
     TestVectors<TestVector<LtpContentHeader>> m_mainContentHeaderTests;
 };
 
-// Add some help text to this case to describe what it is intended to test
 LtpHeaderTestCase::LtpHeaderTestCase()
     : TestCase("LtpHeaderTestCase test case (checks serialization and deserialization methods)")
 {
 }
 
-// This destructor does nothing but we include it as a reminder that
-// the test case should clean up after itself
 LtpHeaderTestCase::~LtpHeaderTestCase()
 {
 }
 
-/* Instantiate several SessionIds and save its expected encoded size */
 void
 LtpHeaderTestCase::SetSessionIds()
 {
     TestVector<SessionId> test;
 
+    // SessionId constructor explicitly requires uint64_t for its originator
     SessionId session(0, 0);
     test.m_expectedEncodedSz = 2;
     test.m_data = session;
@@ -93,7 +93,6 @@ LtpHeaderTestCase::SetSessionIds()
     m_sessionIds.Add(test);
 }
 
-/* Instantiate several LtpExtensions and save its expected serialized size */
 void
 LtpHeaderTestCase::SetExtensions()
 {
@@ -104,9 +103,8 @@ LtpHeaderTestCase::SetExtensions()
     extension.SetExtensionType(LtpExtension::LTPEXT_AUTH);
     for (int i = 0; i < extensionSize; i++)
     {
-        extension.AddExtensionData(0); // Data Filled with zeros
+        extension.AddExtensionData(0);
     }
-    // Type (1 byte) + SDNV Encoded Len (1 byte) + Data Size (extensionSize Bytes)
     test.m_expectedEncodedSz = 1 + 1 + extensionSize;
     test.m_data = extension;
     m_extensions.Add(test);
@@ -116,9 +114,8 @@ LtpHeaderTestCase::SetExtensions()
     extension.ClearExtensionData();
     for (int i = 0; i < extensionSize; i++)
     {
-        extension.AddExtensionData(0); // Data Filled with zeros
+        extension.AddExtensionData(0);
     }
-    // Type (1 byte) + SDNV Encoded Len (2 bytes) + Data Size (extensionSize Bytes)
     test.m_expectedEncodedSz = 1 + 2 + extensionSize;
     test.m_data = extension;
     m_extensions.Add(test);
@@ -134,7 +131,6 @@ LtpHeaderTestCase::SetHeaderTests()
     uint8_t extensionCntHeader = 0b00000000;
     uint8_t extensionCntTrailer = 0b00000000;
 
-    /* Simple Header No Extensions*/
     header.SetVersion(version);
     header.SetSegmentType(type);
     header.SetSessionId((SessionId)m_sessionIds.Get(0).m_data);
@@ -145,29 +141,26 @@ LtpHeaderTestCase::SetHeaderTests()
     test.m_expectedEncodedSz = 2 + m_sessionIds.Get(0).m_expectedEncodedSz;
     m_mainHeaderTests.Add(test);
 
-    /* Header with 1 Extension */
     header.SetSessionId((SessionId)m_sessionIds.Get(1).m_data);
     header.AddExtension(m_extensions.Get(0).m_data);
 
     test.m_data = header;
-    test.m_expectedEncodedSz = 2 + m_sessionIds.Get(1).m_expectedEncodedSz + // 5
-                               m_extensions.Get(0).m_expectedEncodedSz;      // 12
+    test.m_expectedEncodedSz =
+        2 + m_sessionIds.Get(1).m_expectedEncodedSz + m_extensions.Get(0).m_expectedEncodedSz;
 
     m_mainHeaderTests.Add(test);
 
-    /* Header with 2 Extensions */
     header.SetSessionId((SessionId)m_sessionIds.Get(2).m_data);
     header.AddExtension(m_extensions.Get(1).m_data);
 
     test.m_data = header;
-    test.m_expectedEncodedSz = 2 + m_sessionIds.Get(2).m_expectedEncodedSz + // 4
-                               m_extensions.Get(0).m_expectedEncodedSz +     // 12
-                               m_extensions.Get(1).m_expectedEncodedSz;      // 131
+    test.m_expectedEncodedSz = 2 + m_sessionIds.Get(2).m_expectedEncodedSz +
+                               m_extensions.Get(0).m_expectedEncodedSz +
+                               m_extensions.Get(1).m_expectedEncodedSz;
 
     m_mainHeaderTests.Add(test);
 }
 
-/* Ltp trailer tests */
 void
 LtpHeaderTestCase::SetTrailerTests()
 {
@@ -181,8 +174,8 @@ LtpHeaderTestCase::SetTrailerTests()
     TestVector<LtpTrailer> test;
 
     test.m_data = trailer;
-    test.m_expectedEncodedSz = 3 * m_extensions.Get(0).m_expectedEncodedSz + // 3*12
-                               m_extensions.Get(1).m_expectedEncodedSz;      // 131
+    test.m_expectedEncodedSz =
+        3 * m_extensions.Get(0).m_expectedEncodedSz + m_extensions.Get(1).m_expectedEncodedSz;
 
     m_mainTrailerTests.Add(test);
 }
@@ -197,7 +190,6 @@ LtpHeaderTestCase::SetContentHeaderTests()
     uint64_t offset = 0;
     uint64_t length = 0x7F;
 
-    /* Test 1: Data Segment No CheckPoint Test */
     header.SetSegmentType(type);
     header.SetClientServiceId(clientServiceId);
     header.SetOffset(offset);
@@ -207,7 +199,6 @@ LtpHeaderTestCase::SetContentHeaderTests()
     test.m_expectedEncodedSz = 1 + 1 + 1;
     m_mainContentHeaderTests.Add(test);
 
-    /* Test 2: Report Segment */
     type = LTPTYPE_RS;
     uint64_t cpSerialNumber = 1;
     uint64_t rpSerialNumber = 1;
@@ -231,10 +222,9 @@ LtpHeaderTestCase::SetContentHeaderTests()
 
     m_mainContentHeaderTests.Add(test);
 
-    /* Test 3: Multiple Partial Claims Report Segment*/
     type = LTPTYPE_RS;
-    upperBound = 6000; // 2
-    lowerBound = 1000; // 2
+    upperBound = 6000;
+    lowerBound = 1000;
 
     header.SetSegmentType(type);
     header.SetCpSerialNumber(cpSerialNumber);
@@ -244,11 +234,11 @@ LtpHeaderTestCase::SetContentHeaderTests()
     header.ClearReceptionClaims();
 
     claim.offset = 0;
-    claim.length = 2000; // 2
+    claim.length = 2000;
     header.AddReceptionClaim(claim);
 
-    claim.offset = 3000; // 2
-    claim.length = 500;  // 2
+    claim.offset = 3000;
+    claim.length = 500;
     header.AddReceptionClaim(claim);
 
     test.m_data = header;
@@ -256,7 +246,6 @@ LtpHeaderTestCase::SetContentHeaderTests()
 
     m_mainContentHeaderTests.Add(test);
 
-    /* Test 4: Data Segment Checkpoint */
     type = LTPTYPE_RD_CP_EORP;
     header.SetSegmentType(type);
 
@@ -265,7 +254,6 @@ LtpHeaderTestCase::SetContentHeaderTests()
 
     m_mainContentHeaderTests.Add(test);
 
-    /* Test 5: Report ACK Segment */
     type = LTPTYPE_RAS;
     header.SetSegmentType(type);
 
@@ -274,7 +262,6 @@ LtpHeaderTestCase::SetContentHeaderTests()
 
     m_mainContentHeaderTests.Add(test);
 
-    /* Test 6: Cancel Segment */
     type = LTPTYPE_CS;
     header.SetSegmentType(type);
 
@@ -283,7 +270,6 @@ LtpHeaderTestCase::SetContentHeaderTests()
 
     m_mainContentHeaderTests.Add(test);
 
-    /* Test 7: Cancel ACK Segment */
     type = LTPTYPE_CAS;
     header.SetSegmentType(type);
 
@@ -293,10 +279,6 @@ LtpHeaderTestCase::SetContentHeaderTests()
     m_mainContentHeaderTests.Add(test);
 }
 
-//
-// This method is the pure virtual method from class TestCase that every
-// TestCase must implement
-//
 void
 LtpHeaderTestCase::DoRun(void)
 {
@@ -401,15 +383,12 @@ LtpQueueSetTestCase::SetTests()
     LtpHeader header;
     TestVector<Ptr<ns3::Packet>> test;
 
-    /* Simple Header No Extensions*/
     header.SetVersion(0);
     header.SetSegmentType(LTPTYPE_RD);
     header.SetSessionId(SessionId(0, 0));
     header.SetHeaderExtensionCount(0b00000000);
     header.SetTrailerExtensionCount(0b00000000);
 
-    /* Data Segment have low priority they should be returned in
-     * following the same order of insertion */
     packet1->AddHeader(header);
 
     test.m_position = 2;
@@ -424,7 +403,6 @@ LtpQueueSetTestCase::SetTests()
     test.m_data = packet2;
     m_tests.Add(test);
 
-    /* Report packets have higher priority they should be the first ones to be dequed*/
     header.SetSegmentType(LTPTYPE_RS);
     Ptr<ns3::Packet> packet3 = Create<ns3::Packet>();
     packet3->AddHeader(header);
@@ -447,13 +425,9 @@ LtpQueueSetTestCase::DoRun(void)
         TestVector<Ptr<ns3::Packet>> test = m_tests.Get(i);
         success = success & queue.Enqueue(test.m_data);
     }
-    /* Test 1: Check that all packets have been queued succesfully */
     NS_TEST_ASSERT_MSG_EQ(success, true, "Enqueuing failed");
-
-    /* Test 2: Check size*/
     NS_TEST_ASSERT_MSG_EQ((queue.GetNPackets() == m_tests.GetN()), true, "Wrong queue size");
 
-    /* Test 3: Check that returned packets are ordered by priority */
     Ptr<ns3::Packet> packet = queue.Dequeue();
     NS_TEST_ASSERT_MSG_EQ((m_tests.Get(2).m_data == packet), true, "Wrong queue order");
     packet = queue.Dequeue();
@@ -503,9 +477,8 @@ LtpSessionStateRecordTestCase::TimerTest(uint32_t index)
 
     uint64_t actual = Simulator::Now().GetSeconds();
     uint64_t limit = test.total;
-    uint64_t tol = 0.005;
 
-    NS_TEST_ASSERT_MSG_EQ_TOL(actual, limit, tol, "Test1 Failed");
+    NS_TEST_ASSERT_MSG_EQ_TOL(actual, limit, 0.005, "Test1 Failed");
 }
 
 void
@@ -513,22 +486,23 @@ LtpSessionStateRecordTestCase::DoRun(void)
 {
     Ptr<UniformRandomVariable> number = CreateObject<UniformRandomVariable>();
 
-    uint64_t destEngine = 5000;
-    uint64_t srcEngine = 5000;
+    Address destEngine = InetSocketAddress(Ipv4Address("10.0.0.2"), 1113);
+    Address srcEngine = InetSocketAddress(Ipv4Address("10.0.0.1"), 1113);
     uint64_t destClient = 5000;
     uint64_t srcClient = 5000;
+
     Ptr<SenderSessionStateRecord> ssend = CreateObject<SenderSessionStateRecord>(srcEngine,
                                                                                  srcClient,
-                                                                                 destEngine,
                                                                                  destClient,
+                                                                                 destEngine,
                                                                                  number);
 
-    /* Test 1 : Check Session Id generation */
     SessionId id = ssend->GetSessionId();
 
-    bool test = ((id.GetSessionNumber() >= SessionId::MIN_SESSION_NUMBER) &&
-                 (id.GetSessionNumber() <= SessionId::MAX_SESSION_NUMBER) &&
-                 id.GetSessionOriginator() == srcEngine);
+    bool test = ((id.GetSessionNumber() >= SessionStateRecord::MIN_INITIAL_SERIAL_NUMBER) &&
+                 (id.GetSessionNumber() <= SessionStateRecord::MAX_INITIAL_SERIAL_NUMBER) &&
+                 id.GetSessionOriginator() ==
+                     0); // We default initialized SessionId to 0 in SenderSessionStateRecord setup
 
     NS_TEST_ASSERT_MSG_EQ(test, true, "Wrong result for sessionId generation");
 
@@ -537,31 +511,30 @@ LtpSessionStateRecordTestCase::DoRun(void)
 
     SetTimerTests();
 
-    /* Test 2: Timers - Suspend and Resume */
     for (uint32_t i = 0; i < m_testTimers.GetN(); i++)
     {
-        TestTimer test = m_testTimers.Get(i);
+        TestTimer testTimer = m_testTimers.Get(i);
 
         srecv->SetTimerFunction(&LtpSessionStateRecordTestCase::TimerTest,
                                 this,
                                 i,
-                                Seconds(test.lapse),
-                                test.timeCode);
-        srecv->StartTimer(test.timeCode);
+                                Seconds(testTimer.lapse),
+                                testTimer.timeCode);
+        srecv->StartTimer(testTimer.timeCode);
 
-        for (uint32_t i = 0; i < test.stops; i++)
+        for (uint32_t j = 0; j < testTimer.stops; j++)
         {
-            Simulator::Schedule(Seconds(test.stop_lapses * i),
+            Simulator::Schedule(Seconds(testTimer.stop_lapses * j),
                                 &ReceiverSessionStateRecord::SuspendTimer,
                                 srecv,
-                                test.timeCode);
-            Simulator::Schedule(Seconds(test.stop_lapses * (i + 1)),
+                                testTimer.timeCode);
+            Simulator::Schedule(Seconds(testTimer.stop_lapses * (j + 1)),
                                 &ReceiverSessionStateRecord::ResumeTimer,
                                 srecv,
-                                test.timeCode);
+                                testTimer.timeCode);
         }
     }
-    /* Test 3: Check Claims */
+
     LtpContentHeader::ReceptionClaim claim;
 
     claim.offset = 0;
@@ -585,18 +558,15 @@ LtpSessionStateRecordTestCase::DoRun(void)
 
     srecv->IncrementRpCurrentSerialNumber();
     test = srecv->InsertClaim(srecv->GetRpCurrentSerialNumber(), lowerBound, upperBound, claim);
-    ;
     NS_TEST_ASSERT_MSG_EQ(test, true, "Claim with new Report serial number not Inserted");
 
-    // Test 4: Check Serial Numbers
-    test =
-        ((srecv->GetRpCurrentSerialNumber() < ReceiverSessionStateRecord::MAX_SERIAL_NUMBER + 1) &&
-         (srecv->GetRpCurrentSerialNumber() > 1));
+    test = ((srecv->GetRpCurrentSerialNumber() < SessionStateRecord::MAX_SERIAL_NUMBER + 1) &&
+            (srecv->GetRpCurrentSerialNumber() >= 1));
 
     NS_TEST_ASSERT_MSG_EQ(test, true, "Wrong RP Serial Number");
 
-    test = ((ssend->GetCpCurrentSerialNumber() < ReceiverSessionStateRecord::MAX_SERIAL_NUMBER) &&
-            (ssend->GetCpCurrentSerialNumber() > 1));
+    test = ((ssend->GetCpCurrentSerialNumber() < SessionStateRecord::MAX_SERIAL_NUMBER) &&
+            (ssend->GetCpCurrentSerialNumber() >= 1));
 
     NS_TEST_ASSERT_MSG_EQ(test, true, "Wrong CP Serial Number");
 
@@ -633,74 +603,46 @@ LtpSessionStateRecordTestCase::SetTimerTests()
     m_testTimers.Add(test);
 }
 
-class LtpProtocolAPITestCase : public TestCase
+class BundleAgentLtpClaTestCase : public TestCase
 {
   public:
-    LtpProtocolAPITestCase();
-    virtual ~LtpProtocolAPITestCase();
-
-    void ClientServiceIntanceNotifications(SessionId id,
-                                           StatusNotificationCode code,
-                                           std::vector<uint8_t> data,
-                                           uint32_t dataLength,
-                                           bool endFlag,
-                                           uint64_t srcLtpEngine,
-                                           uint32_t offset);
+    BundleAgentLtpClaTestCase();
+    virtual ~BundleAgentLtpClaTestCase();
 
   private:
     virtual void DoRun(void);
 };
 
-LtpProtocolAPITestCase::LtpProtocolAPITestCase()
-    : TestCase("LtpProtocolAPITestCase test case (check protocol core)")
+BundleAgentLtpClaTestCase::BundleAgentLtpClaTestCase()
+    : TestCase("BundleAgentLtpClaTestCase test case (check protocol core)")
 {
 }
 
-LtpProtocolAPITestCase::~LtpProtocolAPITestCase()
+BundleAgentLtpClaTestCase::~BundleAgentLtpClaTestCase()
 {
 }
 
 void
-LtpProtocolAPITestCase::ClientServiceIntanceNotifications(SessionId id,
-                                                          StatusNotificationCode code,
-                                                          std::vector<uint8_t> data,
-                                                          uint32_t dataLength,
-                                                          bool endFlag,
-                                                          uint64_t srcLtpEngine,
-                                                          uint32_t offset)
+BundleAgentLtpClaTestCase::DoRun(void)
 {
-    NS_LOG_UNCOND(id.GetSessionNumber() << " " << code);
-    NS_TEST_ASSERT_MSG_EQ((code == SESSION_START), true, "Session Start Notification Failed");
+    Ptr<BundleAgent> agent = CreateObject<BundleAgent>();
+    agent->SetLocalEID("dtn:nodeA");
+
+    Ptr<LtpBundleCla> cla = CreateObject<LtpBundleCla>();
+
+    bool test = agent->RegisterCla("dtn:nodeB", cla);
+    NS_TEST_ASSERT_MSG_EQ(test, true, "New CLA registration failed");
+
+    test = agent->RegisterCla("dtn:nodeB", cla);
+    NS_TEST_ASSERT_MSG_EQ(test, false, "CLA registered twice");
+
+    Ptr<LtpBundleCla> cla2 = CreateObject<LtpBundleCla>();
+    test = agent->RegisterCla("dtn:nodeC", cla2);
+    NS_TEST_ASSERT_MSG_EQ(test, true, "Second CLA registration failed");
+
+    agent->UnregisterCla("dtn:nodeB");
 }
 
-void
-LtpProtocolAPITestCase::DoRun(void)
-{
-    Ptr<LtpProtocol> prot = CreateObject<LtpProtocol>();
-    prot->SetAttribute("RandomVariable", StringValue("ns3::UniformRandomVariable"));
-
-    /* Test 1: Register Client Service*/
-    uint64_t id = 304;
-    CallbackBase cb =
-        MakeCallback(&LtpProtocolAPITestCase::ClientServiceIntanceNotifications, this);
-
-    bool test = prot->RegisterClientService(id, cb);
-    NS_TEST_ASSERT_MSG_EQ(test, true, "New Client Service registration failed");
-    test = prot->RegisterClientService(id, cb);
-    NS_TEST_ASSERT_MSG_EQ(test, false, "Client Service registered twice");
-    id = 305;
-    test = prot->RegisterClientService(id, cb);
-    NS_TEST_ASSERT_MSG_EQ(test, true, "New Client Service registration failed");
-
-    /* Test 2 : Unregister Client Service */
-    prot->UnregisterClientService(id);
-    id = 304;
-}
-
-// The TestSuite class names the TestSuite, identifies what type of TestSuite,
-// and enables the TestCases to be run.  Typically, only the constructor for
-// this class must be defined
-//
 class LtpProtocolTestSuite : public TestSuite
 {
   public:
@@ -708,14 +650,12 @@ class LtpProtocolTestSuite : public TestSuite
 };
 
 LtpProtocolTestSuite::LtpProtocolTestSuite()
-    : TestSuite("ltp-protocol", UNIT)
+    : TestSuite("ltp-protocol", Type::UNIT)
 {
-    // TestDuration for TestCase can be QUICK, EXTENSIVE or TAKES_FOREVER
-    AddTestCase(new LtpHeaderTestCase, TestCase::QUICK);
-    AddTestCase(new LtpQueueSetTestCase, TestCase::QUICK);
-    AddTestCase(new LtpSessionStateRecordTestCase, TestCase::QUICK);
-    AddTestCase(new LtpProtocolAPITestCase, TestCase::QUICK);
+    AddTestCase(new LtpHeaderTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new LtpQueueSetTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new LtpSessionStateRecordTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new BundleAgentLtpClaTestCase, TestCase::Duration::QUICK);
 }
 
-// Do not forget to allocate an instance of this TestSuite
 static LtpProtocolTestSuite ltpProtocolTestSuite;
