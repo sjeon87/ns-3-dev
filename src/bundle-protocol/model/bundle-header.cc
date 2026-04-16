@@ -103,7 +103,7 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     uint32_t destLen = i.ReadNtohU32();
     if (destLen > 0)
     {
-        uint8_t* buf = new uint8_t[destLen];
+        auto* buf = new uint8_t[destLen];
         i.Read(buf, destLen);
         m_destinationEID.assign(reinterpret_cast<char*>(buf), destLen);
         delete[] buf;
@@ -112,7 +112,7 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     uint32_t srcLen = i.ReadNtohU32();
     if (srcLen > 0)
     {
-        uint8_t* buf = new uint8_t[srcLen];
+        auto* buf = new uint8_t[srcLen];
         i.Read(buf, srcLen);
         m_sourceEID.assign(reinterpret_cast<char*>(buf), srcLen);
         delete[] buf;
@@ -121,7 +121,7 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     uint32_t repLen = i.ReadNtohU32();
     if (repLen > 0)
     {
-        uint8_t* buf = new uint8_t[repLen];
+        auto* buf = new uint8_t[repLen];
         i.Read(buf, repLen);
         m_reportToEID.assign(reinterpret_cast<char*>(buf), repLen);
         delete[] buf;
@@ -467,7 +467,7 @@ BundleStatusReport::Deserialize(Buffer::Iterator start)
     uint32_t srcLen = i.ReadNtohU32();
     if (srcLen > 0)
     {
-        uint8_t* buf = new uint8_t[srcLen];
+        auto* buf = new uint8_t[srcLen];
         i.Read(buf, srcLen);
         m_sourceEID.assign(reinterpret_cast<char*>(buf), srcLen);
         delete[] buf;

@@ -144,13 +144,13 @@ ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
     uint32_t destNode = destIt->second;
 
     using PQueueItem = std::pair<double, uint32_t>;
-    std::priority_queue<PQueueItem, std::vector<PQueueItem>, std::less<PQueueItem>> pq;
+    std::priority_queue<PQueueItem, std::vector<PQueueItem>, std::less<>> pq;
 
     std::vector<double> capacity(m_size, 0.0);
     std::vector<uint32_t> parent(m_size, m_size);
 
     capacity[startNode] = std::numeric_limits<double>::infinity();
-    pq.push({capacity[startNode], startNode});
+    pq.emplace(capacity[startNode], startNode);
 
     while (!pq.empty())
     {
@@ -178,7 +178,7 @@ ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
             {
                 capacity[v] = pathCapacity;
                 parent[v] = u;
-                pq.push({capacity[v], v});
+                pq.emplace(capacity[v], v);
             }
         }
     }

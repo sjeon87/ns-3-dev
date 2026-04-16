@@ -48,14 +48,14 @@ LtpHeader::~LtpHeader()
 }
 
 TypeId
-LtpHeader::GetTypeId(void)
+LtpHeader::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::LtpHeader").SetParent<Header>().AddConstructor<LtpHeader>();
     return tid;
 }
 
 TypeId
-LtpHeader::GetInstanceTypeId(void) const
+LtpHeader::GetInstanceTypeId() const
 {
     NS_LOG_FUNCTION(this);
     return GetTypeId();
@@ -73,7 +73,7 @@ LtpHeader::Print(std::ostream& os) const
 }
 
 uint32_t
-LtpHeader::GetSerializedSize(void) const
+LtpHeader::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 2; // Control Byte + Extensions Byte.
@@ -168,7 +168,7 @@ LtpHeader::SetVersion(uint8_t version)
 }
 
 uint8_t
-LtpHeader::GetVersion(void) const
+LtpHeader::GetVersion() const
 {
     NS_LOG_FUNCTION(this);
     return m_version;
@@ -253,44 +253,23 @@ bool
 LtpHeader::IsDataSegment(SegmentType type)
 {
     NS_LOG_FUNCTION(type);
-    if (IsRedDataSegment(type) || IsGreenDataSegment(type))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return IsRedDataSegment(type) || IsGreenDataSegment(type);
 }
 
 bool
 LtpHeader::IsRedDataSegment(SegmentType type)
 {
     NS_LOG_FUNCTION(type);
-    if ((type == LTPTYPE_RD) || (type == LTPTYPE_RD_CP) || (type == LTPTYPE_RD_CP_EORP) ||
-        (type == LTPTYPE_RD_CP_EORP_EOB))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return (type == LTPTYPE_RD) || (type == LTPTYPE_RD_CP) || (type == LTPTYPE_RD_CP_EORP) ||
+        (type == LTPTYPE_RD_CP_EORP_EOB);
 }
 
 bool
 LtpHeader::IsGreenDataSegment(SegmentType type)
 {
     NS_LOG_FUNCTION(type);
-    if ((type == LTPTYPE_GD) || (type == LTPTYPE_GD_UF1) || (type == LTPTYPE_GD_UF2) ||
-        (type == LTPTYPE_GD_EOB))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return (type == LTPTYPE_GD) || (type == LTPTYPE_GD_UF1) || (type == LTPTYPE_GD_UF2) ||
+        (type == LTPTYPE_GD_EOB);
 }
 
 SessionId::SessionId()
@@ -312,7 +291,7 @@ SessionId::SessionId(uint64_t originator, uint64_t value)
 }
 
 uint64_t
-SessionId::GetSessionOriginator(void) const
+SessionId::GetSessionOriginator() const
 {
     NS_LOG_FUNCTION(this);
     return m_sessionOriginator;
@@ -384,7 +363,7 @@ LtpExtension::GetExtensionLength() const
 }
 
 uint32_t
-LtpExtension::GetSerializedSize(void) const
+LtpExtension::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     Sdnv codec;
@@ -443,14 +422,14 @@ LtpTrailer::~LtpTrailer()
 }
 
 TypeId
-LtpTrailer::GetTypeId(void)
+LtpTrailer::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::LtpTrailer").SetParent<Trailer>().AddConstructor<LtpTrailer>();
     return tid;
 }
 
 TypeId
-LtpTrailer::GetInstanceTypeId(void) const
+LtpTrailer::GetInstanceTypeId() const
 {
     NS_LOG_FUNCTION(this);
     return GetTypeId();
@@ -466,7 +445,7 @@ LtpTrailer::Print(std::ostream& os) const
 }
 
 uint32_t
-LtpTrailer::GetSerializedSize(void) const
+LtpTrailer::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
@@ -563,7 +542,7 @@ LtpContentHeader::~LtpContentHeader()
 }
 
 TypeId
-LtpContentHeader::GetTypeId(void)
+LtpContentHeader::GetTypeId()
 {
     static TypeId tid =
         TypeId("ns3::LtpContentHeader").SetParent<Header>().AddConstructor<LtpContentHeader>();
@@ -571,7 +550,7 @@ LtpContentHeader::GetTypeId(void)
 }
 
 TypeId
-LtpContentHeader::GetInstanceTypeId(void) const
+LtpContentHeader::GetInstanceTypeId() const
 {
     NS_LOG_FUNCTION(this);
     return GetTypeId();
@@ -592,7 +571,7 @@ LtpContentHeader::GetSegmentType() const
 }
 
 uint32_t
-LtpContentHeader::GetSerializedSize(void) const
+LtpContentHeader::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;

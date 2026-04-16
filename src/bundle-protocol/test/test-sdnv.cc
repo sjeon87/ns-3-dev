@@ -24,10 +24,10 @@ class SdnvTest : public TestCase
 {
   public:
     SdnvTest();
-    virtual ~SdnvTest();
+    ~SdnvTest() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 
     void SetTests();
 
@@ -189,7 +189,7 @@ SdnvTest::SetTests()
 }
 
 void
-SdnvTest::DoRun(void)
+SdnvTest::DoRun()
 {
     Sdnv codec;
 

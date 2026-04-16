@@ -93,7 +93,7 @@ Sdnv::Decode(Buffer::Iterator& start)
         {
             break;
         }
-    } while (1);
+    } while (true);
 
     return Decode(vec);
 }
@@ -102,14 +102,7 @@ bool
 Sdnv::IsLast(uint8_t& val)
 {
     NS_LOG_FUNCTION(this << " " << (uint16_t)val);
-    if ((val & 0x80) == 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return (val & 0x80) == 0;
 }
 
 } // namespace ns3

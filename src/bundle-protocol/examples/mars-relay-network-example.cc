@@ -92,7 +92,7 @@ main(int argc, char* argv[])
     for (uint32_t i = 0; i < numNodes; ++i)
     {
         Ptr<Node> node = nodes.Get(i);
-        std::string eid = mrnEids[i];
+        const std::string& eid = mrnEids[i];
 
         agentHelper.SetBpEndpointId(eid);
         BundleAgentContainer agentContainer = agentHelper.Install(node);
@@ -105,7 +105,7 @@ main(int argc, char* argv[])
 
     for (uint32_t k = 0; k < p2pLinks.size(); ++k)
     {
-        NetDeviceContainer link = p2pLinks[k];
+        const NetDeviceContainer& link = p2pLinks[k];
 
         Ipv4InterfaceContainer interfaces = address.Assign(link);
         address.NewNetwork();

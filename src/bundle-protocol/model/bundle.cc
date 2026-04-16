@@ -133,12 +133,12 @@ Bundle::Deserialize(Ptr<Packet> p)
 
     Ptr<PrimaryBlock> primary = CreateObject<PrimaryBlock>();
     primary->Deserialize(copy);
-    m_blocks.push_back(primary);
+    m_blocks.emplace_back(primary);
     while (copy->GetSize() > 0)
     {
         Ptr<PayloadBlock> payload = CreateObject<PayloadBlock>();
         payload->Deserialize(copy);
-        m_blocks.push_back(payload);
+        m_blocks.emplace_back(payload);
     }
 }
 

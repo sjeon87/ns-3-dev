@@ -46,12 +46,16 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
     while (std::getline(file, line))
     {
         std::istringstream iss(line);
-        std::string action, type;
+        std::string action;
+        std::string type;
         iss >> action >> type;
 
         if (action == "a" && type == "contact")
         {
-            std::string startStr, endStr, fromUri, toUri;
+            std::string startStr;
+            std::string endStr;
+            std::string fromUri;
+            std::string toUri;
             double rateDouble;
             iss >> startStr >> endStr >> fromUri >> toUri >> rateDouble;
             if (!startStr.empty() && startStr[0] == '+')
@@ -65,7 +69,7 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
 
             double startSeconds = std::stod(startStr);
             double endSeconds = std::stod(endStr);
-            uint32_t rate = static_cast<uint32_t>(rateDouble);
+            auto rate = static_cast<uint32_t>(rateDouble);
 
             if (startSeconds == endSeconds)
             {
@@ -141,12 +145,16 @@ ContactParser::CreateP2pLinks(const std::string& filename,
     while (std::getline(file, line))
     {
         std::istringstream iss(line);
-        std::string action, type;
+        std::string action;
+        std::string type;
         iss >> action >> type;
 
         if (action == "a" && (type == "contact" || type == "range"))
         {
-            std::string startStr, endStr, fromUri, toUri;
+            std::string startStr;
+            std::string endStr;
+            std::string fromUri;
+            std::string toUri;
             double value;
 
             iss >> startStr >> endStr >> fromUri >> toUri >> value;

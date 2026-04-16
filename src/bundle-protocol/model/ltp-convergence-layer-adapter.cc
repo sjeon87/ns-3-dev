@@ -35,7 +35,7 @@ NS_OBJECT_ENSURE_REGISTERED(ReceiverSessionStateRecord);
 NS_OBJECT_ENSURE_REGISTERED(LtpBundleCla);
 
 TypeId
-LtpQueueSet::GetTypeId(void)
+LtpQueueSet::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::LtpQueueSet").SetParent<Object>();
     return tid;
@@ -55,7 +55,7 @@ LtpQueueSet::~LtpQueueSet()
 }
 
 Ptr<Packet>
-LtpQueueSet::Dequeue(void)
+LtpQueueSet::Dequeue()
 {
     NS_LOG_FUNCTION(this);
     Ptr<Packet> p;
@@ -110,7 +110,7 @@ LtpQueueSet::Enqueue(Ptr<Packet> p)
 }
 
 Ptr<const Packet>
-LtpQueueSet::Peek(void) const
+LtpQueueSet::Peek() const
 {
     NS_LOG_FUNCTION(this);
     if (!m_internalOps.empty())
@@ -126,20 +126,20 @@ LtpQueueSet::Peek(void) const
 }
 
 Ptr<Packet>
-LtpQueueSet::Remove(void)
+LtpQueueSet::Remove()
 {
     NS_LOG_FUNCTION(this);
     return Dequeue();
 }
 
 uint32_t
-LtpQueueSet::GetNPackets(void) const
+LtpQueueSet::GetNPackets() const
 {
     return m_internalOps.size() + m_appData.size();
 }
 
 TypeId
-ClientServiceStatus::GetTypeId(void)
+ClientServiceStatus::GetTypeId()
 {
     static TypeId tid =
         TypeId("ns3::ClientServiceStatus")
@@ -212,7 +212,7 @@ ClientServiceStatus::GetSession(uint32_t index)
 }
 
 TypeId
-SessionStateRecord::GetTypeId(void)
+SessionStateRecord::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::SessionStateRecord")
                             .SetParent<Object>()
@@ -378,14 +378,14 @@ SessionStateRecord::Enqueue(Ptr<Packet> p)
 }
 
 Ptr<Packet>
-SessionStateRecord::Dequeue(void)
+SessionStateRecord::Dequeue()
 {
     NS_LOG_FUNCTION(this);
     return m_txQueue.Dequeue();
 }
 
 uint32_t
-SessionStateRecord::GetNPackets(void) const
+SessionStateRecord::GetNPackets() const
 {
     NS_LOG_FUNCTION(this);
     return m_txQueue.GetNPackets();
@@ -445,7 +445,7 @@ SessionStateRecord::InsertClaim(uint32_t serialNum,
 {
     NS_LOG_FUNCTION(this << serialNum << low << high << claim.offset << claim.length);
 
-    std::map<uint64_t, RedSegmentInfo>::iterator it = m_rcvSegments.find(serialNum);
+    auto it = m_rcvSegments.find(serialNum);
     bool ret = false;
 
     if (it == m_rcvSegments.end())
@@ -497,7 +497,7 @@ SessionStateRecord::GetNClaims(uint32_t serialNum) const
 {
     NS_LOG_FUNCTION(this << serialNum);
 
-    std::map<uint64_t, RedSegmentInfo>::const_iterator it = m_rcvSegments.find(serialNum);
+    auto it = m_rcvSegments.find(serialNum);
 
     if (it != m_rcvSegments.end())
     {
@@ -512,7 +512,7 @@ SessionStateRecord::GetClaimsUpperBound(uint32_t serialNum)
 {
     NS_LOG_FUNCTION(this << serialNum);
 
-    std::map<uint64_t, RedSegmentInfo>::const_iterator it = m_rcvSegments.find(serialNum);
+    auto it = m_rcvSegments.find(serialNum);
 
     uint32_t upper = 0;
 
@@ -530,7 +530,7 @@ SessionStateRecord::GetClaimsLowerBound(uint32_t serialNum)
 
     uint32_t lower = 0;
 
-    std::map<uint64_t, RedSegmentInfo>::const_iterator it = m_rcvSegments.find(serialNum);
+    auto it = m_rcvSegments.find(serialNum);
 
     if (it != m_rcvSegments.end())
     {
@@ -544,7 +544,7 @@ SessionStateRecord::GetClaims(uint64_t reportSerialNumber)
 {
     NS_LOG_FUNCTION(this << reportSerialNumber);
 
-    std::map<uint64_t, RedSegmentInfo>::const_iterator it = m_rcvSegments.find(reportSerialNumber);
+    auto it = m_rcvSegments.find(reportSerialNumber);
 
     if (it != m_rcvSegments.end())
     {
@@ -567,7 +567,7 @@ SessionStateRecord::FindMissingClaims(uint32_t serialNum)
     missing_claims.high_bound = GetRedPartLength();
     missing_claims.low_bound = 0;
 
-    for (std::set<LtpContentHeader::ReceptionClaim>::iterator it = report_claims.begin();
+    for (auto it = report_claims.begin();
          it != report_claims.end();
          ++it)
     {
@@ -718,7 +718,7 @@ bool
 SessionStateRecord::IsCanceled() const
 {
     NS_LOG_FUNCTION(this);
-    return ((m_canceled == NOT_CANCELED) ? false : true);
+    return (m_canceled != NOT_CANCELED);
 }
 
 bool
@@ -764,7 +764,7 @@ SessionStateRecord::GetRedPartLength() const
 }
 
 TypeId
-SenderSessionStateRecord::GetTypeId(void)
+SenderSessionStateRecord::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::SenderSessionStateRecord")
                             .SetParent<SessionStateRecord>()
@@ -871,7 +871,7 @@ SenderSessionStateRecord::IncrementCpRtxNumber()
 }
 
 TypeId
-ReceiverSessionStateRecord::GetTypeId(void)
+ReceiverSessionStateRecord::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::ReceiverSessionStateRecord")
                             .SetParent<SessionStateRecord>()
@@ -945,9 +945,9 @@ ReceiverSessionStateRecord::RemoveRedDataSegment()
 {
     NS_LOG_FUNCTION(this);
     Ptr<Packet> p = nullptr;
-    if (m_rxRedBuffer.size() > 0)
+    if (!m_rxRedBuffer.empty())
     {
-        std::map<uint32_t, Ptr<Packet>>::iterator it = m_rxRedBuffer.begin();
+        auto it = m_rxRedBuffer.begin();
         p = it->second;
         m_rxRedBuffer.erase(it);
     }
@@ -959,7 +959,7 @@ ReceiverSessionStateRecord::RemoveGreenDataSegment()
 {
     NS_LOG_FUNCTION(this);
     Ptr<Packet> p = nullptr;
-    if (m_rxGreendBuffer.size() > 0)
+    if (!m_rxGreendBuffer.empty())
     {
         p = m_rxGreendBuffer.front();
         m_rxGreendBuffer.pop();
@@ -1185,7 +1185,7 @@ LtpBundleCla::Send(Ptr<Packet> p)
 
     uint64_t rdSize = p->GetSize();
 
-    uint8_t* buffer = new uint8_t[rdSize];
+    auto* buffer = new uint8_t[rdSize];
     p->CopyData(buffer, rdSize);
     std::vector<uint8_t> data(buffer, buffer + rdSize);
     ssend->CopyBlockData(data);
@@ -1277,11 +1277,11 @@ void
 LtpBundleCla::CancelSession(SessionId id)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         it->second->Cancel(LOCAL_CANCEL, (CxReasonCode)0);
-        ClientServiceInstances::iterator itCls =
+        auto itCls =
             m_activeClients.find(it->second->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())
         {
@@ -1311,7 +1311,7 @@ LtpBundleCla::EncapsulateBlockData(Address remoteAddress,
     uint64_t length = 0;
     uint16_t mtu = GetMtu();
     uint64_t dataSize = p->GetSize();
-    uint8_t* buffer = new uint8_t[dataSize];
+    auto* buffer = new uint8_t[dataSize];
     p->CopyData(buffer, dataSize);
     std::vector<uint8_t> data(buffer, buffer + dataSize);
     delete[] buffer;
@@ -1375,8 +1375,8 @@ LtpBundleCla::EncapsulateBlockData(Address remoteAddress,
             header.SetSegmentType(type);
             contentHeader.SetSegmentType(type);
         }
-        std::vector<uint8_t>::const_iterator start = data.begin() + offset;
-        std::vector<uint8_t>::const_iterator end =
+        auto start = data.begin() + offset;
+        auto end =
             (offset + length > data.size()) ? data.end() : data.begin() + offset + length;
         std::vector<uint8_t> segmentData(start, end);
         Ptr<Packet> packet =
@@ -1392,7 +1392,7 @@ void
 LtpBundleCla::CloseSession(SessionId id)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         Ptr<SessionStateRecord> ssr = it->second;
@@ -1404,7 +1404,7 @@ LtpBundleCla::CloseSession(SessionId id)
         }
         ssr->CancelTimer(CHECKPOINT);
         ssr->CancelTimer(REPORT);
-        ClientServiceInstances::iterator itCls =
+        auto itCls =
             m_activeClients.find(ssr->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())
         {
@@ -1418,10 +1418,10 @@ void
 LtpBundleCla::SignifyRedPartReception(SessionId id)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
-        ClientServiceInstances::iterator itCls =
+        auto itCls =
             m_activeClients.find(it->second->GetLocalClientServiceId());
         std::vector<uint8_t> blockData;
         bool EOB = false;
@@ -1430,7 +1430,7 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
         {
             Ptr<ReceiverSessionStateRecord> ssr =
                 DynamicCast<ReceiverSessionStateRecord>(it->second);
-            Ptr<Packet> p = 0;
+            Ptr<Packet> p = nullptr;
             LtpHeader header;
             LtpContentHeader contentHeader;
             while ((p = ssr->RemoveRedDataSegment()))
@@ -1439,7 +1439,7 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
                 contentHeader.SetSegmentType(header.GetSegmentType());
                 p->RemoveHeader(contentHeader);
                 uint32_t size = p->GetSize();
-                uint8_t* raw_data = new uint8_t[size];
+                auto* raw_data = new uint8_t[size];
                 p->CopyData(raw_data, size);
                 std::vector<uint8_t> packetData(raw_data, raw_data + size);
                 blockData.insert(blockData.end(), packetData.begin(), packetData.end());
@@ -1469,18 +1469,18 @@ void
 LtpBundleCla::SignifyGreenPartSegmentArrival(SessionId id)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it == m_activeSessions.end())
     {
         return;
     }
-    ClientServiceInstances::iterator itCls =
+    auto itCls =
         m_activeClients.find(it->second->GetLocalClientServiceId());
     if (it->second->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
     {
         Ptr<ReceiverSessionStateRecord> ssr = DynamicCast<ReceiverSessionStateRecord>(it->second);
         std::vector<uint8_t> packetData;
-        Ptr<Packet> p = 0;
+        Ptr<Packet> p = nullptr;
         bool EOB = false;
         uint32_t offset = 0;
         Address remoteLtp = it->second->GetPeerLtpEngineId();
@@ -1501,7 +1501,7 @@ LtpBundleCla::SignifyGreenPartSegmentArrival(SessionId id)
                 EOB = true;
             }
             uint32_t size = p->GetSize();
-            uint8_t* raw_data = new uint8_t[size];
+            auto* raw_data = new uint8_t[size];
             p->CopyData(raw_data, size);
             packetData.insert(packetData.end(), raw_data, raw_data + size);
             delete[] raw_data;
@@ -1523,7 +1523,7 @@ void
 LtpBundleCla::CheckRedPartReceived(SessionId id)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         Ptr<ReceiverSessionStateRecord> ssr = DynamicCast<ReceiverSessionStateRecord>(it->second);
@@ -1534,7 +1534,7 @@ LtpBundleCla::CheckRedPartReceived(SessionId id)
                 return;
             }
             RedSegmentInfo info = ssr->FindMissingClaims(ssr->GetRpCurrentSerialNumber());
-            if (info.claims.size() == 0)
+            if (info.claims.empty())
             {
                 ssr->SetRedPartFinished();
             }
@@ -1546,7 +1546,7 @@ void
 LtpBundleCla::ReportSegmentTransmission(SessionId id, uint64_t cpSerialNum)
 {
     NS_LOG_FUNCTION(this << id << cpSerialNum);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it == m_activeSessions.end())
     {
         return;
@@ -1572,7 +1572,7 @@ LtpBundleCla::ReportSegmentTransmission(SessionId id, uint64_t cpSerialNum)
     contentHeader.SetUpperBound(upperBound);
     contentHeader.SetLowerBound(lowerBound);
     std::set<LtpContentHeader::ReceptionClaim> claims = srecv->GetClaims(RpSerial);
-    for (std::set<LtpContentHeader::ReceptionClaim>::iterator itC = claims.begin();
+    for (auto itC = claims.begin();
          itC != claims.end();
          ++itC)
     {
@@ -1588,7 +1588,7 @@ void
 LtpBundleCla::ReportSegmentAckTransmission(SessionId id, uint64_t rpSerialNum)
 {
     NS_LOG_FUNCTION(this << id << rpSerialNum);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     Ptr<Packet> p = Create<Packet>();
     LtpHeader header;
     LtpContentHeader contentHeader;
@@ -1617,7 +1617,7 @@ void
 LtpBundleCla::RetransmitSegment(SessionId id, RedSegmentInfo info)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         Ptr<SenderSessionStateRecord> ssr = DynamicCast<SenderSessionStateRecord>(it->second);
@@ -1640,7 +1640,7 @@ void
 LtpBundleCla::RetransmitReport(SessionId id, RedSegmentInfo info)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         Ptr<ReceiverSessionStateRecord> srecv = DynamicCast<ReceiverSessionStateRecord>(it->second);
@@ -1673,9 +1673,9 @@ LtpBundleCla::HandleRead(Ptr<Socket> socket)
         packet->RemoveHeader(contentHeader);
         SessionId id = header.GetSessionId();
         SegmentType type = header.GetSegmentType();
-        SessionStateRecords::iterator itSessions = m_activeSessions.find(id);
-        Ptr<ReceiverSessionStateRecord> srecv = 0;
-        Ptr<SenderSessionStateRecord> ssend = 0;
+        auto itSessions = m_activeSessions.find(id);
+        Ptr<ReceiverSessionStateRecord> srecv = nullptr;
+        Ptr<SenderSessionStateRecord> ssend = nullptr;
         if (itSessions == m_activeSessions.end())
         {
             if (!LtpHeader::IsDataSegment(type))
@@ -1775,7 +1775,7 @@ LtpBundleCla::HandleRead(Ptr<Socket> socket)
                     ssend->CancelTimer(CHECKPOINT);
                     ssend->StoreClaims(contentHeader);
                     retrans_info = ssend->FindMissingClaims(contentHeader.GetRpSerialNumber());
-                    if (retrans_info.claims.size())
+                    if (!retrans_info.claims.empty())
                     {
                         RetransmitSegment(id, retrans_info);
                     }
@@ -1825,7 +1825,7 @@ void
 LtpBundleCla::SetCheckPointTransmissionTimer(SessionId id, RedSegmentInfo info)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         double rtt = m_onewayLightTime.GetSeconds() * 2 + m_localDelays.GetSeconds() * 2 + 1.0;
@@ -1844,7 +1844,7 @@ void
 LtpBundleCla::SetReportReTransmissionTimer(SessionId id, RedSegmentInfo info)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         double rtt = m_onewayLightTime.GetSeconds() * 2 + m_localDelays.GetSeconds() * 2 + 1.0;
@@ -1863,7 +1863,7 @@ void
 LtpBundleCla::SetEndOfBlockTransmission(SessionId id)
 {
     NS_LOG_FUNCTION(this << id);
-    SessionStateRecords::iterator it = m_activeSessions.find(id);
+    auto it = m_activeSessions.find(id);
     if (it != m_activeSessions.end())
     {
         Ptr<SenderSessionStateRecord> ssend = DynamicCast<SenderSessionStateRecord>(it->second);

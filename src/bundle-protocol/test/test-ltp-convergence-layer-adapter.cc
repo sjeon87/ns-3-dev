@@ -34,10 +34,10 @@ class LtpHeaderTestCase : public TestCase
 {
   public:
     LtpHeaderTestCase();
-    virtual ~LtpHeaderTestCase();
+    ~LtpHeaderTestCase() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 
     void SetSessionIds();
     void SetExtensions();
@@ -280,7 +280,7 @@ LtpHeaderTestCase::SetContentHeaderTests()
 }
 
 void
-LtpHeaderTestCase::DoRun(void)
+LtpHeaderTestCase::DoRun()
 {
     SetSessionIds();
     SetExtensions();
@@ -349,10 +349,10 @@ class LtpQueueSetTestCase : public TestCase
 {
   public:
     LtpQueueSetTestCase();
-    virtual ~LtpQueueSetTestCase();
+    ~LtpQueueSetTestCase() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 
     void SetTests();
 
@@ -413,7 +413,7 @@ LtpQueueSetTestCase::SetTests()
 }
 
 void
-LtpQueueSetTestCase::DoRun(void)
+LtpQueueSetTestCase::DoRun()
 {
     LtpQueueSet queue;
     bool success = true;
@@ -440,10 +440,10 @@ class LtpSessionStateRecordTestCase : public TestCase
 {
   public:
     LtpSessionStateRecordTestCase();
-    virtual ~LtpSessionStateRecordTestCase();
+    ~LtpSessionStateRecordTestCase() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 
     void SetTimerTests();
     void TimerTest(uint32_t);
@@ -482,7 +482,7 @@ LtpSessionStateRecordTestCase::TimerTest(uint32_t index)
 }
 
 void
-LtpSessionStateRecordTestCase::DoRun(void)
+LtpSessionStateRecordTestCase::DoRun()
 {
     Ptr<UniformRandomVariable> number = CreateObject<UniformRandomVariable>();
 
@@ -607,10 +607,10 @@ class BundleAgentLtpClaTestCase : public TestCase
 {
   public:
     BundleAgentLtpClaTestCase();
-    virtual ~BundleAgentLtpClaTestCase();
+    ~BundleAgentLtpClaTestCase() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
 };
 
 BundleAgentLtpClaTestCase::BundleAgentLtpClaTestCase()
@@ -623,7 +623,7 @@ BundleAgentLtpClaTestCase::~BundleAgentLtpClaTestCase()
 }
 
 void
-BundleAgentLtpClaTestCase::DoRun(void)
+BundleAgentLtpClaTestCase::DoRun()
 {
     Ptr<BundleAgent> agent = CreateObject<BundleAgent>();
     agent->SetLocalEID("dtn:nodeA");

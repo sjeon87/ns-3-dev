@@ -37,19 +37,19 @@ BundleAgentContainer::BundleAgentContainer(std::string name)
 }
 
 BundleAgentContainer::Iterator
-BundleAgentContainer::Begin(void) const
+BundleAgentContainer::Begin() const
 {
     return m_bundleAgents.begin();
 }
 
 BundleAgentContainer::Iterator
-BundleAgentContainer::End(void) const
+BundleAgentContainer::End() const
 {
     return m_bundleAgents.end();
 }
 
 uint32_t
-BundleAgentContainer::GetN(void) const
+BundleAgentContainer::GetN() const
 {
     return m_bundleAgents.size();
 }
@@ -63,7 +63,7 @@ BundleAgentContainer::Get(uint32_t i) const
 void
 BundleAgentContainer::Add(BundleAgentContainer other)
 {
-    for (Iterator i = other.Begin(); i != other.End(); i++)
+    for (auto i = other.Begin(); i != other.End(); i++)
     {
         m_bundleAgents.push_back(*i);
     }
@@ -104,7 +104,7 @@ BundleAgentContainer
 BundleAgentHelper::Install(NodeContainer c)
 {
     BundleAgentContainer apps;
-    for (NodeContainer::Iterator i = c.Begin(); i != c.End(); ++i)
+    for (auto i = c.Begin(); i != c.End(); ++i)
     {
         apps.Add(InstallPriv(*i));
     }
@@ -148,19 +148,19 @@ BundleClaContainer::BundleClaContainer(std::string name)
 }
 
 BundleClaContainer::Iterator
-BundleClaContainer::Begin(void) const
+BundleClaContainer::Begin() const
 {
     return m_clas.begin();
 }
 
 BundleClaContainer::Iterator
-BundleClaContainer::End(void) const
+BundleClaContainer::End() const
 {
     return m_clas.end();
 }
 
 uint32_t
-BundleClaContainer::GetN(void) const
+BundleClaContainer::GetN() const
 {
     return m_clas.size();
 }
@@ -174,7 +174,7 @@ BundleClaContainer::Get(uint32_t i) const
 void
 BundleClaContainer::Add(BundleClaContainer other)
 {
-    for (Iterator i = other.Begin(); i != other.End(); i++)
+    for (auto i = other.Begin(); i != other.End(); i++)
     {
         m_clas.push_back(*i);
     }
@@ -221,7 +221,7 @@ BundleClaContainer
 BundleClaHelper::Install(NodeContainer c)
 {
     BundleClaContainer clas;
-    for (NodeContainer::Iterator i = c.Begin(); i != c.End(); ++i)
+    for (auto i = c.Begin(); i != c.End(); ++i)
     {
         clas.Add(InstallPriv(*i));
     }
