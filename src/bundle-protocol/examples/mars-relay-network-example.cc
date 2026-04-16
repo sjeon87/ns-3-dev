@@ -55,7 +55,7 @@ main(int argc, char* argv[])
     LogComponentEnable("ContactGraph", LOG_LEVEL_ALL);
 
     std::string contactPlanPath =
-        "/mnt/home/lagwanka/ns-3-dev/src/bundle-protocol/examples/contactGraph.csv";
+        "src/bundle-protocol/examples/contactGraph.csv";
 
     std::vector<std::string> mrnEids = {"dtn://earth/dsn",
                                         "dtn://mars/mro",
