@@ -56,7 +56,7 @@ enum FrequencyRange
 };
 
 /**
- * @brief get frequency range accroding to TS 138 101-5 V18.5.0 Table 5.1-1 (NTN)
+ * @brief get frequency range according to TS 138 101-5 V18.5.0 Table 5.1-1 (NTN)
  *
  * @param fcHz the carrier frequency in Hz
  * @return FrequencyRange
