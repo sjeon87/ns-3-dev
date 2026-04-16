@@ -41,7 +41,7 @@ The area inside the box represents the main classes of LTP in |ns3|.
 
 * Class ``ns3::ltp::LtpProtocol`` implements several LTP APIs to Client Service Instance, such as
   RegisterClientService (), UnregisterClientService (), StartTransmission () and CancelTransmission().
-  Client Service Instance can use these APIs to register within the LTP for reception 
+  Client Service Instance can use these APIs to register within the LTP for reception
   and transmission of Blocks between LTP engines.
 
 * Class ``ns3::ltp::LtpSessionStateRecord`` is a class to keep track of the state of an LTP transmission session,
@@ -251,10 +251,10 @@ Validation
 
 The model provides two main test-suites:
 
-- ltp-protocol: This test suite contains unit tests for the auxiliary data structures of the protocol. 
+- ltp-protocol: This test suite contains unit tests for the auxiliary data structures of the protocol.
 Each test creates objects assigning different values and uses its functions with extensive combinations and use cases.
 The following classes are tested in this suite:
- 
+
 * SessionId
 * LtpHeader
 * LtpTrailer
