@@ -1,8 +1,6 @@
 build_lib(
   LIBNAME bundle-protocol
   SOURCE_FILES
-    model/bp-cla-protocol.cc
-    model/bp-tcp-cla-protocol.cc
     model/bp-endpoint-id.cc
     model/bp-header.cc
     model/bp-payload-header.cc
@@ -13,11 +11,12 @@ build_lib(
     helper/bundle-protocol-helper.cc
     helper/bundle-protocol-container.cc
     model/ltp-header.cc
+    model/generic-convergence-layer-adapter.cc
     model/ltp-convergence-layer-adapter.cc
+    model/tcp-convergence-layer-adapter.cc
+    model/udp-convergence-layer-adapter.cc
 
   HEADER_FILES
-    model/bp-cla-protocol.h
-    model/bp-tcp-cla-protocol.h
     model/bp-endpoint-id.h
     model/bp-header.h
     model/bp-payload-header.h
@@ -28,7 +27,10 @@ build_lib(
     helper/bundle-protocol-helper.h
     helper/bundle-protocol-container.h
     model/ltp-header.h
+    model/generic-convergence-layer-adapter.h
     model/ltp-convergence-layer-adapter.h
+    model/tcp-convergence-layer-adapter.h
+    model/udp-convergence-layer-adapter.h
 
   LIBRARIES_TO_LINK
     ${libcore}
