@@ -69,7 +69,7 @@ getFrequencyRange(double fcHz)
         return FrequencyRange::FR1;
     }
 
-    if (fcHz > 17.3e9 && fcHz < 30.6e9)
+    if (fcHz > 17.3e9 && fcHz < 30e9)
     {
         return FrequencyRange::FR2;
     }
@@ -174,7 +174,7 @@ struct UEChannelBandwidth
 
     /**
      * @brief calculateNrb based on frequency, channel bandwidth and rb width
-     * formula for calculating Nrbs: (1000*BW - SCS - (GbwR + GbwL))/12*SCS
+     * formula for calculating Nrbs: (1000*BW - SCS - 2*Gbw)/12*SCS
      * please check TS 138 101-5 5.3.3 NOTE
      *
      * @param fcHz the carrier frequency in Hz
@@ -188,8 +188,8 @@ struct UEChannelBandwidth
             return 0;
         }
 
-        return std::floor((total / 1000 - perRB / 1000 - (getGuardband(fcHz) * 2)) /
-                          (12 * (perRB / 1000)));
+        return std::floor((total / 1e3 - perRB / 1e3 - (getGuardband(fcHz) * 2)) /
+                          (12 * (perRB / 1e3)));
     }
 };
 
