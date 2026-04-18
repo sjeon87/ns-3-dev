@@ -33,6 +33,7 @@
 #include "tcp-option-winscale.h"
 #include "tcp-rate-ops.h"
 #include "tcp-recovery-ops.h"
+#include "tcp-retransmit-tag.h"
 #include "tcp-rx-buffer.h"
 #include "tcp-tx-buffer.h"
 
@@ -1382,6 +1383,10 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
     // in case the packet still has a priority tag attached, remove it
     SocketPriorityTag priorityTag;
     packet->RemovePacketTag(priorityTag);
+
+    // in case the packet still has a retx tag attached, remove it
+    TcpRetransmitTag retxTag;
+    packet->RemovePacketTag(retxTag);
 
     // Peel off TCP header
     TcpHeader tcpHeader;
@@ -3345,6 +3350,13 @@ TcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withA
                           << Simulator::Now().GetSeconds() << " to expire at time "
                           << (Simulator::Now() + m_rto.Get()).GetSeconds());
         m_retxEvent = Simulator::Schedule(m_rto, &TcpSocketBase::ReTxTimeout, this);
+    }
+
+    if (isRetransmission)
+    {
+        // Observable by intermediate queue discs; stripped at receiver DoForwardUp.
+        TcpRetransmitTag retxTag(1);
+        p->AddPacketTag(retxTag);
     }
 
     m_txTrace(p, header, this);
