@@ -261,7 +261,8 @@
                 auto flags = ns3_log_msg_oss.setf(std::ios_base::boolalpha);                       \
                 ns3::ParameterLogger(ns3_log_msg_oss) << parameters;                               \
                 ns3_log_msg_oss.flags(flags);                                                      \
-                std::string func_sig = std::string(__FUNCTION__) + "(" + ns3_log_msg_oss.str() + ")"; \
+                std::string func_sig =                                                             \
+                    std::string(__FUNCTION__) + "(" + ns3_log_msg_oss.str() + ")";                 \
                 if (g_log.CheckFilter(func_sig))                                                   \
                 {                                                                                  \
                     NS_LOG_APPEND_TIME_PREFIX;                                                     \
