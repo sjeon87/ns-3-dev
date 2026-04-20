@@ -21,7 +21,6 @@
 //   NS_LOG_APPEND_TIME_PREFIX_IMPL
 //   NS_LOG_APPEND_NODE_PREFIX_IMPL
 // need to be defined in all configurations (debug, release, optimized)
-// for use by NS_FATAL.
 
 /**
  * @ingroup logging

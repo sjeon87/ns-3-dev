@@ -290,8 +290,14 @@ LogComponent::GetLevelLabel(const LogLevel level)
 void
 LogComponent::SetFilter(const std::string& filter)
 {
-    m_filter = filter;
-    m_hasFilter = true;
+    if (!m_filter)
+    {
+        m_filter = new std::string(filter); // Intentionally leaked
+    }
+    else
+    {
+        *m_filter = filter;
+    }
 }
 
 /**
@@ -303,12 +309,12 @@ LogComponent::SetFilter(const std::string& filter)
 bool
 LogComponent::CheckFilter(const std::string& message) const
 {
-    if (!m_hasFilter)
+    if (!m_filter)
     {
         return true; // Fast path: if no filter is set, allow everything
     }
     // Simple substring match for performance.
-    return message.find(m_filter) != std::string::npos;
+    return message.find(*m_filter) != std::string::npos;
 }
 
 void

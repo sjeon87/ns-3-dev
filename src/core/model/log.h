@@ -400,7 +400,7 @@ class LogComponent
      */
     bool HasFilter() const
     {
-        return m_hasFilter;
+        return m_filter != nullptr;
     }
 
     /**
@@ -450,11 +450,9 @@ class LogComponent
     std::string m_name; //!< LogComponent name.
     std::string m_file; //!< File defining this LogComponent.
 
-    std::string m_filter;    //!< String to filter log messages by.
-    bool m_hasFilter{false}; //!< True if a filter is set.
+    std::string* m_filter{nullptr}; //!< Leaked string pointer to survive static destruction.
 
-    // end of class LogComponent
-};
+}; // end of class LogComponent
 
 /**
  * Get the LogComponent registered with the given name.
