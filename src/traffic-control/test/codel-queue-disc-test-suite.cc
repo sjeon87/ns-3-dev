@@ -1312,6 +1312,87 @@ CoDelQueueDiscBasicMark::Dequeue(Ptr<CoDelQueueDisc> queue, uint32_t modeSize, u
 /**
  * @ingroup traffic-control-test
  *
+ * @brief Test 7: test that Peek does not alter the internal state
+ */
+class CoDelQueueDiscPeekTest : public TestCase
+{
+  public:
+    /**
+     * Constructor
+     *
+     * @param mode the mode
+     */
+    CoDelQueueDiscPeekTest(QueueSizeUnit mode);
+    void DoRun() override;
+
+  private:
+    /**
+     * Peek and check function
+     * @param queue the queue disc
+     * @param modeSize the mode size
+     */
+    void PeekAndCheck(Ptr<CoDelQueueDisc> queue, uint32_t modeSize);
+    QueueSizeUnit m_mode; ///< mode
+};
+
+CoDelQueueDiscPeekTest::CoDelQueueDiscPeekTest(QueueSizeUnit mode)
+    : TestCase("Peek operation state preservation")
+{
+    m_mode = mode;
+}
+
+void
+CoDelQueueDiscPeekTest::DoRun()
+{
+    Ptr<CoDelQueueDisc> queue = CreateObject<CoDelQueueDisc>();
+    uint32_t pktSize = 1000;
+    uint32_t modeSize = (m_mode == QueueSizeUnit::BYTES) ? pktSize : 1;
+
+    NS_TEST_ASSERT_MSG_EQ(
+        queue->SetAttributeFailSafe("MaxSize", QueueSizeValue(QueueSize(m_mode, modeSize * 500))),
+        true,
+        "Verify that we can actually set the attribute MaxSize");
+
+    queue->Initialize();
+
+    Address dest;
+    queue->Enqueue(Create<CodelQueueDiscTestItem>(Create<Packet>(pktSize), dest, false));
+
+    NS_TEST_ASSERT_MSG_EQ(queue->GetCurrentSize().GetValue(),
+                          1 * modeSize,
+                          "There should be 1 packet in queue.");
+
+    // Wait past the target delay so that a standard Dequeue would trigger state changes
+    Time waitTime = 2 * queue->GetTarget();
+    Simulator::Schedule(waitTime, &CoDelQueueDiscPeekTest::PeekAndCheck, this, queue, modeSize);
+
+    Simulator::Run();
+    Simulator::Destroy();
+}
+
+void
+CoDelQueueDiscPeekTest::PeekAndCheck(Ptr<CoDelQueueDisc> queue, uint32_t modeSize)
+{
+    uint32_t initialDropNext = queue->GetDropNext();
+
+    Ptr<const QueueDiscItem> item = queue->Peek();
+
+    NS_TEST_ASSERT_MSG_NE(item, nullptr, "Peeked item should not be null");
+    NS_TEST_ASSERT_MSG_EQ(queue->GetCurrentSize().GetValue(),
+                          1 * modeSize,
+                          "Peek should not remove the packet");
+    NS_TEST_ASSERT_MSG_EQ(queue->GetDropNext(),
+                          initialDropNext,
+                          "Peek should not alter the CoDel m_dropNext state");
+    NS_TEST_ASSERT_MSG_EQ(
+        queue->GetStats().GetNDroppedPackets(CoDelQueueDisc::TARGET_EXCEEDED_DROP),
+        0,
+        "Peek should not drop packets");
+}
+
+/**
+ * @ingroup traffic-control-test
+ *
  * @brief CoDel Queue Disc Test Suite
  */
 static class CoDelQueueDiscTestSuite : public TestSuite
@@ -1340,5 +1421,8 @@ static class CoDelQueueDiscTestSuite : public TestSuite
         // Test 6: enqueue/dequeue with marks according to CoDel algorithm
         AddTestCase(new CoDelQueueDiscBasicMark(QueueSizeUnit::PACKETS), TestCase::Duration::QUICK);
         AddTestCase(new CoDelQueueDiscBasicMark(QueueSizeUnit::BYTES), TestCase::Duration::QUICK);
+        // Test 7: test that Peek does not alter internal state
+        AddTestCase(new CoDelQueueDiscPeekTest(QueueSizeUnit::PACKETS), TestCase::Duration::QUICK);
+        AddTestCase(new CoDelQueueDiscPeekTest(QueueSizeUnit::BYTES), TestCase::Duration::QUICK);
     }
 } g_coDelQueueTestSuite; ///< the test suite

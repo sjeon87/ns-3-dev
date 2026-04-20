@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Pasquale Imputato <p.imputato@gmail.com>
- *          Stefano Avallone <stefano.avallone@unina.it>
+ * Stefano Avallone <stefano.avallone@unina.it>
  */
 
 #include "fq-codel-queue-disc.h"
@@ -299,6 +299,42 @@ FqCoDelQueueDisc::DoEnqueue(Ptr<QueueDiscItem> item)
     }
 
     return true;
+}
+
+Ptr<const QueueDiscItem>
+FqCoDelQueueDisc::DoPeek()
+{
+    NS_LOG_FUNCTION(this);
+    for (const auto& flow : m_newFlows)
+    {
+        if (flow->GetDeficit() > 0 && flow->GetQueueDisc()->GetNPackets() > 0)
+        {
+            return flow->GetQueueDisc()->Peek();
+        }
+    }
+    for (const auto& flow : m_oldFlows)
+    {
+        if (flow->GetDeficit() > 0 && flow->GetQueueDisc()->GetNPackets() > 0)
+        {
+            return flow->GetQueueDisc()->Peek();
+        }
+    }
+    for (const auto& flow : m_newFlows)
+    {
+        if (flow->GetQueueDisc()->GetNPackets() > 0)
+        {
+            return flow->GetQueueDisc()->Peek();
+        }
+    }
+    for (const auto& flow : m_oldFlows)
+    {
+        if (flow->GetQueueDisc()->GetNPackets() > 0)
+        {
+            return flow->GetQueueDisc()->Peek();
+        }
+    }
+    NS_LOG_LOGIC("Queue empty");
+    return nullptr;
 }
 
 Ptr<QueueDiscItem>

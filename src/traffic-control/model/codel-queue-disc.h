@@ -8,8 +8,8 @@
  *
  * This port based on linux kernel code by
  * Authors:
- *   Dave Täht <d@taht.net>
- *   Eric Dumazet <edumazet@google.com>
+ * Dave Täht <d@taht.net> // codespell:ignore taht
+ * Eric Dumazet <edumazet@google.com>
  *
  * Ported to ns-3 by: Andrew McGregor <andrewmcgr@gmail.com>
  */
@@ -121,11 +121,18 @@ class CoDelQueueDisc : public QueueDisc
      */
     Ptr<QueueDiscItem> DoDequeue() override;
 
+    /**
+     * @brief Peek a packet from the queue without removing it
+     *
+     * @returns The packet that is peeked
+     */
+    Ptr<const QueueDiscItem> DoPeek() override;
+
     bool CheckConfig() override;
 
     /**
      * @brief Calculate the reciprocal square root of m_count by using Newton's method
-     *  http://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Iterative_methods_for_reciprocal_square_roots
+     * http://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Iterative_methods_for_reciprocal_square_roots
      * m_recInvSqrt (new) = (m_recInvSqrt (old) / 2) * (3 - m_count * m_recInvSqrt^2)
      * @param recInvSqrt reciprocal value of sqrt (count)
      * @param count count value

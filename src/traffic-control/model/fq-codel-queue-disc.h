@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-2.0-only
  *
  * Authors: Pasquale Imputato <p.imputato@gmail.com>
- *          Stefano Avallone <stefano.avallone@unina.it>
+ * Stefano Avallone <stefano.avallone@unina.it>
  */
 
 #ifndef FQ_CODEL_QUEUE_DISC
@@ -139,6 +139,7 @@ class FqCoDelQueueDisc : public QueueDisc
   private:
     bool DoEnqueue(Ptr<QueueDiscItem> item) override;
     Ptr<QueueDiscItem> DoDequeue() override;
+    Ptr<const QueueDiscItem> DoPeek() override;
     bool CheckConfig() override;
     void InitializeParams() override;
 

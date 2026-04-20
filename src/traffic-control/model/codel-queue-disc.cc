@@ -8,8 +8,8 @@
  *
  * This port based on linux kernel code by
  * Authors:
- *   Dave Täht <d@taht.net>
- *   Eric Dumazet <edumazet@google.com>
+ * Dave Täht <d@taht.net> // codespell:ignore taht
+ * Eric Dumazet <edumazet@google.com>
  *
  * Ported to ns-3 by: Andrew McGregor <andrewmcgr@gmail.com>
  */
@@ -225,6 +225,20 @@ CoDelQueueDisc::OkToDrop(Ptr<QueueDiscItem> item, uint32_t now)
         okToDrop = true;
     }
     return okToDrop;
+}
+
+Ptr<const QueueDiscItem>
+CoDelQueueDisc::DoPeek()
+{
+    NS_LOG_FUNCTION(this);
+    Ptr<const QueueDiscItem> item = GetInternalQueue(0)->Peek();
+    if (!item)
+    {
+        NS_LOG_LOGIC("Queue empty");
+        return nullptr;
+    }
+    NS_LOG_LOGIC("Peeked " << item);
+    return item;
 }
 
 Ptr<QueueDiscItem>
