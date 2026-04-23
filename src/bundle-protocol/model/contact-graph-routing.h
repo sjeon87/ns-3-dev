@@ -13,6 +13,8 @@
 #ifndef CONTACT_GRAPH_ROUTING_H
 #define CONTACT_GRAPH_ROUTING_H
 
+#include "base-routing-engine.h"
+
 #include "bundle.h"
 
 #include "ns3/nstime.h"
@@ -41,7 +43,7 @@ struct ContactWindow
     Time delay;
 };
 
-class ContactGraph : public Object
+class ContactGraph : public RoutingEngine
 {
   public:
     static TypeId GetTypeId();
@@ -61,7 +63,7 @@ class ContactGraph : public Object
                          Time delay);
     const std::vector<ContactWindow>& GetContactWindows() const;
 
-    std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID);
+    std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID) override;
 
     uint32_t FindIndex(const std::string& eid) const;
 

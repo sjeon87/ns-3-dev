@@ -88,7 +88,7 @@ BundleAgent::SetBundleStorageEngine(Ptr<BundleStorageEngine> bundleStorageEngine
 }
 
 void
-BundleAgent::SetContactGraph(Ptr<ContactGraph> contactGraph)
+BundleAgent::SetContactGraph(Ptr<RoutingEngine> contactGraph)
 {
     NS_LOG_FUNCTION(this << contactGraph);
     m_contactGraph = contactGraph;

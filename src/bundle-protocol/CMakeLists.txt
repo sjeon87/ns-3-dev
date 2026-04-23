@@ -8,6 +8,7 @@ build_lib(
     model/bundle-header.cc
     model/bundle-storage-engine.cc
     model/bundle.cc
+    model/base-routing-engine.cc
     model/contact-graph-routing.cc
     model/contact-parser.cc
     model/generic-convergence-layer-adapter.cc
@@ -25,6 +26,7 @@ build_lib(
     model/bundle-storage-engine.h
     model/bundle.h
     model/bundle-protocol-flags.h
+    model/base-routing-engine.h
     model/contact-graph-routing.h
     model/contact-parser.h
     model/generic-convergence-layer-adapter.h
