@@ -15,22 +15,52 @@
 #define BASE_ROUTING_ENGINE_H
 
 #include "bundle.h"
+
+#include "ns3/nstime.h"
 #include "ns3/object.h"
 #include "ns3/ptr.h"
 
 #include <string>
+#include <vector>
 
 namespace ns3
 {
 
-class RoutingEngine : public Object
+struct ContactWindow
+{
+    std::string fromEID;
+    std::string toEID;
+    Time startTime;
+    Time endTime;
+    uint32_t dataRate;
+    Time delay;
+};
+
+class BaseRoutingEngine : public Object
 {
   public:
     static TypeId GetTypeId();
-    RoutingEngine();
-    ~RoutingEngine() override;
+    BaseRoutingEngine();
+    ~BaseRoutingEngine() override;
 
     virtual std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID) = 0;
+    virtual void InitializeMap(const std::vector<std::string>& eidList) = 0;
+    virtual void AddContact(const std::string& fromEID,
+                            const std::string& toEID,
+                            uint32_t dataRate) = 0;
+    virtual void RemoveContact(const std::string& fromEID, const std::string& toEID) = 0;
+
+    void AddTimedContact(const std::string& fromEID,
+                         const std::string& toEID,
+                         Time startTime,
+                         Time endTime,
+                         uint32_t dataRate,
+                         Time delay);
+
+    const std::vector<ContactWindow>& GetContactWindows() const;
+
+  protected:
+    std::vector<ContactWindow> m_contactWindows;
 };
 
 } // namespace ns3

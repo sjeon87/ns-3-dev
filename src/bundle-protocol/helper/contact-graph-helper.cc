@@ -7,7 +7,6 @@
  */
 #include "contact-graph-helper.h"
 
-#include "ns3/contact-graph-routing.h"
 #include "ns3/contact-parser.h"
 #include "ns3/fatal-error.h"
 #include "ns3/log.h"
@@ -20,6 +19,7 @@ NS_LOG_COMPONENT_DEFINE("ContactGraphHelper");
 ContactGraphHelper::ContactGraphHelper()
     : m_filename("")
 {
+    m_factory.SetTypeId("ns3::ContactGraph");
 }
 
 void
@@ -28,15 +28,27 @@ ContactGraphHelper::SetContactPlan(const std::string& filename)
     m_filename = filename;
 }
 
-Ptr<ContactGraph>
+void
+ContactGraphHelper::SetRoutingEngine(const std::string& typeId)
+{
+    m_factory.SetTypeId(typeId);
+}
+
+Ptr<BaseRoutingEngine>
 ContactGraphHelper::Install()
 {
     if (m_filename.empty())
     {
-        NS_FATAL_ERROR("Contact plan filename not set. Call SetContactPlan() before Install().");
+        NS_FATAL_ERROR("Contact plan filename not set.");
     }
 
-    Ptr<ContactGraph> graph = CreateObject<ContactGraph>();
+    Ptr<BaseRoutingEngine> graph = m_factory.Create<BaseRoutingEngine>();
+
+    if (!graph)
+    {
+        NS_FATAL_ERROR("CRASH AVERTED: ObjectFactory failed to build '"
+                       << m_factory.GetTypeId().GetName());
+    }
 
     bool success = ContactParser::ParseFile(m_filename, graph);
 
@@ -45,7 +57,8 @@ ContactGraphHelper::Install()
         NS_FATAL_ERROR("Failed to parse the contact plan: " << m_filename);
     }
 
-    NS_LOG_INFO("ContactGraphHelper successfully installed the graph.");
+    NS_LOG_INFO(
+        "ContactGraphHelper successfully installed: " << graph->GetInstanceTypeId().GetName());
 
     return graph;
 }

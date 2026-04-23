@@ -12,34 +12,45 @@
  */
 
 #include "base-routing-engine.h"
-#include "bundle.h"
-#include "ns3/object.h"
-#include "ns3/ptr.h"
 
-#include <string>
+#include "ns3/log.h"
 
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("RoutingEngine");
+NS_LOG_COMPONENT_DEFINE("BaseRoutingEngine");
 
 TypeId
-RoutingEngine::GetTypeId()
+BaseRoutingEngine::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::RoutingEngine")
-                            .SetParent<Object>()
-                            .SetGroupName("BundleProtocol");
+    static TypeId tid =
+        TypeId("ns3::BaseRoutingEngine").SetParent<Object>().SetGroupName("BundleProtocol");
     return tid;
 }
 
-RoutingEngine::RoutingEngine()
+BaseRoutingEngine::BaseRoutingEngine()
 {
-    NS_LOG_FUNCTION(this);
 }
 
-RoutingEngine::~RoutingEngine()
+BaseRoutingEngine::~BaseRoutingEngine()
 {
-    NS_LOG_FUNCTION(this);
+}
+
+void
+BaseRoutingEngine::AddTimedContact(const std::string& fromEID,
+                                   const std::string& toEID,
+                                   Time startTime,
+                                   Time endTime,
+                                   uint32_t dataRate,
+                                   Time delay)
+{
+    m_contactWindows.push_back({fromEID, toEID, startTime, endTime, dataRate, delay});
+}
+
+const std::vector<ContactWindow>&
+BaseRoutingEngine::GetContactWindows() const
+{
+    return m_contactWindows;
 }
 
 } // namespace ns3

@@ -30,7 +30,7 @@ namespace ns3
 {
 
 class BundleCla;
-class RoutingEngine;
+class BaseRoutingEngine;
 
 /**
  * @ingroup dtn
@@ -68,7 +68,7 @@ class BundleAgent : public Object
     /**
      * @brief Set the Contact Graph routing oracle
      */
-    void SetContactGraph(Ptr<RoutingEngine> contactGraph);
+    void SetContactGraph(Ptr<BaseRoutingEngine> contactGraph);
 
     /**
      * @brief Get the local EID
@@ -188,8 +188,8 @@ class BundleAgent : public Object
     std::map<std::string, Ptr<BundleCla>> m_clas;   //!< Map of CLAs with destination EIDs
     std::map<uint32_t, EventId> m_expiryEvents;     //!< Expiry event tracker
     BundleReceiveCallback m_receiveCallback;
-    Ptr<RoutingEngine> m_contactGraph; //!< Routing oracle
-    EventId m_backlogCheckEvent;      //!< Event to periodically check backlog
+    Ptr<BaseRoutingEngine> m_contactGraph; //!< Routing oracle
+    EventId m_backlogCheckEvent;           //!< Event to periodically check backlog
 };
 
 } // namespace ns3

@@ -10,6 +10,7 @@ build_lib(
     model/bundle.cc
     model/base-routing-engine.cc
     model/contact-graph-routing.cc
+    model/contact-optimized-dijkstra-routing.cc
     model/contact-parser.cc
     model/generic-convergence-layer-adapter.cc
     model/ltp-convergence-layer-adapter.cc
@@ -28,6 +29,7 @@ build_lib(
     model/bundle-protocol-flags.h
     model/base-routing-engine.h
     model/contact-graph-routing.h
+    model/contact-optimized-dijkstra-routing.h
     model/contact-parser.h
     model/generic-convergence-layer-adapter.h
     model/ltp-convergence-layer-adapter.h

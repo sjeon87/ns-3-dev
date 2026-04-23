@@ -12,8 +12,8 @@
  */
 #include "bundle-agent.h"
 
+#include "base-routing-engine.h"
 #include "bundle-protocol-flags.h"
-#include "contact-graph-routing.h"
 #include "generic-convergence-layer-adapter.h"
 
 #include "ns3/log.h"
@@ -88,7 +88,7 @@ BundleAgent::SetBundleStorageEngine(Ptr<BundleStorageEngine> bundleStorageEngine
 }
 
 void
-BundleAgent::SetContactGraph(Ptr<RoutingEngine> contactGraph)
+BundleAgent::SetContactGraph(Ptr<BaseRoutingEngine> contactGraph)
 {
     NS_LOG_FUNCTION(this << contactGraph);
     m_contactGraph = contactGraph;

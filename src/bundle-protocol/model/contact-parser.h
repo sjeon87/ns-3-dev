@@ -13,8 +13,8 @@
 #ifndef CONTACT_PARSER_H
 #define CONTACT_PARSER_H
 
+#include "base-routing-engine.h"
 #include "bundle-agent.h"
-#include "contact-graph-routing.h"
 
 #include "ns3/bundle-protocol-helper.h"
 #include "ns3/net-device-container.h"
@@ -35,7 +35,7 @@ class ContactParser
      * @param contactGraph A pointer to the ContactGraph instance to populate.
      * @return true if successful, false if the file could not be read.
      */
-    static bool ParseFile(const std::string& filename, Ptr<ContactGraph> contactGraph);
+    static bool ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> contactGraph);
 };
 
 } // namespace ns3

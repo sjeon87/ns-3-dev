@@ -1,10 +1,10 @@
 #include "ns3/applications-module.h"
+#include "ns3/base-routing-engine.h"
 #include "ns3/bundle-agent.h"
 #include "ns3/bundle-block.h"
 #include "ns3/bundle-protocol-helper.h"
 #include "ns3/bundle.h"
 #include "ns3/contact-graph-helper.h"
-#include "ns3/contact-graph-routing.h"
 #include "ns3/contact-parser.h"
 #include "ns3/core-module.h"
 #include "ns3/inet-socket-address.h"
@@ -91,7 +91,7 @@ main(int argc, char* argv[])
 {
     LogComponentEnable("MarsRelayNetworkExample", LOG_LEVEL_ALL);
     LogComponentEnable("BundleAgent", LOG_LEVEL_ALL);
-    LogComponentEnable("ContactGraph", LOG_LEVEL_ALL);
+    LogComponentEnable("ContactOptimizedDijkstraRouting", LOG_LEVEL_ALL);
 
     std::string contactPlanPath = "src/bundle-protocol/examples/contactGraph.csv";
 
@@ -108,7 +108,10 @@ main(int argc, char* argv[])
 
     ContactGraphHelper cgrHelper;
     cgrHelper.SetContactPlan(contactPlanPath);
-    Ptr<ContactGraph> contactGraph = cgrHelper.Install();
+
+    cgrHelper.SetRoutingEngine("ns3::ContactOptimizedDijkstraRouting");
+
+    Ptr<BaseRoutingEngine> contactGraph = cgrHelper.Install();
 
     NodeContainer nodes;
     nodes.Create(numNodes);

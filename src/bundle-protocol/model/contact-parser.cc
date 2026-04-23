@@ -28,7 +28,7 @@ struct ContactData
 };
 
 bool
-ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactGraph)
+ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> contactGraph)
 {
     NS_LOG_FUNCTION(filename << contactGraph);
 
@@ -107,8 +107,8 @@ ContactParser::ParseFile(const std::string& filename, Ptr<ContactGraph> contactG
 
         contactGraph->AddTimedContact(from, to, tStart, tEnd, rate, delay);
 
-        Simulator::Schedule(tStart, &ContactGraph::AddContact, contactGraph, from, to, rate);
-        Simulator::Schedule(tEnd, &ContactGraph::RemoveContact, contactGraph, from, to);
+        Simulator::Schedule(tStart, &BaseRoutingEngine::AddContact, contactGraph, from, to, rate);
+        Simulator::Schedule(tEnd, &BaseRoutingEngine::RemoveContact, contactGraph, from, to);
     }
 
     NS_LOG_INFO("Successfully scheduled "

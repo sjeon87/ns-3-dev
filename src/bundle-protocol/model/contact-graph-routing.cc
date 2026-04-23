@@ -1,14 +1,14 @@
 /*
  * Copyright (c) 2008 INRIA
- *                  2013 University of New Brunswick
- *                  2026 Michigan State University
+ * 2013 University of New Brunswick
+ * 2026 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
  * Author: Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
- *           Dizhi Zhou <dizhi.zhou@gmail.com>
- *           Gerard Garcia <ggarcia@deic.uab.cat>
- *           Ishaan Lagwankar <lagwanka@msu.edu>
+ * Dizhi Zhou <dizhi.zhou@gmail.com>
+ * Gerard Garcia <ggarcia@deic.uab.cat>
+ * Ishaan Lagwankar <lagwanka@msu.edu>
  */
 #include "contact-graph-routing.h"
 
@@ -27,12 +27,13 @@ namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("ContactGraph");
+NS_OBJECT_ENSURE_REGISTERED(ContactGraph);
 
 TypeId
 ContactGraph::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::ContactGraph")
-                            .SetParent<Object>()
+                            .SetParent<BaseRoutingEngine>()
                             .SetGroupName("BundleProtocol")
                             .AddConstructor<ContactGraph>()
                             .AddAttribute("GraphSize",
@@ -129,24 +130,6 @@ ContactGraph::RemoveContact(const std::string& fromEID, const std::string& toEID
                                edges.end(),
                                [node2](const ContactEdge& e) { return e.toNode == node2; }),
                 edges.end());
-}
-
-void
-ContactGraph::AddTimedContact(const std::string& fromEID,
-                              const std::string& toEID,
-                              Time startTime,
-                              Time endTime,
-                              uint32_t dataRate,
-                              Time delay)
-{
-    NS_LOG_FUNCTION(this << fromEID << toEID << startTime << endTime << dataRate << delay);
-    m_contactWindows.push_back({fromEID, toEID, startTime, endTime, dataRate, delay});
-}
-
-const std::vector<ContactWindow>&
-ContactGraph::GetContactWindows() const
-{
-    return m_contactWindows;
 }
 
 std::string
