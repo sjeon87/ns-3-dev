@@ -16,46 +16,44 @@
 
 #include "base-routing-engine.h"
 
-#include "ns3/nstime.h"
-
-#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace ns3
 {
-
-struct ContactEdge
-{
-    uint32_t toNode;
-    uint32_t dataRate;
-};
 
 class ContactOptimizedDijkstraRouting : public BaseRoutingEngine
 {
   public:
     static TypeId GetTypeId();
     ContactOptimizedDijkstraRouting();
-    ~ContactOptimizedDijkstraRouting() override;
-
-    std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID) override;
-
-    void InitializeMap(const std::vector<std::string>& eidList) override;
-    void AddContact(const std::string& fromEID,
-                    const std::string& toEID,
-                    uint32_t dataRate) override;
-    void RemoveContact(const std::string& fromEID, const std::string& toEID) override;
+    virtual ~ContactOptimizedDijkstraRouting() override;
+    virtual void InitializeMap(const std::vector<std::string>& eidList) override;
+    virtual void AddContact(const std::string& fromEID,
+                            const std::string& toEID,
+                            uint32_t dataRate) override;
+    virtual void RemoveContact(const std::string& fromEID, const std::string& toEID) override;
+    virtual std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID) override;
 
   private:
-    uint32_t FindIndex(const std::string& eid) const;
     void RecomputeRoutingTable();
 
+    struct ContactEdge
+    {
+        uint32_t toNode;
+        uint32_t dataRate;
+    };
+
+    std::unordered_map<std::string, uint32_t> m_eidToIndex;
+    std::vector<std::string> m_indexToEid;
     uint32_t m_size;
-    std::vector<std::string> m_eidList;
     std::vector<std::vector<ContactEdge>> m_adjList;
-    std::vector<std::vector<uint32_t>> m_nextHopTable;
+    std::vector<uint32_t> m_nextHopTable;
+    std::vector<double> m_capacity;
+    std::vector<uint32_t> m_parent;
     bool m_isDirty;
 };
 
 } // namespace ns3
 
-#endif /* CONTACT_OPTIMIZED_DIJKSTRA_ROUTING_H */
+#endif // CONTACT_GRAPH_ROUTING_H

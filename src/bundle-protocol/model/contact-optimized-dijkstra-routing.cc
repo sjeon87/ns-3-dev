@@ -13,6 +13,8 @@
 
 #include "contact-optimized-dijkstra-routing.h"
 
+#include "bundle.h"
+
 #include "ns3/log.h"
 #include "ns3/uinteger.h"
 
@@ -54,35 +56,35 @@ ContactOptimizedDijkstraRouting::~ContactOptimizedDijkstraRouting()
     NS_LOG_FUNCTION(this);
 }
 
-uint32_t
-ContactOptimizedDijkstraRouting::FindIndex(const std::string& eid) const
-{
-    for (uint32_t i = 0; i < m_eidList.size(); i++)
-    {
-        if (m_eidList[i] == eid)
-        {
-            return i;
-        }
-    }
-    return m_size;
-}
-
 void
 ContactOptimizedDijkstraRouting::InitializeMap(const std::vector<std::string>& eidList)
 {
     NS_LOG_FUNCTION(this);
 
-    m_size = eidList.size();
+    m_size = static_cast<uint32_t>(eidList.size());
 
     if (m_size == 0)
     {
-        NS_LOG_WARN("No size detected, exiting.");
+        NS_LOG_WARN("InitializeMap called with empty EID list.");
         return;
     }
 
-    m_eidList = eidList;
+    m_indexToEid = eidList;
+    m_eidToIndex.reserve(m_size);
+    for (uint32_t i = 0; i < m_size; ++i)
+    {
+        m_eidToIndex[eidList[i]] = i;
+    }
+
     m_adjList.assign(m_size, std::vector<ContactEdge>());
-    m_nextHopTable.assign(m_size, std::vector<uint32_t>(m_size, m_size));
+    for (auto& row : m_adjList)
+    {
+        row.reserve(8);
+    }
+    m_nextHopTable.assign(m_size * m_size, m_size);
+    m_capacity.resize(m_size);
+    m_parent.resize(m_size);
+
     m_isDirty = true;
 }
 
@@ -93,16 +95,16 @@ ContactOptimizedDijkstraRouting::AddContact(const std::string& fromEID,
 {
     NS_LOG_FUNCTION(this << fromEID << toEID << dataRate);
 
-    uint32_t node1 = FindIndex(fromEID);
-    uint32_t node2 = FindIndex(toEID);
+    auto srcIt = m_eidToIndex.find(fromEID);
+    auto dstIt = m_eidToIndex.find(toEID);
 
-    if (node1 == m_size || node2 == m_size || node1 >= m_adjList.size() ||
-        node2 >= m_adjList.size())
+    if (srcIt == m_eidToIndex.end() || dstIt == m_eidToIndex.end())
     {
+        NS_LOG_ERROR("AddContact: unknown EID. from=" << fromEID << " to=" << toEID);
         return;
     }
 
-    m_adjList[node1].push_back({node2, dataRate});
+    m_adjList[srcIt->second].push_back({dstIt->second, dataRate});
     m_isDirty = true;
 }
 
@@ -111,14 +113,16 @@ ContactOptimizedDijkstraRouting::RemoveContact(const std::string& fromEID, const
 {
     NS_LOG_FUNCTION(this << fromEID << toEID);
 
-    uint32_t node1 = FindIndex(fromEID);
-    uint32_t node2 = FindIndex(toEID);
+    auto srcIt = m_eidToIndex.find(fromEID);
+    auto dstIt = m_eidToIndex.find(toEID);
 
-    if (node1 == m_size || node2 == m_size || node1 >= m_adjList.size() ||
-        node2 >= m_adjList.size())
+    if (srcIt == m_eidToIndex.end() || dstIt == m_eidToIndex.end())
     {
         return;
     }
+
+    uint32_t node1 = srcIt->second;
+    uint32_t node2 = dstIt->second;
 
     auto& edges = m_adjList[node1];
     edges.erase(std::remove_if(edges.begin(),
@@ -137,28 +141,27 @@ ContactOptimizedDijkstraRouting::RecomputeRoutingTable()
         return;
     }
 
-    NS_LOG_INFO("Topology changed. Recomputing routing table for " << m_size << " nodes.");
+    NS_LOG_INFO("Topology changed — recomputing all-pairs routing table for " << m_size
+                                                                              << " nodes.");
 
-    m_nextHopTable.assign(m_size, std::vector<uint32_t>(m_size, m_size));
+    std::fill(m_nextHopTable.begin(), m_nextHopTable.end(), m_size);
 
-    for (uint32_t startNode = 0; startNode < m_size; ++startNode)
+    for (uint32_t s = 0; s < m_size; ++s)
     {
-        using PQueueItem = std::pair<double, uint32_t>;
-        std::priority_queue<PQueueItem, std::vector<PQueueItem>, std::less<>> pq;
+        std::fill(m_capacity.begin(), m_capacity.end(), 0.0);
+        std::fill(m_parent.begin(), m_parent.end(), m_size);
 
-        std::vector<double> capacity(m_size, 0.0);
-        std::vector<uint32_t> parent(m_size, m_size);
+        m_capacity[s] = std::numeric_limits<double>::infinity();
 
-        capacity[startNode] = std::numeric_limits<double>::infinity();
-        pq.emplace(capacity[startNode], startNode);
+        std::priority_queue<std::pair<double, uint32_t>> pq;
+        pq.emplace(m_capacity[s], s);
 
         while (!pq.empty())
         {
-            double currentCap = pq.top().first;
-            uint32_t u = pq.top().second;
+            auto [cap, u] = pq.top();
             pq.pop();
 
-            if (currentCap < capacity[u])
+            if (cap < m_capacity[u])
             {
                 continue;
             }
@@ -166,34 +169,33 @@ ContactOptimizedDijkstraRouting::RecomputeRoutingTable()
             for (const auto& edge : m_adjList[u])
             {
                 uint32_t v = edge.toNode;
-                double pathCapacity = std::min(capacity[u], static_cast<double>(edge.dataRate));
+                double pathCap = std::min(cap, static_cast<double>(edge.dataRate));
 
-                if (pathCapacity > capacity[v])
+                if (pathCap > m_capacity[v])
                 {
-                    capacity[v] = pathCapacity;
-                    parent[v] = u;
-                    pq.emplace(capacity[v], v);
+                    m_capacity[v] = pathCap;
+                    m_parent[v] = u;
+                    pq.emplace(m_capacity[v], v);
                 }
             }
         }
 
-        for (uint32_t destNode = 0; destNode < m_size; ++destNode)
+        for (uint32_t d = 0; d < m_size; ++d)
         {
-            if (startNode == destNode || capacity[destNode] == 0.0)
+            if (d == s || m_capacity[d] == 0.0)
             {
                 continue;
             }
 
-            uint32_t currPathNode = destNode;
-
-            while (parent[currPathNode] != startNode && parent[currPathNode] != m_size)
+            uint32_t curr = d;
+            while (m_parent[curr] != s && m_parent[curr] != m_size)
             {
-                currPathNode = parent[currPathNode];
+                curr = m_parent[curr];
             }
 
-            if (parent[currPathNode] == startNode)
+            if (m_parent[curr] == s)
             {
-                m_nextHopTable[startNode][destNode] = currPathNode;
+                m_nextHopTable[s * m_size + d] = curr;
             }
         }
     }
@@ -211,30 +213,33 @@ ContactOptimizedDijkstraRouting::GetNextHop(Ptr<Bundle> bundle, const std::strin
         RecomputeRoutingTable();
     }
 
-    std::string destEID = bundle->GetDestinationEID();
-    uint32_t startNode = FindIndex(currEID);
-    uint32_t destNode = FindIndex(destEID);
+    auto srcIt = m_eidToIndex.find(currEID);
+    auto dstIt = m_eidToIndex.find(bundle->GetDestinationEID());
 
-    if (startNode == m_size || destNode == m_size)
+    if (srcIt == m_eidToIndex.end() || dstIt == m_eidToIndex.end())
     {
-        NS_LOG_ERROR("GetNextHop failed: Unknown start or destination EID.");
+        NS_LOG_ERROR("GetNextHop: unknown EID. src=" << currEID
+                                                     << " dst=" << bundle->GetDestinationEID());
         return "";
     }
 
-    if (startNode == destNode)
+    uint32_t s = srcIt->second;
+    uint32_t d = dstIt->second;
+
+    if (s == d)
     {
-        return destEID;
+        return bundle->GetDestinationEID();
     }
 
-    uint32_t nextHopNode = m_nextHopTable[startNode][destNode];
+    uint32_t nextHop = m_nextHopTable[s * m_size + d];
 
-    if (nextHopNode == m_size)
+    if (nextHop == m_size)
     {
-        NS_LOG_WARN("No path found from " << currEID << " to " << destEID);
+        NS_LOG_WARN("No path from " << currEID << " to " << bundle->GetDestinationEID());
         return "";
     }
 
-    return m_eidList[nextHopNode];
+    return m_indexToEid[nextHop];
 }
 
 } // namespace ns3
