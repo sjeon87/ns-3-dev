@@ -54,19 +54,6 @@ build_example(
     ${libflow-monitor}
 )
 
-build_example(
-  NAME tcp-general-byip
-  SOURCE_FILES tcp-general-byip.cc
-  LIBRARIES_TO_LINK
-    ${libpoint-to-point}
-    ${libpoint-to-point-layout}
-    ${libinternet}
-    ${libapplications}
-    ${libtraffic-control}
-    ${libnetwork}
-    ${libinternet-apps}
-    ${libflow-monitor}
-)
 
 build_example(
   NAME tcp-bulk-send

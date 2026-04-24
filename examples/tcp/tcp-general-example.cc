@@ -30,7 +30,7 @@
 //     (5ms)       (10ms)       (5ms)
 //
 // Parameters:
-// - tcpTypeId: TCP variant to use (default: TcpBbr)
+// - tcpTypeId: TCP variant to use (default: TcpCubic)
 // - nLeaf: Number of sender/receiver leaf pairs (default: 1)
 // - bottleneckBw: Bottleneck link bandwidth (default: 10Mbps)
 // - bottleneckDelay: Bottleneck link delay (default: 10ms)
@@ -38,8 +38,8 @@
 // - edgeDelay: Edge link delay (default: 5ms)
 //
 // This program runs by default for 100 seconds and creates a new directory
-// called 'bbr-results' in the ns-3 root directory. The program creates one
-// sub-directory called 'pcap' in 'bbr-results' directory (if pcap generation
+// called 'cubic-results' in the ns-3 root directory. The program creates one
+// sub-directory called 'pcap' in 'cubic-results' directory (if pcap generation
 // is enabled) and multiple .dat files.
 //
 // Output files:
@@ -73,35 +73,38 @@ struct ThroughputTracker
 
 std::vector<ThroughputTracker> throughputTrackers;
 
-// Calculate throughput for a specific sender
 static void
-TraceThroughputPerSender(Ptr<FlowMonitor> monitor, uint32_t senderId)
+TraceThroughputPerSender(Ptr<FlowMonitor> monitor, Ptr<Ipv4FlowClassifier> classifier, 
+                         Ipv4Address senderIp, uint32_t senderId)
 {
     FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
     Time curTime = Now();
-    
-    uint32_t flowId = senderId + 1;
-    
-    if (stats.find(flowId) != stats.end())
+
+    for (auto& flow : stats)
     {
-        uint64_t currentBytes = stats[flowId].rxBytes;
-        std::ofstream thr(dir + "/throughput_" + std::to_string(flowId) + ".dat", 
-                         std::ios::out | std::ios::app);
-
-        if (curTime.GetSeconds() > throughputTrackers[senderId].prevTime.GetSeconds())
+        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(flow.first);
+        if (t.sourceAddress == senderIp)  // Match by sender IP
         {
-            double throughputMbps = 8 * (currentBytes - throughputTrackers[senderId].prevBytes) /
-                                   (1000000.0 * (curTime.GetSeconds() - 
-                                    throughputTrackers[senderId].prevTime.GetSeconds()));
-            thr << curTime.GetSeconds() << " " << throughputMbps << std::endl;
-        }
+            uint64_t currentBytes = flow.second.rxBytes;
+            std::ofstream thr(dir + "/throughput_" + std::to_string(senderId + 1) + ".dat",
+                             std::ios::out | std::ios::app);
 
-        throughputTrackers[senderId].prevBytes = currentBytes;
-        throughputTrackers[senderId].prevTime = curTime;
-        thr.close();
+            if (curTime.GetSeconds() > throughputTrackers[senderId].prevTime.GetSeconds())
+            {
+                double throughputMbps = 8 * (currentBytes - throughputTrackers[senderId].prevBytes) /
+                                       (1000000.0 * (curTime.GetSeconds() - 
+                                        throughputTrackers[senderId].prevTime.GetSeconds()));
+                thr << curTime.GetSeconds() << " " << throughputMbps << std::endl;
+            }
+
+            throughputTrackers[senderId].prevBytes = currentBytes;
+            throughputTrackers[senderId].prevTime = curTime;
+            thr.close();
+            break;
+        }
     }
-    
-    Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, senderId);
+
+    Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, classifier, senderIp, senderId);
 }
 // Check the queue size on bottleneck link
 void
@@ -181,7 +184,7 @@ main(int argc, char* argv[])
     Config::SetDefault("ns3::TcpSocket::DelAckCount", UintegerValue(delAckCount));
     Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1448));
     Config::SetDefault("ns3::DropTailQueue<Packet>::MaxSize", QueueSizeValue(QueueSize("1p")));
-    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("150p")));
+    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("50p")));
 
     // Configure queue discipline globally BEFORE creating topology
     // This way dumbbell devices will use our configured queue disc from the start
@@ -216,6 +219,7 @@ main(int argc, char* argv[])
                                   Ipv4AddressHelper("10.2.1.0", "255.255.255.0"),    // right leaves
                                   Ipv4AddressHelper("10.10.1.0", "255.255.255.0")); // routers
 
+   
     // Populate routing tables
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
@@ -261,18 +265,18 @@ main(int argc, char* argv[])
         exit(1);
     }
 
-    // Trace the queue occupancy on the bottleneck link
-    // The bottleneck device is at index nLeaf on the left router (device connecting to right router)
-    Ptr<NetDevice> bottleneckDevice = dumbbell.GetLeft()->GetDevice(0);
-    
-    // Get the queue disc that was installed by TrafficControlHelper during dumbbell creation
-    Ptr<QueueDisc> qd = bottleneckDevice->GetNode()->GetObject<TrafficControlLayer>()
-                            ->GetRootQueueDiscOnDevice(bottleneckDevice);
-    
-    if (qd)
-    {
-        Simulator::ScheduleNow(&CheckQueueSize, qd);
-    }
+   // Trace the queue occupancy on the bottleneck link
+   // The bottleneck device is at index 0 as per dumbbell 
+   Ptr<NetDevice> bottleneckDevice = dumbbell.GetLeft()->GetDevice(0);
+  
+   // Get the queue disc that was installed by TrafficControlHelper during dumbbell creation
+   Ptr<QueueDisc> qd = bottleneckDevice->GetNode()->GetObject<TrafficControlLayer>()
+                           ->GetRootQueueDiscOnDevice(bottleneckDevice);
+  
+   if (qd)
+   {
+       Simulator::ScheduleNow(&CheckQueueSize, qd);
+   }
 
     // Generate PCAP traces if it is enabled
     if (enablePcap)
@@ -284,16 +288,18 @@ main(int argc, char* argv[])
         bottleneckLink.EnablePcapAll(dir + "/pcap/bottleneck", true);
     }
 
-    // Check for dropped packets using Flow Monitor
+
+    // Get classifier
     FlowMonitorHelper flowmon;
     Ptr<FlowMonitor> monitor = flowmon.InstallAll();
-    
-    // Schedule throughput tracing for each sender
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(flowmon.GetClassifier());
+
+    // Schedule with sender IP
     for (uint32_t i = 0; i < nLeaf; ++i)
     {
-        Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, i);
+        Ipv4Address senderIp = dumbbell.GetLeftIpv4Address(i);  // Get actual sender IP
+        Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, classifier, senderIp, i);
     }
-
 
     Simulator::Stop(stopTime + TimeStep(1));
     Simulator::Run();
