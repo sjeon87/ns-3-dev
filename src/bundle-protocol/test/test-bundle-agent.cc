@@ -13,10 +13,10 @@
  *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
+#include "ns3/base-routing-engine.h"
 #include "ns3/bundle-agent.h"
 #include "ns3/bundle.h"
 #include "ns3/generic-convergence-layer-adapter.h"
-#include "ns3/base-routing-engine.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 #include "ns3/test.h"
@@ -80,9 +80,19 @@ class MockRoutingEngine : public BaseRoutingEngine
         return bundle->GetDestinationEID();
     }
 
-    void InitializeMap(const std::vector<std::string>& eidList) override {}
-    void AddContact(const std::string& fromEID, const std::string& toEID, uint32_t dataRate) override {}
-    void RemoveContact(const std::string& fromEID, const std::string& toEID) override {}
+    void InitializeMap(const std::vector<std::string>& eidList) override
+    {
+    }
+
+    void AddContact(const std::string& fromEID,
+                    const std::string& toEID,
+                    uint32_t dataRate) override
+    {
+    }
+
+    void RemoveContact(const std::string& fromEID, const std::string& toEID) override
+    {
+    }
 };
 
 NS_OBJECT_ENSURE_REGISTERED(MockRoutingEngine);

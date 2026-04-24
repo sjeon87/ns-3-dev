@@ -66,32 +66,30 @@ PrimaryBlockHeader::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
-    
+
     size += Cbor::GetArraySize(8);
     size += Cbor::GetUintSize(m_version);
     size += Cbor::GetUintSize(m_procFlags);
     size += Cbor::GetUintSize(m_crcType);
 
     size += Cbor::GetArraySize(2);
-    size += Cbor::GetUintSize(1);  // scheme number
-    size += Cbor::GetTextStringSize(m_destinationEID.substr(4));  // just the SSP
-
-
-    size += Cbor::GetArraySize(2);
-    size += Cbor::GetUintSize(1);  // scheme number
-    size += Cbor::GetTextStringSize(m_sourceEID.substr(4));  // just the SSP
-
+    size += Cbor::GetUintSize(1);                                // scheme number
+    size += Cbor::GetTextStringSize(m_destinationEID.substr(4)); // just the SSP
 
     size += Cbor::GetArraySize(2);
-    size += Cbor::GetUintSize(1);  // scheme number
-    size += Cbor::GetTextStringSize(m_reportToEID.substr(4));  // just the SSP
-    
-    size += Cbor::GetArraySize(2); 
+    size += Cbor::GetUintSize(1);                           // scheme number
+    size += Cbor::GetTextStringSize(m_sourceEID.substr(4)); // just the SSP
+
+    size += Cbor::GetArraySize(2);
+    size += Cbor::GetUintSize(1);                             // scheme number
+    size += Cbor::GetTextStringSize(m_reportToEID.substr(4)); // just the SSP
+
+    size += Cbor::GetArraySize(2);
     size += Cbor::GetUintSize(m_creationTime.GetTimeStep());
     size += Cbor::GetUintSize(m_seq);
-    
+
     size += Cbor::GetUintSize(m_lifetime.GetTimeStep());
-    
+
     return size;
 }
 
@@ -105,7 +103,7 @@ PrimaryBlockHeader::Serialize(Buffer::Iterator start) const
     Cbor::WriteUint(i, m_procFlags);
     Cbor::WriteUint(i, m_crcType);
     Cbor::WriteArray(i, 2);
-    Cbor::WriteUint(i, 1);  // Using "dtn" scheme
+    Cbor::WriteUint(i, 1); // Using "dtn" scheme
     Cbor::WriteTextString(i, m_destinationEID.substr(4));
     Cbor::WriteArray(i, 2);
     Cbor::WriteUint(i, 1);
@@ -128,7 +126,7 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     m_version = Cbor::ReadUint(i);
     m_procFlags = Cbor::ReadUint(i);
     m_crcType = Cbor::ReadUint(i);
-    Cbor::ReadArray(i); 
+    Cbor::ReadArray(i);
     uint64_t destScheme = Cbor::ReadUint(i);
     std::string destSsp = Cbor::ReadTextString(i);
     m_destinationEID = "dtn:" + destSsp;
@@ -314,14 +312,14 @@ PayloadBlockHeader::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
-    
-    size += Cbor::GetArraySize(5); 
+
+    size += Cbor::GetArraySize(5);
     size += Cbor::GetUintSize(m_blockType);
     size += Cbor::GetUintSize(m_blockNumber);
     size += Cbor::GetUintSize(m_procFlags);
     size += Cbor::GetUintSize(m_crcType);
     size += Cbor::GetUintSize(m_blockLength);
-    
+
     return size;
 }
 
@@ -330,7 +328,7 @@ PayloadBlockHeader::Serialize(Buffer::Iterator start) const
 {
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
-    
+
     Cbor::WriteArray(i, 5);
     Cbor::WriteUint(i, m_blockType);
     Cbor::WriteUint(i, m_blockNumber);
@@ -344,15 +342,15 @@ PayloadBlockHeader::Deserialize(Buffer::Iterator start)
 {
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
-    
-    Cbor::ReadArray(i); 
-    
+
+    Cbor::ReadArray(i);
+
     m_blockType = Cbor::ReadUint(i);
     m_blockNumber = Cbor::ReadUint(i);
     m_procFlags = Cbor::ReadUint(i);
     m_crcType = Cbor::ReadUint(i);
     m_blockLength = Cbor::ReadUint(i);
-    
+
     return i.GetDistanceFrom(start);
 }
 
@@ -456,21 +454,21 @@ BundleStatusReport::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
-    
-    size += Cbor::GetArraySize(10); 
+
+    size += Cbor::GetArraySize(10);
     size += Cbor::GetUintSize(m_statusFlags);
     size += Cbor::GetUintSize(m_reasonCode);
     size += Cbor::GetTextStringSize(m_sourceEID);
-    
+
     size += Cbor::GetUintSize(m_creationTime.GetTimeStep());
     size += Cbor::GetUintSize(m_seq);
     size += Cbor::GetUintSize(m_fragmentOffset);
-    
+
     size += Cbor::GetUintSize(m_bundleReceipt.GetTimeStep());
     size += Cbor::GetUintSize(m_bundleForward.GetTimeStep());
     size += Cbor::GetUintSize(m_bundleDelivery.GetTimeStep());
     size += Cbor::GetUintSize(m_bundleDeletion.GetTimeStep());
-    
+
     return size;
 }
 
@@ -479,16 +477,16 @@ BundleStatusReport::Serialize(Buffer::Iterator start) const
 {
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
-    
+
     Cbor::WriteArray(i, 10);
     Cbor::WriteUint(i, m_statusFlags);
     Cbor::WriteUint(i, m_reasonCode);
     Cbor::WriteTextString(i, m_sourceEID);
-    
+
     Cbor::WriteUint(i, m_creationTime.GetTimeStep());
     Cbor::WriteUint(i, m_seq);
     Cbor::WriteUint(i, m_fragmentOffset);
-    
+
     Cbor::WriteUint(i, m_bundleReceipt.GetTimeStep());
     Cbor::WriteUint(i, m_bundleForward.GetTimeStep());
     Cbor::WriteUint(i, m_bundleDelivery.GetTimeStep());
@@ -500,22 +498,22 @@ BundleStatusReport::Deserialize(Buffer::Iterator start)
 {
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
-    
-    Cbor::ReadArray(i); 
-    
+
+    Cbor::ReadArray(i);
+
     m_statusFlags = Cbor::ReadUint(i);
     m_reasonCode = Cbor::ReadUint(i);
     m_sourceEID = Cbor::ReadTextString(i);
-    
+
     m_creationTime = TimeStep(Cbor::ReadUint(i));
     m_seq = Cbor::ReadUint(i);
     m_fragmentOffset = Cbor::ReadUint(i);
-    
+
     m_bundleReceipt = TimeStep(Cbor::ReadUint(i));
     m_bundleForward = TimeStep(Cbor::ReadUint(i));
     m_bundleDelivery = TimeStep(Cbor::ReadUint(i));
     m_bundleDeletion = TimeStep(Cbor::ReadUint(i));
-    
+
     return i.GetDistanceFrom(start);
 }
 

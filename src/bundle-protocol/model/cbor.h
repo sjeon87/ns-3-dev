@@ -10,18 +10,20 @@
 #define CBOR_H
 
 #include "ns3/buffer.h"
-#include <string>
-#include <stdint.h>
 
-namespace ns3 {
+#include <stdint.h>
+#include <string>
+
+namespace ns3
+{
 
 /**
- * \ingroup BundleProtocol
- * \brief A CBOR encoder for BPv7 serialization directly into ns3::Buffer
+ * @ingroup BundleProtocol
+ * @brief A CBOR encoder for BPv7 serialization directly into ns3::Buffer
  */
-class Cbor {
-public:
-
+class Cbor
+{
+  public:
     static void WriteUint(Buffer::Iterator& i, uint64_t val);
 
     static void WriteArray(Buffer::Iterator& i, uint64_t size);
