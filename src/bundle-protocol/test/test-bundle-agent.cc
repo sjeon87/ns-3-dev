@@ -16,6 +16,7 @@
 #include "ns3/bundle-agent.h"
 #include "ns3/bundle.h"
 #include "ns3/generic-convergence-layer-adapter.h"
+#include "ns3/base-routing-engine.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 #include "ns3/test.h"
@@ -62,6 +63,29 @@ class MockBundleCla : public BundleCla
     uint32_t m_sentCount;
     uint32_t m_lastPacketSize;
 };
+
+class MockRoutingEngine : public BaseRoutingEngine
+{
+  public:
+    static TypeId GetTypeId()
+    {
+        static TypeId tid = TypeId("ns3::MockRoutingEngine")
+                                .SetParent<BaseRoutingEngine>()
+                                .AddConstructor<MockRoutingEngine>();
+        return tid;
+    }
+
+    std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID) override
+    {
+        return bundle->GetDestinationEID();
+    }
+
+    void InitializeMap(const std::vector<std::string>& eidList) override {}
+    void AddContact(const std::string& fromEID, const std::string& toEID, uint32_t dataRate) override {}
+    void RemoveContact(const std::string& fromEID, const std::string& toEID) override {}
+};
+
+NS_OBJECT_ENSURE_REGISTERED(MockRoutingEngine);
 
 NS_OBJECT_ENSURE_REGISTERED(MockBundleCla);
 
@@ -110,24 +134,26 @@ BundleAgentTestCase::DoRun()
 
     Ptr<BundleAgent> agent = CreateObject<BundleAgent>();
     agent->SetLocalEID("dtn:nodeA");
+    Ptr<MockRoutingEngine> contactGraph = CreateObject<MockRoutingEngine>();
+    agent->SetContactGraph(contactGraph);
     agent->SetReceiveCallback(MakeCallback(&BundleAgentTestCase::LocalReceiveCallback, this));
 
     uint8_t dummyPayload[] = {0xDE, 0xAD, 0xBE, 0xEF};
     uint32_t payloadSize = sizeof(dummyPayload);
 
-    agent->TransmitBundle("dtn:nodeA", "none", dummyPayload, payloadSize, Seconds(3600), 0);
+    agent->TransmitBundle("dtn:nodeA", "dtn:none", dummyPayload, payloadSize, Seconds(3600), 0);
     NS_TEST_ASSERT_MSG_EQ(m_locallyReceivedCount, 1, "Agent failed to deliver bundle to itself");
 
     Ptr<MockBundleCla> claB = CreateObject<MockBundleCla>();
     agent->RegisterCla("dtn:nodeB", claB);
 
-    agent->TransmitBundle("dtn:nodeB", "none", dummyPayload, payloadSize, Seconds(3600), 0);
+    agent->TransmitBundle("dtn:nodeB", "dtn:none", dummyPayload, payloadSize, Seconds(3600), 0);
     NS_TEST_ASSERT_MSG_EQ(claB->GetSentCount(), 1, "Agent failed to forward to registered CLA");
     NS_TEST_ASSERT_MSG_EQ(agent->GetStorageEngineSize(),
                           0,
                           "Storage should be empty after direct forward");
 
-    agent->TransmitBundle("dtn:nodeC", "none", dummyPayload, payloadSize, Seconds(3600), 0);
+    agent->TransmitBundle("dtn:nodeC", "dtn:none", dummyPayload, payloadSize, Seconds(3600), 0);
     NS_TEST_ASSERT_MSG_EQ(agent->GetStorageEngineSize() > 0,
                           true,
                           "Bundle should be held in storage for missing CLA");
@@ -142,7 +168,7 @@ BundleAgentTestCase::DoRun()
                           0,
                           "Storage should be empty after backlog processed");
 
-    agent->TransmitBundle("dtn:nodeD", "none", dummyPayload, payloadSize, Seconds(1.0), 0);
+    agent->TransmitBundle("dtn:nodeD", "dtn:none", dummyPayload, payloadSize, Seconds(1.0), 0);
     NS_TEST_ASSERT_MSG_EQ(agent->GetStorageEngineSize() > 0,
                           true,
                           "Short-lived bundle should be in storage");

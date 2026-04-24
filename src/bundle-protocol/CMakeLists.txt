@@ -9,6 +9,7 @@ build_lib(
     model/bundle-storage-engine.cc
     model/bundle.cc
     model/base-routing-engine.cc
+    model/cbor.cc
     model/contact-graph-routing.cc
     model/contact-optimized-dijkstra-routing.cc
     model/contact-parser.cc
@@ -28,6 +29,7 @@ build_lib(
     model/bundle.h
     model/bundle-protocol-flags.h
     model/base-routing-engine.h
+    model/cbor.h
     model/contact-graph-routing.h
     model/contact-optimized-dijkstra-routing.h
     model/contact-parser.h
