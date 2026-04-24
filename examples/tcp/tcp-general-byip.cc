@@ -30,7 +30,7 @@
 //     (5ms)       (10ms)       (5ms)
 //
 // Parameters:
-// - tcpTypeId: TCP variant to use (default: TcpBbr)
+// - tcpTypeId: TCP variant to use (default: TcpCubic)
 // - nLeaf: Number of sender/receiver leaf pairs (default: 1)
 // - bottleneckBw: Bottleneck link bandwidth (default: 10Mbps)
 // - bottleneckDelay: Bottleneck link delay (default: 10ms)
@@ -38,8 +38,8 @@
 // - edgeDelay: Edge link delay (default: 5ms)
 //
 // This program runs by default for 100 seconds and creates a new directory
-// called 'bbr-results' in the ns-3 root directory. The program creates one
-// sub-directory called 'pcap' in 'bbr-results' directory (if pcap generation
+// called 'cubic-results' in the ns-3 root directory. The program creates one
+// sub-directory called 'pcap' in 'cubic-results' directory (if pcap generation
 // is enabled) and multiple .dat files.
 //
 // Output files:
@@ -184,7 +184,7 @@ main(int argc, char* argv[])
     Config::SetDefault("ns3::TcpSocket::DelAckCount", UintegerValue(delAckCount));
     Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1448));
     Config::SetDefault("ns3::DropTailQueue<Packet>::MaxSize", QueueSizeValue(QueueSize("1p")));
-    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("150p")));
+    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("50p")));
 
     // Configure queue discipline globally BEFORE creating topology
     // This way dumbbell devices will use our configured queue disc from the start
@@ -219,6 +219,7 @@ main(int argc, char* argv[])
                                   Ipv4AddressHelper("10.2.1.0", "255.255.255.0"),    // right leaves
                                   Ipv4AddressHelper("10.10.1.0", "255.255.255.0")); // routers
 
+   
     // Populate routing tables
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
@@ -264,18 +265,18 @@ main(int argc, char* argv[])
         exit(1);
     }
 
-    // Trace the queue occupancy on the bottleneck link
-    // The bottleneck device is at index nLeaf on the left router (device connecting to right router)
-    Ptr<NetDevice> bottleneckDevice = dumbbell.GetLeft()->GetDevice(nLeaf);
-    
-    // Get the queue disc that was installed by TrafficControlHelper during dumbbell creation
-    Ptr<QueueDisc> qd = bottleneckDevice->GetNode()->GetObject<TrafficControlLayer>()
-                            ->GetRootQueueDiscOnDevice(bottleneckDevice);
-    
-    if (qd)
-    {
-        Simulator::ScheduleNow(&CheckQueueSize, qd);
-    }
+   // Trace the queue occupancy on the bottleneck link
+   // The bottleneck device is at index 0 as per dumbbell 
+   Ptr<NetDevice> bottleneckDevice = dumbbell.GetLeft()->GetDevice(0);
+  
+   // Get the queue disc that was installed by TrafficControlHelper during dumbbell creation
+   Ptr<QueueDisc> qd = bottleneckDevice->GetNode()->GetObject<TrafficControlLayer>()
+                           ->GetRootQueueDiscOnDevice(bottleneckDevice);
+  
+   if (qd)
+   {
+       Simulator::ScheduleNow(&CheckQueueSize, qd);
+   }
 
     // Generate PCAP traces if it is enabled
     if (enablePcap)

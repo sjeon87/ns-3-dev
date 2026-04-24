@@ -263,7 +263,7 @@ main(int argc, char* argv[])
 
     // Trace the queue occupancy on the bottleneck link
     // The bottleneck device is at index nLeaf on the left router (device connecting to right router)
-    Ptr<NetDevice> bottleneckDevice = dumbbell.GetLeft()->GetDevice(nLeaf);
+    Ptr<NetDevice> bottleneckDevice = dumbbell.GetLeft()->GetDevice(0);
     
     // Get the queue disc that was installed by TrafficControlHelper during dumbbell creation
     Ptr<QueueDisc> qd = bottleneckDevice->GetNode()->GetObject<TrafficControlLayer>()
