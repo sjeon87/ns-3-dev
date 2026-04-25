@@ -44,6 +44,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 ### Changes to build system
 
 * (bindings) The minimum Python version for the Python bindings was raised from 3.8 to 3.10, and the required cppyy version from 3.1.2 to 3.5.0. Pip wheels are built for Python 3.10 to 3.14.
+* Raised minimum GCC version from 11.1 to 13.3.
 
 ### Changed behavior
 

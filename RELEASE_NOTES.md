@@ -19,7 +19,7 @@ and references prefixed by '!' refer to a
 This release is intended to work on systems with the following minimal
 requirements (Note: not all ns-3 features are available on all systems):
 
-- g++-11.1 or later, or LLVM/clang++-17 or later
+- g++-13.3 or later, or LLVM/clang++-17 or later
 - Python 3.10 or later
 - CMake 3.25 or later
 - (macOS only) Xcode 16.2 or later
