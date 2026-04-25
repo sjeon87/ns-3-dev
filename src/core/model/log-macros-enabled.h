@@ -173,6 +173,10 @@
     {                                                                                              \
         if (g_log.IsEnabled(level))                                                                \
         {                                                                                          \
+            if (!ns3::LogFilterCheck())                                                            \
+            {                                                                                      \
+                break;                                                                             \
+            }                                                                                      \
             NS_LOG_APPEND_TIME_PREFIX;                                                             \
             NS_LOG_APPEND_NODE_PREFIX;                                                             \
             NS_LOG_APPEND_CONTEXT;                                                                 \
@@ -198,6 +202,10 @@
     {                                                                                              \
         if (g_log.IsEnabled(ns3::LOG_FUNCTION))                                                    \
         {                                                                                          \
+            if (!ns3::LogFilterCheck())                                                            \
+            {                                                                                      \
+                break;                                                                             \
+            }                                                                                      \
             NS_LOG_APPEND_TIME_PREFIX;                                                             \
             NS_LOG_APPEND_NODE_PREFIX;                                                             \
             NS_LOG_APPEND_CONTEXT;                                                                 \
@@ -234,6 +242,10 @@
     {                                                                                              \
         if (g_log.IsEnabled(ns3::LOG_FUNCTION))                                                    \
         {                                                                                          \
+            if (!ns3::LogFilterCheck())                                                            \
+            {                                                                                      \
+                break;                                                                             \
+            }                                                                                      \
             NS_LOG_APPEND_TIME_PREFIX;                                                             \
             NS_LOG_APPEND_NODE_PREFIX;                                                             \
             NS_LOG_APPEND_CONTEXT;                                                                 \

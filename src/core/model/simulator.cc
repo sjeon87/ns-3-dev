@@ -7,9 +7,11 @@
  */
 #include "simulator.h"
 
+#include "environment-variable.h"
 #include "event-impl.h"
 #include "fatal-error.h"
 #include "global-value.h"
+#include "log-filter.h"
 #include "log.h"
 #include "map-scheduler.h"
 #include "object-factory.h"
@@ -36,6 +38,73 @@ namespace ns3
 // number of calls that are made to these functions and the possibility
 // of causing recursions leading to stack overflow
 NS_LOG_COMPONENT_DEFINE("Simulator");
+
+namespace
+{
+
+/**
+ * @ingroup logfilter
+ * Wrapper to return Simulator::Now() as raw int64_t time step.
+ * Registered as a LogTimeProvider callback.
+ *
+ * @return The current simulation time in raw time step units.
+ */
+int64_t
+LogTimeProviderImpl()
+{
+    return Simulator::Now().GetTimeStep();
+}
+
+/**
+ * @ingroup logfilter
+ * Wrapper to return Simulator::GetContext().
+ * Registered as a LogNodeProvider callback.
+ *
+ * @return The current simulation context (node ID).
+ */
+uint32_t
+LogNodeProviderImpl()
+{
+    return Simulator::GetContext();
+}
+
+/**
+ * @ingroup logfilter
+ * Parse the NS_LOG_FILTER_TIME environment variable and configure
+ * the time window filter.
+ *
+ * Expected format: "start:end" where start and end are ns3::Time strings.
+ * Either bound may be omitted for an open interval:
+ *   - "1.5s:3.0s" -- log from 1.5s to 3.0s
+ *   - "1.5s:"     -- log from 1.5s onward
+ *   - ":3.0s"     -- log until 3.0s
+ */
+void
+LogFilterParseTimeEnvironment()
+{
+    auto [found, value] = EnvironmentVariable::Get("NS_LOG_FILTER_TIME");
+    if (!found || value.empty())
+    {
+        return;
+    }
+
+    StringVector parts = SplitString(value, ":");
+    int64_t start = std::numeric_limits<int64_t>::min();
+    int64_t end = std::numeric_limits<int64_t>::max();
+
+    if (!parts.empty() && !parts[0].empty())
+    {
+        start = Time(parts[0]).GetTimeStep();
+    }
+    if (parts.size() >= 2 && !parts[1].empty())
+    {
+        end = Time(parts[1]).GetTimeStep();
+    }
+
+    LogSetTimeFilter(start, end);
+}
+
+} // unnamed namespace
 
 EventId Simulator::m_stopEvent;
 
@@ -117,6 +186,10 @@ GetImpl()
         //
         LogSetTimePrinter(&DefaultTimePrinter);
         LogSetNodePrinter(&DefaultNodePrinter);
+        LogSetTimeFilterProvider(&LogTimeProviderImpl);
+        LogSetNodeFilterProvider(&LogNodeProviderImpl);
+        LogFilterParseTimeEnvironment();
+        LogFilterParseNodeEnvironment();
     }
     return *pimpl;
 }
@@ -138,6 +211,10 @@ Simulator::Destroy()
      */
     LogSetTimePrinter(nullptr);
     LogSetNodePrinter(nullptr);
+    LogSetTimeFilterProvider(nullptr);
+    LogSetNodeFilterProvider(nullptr);
+    LogClearTimeFilter();
+    LogClearNodeFilter();
     (*pimpl)->Destroy();
     (*pimpl)->Unref();
     *pimpl = nullptr;
@@ -350,6 +427,10 @@ Simulator::SetImplementation(Ptr<SimulatorImpl> impl)
     //
     LogSetTimePrinter(&DefaultTimePrinter);
     LogSetNodePrinter(&DefaultNodePrinter);
+    LogSetTimeFilterProvider(&LogTimeProviderImpl);
+    LogSetNodeFilterProvider(&LogNodeProviderImpl);
+    LogFilterParseTimeEnvironment();
+    LogFilterParseNodeEnvironment();
 }
 
 Ptr<SimulatorImpl>

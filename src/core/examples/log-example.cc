@@ -102,17 +102,41 @@ main(int argc, char** argv)
     NS_LOG_DEBUG("Creating a Node");
     auto node = CreateObject<Node>();
 
+    NS_LOG_DEBUG("Creating a second Node");
+    auto node2 = CreateObject<Node>();
+
     NS_LOG_DEBUG("Creating MyEventObject");
     auto myObj = CreateObject<MyEventObject>();
+
+    NS_LOG_DEBUG("Creating second MyEventObject");
+    auto myObj2 = CreateObject<MyEventObject>();
 
     NS_LOG_DEBUG("Aggregating MyEventObject to Node");
     node->AggregateObject(myObj);
 
+    NS_LOG_DEBUG("Aggregating second MyEventObject to Node2");
+    node2->AggregateObject(myObj2);
+
     NS_LOG_INFO("Scheduling the MyEventObject::Event with node context");
     Simulator::ScheduleWithContext(node->GetId(), Seconds(3), &MyEventObject::Event, &(*myObj));
 
+    NS_LOG_INFO("Scheduling second MyEventObject::Event with node2 context");
+    Simulator::ScheduleWithContext(node2->GetId(), Seconds(4), &MyEventObject::Event, &(*myObj2));
+
     NS_LOG_INFO("Scheduling FreeEvent");
     Simulator::Schedule(Seconds(5), FreeEvent);
+
+    //
+    // Demonstrate log filtering API.
+    //
+    // Programmatic usage:
+    //   LogSetNodeFilter({0});        // Show only node 0 logs
+    //   LogSetTimeFilter(Seconds(2).GetTimeStep(), Seconds(4).GetTimeStep());
+    //
+    // Environment variable usage:
+    //   NS_LOG="LogExample=level_all|prefix_all" NS_LOG_FILTER_NODES="0" ./ns3 run log-example
+    //   NS_LOG="LogExample=level_all|prefix_all" NS_LOG_FILTER_TIME="2s:4s" ./ns3 run log-example
+    //
 
     NS_LOG_DEBUG("Starting run...");
     Simulator::Run();
