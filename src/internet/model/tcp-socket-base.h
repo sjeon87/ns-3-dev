@@ -905,9 +905,45 @@ class TcpSocketBase : public TcpSocket
     virtual void SendEmptyPacket(uint8_t flags);
 
     /**
+     * @brief Send a packet that carries only TCP control flags with a custom sequence number.
+     *
+     * @param flags the packet's flags
+     * @param seq the sequence number to place in the header
+     * @param updateRto whether to refresh the cached retransmission timeout value
+     */
+    void SendEmptyPacketWithSequence(uint8_t flags, SequenceNumber32 seq, bool updateRto = true);
+
+    /**
+     * @brief Send a throttled RFC 5961 challenge ACK.
+     *
+     * @param addEce whether to reflect the current ECN state by setting the
+     *        ECE flag on the response
+     */
+    void SendChallengeAck(bool addEce = false);
+
+    /**
      * @brief Send reset and tear down this socket
      */
     void SendRST();
+
+    /**
+     * @brief Classification of ACK-only segments in ESTABLISHED state.
+     */
+    enum AckClassification_t
+    {
+        ACK_INVALID_OLD,    //!< ACK is below SND.UNA - MAX.SND.WND
+        ACK_INVALID_FUTURE, //!< ACK is above SND.NXT
+        ACK_STALE,          //!< ACK is in [SND.UNA - MAX.SND.WND, SND.UNA)
+        ACK_VALID           //!< ACK is in [SND.UNA, SND.NXT]
+    };
+
+    /**
+     * @brief Classify an ACK number using the RFC 5961 ESTABLISHED pure-ACK rules.
+     *
+     * @param ackNumber acknowledgment number to classify
+     * @return ACK classification for the current connection state
+     */
+    AckClassification_t ClassifyEstablishedAck(const SequenceNumber32& ackNumber) const;
 
     /**
      * @brief Check if a sequence number range is within the rx window
@@ -1445,13 +1481,21 @@ class TcpSocketBase : public TcpSocket
     double m_msl{0.0};           //!< Max segment lifetime
 
     // Window management
-    uint16_t m_maxWinSize{0};                         //!< Maximum window size to advertise
-    uint32_t m_bytesAckedNotProcessed{0};             //!< Bytes acked, but not processed
-    SequenceNumber32 m_highTxAck{0};                  //!< Highest ack sent
-    TracedValue<uint32_t> m_rWnd{0};                  //!< Receiver window (RCV.WND in RFC793)
-    TracedValue<uint32_t> m_advWnd{0};                //!< Advertised Window size
-    TracedValue<SequenceNumber32> m_highRxMark{0};    //!< Highest seqno received
+    uint16_t m_maxWinSize{0};                      //!< Maximum window size to advertise
+    uint32_t m_bytesAckedNotProcessed{0};          //!< Bytes acked, but not processed
+    uint32_t m_maxSndWnd{0};                       //!< Largest accepted peer-advertised window;
+                                                   //!< initialized from accepted SYN/SYN-ACK window
+    SequenceNumber32 m_highTxAck{0};               //!< Highest ack sent
+    TracedValue<uint32_t> m_rWnd{0};               //!< Receiver window (RCV.WND in RFC793)
+    TracedValue<uint32_t> m_advWnd{0};             //!< Advertised Window size
+    TracedValue<SequenceNumber32> m_highRxMark{0}; //!< Highest seqno received
     TracedValue<SequenceNumber32> m_highRxAckMark{0}; //!< Highest ack received
+
+    // RFC 5961 challenge ACK throttling
+    Time m_challengeAckWindowStart{Seconds(0)}; //!< Start of the current challenge-ACK window
+    uint32_t m_challengeAckCount{0};            //!< Challenge ACKs sent in the current window
+    Time m_challengeAckInterval{Seconds(0)};    //!< Challenge-ACK throttling interval
+    uint32_t m_challengeAckLimit{0};            //!< Challenge ACK budget per interval
 
     // Options
     bool m_sackEnabled{true};       //!< RFC SACK option enabled
