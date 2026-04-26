@@ -128,9 +128,10 @@ class LteSpectrumValueHelper
      * @param bandwidth the Transmission Bandwidth Configuration in
      * number of resource blocks
      * @param powerTx the total power in dBm over the whole bandwidth
-     * @param powerTxMap the map of power in dBm for each RB,
-     * if map contain power for RB, powerTx is not used for this RB,
-     * otherwise powerTx is set for this RB
+     * @param powerTxMap the map of total power in dBm over the whole bandwidth for each RB.
+     * If the map contains a power value for an RB, this value is used to calculate the
+     * power spectral density for this RB instead of powerTx.
+     * Otherwise, powerTx is used for this RB.
      * @param activeRbs the list of Active Resource Blocks (PRBs)
      *
      * @return a pointer to a newly allocated SpectrumValue representing the TX Power Spectral
