@@ -323,6 +323,7 @@ set(test_sources
     test/splitstring-test-suite.cc
     test/threaded-test-suite.cc
     test/time-test-suite.cc
+    test/time-precision-test-suite.cc
     test/timer-test-suite.cc
     test/traced-callback-test-suite.cc
     test/trickle-timer-test-suite.cc
