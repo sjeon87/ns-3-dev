@@ -514,32 +514,6 @@ class CORE_EXPORT Time
         return Time(value);
     }
 
-    /**
-     * Create a Time from a \c double value in the given unit.
-     *
-     * The conversion proceeds as follows:
-     * 1. The \c double \pname{value} (in the given \c unit) is converted
-     *    to a Q64.64 fixed-point int64x64_t, preserving all 53 mantissa
-     *    bits of the IEEE 754 double.
-     * 2. The Q64.64 value is scaled by the (exact integer) conversion
-     *    factor to the current resolution unit.
-     * 3. The result is rounded to the nearest \c int64_t in the
-     *    current resolution unit.
-     *
-     * This ordering is optimal: performing the unit scaling in the Q64.64
-     * domain preserves more precision than scaling in the \c double domain,
-     * because the conversion factors for large units (e.g., years to
-     * nanoseconds) exceed the 53-bit mantissa of \c double.
-     *
-     * @note The precision of the result is bounded by (a) the 53-bit
-     * mantissa of \c double and (b) the final rounding to integer
-     * resolution units.  For maximum precision with sub-second values,
-     * prefer integer-unit constructors such as NanoSeconds(uint64_t).
-     *
-     * @param [in] value The new Time value, expressed in \c unit
-     * @param [in] unit The unit of \pname{value}
-     * @return The Time representing \pname{value} in \c unit
-     */
     inline static Time FromDouble(double value, Unit unit)
     {
         // Optimization: if value is 0, don't process the unit nor cast to int64x64_t
@@ -551,21 +525,6 @@ class CORE_EXPORT Time
         return From(int64x64_t(value), unit);
     }
 
-    /**
-     * Create a Time equal to \pname{value} in unit \c unit.
-     *
-     * The Q64.64 \pname{value} is multiplied by the conversion factor
-     * from \c unit to the current resolution unit, preserving the full
-     * 128-bit precision of the Q64.64 intermediate.
-     *
-     * @note An assertion failure will occur if a non-zero \pname{value}
-     * rounds to zero after conversion.  This typically means the input
-     * is smaller than the current Time resolution.
-     *
-     * @param [in] value The new Time value, expressed in \c unit
-     * @param [in] unit The unit of \pname{value}
-     * @return The Time representing \pname{value} in \c unit
-     */
     inline static Time From(const int64x64_t& value, Unit unit)
     {
         // Optimization: if value is 0, don't process the unit
@@ -578,6 +537,8 @@ class CORE_EXPORT Time
 
         NS_ASSERT_MSG(info->isValid, "Attempted a conversion from an unavailable unit.");
 
+        // DO NOT REMOVE this temporary variable. It's here
+        // to work around a compiler bug in gcc 3.4
         int64x64_t retval = value;
         if (info->fromMul)
         {
@@ -587,12 +548,6 @@ class CORE_EXPORT Time
         {
             retval.MulByInvert(info->timeFrom);
         }
-
-        NS_ASSERT_MSG(retval.Round() != 0,
-                      "Time::From(): a non-zero value rounded to zero during conversion. "
-                      "The input is smaller than the current Time resolution. "
-                      "Consider using a smaller unit or calling Time::SetResolution() first.");
-
         return Time(retval);
     }
 
@@ -1253,13 +1208,6 @@ std::istream& operator>>(std::istream& is, Time& time);
  *   Time t = Seconds (2.0);
  *   Simulator::Schedule (Seconds (5.0), ...);
  * @endcode
- *
- * @note For maximum precision, prefer integer-unit constructors
- * (e.g., NanoSeconds(uint64_t), MicroSeconds(uint64_t)) over
- * \c double-valued constructors such as Seconds(double).
- * The \c double overloads are limited by the 53-bit mantissa
- * of IEEE 754 and by rounding to the current Time resolution.
- * @see Time::FromDouble() for details on precision characteristics.
  */
 /**
  * @ingroup timecivil
