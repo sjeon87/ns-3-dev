@@ -100,6 +100,24 @@ static TimePrinter g_logTimePrinter = nullptr;
 static NodePrinter g_logNodePrinter = nullptr;
 
 /**
+ * Global Callback pointers for fast-path evaluation
+ */
+static NodeIdCallback g_logNodeIdCb = nullptr;
+static TimeCallback g_logTimeCb = nullptr;
+
+void
+LogSetNodeIdCallback(NodeIdCallback cb)
+{
+    g_logNodeIdCb = cb;
+}
+
+void
+LogSetTimeCallback(TimeCallback cb)
+{
+    g_logTimeCb = cb;
+}
+
+/**
  * @ingroup logging
  * Handler for the undocumented \c print-list token in NS_LOG
  * which triggers printing of the list of log components, then exits.
@@ -210,10 +228,42 @@ LogComponent::EnvVarCheck()
 
     for (const auto& lev : flags)
     {
-        // Check if the flag starts with "filter_" (length 7)
-        if (lev.rfind("filter_", 0) == 0)
+        // Node Filter
+        if (lev.rfind("node=", 0) == 0)
         {
-            SetFilter(lev.substr(7)); // Extract everything after "filter_"
+            try
+            {
+                SetNodeFilter(std::stoul(lev.substr(5)));
+            }
+            catch (...)
+            {
+            }
+            continue;
+        }
+
+        // Time Filter
+        if (lev.rfind("time=", 0) == 0)
+        {
+            auto colon = lev.find(':', 5);
+            if (colon != std::string::npos)
+            {
+                try
+                {
+                    double min = std::stod(lev.substr(5, colon - 5));
+                    double max = std::stod(lev.substr(colon + 1));
+                    SetTimeFilter(min, max);
+                }
+                catch (...)
+                {
+                }
+            }
+            continue;
+        }
+
+        // String Match Filter
+        if (lev.rfind("match=", 0) == 0)
+        {
+            SetStringFilter(lev.substr(6));
             continue;
         }
 
@@ -282,39 +332,63 @@ LogComponent::GetLevelLabel(const LogLevel level)
     return "unknown";
 }
 
-/**
- * @brief Set a string filter for this LogComponent.
- *
- * @param [in] filter The string to filter by.
- */
 void
-LogComponent::SetFilter(const std::string& filter)
+LogComponent::SetNodeFilter(uint32_t nodeId)
 {
-    if (!m_filter)
+    m_hasNodeFilter = true;
+    m_nodeFilter = nodeId;
+}
+
+void
+LogComponent::SetTimeFilter(double minTime, double maxTime)
+{
+    m_hasTimeFilter = true;
+    m_timeMin = minTime;
+    m_timeMax = maxTime;
+}
+
+void
+LogComponent::SetStringFilter(const std::string& filter)
+{
+    if (!m_stringFilter)
     {
-        m_filter = new std::string(filter); // Intentionally leaked
+        m_stringFilter = new std::string(filter); // Intentionally leaked
     }
     else
     {
-        *m_filter = filter;
+        *m_stringFilter = filter;
     }
 }
 
-/**
- * @brief Check if the message passes the filter.
- *
- * @param [in] message The message to check.
- * @return \c true if the message passes the filter or if no filter is set.
- */
 bool
-LogComponent::CheckFilter(const std::string& message) const
+LogComponent::CheckNodeAndTime() const
 {
-    if (!m_filter)
+    if (m_hasNodeFilter && g_logNodeIdCb)
     {
-        return true; // Fast path: if no filter is set, allow everything
+        if (g_logNodeIdCb() != m_nodeFilter)
+        {
+            return false;
+        }
     }
-    // Simple substring match for performance.
-    return message.find(*m_filter) != std::string::npos;
+    if (m_hasTimeFilter && g_logTimeCb)
+    {
+        double now = g_logTimeCb();
+        if (now < m_timeMin || now > m_timeMax)
+        {
+            return false;
+        }
+    }
+    return true; // Passes early filters
+}
+
+bool
+LogComponent::CheckString(const std::string& message) const
+{
+    if (!m_stringFilter)
+    {
+        return true;
+    }
+    return message.find(*m_stringFilter) != std::string::npos;
 }
 
 void
@@ -493,7 +567,8 @@ CheckEnvironmentVariables()
         StringVector flags = SplitString(value, "|");
         for (const auto& flag : flags)
         {
-            if (flag.rfind("filter_", 0) == 0)
+            if (flag.rfind("node=", 0) == 0 || flag.rfind("time=", 0) == 0 ||
+                flag.rfind("match=", 0) == 0)
             {
                 continue; // It is a valid filter flag, let it pass
             }

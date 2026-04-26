@@ -79,6 +79,9 @@
 namespace ns3
 {
 
+typedef uint32_t (*NodeIdCallback)(void);
+typedef double (*TimeCallback)(void);
+
 /**
  * Logging severity classes and levels.
  */
@@ -314,6 +317,18 @@ void LogSetNodePrinter(NodePrinter np);
 NodePrinter LogGetNodePrinter();
 
 /**
+ * Set the callback to retrieve the current simulation Node ID.
+ * @param [in] cb The NodeId callback.
+ */
+void LogSetNodeIdCallback(NodeIdCallback cb);
+
+/**
+ * Set the callback to retrieve the current simulation Time.
+ * @param [in] cb The Time callback.
+ */
+void LogSetTimeCallback(TimeCallback cb);
+
+/**
  * A single log component configuration.
  */
 class LogComponent
@@ -395,26 +410,45 @@ class LogComponent
     void SetMask(const LogLevel level);
 
     /**
+     * Check fast-path filters (Node ID and Time).
+     * @return \c true if message passes fast-path filtering.
+     */
+    bool CheckNodeAndTime() const;
+
+    /**
      * Check if this LogComponent has an active string filter.
      * @return \c true if a filter is set.
      */
-    bool HasFilter() const
+    bool HasStringFilter() const
     {
-        return m_filter != nullptr;
+        return m_stringFilter != nullptr;
     }
+
+    /**
+     * Check if the evaluated message passes the string filter.
+     * @param [in] message The message to check.
+     * @return \c true if the message passes the filter or if no filter is set.
+     */
+    bool CheckString(const std::string& message) const;
+
+    /**
+     * Set a node ID filter for this LogComponent.
+     * @param [in] nodeId The node ID to isolate.
+     */
+    void SetNodeFilter(uint32_t nodeId);
+
+    /**
+     * Set a time window filter for this LogComponent.
+     * @param [in] minTime Window start.
+     * @param [in] maxTime Window end.
+     */
+    void SetTimeFilter(double minTime, double maxTime);
 
     /**
      * Set a string filter for this LogComponent.
      * @param [in] filter The string to filter by.
      */
-    void SetFilter(const std::string& filter);
-
-    /**
-     * Check if the message passes the filter.
-     * @param [in] message The message to check.
-     * @return \c true if the message passes the filter or if no filter is set.
-     */
-    bool CheckFilter(const std::string& message) const;
+    void SetStringFilter(const std::string& filter);
 
     /**
      * LogComponent name map.
@@ -450,7 +484,13 @@ class LogComponent
     std::string m_name; //!< LogComponent name.
     std::string m_file; //!< File defining this LogComponent.
 
-    std::string* m_filter{nullptr}; //!< Leaked string pointer to survive static destruction.
+    // Filter State
+    bool m_hasNodeFilter{false};
+    uint32_t m_nodeFilter{0};
+    bool m_hasTimeFilter{false};
+    double m_timeMin{0.0};
+    double m_timeMax{0.0};
+    std::string* m_stringFilter{nullptr}; //!< Leaked string pointer to survive static destruction.
 
 }; // end of class LogComponent
 
