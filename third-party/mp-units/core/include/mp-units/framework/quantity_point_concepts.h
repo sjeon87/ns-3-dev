@@ -32,7 +32,13 @@
 
 namespace mp_units {
 
-MP_UNITS_EXPORT template<QuantitySpec auto QS>
+// Workaround for clang-19 LLVM #110231: the original constrained-auto-NTTP
+// `template<QuantitySpec auto QS>` redeclaration trips a Sema regression
+// fixed in clang-20. Rewrite as plain auto + requires clause; semantics are
+// equivalent and the requires-clause form canonicalizes correctly. The
+// matching definition in quantity_point.h must use the identical form.
+MP_UNITS_EXPORT template<auto QS>
+  requires QuantitySpec<MP_UNITS_REMOVE_CONST(decltype(QS))>
 struct absolute_point_origin;
 
 namespace detail {
@@ -50,7 +56,9 @@ constexpr bool is_quantity_point = false;
 MP_UNITS_EXPORT template<typename T>
 concept QuantityPoint = detail::is_quantity_point<T>;
 
-MP_UNITS_EXPORT template<QuantityPoint auto QP>
+// Workaround for clang-19 LLVM #110231: see absolute_point_origin above.
+MP_UNITS_EXPORT template<auto QP>
+  requires QuantityPoint<MP_UNITS_REMOVE_CONST(decltype(QP))>
 struct relative_point_origin;
 
 namespace detail {
@@ -75,8 +83,13 @@ concept PointOrigin = std::derived_from<T, detail::point_origin_interface> && de
 MP_UNITS_EXPORT template<typename T, auto QS>
 concept PointOriginFor = PointOrigin<T> && QuantitySpecOf<MP_UNITS_REMOVE_CONST(decltype(QS)), T::_quantity_spec_>;
 
-MP_UNITS_EXPORT template<Reference auto R, PointOriginFor<get_quantity_spec(R)> auto PO,
-                         RepresentationOf<get_quantity_spec(R)> Rep>
+// Workaround for clang-19 LLVM #110231: see absolute_point_origin above.
+// The matching definition in quantity_point.h adds defaults but must keep
+// the requires-clause text identical to this forward declaration.
+MP_UNITS_EXPORT template<auto R, auto PO, typename Rep>
+  requires Reference<MP_UNITS_REMOVE_CONST(decltype(R))> &&
+           PointOriginFor<MP_UNITS_REMOVE_CONST(decltype(PO)), get_quantity_spec(R)> &&
+           RepresentationOf<Rep, get_quantity_spec(R)>
 class quantity_point;
 
 namespace detail {

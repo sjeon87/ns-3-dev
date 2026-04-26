@@ -117,12 +117,17 @@ struct point_origin_interface {
 
 }  // namespace detail
 
-MP_UNITS_EXPORT template<QuantitySpec auto QS>
+// Workaround for clang-19 LLVM #110231: must match forward declaration in
+// quantity_point_concepts.h byte-for-byte for the requires-clause.
+MP_UNITS_EXPORT template<auto QS>
+  requires QuantitySpec<MP_UNITS_REMOVE_CONST(decltype(QS))>
 struct absolute_point_origin : detail::point_origin_interface {
   static constexpr QuantitySpec auto _quantity_spec_ = QS;
 };
 
-MP_UNITS_EXPORT template<QuantityPoint auto QP>
+// Workaround for clang-19 LLVM #110231: see absolute_point_origin above.
+MP_UNITS_EXPORT template<auto QP>
+  requires QuantityPoint<MP_UNITS_REMOVE_CONST(decltype(QP))>
 struct relative_point_origin : detail::point_origin_interface {
   static constexpr QuantityPoint auto _quantity_point_ = QP;
   static constexpr QuantitySpec auto _quantity_spec_ = []() {
@@ -180,8 +185,12 @@ template<PointOrigin PO>
  * @tparam PO a type that represents the origin point from which the quantity point is measured from
  * @tparam Rep a type to be used to represent values of a quantity point
  */
-MP_UNITS_EXPORT template<Reference auto R, PointOriginFor<get_quantity_spec(R)> auto PO = default_point_origin(R),
-                         RepresentationOf<get_quantity_spec(R)> Rep = double>
+// Workaround for clang-19 LLVM #110231: must match forward declaration in
+// quantity_point_concepts.h byte-for-byte for the requires-clause.
+MP_UNITS_EXPORT template<auto R, auto PO = default_point_origin(R), typename Rep = double>
+  requires Reference<MP_UNITS_REMOVE_CONST(decltype(R))> &&
+           PointOriginFor<MP_UNITS_REMOVE_CONST(decltype(PO)), get_quantity_spec(R)> &&
+           RepresentationOf<Rep, get_quantity_spec(R)>
 class quantity_point {
 public:
   // member types and values
