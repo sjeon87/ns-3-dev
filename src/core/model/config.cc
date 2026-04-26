@@ -910,7 +910,6 @@ SetDefaultFailSafe(std::string fullName, const AttributeValue& value)
         return false;
     }
 
-    // Climb the inheritance tree to find the attribute
     TypeId::AttributeInformation info;
     tid.LookupAttributeByName(paramName, &info);
 
