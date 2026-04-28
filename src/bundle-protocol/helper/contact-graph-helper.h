@@ -30,13 +30,21 @@ class ContactGraphHelper
      */
     void SetContactPlan(const std::string& filename);
 
+    /**
+     * @brief Define the CGR Engine.
+     * @param typeId Factory object type of the CGR Engine.
+     */
     void SetRoutingEngine(const std::string& typeId);
 
+    /**
+     * @brief Install a routing engine.
+     * @return Pointer to installed routing engine.
+     */
     Ptr<BaseRoutingEngine> Install();
 
   private:
-    std::string m_filename;
-    ObjectFactory m_factory;
+    std::string m_filename;  //!< Filename of the contact plan
+    ObjectFactory m_factory; //!< ObjectFactory for the CGR engines
 };
 
 } // namespace ns3

@@ -254,13 +254,46 @@ class BundleClaContainer
 
     typedef std::vector<Ptr<BundleCla>>::const_iterator Iterator;
 
+    /**
+     * Get an iterator to the first CLA.
+     * @returns Iterator to first CLA.
+     */
     Iterator Begin(void) const;
+
+    /**
+     * Get an iterator to the last CLA.
+     * @returns Iterator to last CLA.
+     */
     Iterator End(void) const;
+
+    /**
+     * Returns the size of the CLA Container
+     * @returns size of CLA pointer list.
+     */
     uint32_t GetN(void) const;
+
+    /**
+     * Returns a pointer to the i-th CLA.
+     * @returns Pointer to i-th CLA.
+     */
     Ptr<BundleCla> Get(uint32_t i) const;
 
+    /**
+     * Adds all the CLAs in another container.
+     * @param other BundleContainer that contains the other CLAs.
+     */
     void Add(BundleClaContainer other);
+
+    /**
+     * Adds a CLA to the container
+     * @param cla Pointer to the CLA.
+     */
     void Add(Ptr<BundleCla> cla);
+
+    /**
+     * Adds a CLA to the container by name.
+     * @param name Name of the CLA according to factory.
+     */
     void Add(std::string name);
 
   private:
@@ -293,10 +326,27 @@ class BundleClaHelper
      * @returns Container of Ptr to the CLAs installed.
      */
     BundleClaContainer Install(NodeContainer c);
+
+    /**
+     * Install the concrete BundleCla on an input node.
+     * @param node Node to install CLA on.
+     * @returns Container of Ptr to the CLA installed.
+     */
     BundleClaContainer Install(Ptr<Node> node);
+
+    /**
+     * Install the concrete BundleCla on an input node by name.
+     * @param nodeName NodeID to install CLA on.
+     * @returns Container of Ptr to the CLA installed.
+     */
     BundleClaContainer Install(std::string nodeName);
 
   private:
+    /**
+     * Install the concrete BundleCla object on a node.
+     * @param node Node to install CLA on.
+     * @returns Ptr to the CLA installed.
+     */
     Ptr<BundleCla> InstallPriv(Ptr<Node> node);
 
     ObjectFactory m_factory; /// Factory used to generate concrete CLA objects

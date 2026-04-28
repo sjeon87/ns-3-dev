@@ -44,7 +44,7 @@ Cbor::WriteUint(Buffer::Iterator& i, uint64_t val)
 void
 Cbor::WriteArray(Buffer::Iterator& i, uint64_t size)
 {
-    uint8_t majorType = 0x80; // 0b100_00000
+    uint8_t majorType = 0x80;
     if (size <= 23)
     {
         i.WriteU8(majorType | static_cast<uint8_t>(size));
@@ -69,7 +69,7 @@ Cbor::WriteArray(Buffer::Iterator& i, uint64_t size)
 void
 Cbor::WriteTextString(Buffer::Iterator& i, const std::string& text)
 {
-    uint8_t majorType = 0x60; // 0b011_00000
+    uint8_t majorType = 0x60;
     uint64_t size = text.length();
 
     if (size <= 23)

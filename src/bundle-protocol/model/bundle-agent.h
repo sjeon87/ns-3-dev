@@ -150,11 +150,22 @@ class BundleAgent : public Object
      */
     void ProcessBacklog(const std::string& destinationEID);
 
+    /**
+     * @brief Attempt to forward all stored bundles.
+     */
     void ProcessAllBacklog();
 
+    /**
+     * @brief Registers a callback for the receipt of a bundle.
+     * @param cb BundleReceiveCallback that calls a function upon receive of a bundle.
+     */
     typedef Callback<void, Ptr<Bundle>> BundleReceiveCallback;
     void SetReceiveCallback(BundleReceiveCallback cb);
 
+    /**
+     * @brief Sets the storage limit of the BSE
+     * @param limit The storage limit to be set.
+     */
     void SetStorageLimitFromAttribute(uint32_t limit);
 
   private:
@@ -187,9 +198,9 @@ class BundleAgent : public Object
     Ptr<BundleStorageEngine> m_bundleStorageEngine; //!< Storage engine for node
     std::map<std::string, Ptr<BundleCla>> m_clas;   //!< Map of CLAs with destination EIDs
     std::map<uint32_t, EventId> m_expiryEvents;     //!< Expiry event tracker
-    BundleReceiveCallback m_receiveCallback;
-    Ptr<BaseRoutingEngine> m_contactGraph; //!< Routing oracle
-    EventId m_backlogCheckEvent;           //!< Event to periodically check backlog
+    BundleReceiveCallback m_receiveCallback;        //!< Receiving application callback
+    Ptr<BaseRoutingEngine> m_contactGraph;          //!< Routing oracle
+    EventId m_backlogCheckEvent;                    //!< Event to periodically check backlog
 };
 
 } // namespace ns3

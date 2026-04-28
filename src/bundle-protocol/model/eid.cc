@@ -7,6 +7,7 @@
  */
 
 #include "eid.h"
+
 #include "cbor.h"
 
 namespace ns3
