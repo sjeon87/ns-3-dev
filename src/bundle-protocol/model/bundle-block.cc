@@ -11,6 +11,7 @@
  *           Ishaan Lagwankar <lagwanka@msu.edu>
  */
 #include "bundle-block.h"
+#include "cbor.h"
 
 #include "ns3/log.h"
 
@@ -52,6 +53,26 @@ PrimaryBlock::SerializeToPacket() const
     NS_LOG_FUNCTION(this);
     Ptr<Packet> p = Create<Packet>();
     p->AddHeader(m_header);
+
+    if (m_header.GetCrcType() == 1)
+    {
+        uint32_t size = p->GetSize();
+        uint8_t* buf = new uint8_t[size];
+        p->CopyData(buf, size);
+
+        buf[size - 2] = 0x00;
+        buf[size - 1] = 0x00;
+
+        uint16_t crc = Cbor::ComputeCrc16(buf, size);
+
+        buf[size - 2] = (crc >> 8) & 0xFF;
+        buf[size - 1] = crc & 0xFF;
+
+        Ptr<Packet> patched = Create<Packet>(buf, size);
+        delete[] buf;
+        return patched;
+    }
+
     return p;
 }
 

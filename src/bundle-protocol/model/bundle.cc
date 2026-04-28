@@ -115,11 +115,19 @@ Bundle::Serialize() const
 {
     NS_LOG_FUNCTION(this);
     Ptr<Packet> bundle = Create<Packet>();
+
+    uint8_t indefiniteOpen = 0x9F;
+    bundle->AddAtEnd(Create<Packet>(&indefiniteOpen, 1));
+
     for (const auto& block : m_blocks)
     {
         Ptr<Packet> blockPacket = block->SerializeToPacket();
         bundle->AddAtEnd(blockPacket);
     }
+
+    uint8_t breakCode = 0xFF;
+    bundle->AddAtEnd(Create<Packet>(&breakCode, 1));
+
     return bundle;
 }
 

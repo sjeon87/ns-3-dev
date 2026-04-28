@@ -13,6 +13,7 @@
 #include "bundle-header.h"
 
 #include "cbor.h"
+#include "eid.h"
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -67,28 +68,34 @@ PrimaryBlockHeader::GetSerializedSize() const
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
 
-    size += Cbor::GetArraySize(8);
+    bool hasCrc = (m_crcType != 0);
+    uint32_t arrayLen = hasCrc ? 9 : 8;
+
+    size += Cbor::GetArraySize(arrayLen);
     size += Cbor::GetUintSize(m_version);
     size += Cbor::GetUintSize(m_procFlags);
     size += Cbor::GetUintSize(m_crcType);
 
-    size += Cbor::GetArraySize(2);
-    size += Cbor::GetUintSize(1);                                // scheme number
-    size += Cbor::GetTextStringSize(m_destinationEID.substr(4)); // just the SSP
+    size += Eid::GetSize(m_destinationEID);
+    size += Eid::GetSize(m_sourceEID);
+    size += Eid::GetSize(m_reportToEID);
 
     size += Cbor::GetArraySize(2);
-    size += Cbor::GetUintSize(1);                           // scheme number
-    size += Cbor::GetTextStringSize(m_sourceEID.substr(4)); // just the SSP
-
-    size += Cbor::GetArraySize(2);
-    size += Cbor::GetUintSize(1);                             // scheme number
-    size += Cbor::GetTextStringSize(m_reportToEID.substr(4)); // just the SSP
-
-    size += Cbor::GetArraySize(2);
-    size += Cbor::GetUintSize(m_creationTime.GetTimeStep());
+    size += Cbor::GetUintSize(m_creationTime.GetMilliSeconds());
     size += Cbor::GetUintSize(m_seq);
+    size += Cbor::GetUintSize(m_lifetime.GetMilliSeconds());
 
-    size += Cbor::GetUintSize(m_lifetime.GetTimeStep());
+    if (hasCrc)
+    {
+        if (m_crcType == 1)
+        {
+            size += 3;
+        }
+        else
+        {
+            size += 5;
+        }
+    }
 
     return size;
 }
@@ -98,23 +105,37 @@ PrimaryBlockHeader::Serialize(Buffer::Iterator start) const
 {
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
-    Cbor::WriteArray(i, 8);
+
+    bool hasCrc = (m_crcType != 0);
+    uint32_t arrayLen = hasCrc ? 9 : 8;
+
+    Cbor::WriteArray(i, arrayLen);
     Cbor::WriteUint(i, m_version);
     Cbor::WriteUint(i, m_procFlags);
     Cbor::WriteUint(i, m_crcType);
+
+    Eid::Write(i, m_destinationEID);
+    Eid::Write(i, m_sourceEID);
+    Eid::Write(i, m_reportToEID);
+
     Cbor::WriteArray(i, 2);
-    Cbor::WriteUint(i, 1); // Using "dtn" scheme
-    Cbor::WriteTextString(i, m_destinationEID.substr(4));
-    Cbor::WriteArray(i, 2);
-    Cbor::WriteUint(i, 1);
-    Cbor::WriteTextString(i, m_sourceEID.substr(4));
-    Cbor::WriteArray(i, 2);
-    Cbor::WriteUint(i, 1);
-    Cbor::WriteTextString(i, m_reportToEID.substr(4));
-    Cbor::WriteArray(i, 2);
-    Cbor::WriteUint(i, m_creationTime.GetTimeStep());
+    Cbor::WriteUint(i, m_creationTime.GetMilliSeconds());
     Cbor::WriteUint(i, m_seq);
-    Cbor::WriteUint(i, m_lifetime.GetTimeStep());
+    Cbor::WriteUint(i, m_lifetime.GetMilliSeconds());
+
+    if (hasCrc)
+    {
+        if (m_crcType == 1)
+        {
+            i.WriteU8(0x42);
+            i.WriteHtonU16(0x0000);
+        }
+        else
+        {
+            i.WriteU8(0x44);
+            i.WriteHtonU32(0x00000000);
+        }
+    }
 }
 
 uint32_t
@@ -122,26 +143,31 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
 {
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
+
     uint64_t arraySize = Cbor::ReadArray(i);
     m_version = Cbor::ReadUint(i);
     m_procFlags = Cbor::ReadUint(i);
     m_crcType = Cbor::ReadUint(i);
+
+    m_destinationEID = Eid::Read(i);
+    m_sourceEID = Eid::Read(i);
+    m_reportToEID = Eid::Read(i);
+
     Cbor::ReadArray(i);
-    uint64_t destScheme = Cbor::ReadUint(i);
-    std::string destSsp = Cbor::ReadTextString(i);
-    m_destinationEID = "dtn:" + destSsp;
-    Cbor::ReadArray(i);
-    uint64_t srcScheme = Cbor::ReadUint(i);
-    std::string srcSsp = Cbor::ReadTextString(i);
-    m_sourceEID = "dtn:" + srcSsp;
-    Cbor::ReadArray(i);
-    uint64_t repScheme = Cbor::ReadUint(i);
-    std::string repSsp = Cbor::ReadTextString(i);
-    m_reportToEID = "dtn:" + repSsp;
-    Cbor::ReadArray(i);
-    m_creationTime = TimeStep(Cbor::ReadUint(i));
+    m_creationTime = MilliSeconds(Cbor::ReadUint(i));
     m_seq = Cbor::ReadUint(i);
-    m_lifetime = TimeStep(Cbor::ReadUint(i));
+    m_lifetime = MilliSeconds(Cbor::ReadUint(i));
+
+    if (m_crcType != 0)
+    {
+        uint8_t crcHeader = i.ReadU8();
+        uint8_t crcLen = crcHeader & 0x1F;
+        for (uint8_t b = 0; b < crcLen; ++b)
+        {
+            i.ReadU8();
+        }
+    }
+
     return i.GetDistanceFrom(start);
 }
 
@@ -312,13 +338,26 @@ PayloadBlockHeader::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
+    bool hasCrc = (m_crcType != 0);
 
-    size += Cbor::GetArraySize(5);
+    size += Cbor::GetArraySize(hasCrc ? 6 : 5);
     size += Cbor::GetUintSize(m_blockType);
     size += Cbor::GetUintSize(m_blockNumber);
     size += Cbor::GetUintSize(m_procFlags);
     size += Cbor::GetUintSize(m_crcType);
-    size += Cbor::GetUintSize(m_blockLength);
+    size += Cbor::GetByteStringHeaderSize(m_blockLength);
+
+    if (hasCrc)
+    {
+        if (m_crcType == 1)
+        {
+            size += 3;
+        }
+        else
+        {
+            size += 5;
+        }
+    }
 
     return size;
 }
@@ -328,13 +367,28 @@ PayloadBlockHeader::Serialize(Buffer::Iterator start) const
 {
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
+    bool hasCrc = (m_crcType != 0);
 
-    Cbor::WriteArray(i, 5);
+    Cbor::WriteArray(i, hasCrc ? 6 : 5);
     Cbor::WriteUint(i, m_blockType);
     Cbor::WriteUint(i, m_blockNumber);
     Cbor::WriteUint(i, m_procFlags);
     Cbor::WriteUint(i, m_crcType);
-    Cbor::WriteUint(i, m_blockLength);
+    Cbor::WriteByteStringHeader(i, m_blockLength);
+
+    if (hasCrc)
+    {
+        if (m_crcType == 1)
+        {
+            i.WriteU8(0x42);
+            i.WriteHtonU16(0x0000);
+        }
+        else
+        {
+            i.WriteU8(0x44);
+            i.WriteHtonU32(0x00000000);
+        }
+    }
 }
 
 uint32_t
@@ -344,12 +398,11 @@ PayloadBlockHeader::Deserialize(Buffer::Iterator start)
     Buffer::Iterator i = start;
 
     Cbor::ReadArray(i);
-
     m_blockType = Cbor::ReadUint(i);
     m_blockNumber = Cbor::ReadUint(i);
     m_procFlags = Cbor::ReadUint(i);
     m_crcType = Cbor::ReadUint(i);
-    m_blockLength = Cbor::ReadUint(i);
+    m_blockLength = Cbor::ReadByteStringHeader(i);
 
     return i.GetDistanceFrom(start);
 }

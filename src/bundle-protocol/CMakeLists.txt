@@ -13,6 +13,7 @@ build_lib(
     model/contact-graph-routing.cc
     model/contact-optimized-dijkstra-routing.cc
     model/contact-parser.cc
+    model/eid.cc
     model/generic-convergence-layer-adapter.cc
     model/ltp-convergence-layer-adapter.cc
     model/tcp-convergence-layer-adapter.cc
@@ -33,6 +34,7 @@ build_lib(
     model/contact-graph-routing.h
     model/contact-optimized-dijkstra-routing.h
     model/contact-parser.h
+    model/eid.h
     model/generic-convergence-layer-adapter.h
     model/ltp-convergence-layer-adapter.h
     model/tcp-convergence-layer-adapter.h

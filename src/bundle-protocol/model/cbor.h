@@ -30,17 +30,25 @@ class Cbor
 
     static void WriteTextString(Buffer::Iterator& i, const std::string& text);
 
+    static void WriteByteStringHeader(Buffer::Iterator& i, uint64_t len);
+
     static uint64_t ReadUint(Buffer::Iterator& i);
 
     static uint64_t ReadArray(Buffer::Iterator& i);
 
     static std::string ReadTextString(Buffer::Iterator& i);
 
+    static uint64_t ReadByteStringHeader(Buffer::Iterator& i);
+
     static uint32_t GetUintSize(uint64_t val);
 
     static uint32_t GetArraySize(uint64_t size);
 
     static uint32_t GetTextStringSize(const std::string& text);
+
+    static uint32_t GetByteStringHeaderSize(uint64_t len);
+
+    static uint16_t ComputeCrc16(uint8_t* data, uint32_t length);
 };
 
 } // namespace ns3

@@ -14,28 +14,29 @@ namespace ns3
 void
 Cbor::WriteUint(Buffer::Iterator& i, uint64_t val)
 {
+    uint8_t majorType = 0x00;
     if (val <= 23)
     {
-        i.WriteU8(static_cast<uint8_t>(val));
+        i.WriteU8(majorType | static_cast<uint8_t>(val));
     }
     else if (val <= 0xFF)
     {
-        i.WriteU8(24);
+        i.WriteU8(majorType | 24);
         i.WriteU8(static_cast<uint8_t>(val));
     }
     else if (val <= 0xFFFF)
     {
-        i.WriteU8(25);
+        i.WriteU8(majorType | 25);
         i.WriteHtonU16(static_cast<uint16_t>(val));
     }
     else if (val <= 0xFFFFFFFF)
     {
-        i.WriteU8(26);
+        i.WriteU8(majorType | 26);
         i.WriteHtonU32(static_cast<uint32_t>(val));
     }
     else
     {
-        i.WriteU8(27);
+        i.WriteU8(majorType | 27);
         i.WriteHtonU64(val);
     }
 }
@@ -92,6 +93,55 @@ Cbor::WriteTextString(Buffer::Iterator& i, const std::string& text)
     }
 
     i.Write(reinterpret_cast<const uint8_t*>(text.data()), size);
+}
+
+void
+Cbor::WriteByteStringHeader(Buffer::Iterator& i, uint64_t len)
+{
+    uint8_t majorType = 0x40;
+    if (len <= 23)
+    {
+        i.WriteU8(majorType | static_cast<uint8_t>(len));
+    }
+    else if (len <= 0xFF)
+    {
+        i.WriteU8(majorType | 24);
+        i.WriteU8(static_cast<uint8_t>(len));
+    }
+    else if (len <= 0xFFFF)
+    {
+        i.WriteU8(majorType | 25);
+        i.WriteHtonU16(static_cast<uint16_t>(len));
+    }
+    else
+    {
+        i.WriteU8(majorType | 26);
+        i.WriteHtonU32(static_cast<uint32_t>(len));
+    }
+}
+
+uint64_t
+Cbor::ReadByteStringHeader(Buffer::Iterator& i)
+{
+    uint8_t initialByte = i.ReadU8();
+    uint8_t additionalInfo = initialByte & 0x1F;
+    if (additionalInfo <= 23)
+    {
+        return additionalInfo;
+    }
+    else if (additionalInfo == 24)
+    {
+        return i.ReadU8();
+    }
+    else if (additionalInfo == 25)
+    {
+        return i.ReadNtohU16();
+    }
+    else if (additionalInfo == 26)
+    {
+        return i.ReadNtohU32();
+    }
+    return 0;
 }
 
 uint64_t
@@ -177,6 +227,46 @@ uint32_t
 Cbor::GetTextStringSize(const std::string& text)
 {
     return GetUintSize(text.length()) + text.length();
+}
+
+uint32_t
+Cbor::GetByteStringHeaderSize(uint64_t len)
+{
+    if (len <= 23)
+    {
+        return 1;
+    }
+    if (len <= 0xFF)
+    {
+        return 2;
+    }
+    if (len <= 0xFFFF)
+    {
+        return 3;
+    }
+    return 5;
+}
+
+uint16_t
+Cbor::ComputeCrc16(uint8_t* data, uint32_t length)
+{
+    uint16_t crc = 0xFFFF;
+    for (uint32_t i = 0; i < length; i++)
+    {
+        crc ^= static_cast<uint16_t>(data[i]);
+        for (int bit = 0; bit < 8; bit++)
+        {
+            if (crc & 0x0001)
+            {
+                crc = (crc >> 1) ^ 0x8408;
+            }
+            else
+            {
+                crc >>= 1;
+            }
+        }
+    }
+    return crc ^ 0xFFFF;
 }
 
 } // namespace ns3

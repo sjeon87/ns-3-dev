@@ -194,9 +194,9 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     // BPv7 Payload Block Setup
     PayloadBlockHeader payloadHeader;
     payloadHeader.SetBlockType(1);
-    payloadHeader.SetBlockNumber(2);
+    payloadHeader.SetBlockNumber(1);
     payloadHeader.SetProcFlags(0);
-    payloadHeader.SetCrcType(1);
+    payloadHeader.SetCrcType(0);
     payloadHeader.SetBlockLength(size);
 
     Ptr<Packet> payload = Create<Packet>(data, size);
@@ -448,8 +448,8 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
 
     PayloadBlockHeader payloadHeader;
     payloadHeader.SetBlockType(1);
-    payloadHeader.SetBlockNumber(2);
-    payloadHeader.SetCrcType(1);
+    payloadHeader.SetBlockNumber(1);
+    payloadHeader.SetCrcType(0);
     payloadHeader.SetBlockLength(reportPayload->GetSize());
 
     Ptr<PrimaryBlock> reportPrimaryBlock = CreateObject<PrimaryBlock>();
