@@ -87,7 +87,11 @@ TcpBundleCla::Setup(Ptr<Node> node, Address localAddress, Address remoteAddress)
     m_sendSocket->SetConnectCallback(MakeCallback(&TcpBundleCla::ConnectionSucceeded, this),
                                      MakeCallback(&TcpBundleCla::ConnectionFailed, this));
 
-    m_sendSocket->Connect(m_remoteAddress);
+    Simulator::ScheduleWithContext(node->GetId(),
+                                   Seconds(0.001),
+                                   &Socket::Connect,
+                                   m_sendSocket,
+                                   m_remoteAddress);
 
     NS_LOG_DEBUG("TcpBundleCla configured. Listening on " << localAddress << ", connecting to "
                                                           << m_remoteAddress);
