@@ -46,25 +46,35 @@ Eid::Read(Buffer::Iterator& i)
 {
     Cbor::ReadArray(i);
     uint64_t scheme = Cbor::ReadUint(i);
+
     if (scheme == 1)
     {
-        uint8_t sspByte = i.ReadU8();
-        if ((sspByte & 0xE0) == 0x00)
+        uint8_t peek = i.PeekU8();
+        if ((peek & 0xE0) == 0x00)
         {
+            Cbor::ReadUint(i);
             return "dtn:none";
         }
-        uint64_t len = sspByte & 0x1F;
-        std::string ssp(len, '\0');
-        i.Read(reinterpret_cast<uint8_t*>(&ssp[0]), len);
-        return "dtn:" + ssp;
+        return "dtn:" + Cbor::ReadTextString(i);
     }
     else if (scheme == 2)
     {
-        Cbor::ReadArray(i);
-        uint64_t nodeNum = Cbor::ReadUint(i);
-        uint64_t serviceNum = Cbor::ReadUint(i);
+        uint8_t peek = i.PeekU8();
+        uint64_t nodeNum, serviceNum;
+        if ((peek & 0xE0) == 0x80)
+        {
+            Cbor::ReadArray(i);
+            nodeNum    = Cbor::ReadUint(i);
+            serviceNum = Cbor::ReadUint(i);
+        }
+        else
+        {
+            nodeNum    = Cbor::ReadUint(i);
+            serviceNum = Cbor::ReadUint(i);
+        }
         return "ipn:" + std::to_string(nodeNum) + "." + std::to_string(serviceNum);
     }
+
     return "dtn:none";
 }
 

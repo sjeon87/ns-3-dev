@@ -139,9 +139,23 @@ PayloadBlock::Deserialize(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
 
-    p->RemoveHeader(m_header);
-    uint32_t payloadSize = m_header.GetBlockLength();
+    uint32_t available = p->GetSize();
+    uint8_t* buf = new uint8_t[available];
+    p->CopyData(buf, available);
 
+    Buffer tmp;
+    tmp.AddAtEnd(available);
+    Buffer::Iterator it = tmp.Begin();
+    it.Write(buf, available);
+    delete[] buf;
+
+    Buffer::Iterator start = tmp.Begin();
+    uint32_t consumed = m_header.Deserialize(start);
+    
+
+    p->RemoveAtStart(consumed);
+
+    uint32_t payloadSize = m_header.GetBlockLength();
     if (payloadSize > 0)
     {
         m_payload = p->CreateFragment(0, payloadSize);
@@ -152,7 +166,7 @@ PayloadBlock::Deserialize(Ptr<Packet> p)
         m_payload = Create<Packet>();
     }
 
-    return m_header.GetSerializedSize() + payloadSize;
+    return consumed + payloadSize;
 }
 
 uint8_t

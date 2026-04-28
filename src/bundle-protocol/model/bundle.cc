@@ -138,16 +138,19 @@ Bundle::Deserialize(Ptr<Packet> p)
     m_blocks.clear();
 
     Ptr<Packet> copy = p->Copy();
+    copy->RemoveAtStart(1);
 
     Ptr<PrimaryBlock> primary = CreateObject<PrimaryBlock>();
     primary->Deserialize(copy);
     m_blocks.emplace_back(primary);
-    while (copy->GetSize() > 0)
+
+    while (copy->GetSize() > 1)  
     {
         Ptr<PayloadBlock> payload = CreateObject<PayloadBlock>();
         payload->Deserialize(copy);
         m_blocks.emplace_back(payload);
     }
+    copy->RemoveAtStart(1);
 }
 
 Time

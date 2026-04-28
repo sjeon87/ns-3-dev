@@ -338,7 +338,7 @@ PayloadBlockHeader::GetSerializedSize() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t size = 0;
-    bool hasCrc = (m_crcType != 0);
+    bool hasCrc = (m_crcType != 0) || (m_deserializedArraySize == 6);
 
     size += Cbor::GetArraySize(hasCrc ? 6 : 5);
     size += Cbor::GetUintSize(m_blockType);
@@ -397,12 +397,23 @@ PayloadBlockHeader::Deserialize(Buffer::Iterator start)
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
 
-    Cbor::ReadArray(i);
-    m_blockType = Cbor::ReadUint(i);
+    uint64_t arraySize = Cbor::ReadArray(i);
+    m_deserializedArraySize = static_cast<uint8_t>(arraySize);
+    m_blockType   = Cbor::ReadUint(i);
     m_blockNumber = Cbor::ReadUint(i);
-    m_procFlags = Cbor::ReadUint(i);
-    m_crcType = Cbor::ReadUint(i);
+    m_procFlags   = Cbor::ReadUint(i);
+    m_crcType     = Cbor::ReadUint(i);
     m_blockLength = Cbor::ReadByteStringHeader(i);
+
+    if (arraySize == 6)
+    {
+        uint8_t crcHeader = i.ReadU8();
+        uint8_t crcLen = crcHeader & 0x1F;
+        for (uint8_t b = 0; b < crcLen; ++b)
+        {
+            i.ReadU8();
+        }
+    }
 
     return i.GetDistanceFrom(start);
 }

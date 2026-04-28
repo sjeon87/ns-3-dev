@@ -334,6 +334,7 @@ class PayloadBlockHeader : public Header
     uint8_t m_procFlags = 0;    //!< Block processing control flags
     uint8_t m_crcType = 0;      //!< CRC Type
     uint32_t m_blockLength = 0; //!< Length of the block data
+    uint8_t m_deserializedArraySize = 0;
 };
 
 /**
