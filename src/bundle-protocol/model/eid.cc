@@ -64,12 +64,12 @@ Eid::Read(Buffer::Iterator& i)
         if ((peek & 0xE0) == 0x80)
         {
             Cbor::ReadArray(i);
-            nodeNum    = Cbor::ReadUint(i);
+            nodeNum = Cbor::ReadUint(i);
             serviceNum = Cbor::ReadUint(i);
         }
         else
         {
-            nodeNum    = Cbor::ReadUint(i);
+            nodeNum = Cbor::ReadUint(i);
             serviceNum = Cbor::ReadUint(i);
         }
         return "ipn:" + std::to_string(nodeNum) + "." + std::to_string(serviceNum);

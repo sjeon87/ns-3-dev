@@ -144,7 +144,7 @@ Bundle::Deserialize(Ptr<Packet> p)
     primary->Deserialize(copy);
     m_blocks.emplace_back(primary);
 
-    while (copy->GetSize() > 1)  
+    while (copy->GetSize() > 1)
     {
         Ptr<PayloadBlock> payload = CreateObject<PayloadBlock>();
         payload->Deserialize(copy);

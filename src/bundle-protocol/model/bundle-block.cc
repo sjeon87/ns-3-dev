@@ -151,7 +151,6 @@ PayloadBlock::Deserialize(Ptr<Packet> p)
 
     Buffer::Iterator start = tmp.Begin();
     uint32_t consumed = m_header.Deserialize(start);
-    
 
     p->RemoveAtStart(consumed);
 

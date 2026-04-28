@@ -399,10 +399,10 @@ PayloadBlockHeader::Deserialize(Buffer::Iterator start)
 
     uint64_t arraySize = Cbor::ReadArray(i);
     m_deserializedArraySize = static_cast<uint8_t>(arraySize);
-    m_blockType   = Cbor::ReadUint(i);
+    m_blockType = Cbor::ReadUint(i);
     m_blockNumber = Cbor::ReadUint(i);
-    m_procFlags   = Cbor::ReadUint(i);
-    m_crcType     = Cbor::ReadUint(i);
+    m_procFlags = Cbor::ReadUint(i);
+    m_crcType = Cbor::ReadUint(i);
     m_blockLength = Cbor::ReadByteStringHeader(i);
 
     if (arraySize == 6)
