@@ -26,6 +26,8 @@
 #include "ns3/ipv6-address-helper.h"
 #include "ns3/ipv6-interface-container.h"
 #include "ns3/point-to-point-helper.h"
+#include "ns3/traffic-control-helper.h"
+#include "ns3/queue-disc.h"
 
 #include <string>
 
@@ -165,6 +167,10 @@ class PointToPointDumbbellHelper
      * \param lry lower right y value
      */
     void BoundingBox(double ulx, double uly, double lrx, double lry) const;
+
+    Ptr<NetDevice> GetBottleneckDevice() const;
+    Ptr<QueueDisc> GetBottleneckQueueDisc() const;
+    void InstallBottleneckQueueDisc(TrafficControlHelper& tch);
 
   private:
     NodeContainer m_leftLeaf;                        //!< Left Leaf nodes

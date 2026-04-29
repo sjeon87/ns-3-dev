@@ -147,8 +147,6 @@ TraceCwnd(Ptr<Node> node, uint32_t socketId, uint32_t senderId)
 int
 main(int argc, char* argv[])
 {
-    auto buildStart = std::chrono::steady_clock::now();
-
     // Naming the output directory using local system time
     time_t rawtime;
     struct tm* timeinfo;
@@ -194,16 +192,8 @@ main(int argc, char* argv[])
     Config::SetDefault("ns3::TcpSocket::DelAckCount", UintegerValue(delAckCount));
     Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1448));
     Config::SetDefault("ns3::DropTailQueue<Packet>::MaxSize", QueueSizeValue(QueueSize("1p")));
-    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("50p")));
+    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("10p")));
 
-    // Configure queue discipline globally BEFORE creating topology
-    // This way dumbbell devices will use our configured queue disc from the start
-    TrafficControlHelper tch;
-    tch.SetRootQueueDisc(queueDisc);
-    if (bql)
-    {
-        tch.SetQueueLimits("ns3::DynamicQueueLimits", "HoldTime", StringValue("1000ms"));
-    }
 
     // Create the dumbbell topology using PointToPointDumbbellHelper
     PointToPointHelper bottleneckLink;
@@ -276,19 +266,21 @@ main(int argc, char* argv[])
         exit(1);
     }
 
-   // Trace the queue occupancy on the bottleneck link
-   // The bottleneck device is at index 0 as per dumbbell 
-   Ptr<NetDevice> bottleneckDevice = dumbbell.GetLeft()->GetDevice(0);
-  
-   // Get the queue disc that was installed by TrafficControlHelper during dumbbell creation
-   Ptr<QueueDisc> qd = bottleneckDevice->GetNode()->GetObject<TrafficControlLayer>()
-                           ->GetRootQueueDiscOnDevice(bottleneckDevice);
-  
-   if (qd)
-   {
-       Simulator::ScheduleNow(&CheckQueueSize, qd);
-   }
+    TrafficControlHelper tch;
+    tch.SetRootQueueDisc(queueDisc,"MaxSize", QueueSizeValue(QueueSize("100p")));
+        if (bql)
+    {
+        tch.SetQueueLimits("ns3::DynamicQueueLimits", "HoldTime", StringValue("1000ms"));
+    }
 
+    dumbbell.InstallBottleneckQueueDisc(tch);
+
+    Ptr<QueueDisc> qd = dumbbell.GetBottleneckQueueDisc();
+    if (qd)
+    {
+        Simulator::ScheduleNow(&CheckQueueSize, qd);
+    }
+    
     // Generate PCAP traces if it is enabled
     if (enablePcap)
     {
@@ -318,11 +310,6 @@ main(int argc, char* argv[])
     Simulator::Stop(stopTime + TimeStep(1));
     Simulator::Run();
     Simulator::Destroy();
-
-    auto buildEnd = std::chrono::steady_clock::now();
-    double buildSeconds = std::chrono::duration<double>(buildEnd - buildStart).count();
-
-    std::cout << "Simulation completed in " << buildSeconds << " seconds." << std::endl;
 
     return 0;
 }
