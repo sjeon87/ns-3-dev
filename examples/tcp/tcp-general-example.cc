@@ -48,8 +48,7 @@
 // (3) throughput_X.dat files contain throughput trace for each sender node
 // (4) queueSize.dat file contains queue length trace from the bottleneck link
 //
-// Supported TCP variants: TcpNewReno, TcpReno, TcpTahoe, TcpWestwood, TcpBbr,
-// TcpYeah, TcpIllinois, TcpScalable, TcpVegas, TcpBic, and others.
+// Supported TCP variants: TcpNewReno, TcpReno, TcpTahoe, TcpBbr, TcpBic, and others.
 
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
@@ -67,45 +66,54 @@ std::string dir;
 // Structure to track per-sender throughput data
 struct ThroughputTracker
 {
-    uint64_t prevBytes = 0;
-    Time prevTime = Seconds(0);
+   uint64_t prevBytes = 0;
+   Time prevTime = Seconds(0);
+   FlowId flowId = 0;          
+   Ipv4Address senderIp;       
 };
 
 std::vector<ThroughputTracker> throughputTrackers;
 
+
 static void
-TraceThroughputPerSender(Ptr<FlowMonitor> monitor, Ptr<Ipv4FlowClassifier> classifier, 
-                         Ipv4Address senderIp, uint32_t senderId)
+BuildFlowIdMap(Ptr<FlowMonitor> monitor,
+                   Ptr<Ipv4FlowClassifier> classifier)
 {
-    FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
-    Time curTime = Now();
-
-    for (auto& flow : stats)
-    {
-        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(flow.first);
-        if (t.sourceAddress == senderIp)  // Match by sender IP
-        {
-            uint64_t currentBytes = flow.second.rxBytes;
-            std::ofstream thr(dir + "/throughput_" + std::to_string(senderId + 1) + ".dat",
-                             std::ios::out | std::ios::app);
-
-            if (curTime.GetSeconds() > throughputTrackers[senderId].prevTime.GetSeconds())
-            {
-                double throughputMbps = 8 * (currentBytes - throughputTrackers[senderId].prevBytes) /
-                                       (1000000.0 * (curTime.GetSeconds() - 
-                                        throughputTrackers[senderId].prevTime.GetSeconds()));
-                thr << curTime.GetSeconds() << " " << throughputMbps << std::endl;
-            }
-
-            throughputTrackers[senderId].prevBytes = currentBytes;
-            throughputTrackers[senderId].prevTime = curTime;
-            thr.close();
-            break;
-        }
-    }
-
-    Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, classifier, senderIp, senderId);
+   monitor->CheckForLostPackets();
+   for (auto& flow : monitor->GetFlowStats())
+   {
+       Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(flow.first);
+       for (uint32_t i = 0; i < throughputTrackers.size(); ++i)
+       {
+           if (t.sourceAddress == throughputTrackers[i].senderIp)
+           {
+               throughputTrackers[i].flowId = flow.first;
+               break;
+           }
+       }
+   }
 }
+
+
+static void
+TraceThroughputPerSender(Ptr<FlowMonitor> monitor, uint32_t senderId)
+{
+   auto stats = monitor->GetFlowStats();
+   FlowId fid = throughputTrackers[senderId].flowId;
+   uint64_t currentBytes = stats[fid].rxBytes;
+    Time curTime = Now();
+    std::ofstream thr(dir + "/throughput" + std::to_string(senderId + 1) + ".dat", std::ios::out | std::ios::app);
+    thr << curTime << " "
+        << 8 * (currentBytes - throughputTrackers[senderId].prevBytes) /
+               (1000 * 1000 * (curTime.GetSeconds() - throughputTrackers[senderId].prevTime.GetSeconds()))
+        << std::endl;
+    throughputTrackers[senderId].prevTime = curTime;
+    throughputTrackers[senderId].prevBytes = currentBytes;
+    thr.close();
+    Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, senderId);
+}
+
+
 // Check the queue size on bottleneck link
 void
 CheckQueueSize(Ptr<QueueDisc> qd)
@@ -139,6 +147,8 @@ TraceCwnd(Ptr<Node> node, uint32_t socketId, uint32_t senderId)
 int
 main(int argc, char* argv[])
 {
+    auto buildStart = std::chrono::steady_clock::now();
+
     // Naming the output directory using local system time
     time_t rawtime;
     struct tm* timeinfo;
@@ -240,6 +250,7 @@ main(int argc, char* argv[])
                              InetSocketAddress(receiverIp, port + i));
         source.SetAttribute("MaxBytes", UintegerValue(0));
         ApplicationContainer tempSource = source.Install(dumbbell.GetLeft(i));
+        throughputTrackers[i].senderIp = dumbbell.GetLeft(i)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal();
         tempSource.Start(Seconds(0.1));
         tempSource.Stop(stopTime);
         sourceApps.Add(tempSource);
@@ -294,16 +305,24 @@ main(int argc, char* argv[])
     Ptr<FlowMonitor> monitor = flowmon.InstallAll();
     Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(flowmon.GetClassifier());
 
-    // Schedule with sender IP
+
+    // Build flow ID map for throughput tracking
+    Simulator::Schedule(Seconds(0.1) + MilliSeconds(500), &BuildFlowIdMap, monitor, classifier);
+
+
     for (uint32_t i = 0; i < nLeaf; ++i)
     {
-        Ipv4Address senderIp = dumbbell.GetLeftIpv4Address(i);  // Get actual sender IP
-        Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, classifier, senderIp, i);
+        Simulator::Schedule(Seconds(0.2), &TraceThroughputPerSender, monitor, i);
     }
 
     Simulator::Stop(stopTime + TimeStep(1));
     Simulator::Run();
     Simulator::Destroy();
+
+    auto buildEnd = std::chrono::steady_clock::now();
+    double buildSeconds = std::chrono::duration<double>(buildEnd - buildStart).count();
+
+    std::cout << "Simulation completed in " << buildSeconds << " seconds." << std::endl;
 
     return 0;
 }
