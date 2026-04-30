@@ -20,6 +20,7 @@
 #include "ns3/enum.h"
 #include "ns3/iana-ieee802-numbers.h"
 #include "ns3/iana-internet-protocol-numbers.h"
+#include "ns3/icmpv6-header.h"
 #include "ns3/ipv6-extension-header.h"
 #include "ns3/log.h"
 #include "ns3/mac16-address.h"
@@ -509,7 +510,9 @@ SixLowPanNetDevice::ReceiveFromDevice(Ptr<NetDevice> incomingPort,
         isPktDecompressed = true;
         break;
     case SixLowPanDispatch::LOWPAN_IPHC:
-        if (m_compressionType != IPHC)
+        // GHC mode also uses IPHC framing (GHC NHC dispatches embed inside IPHC),
+        // so accept IPHC frames when compressionType is either IPHC or GHC.
+        if (m_compressionType == HC1)
         {
             m_dropTrace(DROP_DISALLOWED_COMPRESSION, copyPkt, this, GetIfIndex());
             return;
@@ -758,8 +761,11 @@ SixLowPanNetDevice::DoSend(Ptr<Packet> packet,
 
     protocolNumber = iana::ieee802numbers::LoWPAN;
 
-    if (m_compressionType == IPHC)
+    if (m_compressionType != HC1)
     {
+        // IPHC or GHC: both use the IPHC framing path. CompressLowPanIphc
+        // dispatches to GHC encoders for UDP/ICMPv6/extension headers when
+        // m_compressionType == GHC.
         NS_LOG_LOGIC("Compressing packet using IPHC");
         origHdrSize += CompressLowPanIphc(packet, m_netDevice->GetAddress(), destination);
     }
@@ -3674,29 +3680,35 @@ SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
 {
     NS_LOG_FUNCTION(this << *packet);
 
-    // Read the raw ICMPv6 data from the packet
-    // ICMPv6 header: Type(1) + Code(1) + Checksum(2) + Body(variable)
-    uint32_t packetSize = packet->GetSize();
+    // ICMPv6 minimum: Type(1) + Code(1) + Checksum(2) = 4 bytes.
+    const uint32_t packetSize = packet->GetSize();
     if (packetSize < 4)
     {
         NS_LOG_WARN("GHC: Packet too small for ICMPv6");
         return 0;
     }
 
-    // Copy raw ICMPv6 bytes
+    // Snapshot the raw ICMPv6 bytes (header + body) for the LZ77 engine.
     uint8_t rawIcmpv6[1280];
-    uint32_t rawLen = std::min(packetSize, (uint32_t)1280);
+    const uint32_t rawLen = std::min(packetSize, 1280u);
     packet->CopyData(rawIcmpv6, rawLen);
 
-    // Compress using GHC
+    // GHC-compress the entire ICMPv6 datagram. We emit STOP_CODE so the
+    // receiver's Deserialize can find the end of the bytecode stream
+    // without depending on the buffer end. Without a STOP_CODE, link-
+    // layer padding (e.g. CSMA min-frame zero pad) extends the buffer
+    // beyond the GHC bytes and the strict PacketMetadata size check
+    // rejects RemoveHeader. RFC 7400 section 3 explicitly permits the
+    // STOP_CODE termination as an alternative to packet-boundary
+    // termination, so this stays spec-compliant.
     uint8_t compressed[1280];
-    uint32_t compressedLen = SixLowPanGhcEngine::Compress(srcAddress,
-                                                          dstAddress,
-                                                          rawIcmpv6,
-                                                          rawLen,
-                                                          compressed,
-                                                          1280,
-                                                          false);
+    const uint32_t compressedLen = SixLowPanGhcEngine::Compress(srcAddress,
+                                                                dstAddress,
+                                                                rawIcmpv6,
+                                                                rawLen,
+                                                                compressed,
+                                                                1280,
+                                                                /* emitStopCode = */ true);
 
     if (compressedLen == 0 || compressedLen >= rawLen)
     {
@@ -3719,6 +3731,56 @@ SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     return rawLen;
 }
 
+/**
+ * @brief Deserialize an ICMPv6 typed header (T) from a raw byte buffer
+ *        and prepend it to a Packet via AddHeader so that PacketMetadata
+ *        records the correct concrete subclass.
+ *
+ * @tparam T   The concrete Icmpv6Header subclass to instantiate.
+ * @param packet The Packet to prepend the typed header to.
+ * @param data   Pointer to the start of the raw bytes that encode the header.
+ * @param len    Number of valid bytes available at `data`.
+ * @return The serialized size of the typed header (= bytes consumed).
+ */
+template <typename T>
+static uint32_t
+GhcAddIcmpv6TypedHeader(Ptr<Packet> packet, const uint8_t* data, uint32_t len)
+{
+    Buffer staging;
+    staging.AddAtStart(len);
+    staging.Begin().Write(data, len);
+
+    T hdr;
+    hdr.Deserialize(staging.Begin());
+    packet->AddHeader(hdr);
+    return hdr.GetSerializedSize();
+}
+
+/**
+ * @brief Deserialize an ICMPv6 typed header (T) from a raw byte buffer
+ *        and return its serialized size, without modifying any packet.
+ *
+ * Used to discover the boundary between the ICMPv6 base header and its
+ * option chain so the option walk can pick up at the correct offset.
+ *
+ * @tparam T   The concrete Icmpv6Header subclass to instantiate.
+ * @param data Pointer to the start of the raw bytes that encode the header.
+ * @param len  Number of valid bytes available at `data`.
+ * @return The serialized size of the typed header in bytes.
+ */
+template <typename T>
+static uint32_t
+GhcIcmpHdrSize(const uint8_t* data, uint32_t len)
+{
+    Buffer staging;
+    staging.AddAtStart(len);
+    staging.Begin().Write(data, len);
+
+    T hdr;
+    hdr.Deserialize(staging.Begin());
+    return hdr.GetSerializedSize();
+}
+
 void
 SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
                                               Ipv6Address srcAddress,
@@ -3732,30 +3794,202 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
 
     // Get compressed blob
     uint8_t compressed[256];
-    uint32_t compressedLen = encoding.CopyBlob(compressed, 256);
+    const uint32_t compressedLen = encoding.CopyBlob(compressed, 256);
 
-    // Decompress using GHC engine
+    // Decompress using GHC engine; useStopCode=true matches the
+    // emitStopCode=true used on the compress side (see comment in
+    // CompressLowPanGhcIcmpv6 above).
     uint8_t decompressed[1280];
-    uint32_t decompressedLen = SixLowPanGhcEngine::Decompress(srcAddress,
-                                                              dstAddress,
-                                                              compressed,
-                                                              compressedLen,
-                                                              decompressed,
-                                                              1280,
-                                                              false);
+    const uint32_t decompressedLen = SixLowPanGhcEngine::Decompress(srcAddress,
+                                                                    dstAddress,
+                                                                    compressed,
+                                                                    compressedLen,
+                                                                    decompressed,
+                                                                    1280,
+                                                                    /* useStopCode = */ true);
 
-    if (decompressedLen == 0)
+    if (decompressedLen < 4)
     {
-        NS_LOG_WARN("GHC: ICMPv6 decompression failed");
+        NS_LOG_WARN("GHC: ICMPv6 decompression failed (len=" << decompressedLen << ")");
         return;
     }
 
-    // Add decompressed ICMPv6 data back to packet
-    Ptr<Packet> icmpPacket = Create<Packet>(decompressed, decompressedLen);
-    packet->AddAtEnd(icmpPacket);
+    // Drop any trailing link-layer padding (e.g. CSMA min-frame zero
+    // pad) that may have survived past the GHC blob. The decompressed
+    // ICMPv6 stream must be the only thing remaining in the packet.
+    if (packet->GetSize() > 0)
+    {
+        packet->RemoveAtEnd(packet->GetSize());
+    }
+
+    // The receiver's upper-layer ICMPv6 stack uses Packet::RemoveHeader
+    // with concrete subclasses (Icmpv6RS, Icmpv6Echo, ...). Under strict
+    // PacketMetadata checking the metadata recorded for the ICMPv6
+    // header MUST be the exact subclass. We therefore look at the
+    // ICMPv6 type byte, find the subclass's serialized size, walk the
+    // option chain, and finally prepend the base header so the
+    // resulting metadata chain is [Base, Opt1, Opt2, ...].
+    const uint8_t icmpType = decompressed[0];
+    uint32_t headerLen = 0;
+
+    switch (icmpType)
+    {
+    case Icmpv6Header::ICMPV6_ECHO_REQUEST:
+    case Icmpv6Header::ICMPV6_ECHO_REPLY:
+        headerLen = GhcIcmpHdrSize<Icmpv6Echo>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_ROUTER_SOLICITATION:
+        headerLen = GhcIcmpHdrSize<Icmpv6RS>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_ROUTER_ADVERTISEMENT:
+        headerLen = GhcIcmpHdrSize<Icmpv6RA>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_NEIGHBOR_SOLICITATION:
+        headerLen = GhcIcmpHdrSize<Icmpv6NS>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_NEIGHBOR_ADVERTISEMENT:
+        headerLen = GhcIcmpHdrSize<Icmpv6NA>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_REDIRECTION:
+        headerLen = GhcIcmpHdrSize<Icmpv6Redirection>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_DESTINATION_UNREACHABLE:
+        headerLen = GhcIcmpHdrSize<Icmpv6DestinationUnreachable>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_PACKET_TOO_BIG:
+        headerLen = GhcIcmpHdrSize<Icmpv6TooBig>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_TIME_EXCEEDED:
+        headerLen = GhcIcmpHdrSize<Icmpv6TimeExceeded>(decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_PARAMETER_ERROR:
+        headerLen = GhcIcmpHdrSize<Icmpv6ParameterError>(decompressed, decompressedLen);
+        break;
+    default:
+        NS_LOG_WARN("GHC: unhandled ICMPv6 type " << int(icmpType)
+                                                  << " - falling back to raw bytes");
+        packet->AddAtEnd(Create<Packet>(decompressed, decompressedLen));
+        return;
+    }
+
+    // Walk the option chain after the ICMPv6 base header. Each ND
+    // option follows the TLV pattern [Type(1)][Length-in-8-byte-units(1)
+    // ...]. Discover all options forward, then prepend typed option
+    // headers in REVERSE order so they end up in correct sequence
+    // through AddHeader's prepend semantics.
+    struct OptInfo
+    {
+        uint8_t type;
+        uint32_t pos;
+        uint32_t bytes;
+    };
+
+    std::vector<OptInfo> opts;
+    uint32_t pos = headerLen;
+    bool optChainOk = true;
+    while (pos + 2 <= decompressedLen)
+    {
+        const uint8_t optType = decompressed[pos];
+        const uint8_t optLenUnits = decompressed[pos + 1];
+        if (optLenUnits == 0)
+        {
+            optChainOk = false;
+            break;
+        }
+        const uint32_t optBytes = static_cast<uint32_t>(optLenUnits) * 8;
+        if (pos + optBytes > decompressedLen)
+        {
+            optChainOk = false;
+            break;
+        }
+        opts.push_back({optType, pos, optBytes});
+        pos += optBytes;
+    }
+    if (!optChainOk)
+    {
+        opts.clear();
+    }
+    const uint32_t trailingPos = optChainOk ? pos : headerLen;
+    const uint32_t trailingLen = decompressedLen - trailingPos;
+
+    if (trailingLen > 0)
+    {
+        packet->AddAtEnd(Create<Packet>(decompressed + trailingPos, trailingLen));
+    }
+
+    for (auto it = opts.rbegin(); it != opts.rend(); ++it)
+    {
+        const uint8_t* optData = decompressed + it->pos;
+        switch (it->type)
+        {
+        case Icmpv6Header::ICMPV6_OPT_LINK_LAYER_SOURCE:
+        case Icmpv6Header::ICMPV6_OPT_LINK_LAYER_TARGET:
+            (void)GhcAddIcmpv6TypedHeader<Icmpv6OptionLinkLayerAddress>(packet, optData, it->bytes);
+            break;
+        case Icmpv6Header::ICMPV6_OPT_PREFIX:
+            (void)GhcAddIcmpv6TypedHeader<Icmpv6OptionPrefixInformation>(packet,
+                                                                         optData,
+                                                                         it->bytes);
+            break;
+        case Icmpv6Header::ICMPV6_OPT_REDIRECTED:
+            (void)GhcAddIcmpv6TypedHeader<Icmpv6OptionRedirected>(packet, optData, it->bytes);
+            break;
+        case Icmpv6Header::ICMPV6_OPT_MTU:
+            (void)GhcAddIcmpv6TypedHeader<Icmpv6OptionMtu>(packet, optData, it->bytes);
+            break;
+        default:
+            NS_LOG_WARN("GHC ICMPv6: unknown option type " << int(it->type)
+                                                           << " - prepending as raw");
+            packet->AddAtEnd(Create<Packet>(optData, it->bytes));
+            break;
+        }
+    }
+
+    // Add base header LAST so it lands at the front of the metadata
+    // chain (AddHeader prepends).
+    switch (icmpType)
+    {
+    case Icmpv6Header::ICMPV6_ECHO_REQUEST:
+    case Icmpv6Header::ICMPV6_ECHO_REPLY:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6Echo>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_ROUTER_SOLICITATION:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6RS>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_ROUTER_ADVERTISEMENT:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6RA>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_NEIGHBOR_SOLICITATION:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6NS>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_NEIGHBOR_ADVERTISEMENT:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6NA>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ND_REDIRECTION:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6Redirection>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_DESTINATION_UNREACHABLE:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6DestinationUnreachable>(packet,
+                                                                    decompressed,
+                                                                    decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_PACKET_TOO_BIG:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6TooBig>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_TIME_EXCEEDED:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6TimeExceeded>(packet, decompressed, decompressedLen);
+        break;
+    case Icmpv6Header::ICMPV6_ERROR_PARAMETER_ERROR:
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6ParameterError>(packet, decompressed, decompressedLen);
+        break;
+    default:
+        // unreachable: handled by the early-return path above
+        break;
+    }
 
     NS_LOG_DEBUG("GHC ICMPv6 decompression: " << compressedLen << " -> " << decompressedLen
-                                              << " bytes");
+                                              << " bytes (type " << int(icmpType) << ", "
+                                              << opts.size() << " options)");
 }
 
 uint32_t

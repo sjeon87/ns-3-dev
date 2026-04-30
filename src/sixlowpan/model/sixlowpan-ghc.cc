@@ -1056,12 +1056,44 @@ SixLowPanGhcIcmpv6::Deserialize(Buffer::Iterator start)
     uint8_t nhc = start.ReadU8();
     NS_ASSERT(nhc == GHC_ICMPV6_NHC);
 
-    // ICMPv6 GHC: read remaining packet data as GHC bytecodes
-    // (decompression terminates at packet boundary, no stop code)
+    // ICMPv6 GHC bytecode stream: scan until STOP_CODE (0x90) inclusive.
+    //
+    // Reading "until end of buffer" would over-read because ns-3's
+    // Buffer::Iterator passed in here covers the whole remaining packet
+    // (including any link-layer trailing padding such as CSMA's min-frame
+    // zero pad), not just this header. That over-read makes the bytes
+    // consumed by Deserialize larger than the size recorded by AddHeader
+    // on the sender, which trips PacketMetadata's strict size check
+    // ("Removing unexpected header.").
+    //
+    // Bounding the read on STOP_CODE matches the wire format that
+    // CompressLowPanGhcIcmpv6 emits (engine called with emitStopCode=
+    // true) and matches the existing SixLowPanGhcExtension::Deserialize
+    // pattern. RFC 7400 section 3 explicitly permits STOP_CODE as an
+    // alternative to packet-boundary termination.
+    //
+    // A LITERAL opcode (0kkkkkkk) escapes the next k bytes from the
+    // STOP_CODE check - they are payload bytes, not control codes,
+    // and their values may legitimately equal 0x90.
     m_blobLength = 0;
     while (start.GetRemainingSize() > 0 && m_blobLength < 255)
     {
-        m_blob[m_blobLength++] = start.ReadU8();
+        const uint8_t byte = start.ReadU8();
+        m_blob[m_blobLength++] = byte;
+
+        if (byte == 0x90) // STOP_CODE
+        {
+            break;
+        }
+
+        if ((byte & 0x80) == 0)
+        {
+            const uint32_t k = byte & 0x7F;
+            for (uint32_t i = 0; i < k && start.GetRemainingSize() > 0 && m_blobLength < 255; ++i)
+            {
+                m_blob[m_blobLength++] = start.ReadU8();
+            }
+        }
     }
 
     return GetSerializedSize();
