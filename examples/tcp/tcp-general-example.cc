@@ -17,6 +17,12 @@
  * Authors: Aarti Nandagiri <aarti.nandagiri@gmail.com>
  *          Vivek Jain <jain.vivek.anand@gmail.com>
  *          Mohit P. Tahiliani <tahiliani@nitk.edu.in>
+ *
+ * Modified by: Santhosh Balaji G <santhoshbalajig.231cs224@nitk.edu.in>
+ *              Sai Nishnath Rao  <tugenasainishnathrao.231cs260@nitk.edu.in>
+ *              Dattatreya M      <manepallidattatretyalaxminarasimha.231cs231@nitk.edu.in>
+ *              Aravind G         <gurugubelliaravind.231cs124@nitk.edu.in>
+ *              karthikeya S V    <svkarthikeya.231cs150@nitk.edu.in>
  */
 
 // This program simulates a generalized dumbbell topology with multiple senders and receivers:
@@ -36,10 +42,13 @@
 // - bottleneckDelay: Bottleneck link delay (default: 10ms)
 // - edgeBw: Edge link bandwidth (default: 1000Mbps)
 // - edgeDelay: Edge link delay (default: 5ms)
+// - delAckCount: Delayed ACK count (default: 2)
+// - QueueDisc: Queue discipline to use on bottleneck link (default: FifoQueueDisc)
+// - queueSize: Queue size for the bottleneck link (default: 100 packets)
 //
 // This program runs by default for 100 seconds and creates a new directory
-// called 'cubic-results' in the ns-3 root directory. The program creates one
-// sub-directory called 'pcap' in 'cubic-results' directory (if pcap generation
+// called 'TcpCubic-results' in the ns-3 root directory. The program creates one
+// sub-directory called 'pcap' in 'TcpCubic-results' directory (if pcap generation
 // is enabled) and multiple .dat files.
 //
 // Output files:
@@ -192,7 +201,7 @@ main(int argc, char* argv[])
     Config::SetDefault("ns3::TcpSocket::DelAckCount", UintegerValue(delAckCount));
     Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1448));
     Config::SetDefault("ns3::DropTailQueue<Packet>::MaxSize", QueueSizeValue(QueueSize("1p")));
-    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("10p")));
+    Config::SetDefault(queueDisc + "::MaxSize", QueueSizeValue(QueueSize("100p")));
 
 
     // Create the dumbbell topology using PointToPointDumbbellHelper
