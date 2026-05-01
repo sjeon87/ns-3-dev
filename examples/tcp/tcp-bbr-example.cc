@@ -125,7 +125,7 @@ main(int argc, char* argv[])
     std::string queueDisc = "FifoQueueDisc";
     uint32_t delAckCount = 2;
     bool bql = true;
-    bool enablePcap = false;
+    bool enablePcap = true;
     Time stopTime = Seconds(100);
 
     CommandLine cmd(__FILE__);

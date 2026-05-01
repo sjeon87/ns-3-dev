@@ -54,6 +54,21 @@ build_example(
 )
 
 build_example(
+  NAME tcp-general-example
+  SOURCE_FILES tcp-general-example.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libpoint-to-point-layout}
+    ${libinternet}
+    ${libapplications}
+    ${libtraffic-control}
+    ${libnetwork}
+    ${libinternet-apps}
+    ${libflow-monitor}
+)
+
+
+build_example(
   NAME tcp-bulk-send
   SOURCE_FILES tcp-bulk-send.cc
   LIBRARIES_TO_LINK

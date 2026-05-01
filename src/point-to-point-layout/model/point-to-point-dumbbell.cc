@@ -14,6 +14,7 @@
 #include "ns3/node-list.h"
 #include "ns3/point-to-point-net-device.h"
 #include "ns3/vector.h"
+#include "ns3/traffic-control-layer.h"
 
 #include <cmath>
 #include <iostream>
@@ -326,4 +327,24 @@ PointToPointDumbbellHelper::BoundingBox(double ulx,
     }
 }
 
+    Ptr<NetDevice>
+    PointToPointDumbbellHelper::GetBottleneckDevice() const
+    {
+        return m_routerDevices.Get(0);
+    }
+
+    Ptr<QueueDisc>
+    PointToPointDumbbellHelper::GetBottleneckQueueDisc() const
+    {
+        Ptr<NetDevice> dev = m_routerDevices.Get(0);
+        return dev->GetNode()->GetObject<TrafficControlLayer>()->GetRootQueueDiscOnDevice(dev);
+    }
+
+    void
+    PointToPointDumbbellHelper::InstallBottleneckQueueDisc(TrafficControlHelper& tch)
+    {
+        TrafficControlHelper tchUninstall;
+        tchUninstall.Uninstall(m_routerDevices.Get(0));
+        tch.Install(m_routerDevices.Get(0));
+    }
 } // namespace ns3
