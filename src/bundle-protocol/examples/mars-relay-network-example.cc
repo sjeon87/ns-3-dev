@@ -10,7 +10,7 @@
 #include "ns3/inet-socket-address.h"
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
-#include "ns3/ltp-convergence-layer-adapter.h"
+#include "ns3/udp-convergence-layer-adapter.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 
@@ -23,7 +23,7 @@ NS_LOG_COMPONENT_DEFINE("MarsRelayNetworkExample");
 
 struct LinkElements
 {
-    Ptr<LtpBundleCla> cla;
+    Ptr<UdpBundleCla> cla;
     Ptr<PointToPointNetDevice> device;
 };
 
@@ -33,7 +33,7 @@ SendDeepSpaceBundle(Ptr<BundleAgent> agent, std::string destEid)
     NS_LOG_INFO("At time " << Simulator::Now().GetSeconds()
                            << "s: Initiating bundle transmission to " << destEid);
 
-    uint32_t payloadSize = 5000;
+    uint32_t payloadSize = 1;
     std::vector<uint8_t> payloadData(payloadSize, 0xAA);
 
     Time ttl = Hours(24);
@@ -61,18 +61,15 @@ OnBundleReceived(Ptr<Bundle> bundle)
 void
 LinkUp(Ptr<BundleAgent> agent,
        std::string destEid,
-       Ptr<LtpBundleCla> cla,
+       Ptr<UdpBundleCla> cla,
        Ptr<PointToPointNetDevice> device,
-       uint32_t dataRate,
-       Time delay)
+       uint32_t dataRate)
 {
     NS_LOG_INFO("At time " << Simulator::Now().GetSeconds()
-                           << "s: Contact UP - Registering CLA for " << destEid << " at "
-                           << dataRate << " bps with delay " << delay.GetSeconds() << "s");
+                           << "s: Contact UP - Registering CLA for " << destEid
+                           << " at " << dataRate << " bps");
 
     device->SetAttribute("DataRate", DataRateValue(DataRate(dataRate)));
-    device->GetChannel()->SetAttribute("Delay", TimeValue(delay));
-
     agent->RegisterCla(destEid, cla);
 }
 
@@ -86,12 +83,25 @@ LinkDown(Ptr<BundleAgent> agent, std::string destEid, Ptr<PointToPointNetDevice>
     device->SetAttribute("DataRate", DataRateValue(DataRate(0)));
 }
 
+Time
+GetDelayForPair(const std::string& eidA,
+                const std::string& eidB,
+                const std::vector<ContactWindow>& windows)
+{
+    for (const auto& w : windows)
+    {
+        if (w.fromEID == eidA && w.toEID == eidB)
+        {
+            return w.delay;
+        }
+    }
+    return MilliSeconds(1);
+}
+
 int
 main(int argc, char* argv[])
 {
     LogComponentEnable("MarsRelayNetworkExample", LOG_LEVEL_ALL);
-    LogComponentEnable("BundleAgent", LOG_LEVEL_ALL);
-    LogComponentEnable("ContactOptimizedDijkstraRouting", LOG_LEVEL_ALL);
 
     std::string contactPlanPath = "src/bundle-protocol/examples/contactGraph.csv";
 
@@ -109,9 +119,11 @@ main(int argc, char* argv[])
     ContactGraphHelper cgrHelper;
     cgrHelper.SetContactPlan(contactPlanPath);
 
-    cgrHelper.SetRoutingEngine("ns3::ContactOptimizedDijkstraRouting");
+    cgrHelper.SetRoutingEngine("ns3::PerPacketDijkstraCGR");
 
     Ptr<BaseRoutingEngine> contactGraph = cgrHelper.Install();
+
+    const auto& contactWindows = contactGraph->GetContactWindows();
 
     NodeContainer nodes;
     nodes.Create(numNodes);
@@ -153,16 +165,36 @@ main(int argc, char* argv[])
     {
         for (uint32_t j = i + 1; j < numNodes; ++j)
         {
+            std::string eidI = mrnEids[i];
+            std::string eidJ = mrnEids[j];
+
+            Time linkDelay = GetDelayForPair(eidI, eidJ, contactWindows);
+
+            PointToPointHelper p2p;
+            p2p.SetDeviceAttribute("DataRate", StringValue("1bps"));
+            p2p.SetChannelAttribute("Delay", TimeValue(linkDelay));
+
             NetDeviceContainer devices = p2p.Install(nodes.Get(i), nodes.Get(j));
+
+            Ptr<Channel> channel = devices.Get(0)->GetChannel();
+            channel->SetAttribute("Delay", TimeValue(linkDelay));
+
+            TimeValue tv;
+            channel->GetAttribute("Delay", tv);
+            NS_LOG_INFO("Channel " << eidI << " <-> " << eidJ
+                        << " delay=" << tv.Get().GetSeconds() << "s"
+                        << " (requested=" << linkDelay.GetSeconds() << "s)");
 
             Ipv4InterfaceContainer ifaces = address.Assign(devices);
             address.NewNetwork();
 
-            Ptr<PointToPointNetDevice> devI = DynamicCast<PointToPointNetDevice>(devices.Get(0));
-            Ptr<PointToPointNetDevice> devJ = DynamicCast<PointToPointNetDevice>(devices.Get(1));
+            Ptr<PointToPointNetDevice> devI =
+                DynamicCast<PointToPointNetDevice>(devices.Get(0));
+            Ptr<PointToPointNetDevice> devJ =
+                DynamicCast<PointToPointNetDevice>(devices.Get(1));
 
-            Ptr<LtpBundleCla> claI = CreateObject<LtpBundleCla>();
-            Ptr<LtpBundleCla> claJ = CreateObject<LtpBundleCla>();
+            Ptr<UdpBundleCla> claI = CreateObject<UdpBundleCla>();
+            Ptr<UdpBundleCla> claJ = CreateObject<UdpBundleCla>();
 
             InetSocketAddress addrI(ifaces.GetAddress(0), ltpPort);
             InetSocketAddress addrJ(ifaces.GetAddress(1), ltpPort);
@@ -170,17 +202,12 @@ main(int argc, char* argv[])
             claI->Setup(nodes.Get(i), addrI, addrJ);
             claJ->Setup(nodes.Get(j), addrJ, addrI);
 
-            std::string eidI = mrnEids[i];
-            std::string eidJ = mrnEids[j];
-
             linkMap[{eidI, eidJ}] = {claI, devI};
             linkMap[{eidJ, eidI}] = {claJ, devJ};
         }
     }
 
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-
-    const auto& contactWindows = contactGraph->GetContactWindows();
 
     for (const auto& window : contactWindows)
     {
@@ -198,8 +225,7 @@ main(int argc, char* argv[])
                                 window.toEID,
                                 link.cla,
                                 link.device,
-                                window.dataRate,
-                                window.delay);
+                                window.dataRate);
             Simulator::Schedule(window.endTime, &LinkDown, srcAgent, window.toEID, link.device);
         }
         else
@@ -212,7 +238,7 @@ main(int argc, char* argv[])
     Ptr<BundleAgent> dsnAgent = agentMap["dtn://earth/dsn"];
     std::string destinationEid = "dtn://mars/ingenuity";
 
-    Simulator::Schedule(Seconds(10.0), &SendDeepSpaceBundle, dsnAgent, destinationEid);
+    Simulator::Schedule(Seconds(0.0), &SendDeepSpaceBundle, dsnAgent, destinationEid);
 
     NS_LOG_INFO("Starting Deep Space MRN Simulation...");
 

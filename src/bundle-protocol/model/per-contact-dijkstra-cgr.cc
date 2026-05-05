@@ -11,7 +11,7 @@
  * Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "contact-optimized-dijkstra-routing.h"
+#include "per-contact-dijkstra-cgr.h"
 
 #include "bundle.h"
 
@@ -25,39 +25,39 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("ContactOptimizedDijkstraRouting");
-NS_OBJECT_ENSURE_REGISTERED(ContactOptimizedDijkstraRouting);
+NS_LOG_COMPONENT_DEFINE("PerContactDijkstraCGR");
+NS_OBJECT_ENSURE_REGISTERED(PerContactDijkstraCGR);
 
 TypeId
-ContactOptimizedDijkstraRouting::GetTypeId()
+PerContactDijkstraCGR::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::ContactOptimizedDijkstraRouting")
+        TypeId("ns3::PerContactDijkstraCGR")
             .SetParent<BaseRoutingEngine>()
             .SetGroupName("BundleProtocol")
-            .AddConstructor<ContactOptimizedDijkstraRouting>()
+            .AddConstructor<PerContactDijkstraCGR>()
             .AddAttribute("GraphSize",
                           "Total number of nodes in simulation",
                           UintegerValue(0),
-                          MakeUintegerAccessor(&ContactOptimizedDijkstraRouting::m_size),
+                          MakeUintegerAccessor(&PerContactDijkstraCGR::m_size),
                           MakeUintegerChecker<uint32_t>());
     return tid;
 }
 
-ContactOptimizedDijkstraRouting::ContactOptimizedDijkstraRouting()
+PerContactDijkstraCGR::PerContactDijkstraCGR()
     : m_size(0),
       m_isDirty(true)
 {
     NS_LOG_FUNCTION(this);
 }
 
-ContactOptimizedDijkstraRouting::~ContactOptimizedDijkstraRouting()
+PerContactDijkstraCGR::~PerContactDijkstraCGR()
 {
     NS_LOG_FUNCTION(this);
 }
 
 void
-ContactOptimizedDijkstraRouting::InitializeMap(const std::vector<std::string>& eidList)
+PerContactDijkstraCGR::InitializeMap(const std::vector<std::string>& eidList)
 {
     NS_LOG_FUNCTION(this);
 
@@ -89,11 +89,20 @@ ContactOptimizedDijkstraRouting::InitializeMap(const std::vector<std::string>& e
 }
 
 void
-ContactOptimizedDijkstraRouting::AddContact(const std::string& fromEID,
+PerContactDijkstraCGR::AddContact(const std::string& fromEID,
                                             const std::string& toEID,
                                             uint32_t dataRate)
 {
-    NS_LOG_FUNCTION(this << fromEID << toEID << dataRate);
+    AddContact(fromEID, toEID, dataRate, 0);
+}
+
+void
+PerContactDijkstraCGR::AddContact(const std::string& fromEID,
+                                            const std::string& toEID,
+                                            uint32_t dataRate,
+                                            uint32_t totalVolume)
+{
+    NS_LOG_FUNCTION(this << fromEID << toEID << dataRate << totalVolume);
 
     auto srcIt = m_eidToIndex.find(fromEID);
     auto dstIt = m_eidToIndex.find(toEID);
@@ -104,12 +113,15 @@ ContactOptimizedDijkstraRouting::AddContact(const std::string& fromEID,
         return;
     }
 
-    m_adjList[srcIt->second].push_back({dstIt->second, dataRate});
+    m_adjList[srcIt->second].push_back({dstIt->second, dataRate, 0, totalVolume});
     m_isDirty = true;
+    NS_LOG_INFO("AddContact succeeded: " << fromEID << " -> " << toEID 
+            << " idx " << srcIt->second << " -> " << dstIt->second);
 }
 
 void
-ContactOptimizedDijkstraRouting::RemoveContact(const std::string& fromEID, const std::string& toEID)
+PerContactDijkstraCGR::RemoveContact(const std::string& fromEID,
+                                               const std::string& toEID)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID);
 
@@ -134,15 +146,64 @@ ContactOptimizedDijkstraRouting::RemoveContact(const std::string& fromEID, const
 }
 
 void
-ContactOptimizedDijkstraRouting::RecomputeRoutingTable()
+PerContactDijkstraCGR::ReserveVolume(const std::string& fromEID,
+                                               const std::string& toEID,
+                                               uint32_t bytes)
 {
+    NS_LOG_FUNCTION(this << fromEID << toEID << bytes);
+
+    auto srcIt = m_eidToIndex.find(fromEID);
+    auto dstIt = m_eidToIndex.find(toEID);
+
+    if (srcIt == m_eidToIndex.end() || dstIt == m_eidToIndex.end())
+    {
+        NS_LOG_WARN("ReserveVolume: unknown EID.");
+        return;
+    }
+
+    uint32_t node2 = dstIt->second;
+
+    for (auto& edge : m_adjList[srcIt->second])
+    {
+        if (edge.toNode == node2)
+        {
+            if (edge.totalVolume > 0)
+            {
+                uint32_t available = (edge.totalVolume > edge.usedVolume)
+                                         ? (edge.totalVolume - edge.usedVolume)
+                                         : 0;
+                uint32_t reserved = std::min(bytes, available);
+                edge.usedVolume += reserved;
+
+                if (reserved < bytes)
+                {
+                    NS_LOG_WARN("ReserveVolume: link "
+                                << fromEID << " -> " << toEID << " only had " << available
+                                << " bytes remaining; tried to reserve " << bytes << " bytes.");
+                }
+            }
+            m_isDirty = true;
+            return;
+        }
+    }
+
+    NS_LOG_WARN("ReserveVolume: no edge found from " << fromEID << " to " << toEID);
+}
+
+void
+PerContactDijkstraCGR::RecomputeRoutingTable()
+{
+
+    NS_LOG_INFO("Recomputing: m_size=" << m_size << " adjList[0].size()=" 
+            << (m_size > 0 ? m_adjList[0].size() : 0));
+            
     if (!m_isDirty || m_size == 0)
     {
         return;
     }
 
-    NS_LOG_INFO("Topology changed — recomputing all-pairs routing table for " << m_size
-                                                                              << " nodes.");
+    NS_LOG_INFO("Topology or volume changed — recomputing all-pairs routing table for "
+                << m_size << " nodes.");
 
     std::fill(m_nextHopTable.begin(), m_nextHopTable.end(), m_size);
 
@@ -169,7 +230,20 @@ ContactOptimizedDijkstraRouting::RecomputeRoutingTable()
             for (const auto& edge : m_adjList[u])
             {
                 uint32_t v = edge.toNode;
-                double pathCap = std::min(cap, static_cast<double>(edge.dataRate));
+                double effectiveCapacity;
+                if (edge.totalVolume > 0)
+                {
+                    effectiveCapacity =
+                        static_cast<double>(edge.totalVolume > edge.usedVolume
+                                                ? edge.totalVolume - edge.usedVolume
+                                                : 0);
+                }
+                else
+                {
+                    effectiveCapacity = static_cast<double>(edge.dataRate);
+                }
+
+                double pathCap = std::min(cap, effectiveCapacity);
 
                 if (pathCap > m_capacity[v])
                 {
@@ -204,9 +278,19 @@ ContactOptimizedDijkstraRouting::RecomputeRoutingTable()
 }
 
 std::string
-ContactOptimizedDijkstraRouting::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
+PerContactDijkstraCGR::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
 {
     NS_LOG_FUNCTION(this << currEID);
+
+    NS_LOG_INFO("GetNextHop from " << currEID << " to " << bundle->GetDestinationEID());
+    for (uint32_t i = 0; i < m_size; ++i)
+    {
+        for (const auto& e : m_adjList[i])
+        {
+            NS_LOG_INFO("  edge: " << m_indexToEid[i] << " -> " 
+                        << m_indexToEid[e.toNode] << " cap=" << e.dataRate);
+        }
+    }
 
     if (m_isDirty)
     {

@@ -10,7 +10,7 @@
  * Gerard Garcia <ggarcia@deic.uab.cat>
  * Ishaan Lagwankar <lagwanka@msu.edu>
  */
-#include "contact-graph-routing.h"
+#include "per-packet-dijkstra-cgr.h"
 
 #include "bundle.h"
 
@@ -26,37 +26,37 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("ContactGraph");
-NS_OBJECT_ENSURE_REGISTERED(ContactGraph);
+NS_LOG_COMPONENT_DEFINE("PerPacketDijkstraCGR");
+NS_OBJECT_ENSURE_REGISTERED(PerPacketDijkstraCGR);
 
 TypeId
-ContactGraph::GetTypeId()
+PerPacketDijkstraCGR::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::ContactGraph")
+    static TypeId tid = TypeId("ns3::PerPacketDijkstraCGR")
                             .SetParent<BaseRoutingEngine>()
                             .SetGroupName("BundleProtocol")
-                            .AddConstructor<ContactGraph>()
+                            .AddConstructor<PerPacketDijkstraCGR>()
                             .AddAttribute("GraphSize",
                                           "Total number of nodes in simulation",
                                           UintegerValue(0),
-                                          MakeUintegerAccessor(&ContactGraph::m_size),
+                                          MakeUintegerAccessor(&PerPacketDijkstraCGR::m_size),
                                           MakeUintegerChecker<uint32_t>());
     return tid;
 }
 
-ContactGraph::ContactGraph()
+PerPacketDijkstraCGR::PerPacketDijkstraCGR()
     : m_size(0)
 {
     NS_LOG_FUNCTION(this);
 }
 
-ContactGraph::~ContactGraph()
+PerPacketDijkstraCGR::~PerPacketDijkstraCGR()
 {
     NS_LOG_FUNCTION(this);
 }
 
 uint32_t
-ContactGraph::FindIndex(const std::string& eid) const
+PerPacketDijkstraCGR::FindIndex(const std::string& eid) const
 {
     for (uint32_t i = 0; i < m_eidList.size(); i++)
     {
@@ -69,7 +69,7 @@ ContactGraph::FindIndex(const std::string& eid) const
 }
 
 void
-ContactGraph::InitializeMap(const std::vector<std::string>& eidList)
+PerPacketDijkstraCGR::InitializeMap(const std::vector<std::string>& eidList)
 {
     NS_LOG_FUNCTION(this);
 
@@ -86,9 +86,20 @@ ContactGraph::InitializeMap(const std::vector<std::string>& eidList)
 }
 
 void
-ContactGraph::AddContact(const std::string& fromEID, const std::string& toEID, uint32_t dataRate)
+PerPacketDijkstraCGR::AddContact(const std::string& fromEID,
+                         const std::string& toEID,
+                         uint32_t dataRate)
 {
-    NS_LOG_FUNCTION(this << fromEID << toEID << dataRate);
+    AddContact(fromEID, toEID, dataRate, 0);
+}
+
+void
+PerPacketDijkstraCGR::AddContact(const std::string& fromEID,
+                         const std::string& toEID,
+                         uint32_t dataRate,
+                         uint32_t totalVolume)
+{
+    NS_LOG_FUNCTION(this << fromEID << toEID << dataRate << totalVolume);
 
     uint32_t node1 = FindIndex(fromEID);
     uint32_t node2 = FindIndex(toEID);
@@ -104,11 +115,11 @@ ContactGraph::AddContact(const std::string& fromEID, const std::string& toEID, u
         return;
     }
 
-    m_adjList[node1].push_back({node2, dataRate});
+    m_adjList[node1].push_back({node2, dataRate, 0, totalVolume});
 }
 
 void
-ContactGraph::RemoveContact(const std::string& fromEID, const std::string& toEID)
+PerPacketDijkstraCGR::RemoveContact(const std::string& fromEID, const std::string& toEID)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID);
 
@@ -132,8 +143,48 @@ ContactGraph::RemoveContact(const std::string& fromEID, const std::string& toEID
                 edges.end());
 }
 
+void
+PerPacketDijkstraCGR::ReserveVolume(const std::string& fromEID,
+                            const std::string& toEID,
+                            uint32_t bytes)
+{
+    NS_LOG_FUNCTION(this << fromEID << toEID << bytes);
+
+    uint32_t node1 = FindIndex(fromEID);
+    uint32_t node2 = FindIndex(toEID);
+
+    if (node1 == m_size || node2 == m_size)
+    {
+        NS_LOG_WARN("ReserveVolume: unknown EID.");
+        return;
+    }
+
+    for (auto& edge : m_adjList[node1])
+    {
+        if (edge.toNode == node2)
+        {
+            uint32_t available = (edge.totalVolume > edge.usedVolume)
+                                     ? (edge.totalVolume - edge.usedVolume)
+                                     : 0;
+            uint32_t reserved = std::min(bytes, available);
+            edge.usedVolume += reserved;
+
+            if (reserved < bytes)
+            {
+                NS_LOG_WARN("ReserveVolume: link " << fromEID << " -> " << toEID
+                                                   << " only had " << available
+                                                   << " bytes remaining; tried to reserve "
+                                                   << bytes << " bytes.");
+            }
+            return;
+        }
+    }
+
+    NS_LOG_WARN("ReserveVolume: no edge found from " << fromEID << " to " << toEID);
+}
+
 std::string
-ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
+PerPacketDijkstraCGR::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
 {
     NS_LOG_FUNCTION(this << currEID);
 
@@ -176,7 +227,19 @@ ContactGraph::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
         for (const auto& edge : m_adjList[u])
         {
             uint32_t v = edge.toNode;
-            double pathCapacity = std::min(capacity[u], static_cast<double>(edge.dataRate));
+            double effectiveCapacity;
+            if (edge.totalVolume > 0)
+            {
+                effectiveCapacity = static_cast<double>(edge.totalVolume > edge.usedVolume
+                                                            ? edge.totalVolume - edge.usedVolume
+                                                            : 0);
+            }
+            else
+            {
+                effectiveCapacity = static_cast<double>(edge.dataRate);
+            }
+
+            double pathCapacity = std::min(capacity[u], effectiveCapacity);
 
             if (pathCapacity > capacity[v])
             {

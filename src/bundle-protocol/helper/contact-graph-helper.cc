@@ -19,7 +19,7 @@ NS_LOG_COMPONENT_DEFINE("ContactGraphHelper");
 ContactGraphHelper::ContactGraphHelper()
     : m_filename("")
 {
-    m_factory.SetTypeId("ns3::ContactGraph");
+    m_factory.SetTypeId("ns3::PerPacketDijkstraCGR");
 }
 
 void

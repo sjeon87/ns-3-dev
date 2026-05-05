@@ -10,12 +10,12 @@ build_lib(
     model/bundle.cc
     model/base-routing-engine.cc
     model/cbor.cc
-    model/contact-graph-routing.cc
-    model/contact-optimized-dijkstra-routing.cc
     model/contact-parser.cc
     model/eid.cc
     model/generic-convergence-layer-adapter.cc
     model/ltp-convergence-layer-adapter.cc
+    model/per-contact-dijkstra-cgr.cc
+    model/per-packet-dijkstra-cgr.cc
     model/tcp-convergence-layer-adapter.cc
     model/udp-convergence-layer-adapter.cc
     model/ltp-header.cc
@@ -31,12 +31,12 @@ build_lib(
     model/bundle-protocol-flags.h
     model/base-routing-engine.h
     model/cbor.h
-    model/contact-graph-routing.h
-    model/contact-optimized-dijkstra-routing.h
     model/contact-parser.h
     model/eid.h
     model/generic-convergence-layer-adapter.h
     model/ltp-convergence-layer-adapter.h
+    model/per-contact-dijkstra-cgr.h
+    model/per-packet-dijkstra-cgr.h
     model/tcp-convergence-layer-adapter.h
     model/udp-convergence-layer-adapter.h
     model/ltp-header.h

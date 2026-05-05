@@ -133,7 +133,6 @@ BundleAgent::RegisterCla(const std::string& destinationEID, Ptr<BundleCla> cla)
     {
         NS_LOG_DEBUG("Registered new CLA for " << destinationEID
                                                << ". Checking entire storage backlog...");
-
         ProcessAllBacklog();
     }
 
@@ -186,12 +185,10 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     primary.SetLifetime(ttl);
     primary.SetSequenceNumber(m_seqNumber++);
 
-    // BPv7 takes whole string EIDs directly
     primary.SetDestinationEID(destinationEID);
     primary.SetSourceEID(m_localEID);
     primary.SetReportToEID(reportToEID);
 
-    // BPv7 Payload Block Setup
     PayloadBlockHeader payloadHeader;
     payloadHeader.SetBlockType(1);
     payloadHeader.SetBlockNumber(1);
@@ -234,7 +231,6 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     {
         NS_LOG_DEBUG("TransmitBundle: no CLA available yet, bundle "
                      << handle << " held in storage for " << destinationEID);
-
         return handle;
     }
     return 0;
@@ -276,11 +272,13 @@ BundleAgent::ForwardBundle(uint32_t handle)
     }
 
     Ptr<Packet> packet = bundle->Serialize();
+    uint32_t bundleSize = packet->GetSize();
     cla->Send(packet);
 
     NS_LOG_DEBUG("ForwardBundle: sent bundle handle="
                  << handle << " to final destination " << destination << " via next hop "
-                 << nextHopEID << " size=" << packet->GetSize());
+                 << nextHopEID << " size=" << bundleSize << " bytes");
+    m_contactGraph->ReserveVolume(m_localEID, nextHopEID, bundleSize);
 
     auto evIt = m_expiryEvents.find(handle);
     if (evIt != m_expiryEvents.end())
@@ -354,8 +352,8 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
 
         if (ForwardBundle(handle) != 0)
         {
-            NS_LOG_DEBUG("RecvBundle: no CLA available for " << destination << ", bundle " << handle
-                                                             << " held in storage");
+            NS_LOG_DEBUG("RecvBundle: no CLA available for " << destination << ", bundle "
+                                                             << handle << " held in storage");
         }
         return 0;
     }
@@ -436,7 +434,7 @@ BundleAgent::GenerateStatusReport(Ptr<Bundle> bundle, uint8_t statusFlags, uint8
     std::string reportDestination = bundle->GetReportToEID();
 
     PrimaryBlockHeader primary;
-    primary.SetVersion(7); // BPv7
+    primary.SetVersion(7);
     primary.SetProcFlags(1 << ADMIN_RECORD);
     primary.SetCrcType(1);
     primary.SetCreationTime(now);
@@ -504,7 +502,7 @@ BundleAgent::ProcessAllBacklog()
     }
 
     m_backlogCheckEvent =
-        Simulator::Schedule(Seconds(500.0), &BundleAgent::ProcessAllBacklog, this);
+        Simulator::Schedule(Seconds(10.0), &BundleAgent::ProcessAllBacklog, this);
 }
 
 } // namespace ns3
