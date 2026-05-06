@@ -113,7 +113,7 @@ ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> con
                                 << " | duration=" << durationSeconds << " s"
                                 << " | totalVolume=" << totalVolume << " bytes");
 
-        contactGraph->AddTimedContact(from, to, tStart, tEnd, rate, delay);
+        contactGraph->AddTimedContact(from, to, tStart, tEnd, rate, delay, totalVolume);
 
         Simulator::Schedule(tStart,
                             &BaseRoutingEngine::AddContactWithVolume,

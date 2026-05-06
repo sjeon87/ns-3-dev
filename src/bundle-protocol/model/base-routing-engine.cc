@@ -61,11 +61,15 @@ BaseRoutingEngine::AddTimedContact(const std::string& fromEID,
                                    Time startTime,
                                    Time endTime,
                                    uint32_t dataRate,
-                                   Time delay)
+                                   Time delay,
+                                   uint32_t totalVolume)
 {
     NS_LOG_INFO("AddTimedContact: " << fromEID << " -> " << toEID << " delay=" << delay.GetSeconds()
-                                    << "s");
-    m_contactWindows.push_back({fromEID, toEID, startTime, endTime, dataRate, delay});
+                                    << "s"
+                                    << " totalVolume=" << totalVolume);
+
+    m_contactWindows.push_back(
+        {fromEID, toEID, startTime, endTime, dataRate, delay, totalVolume, 0});
 }
 
 const std::vector<ContactWindow>&

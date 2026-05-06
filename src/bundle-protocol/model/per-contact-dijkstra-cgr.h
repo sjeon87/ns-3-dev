@@ -15,7 +15,9 @@
 
 #include "base-routing-engine.h"
 
-#include <unordered_map>
+#include "ns3/nstime.h"
+
+#include <string>
 #include <vector>
 
 namespace ns3
@@ -65,17 +67,23 @@ class PerContactDijkstraCGR : public BaseRoutingEngine
      *
      * @param fromEID     Source EID.
      * @param toEID       Destination EID.
+     * @param startTime   Simulation time when the contact opens.
+     * @param endTime     Simulation time when the contact closes.
      * @param dataRate    Nominal link data rate (bps).
+     * @param delay       Propagation delay.
      * @param totalVolume Maximum bytes this contact window can carry.
      */
-    void AddContact(const std::string& fromEID,
-                    const std::string& toEID,
-                    uint32_t dataRate,
-                    uint32_t totalVolume);
+    void AddTimedContact(const std::string& fromEID,
+                         const std::string& toEID,
+                         Time startTime,
+                         Time endTime,
+                         uint32_t dataRate,
+                         Time delay,
+                         uint32_t totalVolume) override;
 
     /**
-     * Removes a contact edge between fromEID and toEID and marks the routing
-     * table dirty.  Volume accounting is discarded with the edge.
+     * @brief Removes all contact edges between fromEID and toEID and marks the
+     * routing table dirty.
      *
      * @param fromEID Source EID.
      * @param toEID   Destination EID.
@@ -83,55 +91,53 @@ class PerContactDijkstraCGR : public BaseRoutingEngine
     void RemoveContact(const std::string& fromEID, const std::string& toEID) override;
 
     /**
-     * Records that `bytes` have been committed for transmission over the
-     * fromEID -> toEID link, and marks the routing table dirty so the next
-     * GetNextHop call recomputes paths against the updated volumes.
+     * @brief Records that bytes have been committed for transmission over the
+     * currently active fromEID -> toEID link, and marks the routing table dirty
+     * so it re-evaluates capacity constraints on the next routing request.
      *
      * @param fromEID Source EID of the link.
      * @param toEID   Destination EID of the link.
-     * @param bytes   Size of the bundle in bytes.
+     * @param bytes   Size of the bundle payload in bytes.
      */
-    void ReserveVolume(const std::string& fromEID, const std::string& toEID, uint32_t bytes);
+    void ReserveVolume(const std::string& fromEID,
+                       const std::string& toEID,
+                       uint32_t bytes) override;
 
     /**
-     * Returns the next best hop based on the precomputed Dijkstra routing table.
-     * Triggers a recompute if the topology or any volume reservation has changed.
+     * @brief Returns the next best hop based on the precomputed Dijkstra routing table.
+     * * Checks the cache against volume depletion or simulation clock progression
+     * past a scheduled topology change, triggering a recompute if necessary.
      *
      * @param bundle  Bundle to be transmitted (provides destinationEID).
      * @param currEID Current bundle holder's EID.
-     * @return EID of the next best hop, or "" if no path exists.
+     * @return EID of the next best hop, or "" if no valid time-varying path exists.
      */
     std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID) override;
 
+    /**
+     * @brief Finds the internal numerical index for a given EID.
+     * @param eid Endpoint ID to look up.
+     * @return The integer index corresponding to the EID.
+     */
+    uint32_t FindIndex(const std::string& eid) const;
+
   private:
     /**
-     * @brief Structure representing a directed edge in the routing graph.
-     */
-    struct ContactEdge
-    {
-        uint32_t toNode;      //!< Index of the destination node
-        uint32_t dataRate;    //!< Nominal data rate (bps)
-        uint32_t usedVolume;  //!< Bytes already committed on this contact
-        uint32_t totalVolume; //!< Max bytes this contact can carry (0 = unknown/unlimited)
-    };
-
-    /**
-     * @brief Recomputes the all-pairs widest-path routing table.
-     * Runs one Dijkstra per source node, using remaining volume as the edge
-     * weight.  Called lazily whenever m_isDirty is true.
+     * @brief Recomputes the all-pairs earliest-arrival routing table.
+     * * Runs one Dijkstra per source node using Wait Time, Transmission Time, and
+     * Propagation Delay to find the path with the Earliest Arrival Time (EAT).
+     * Calculates and sets the next time the cache naturally expires based on the contact plan.
      */
     void RecomputeRoutingTable();
 
-    std::unordered_map<std::string, uint32_t> m_eidToIndex; //!< EID -> index lookup
-    std::vector<std::string> m_indexToEid;                  //!< Index -> EID lookup
-    uint32_t m_size;                                        //!< Total number of nodes
+    std::vector<std::string> m_eidList;                //!< Index -> EID lookup
+    uint32_t m_size;                                   //!< Total number of nodes
+    std::vector<std::vector<ContactWindow>> m_adjList; //!< Adjacency list of scheduled contacts
 
-    std::vector<std::vector<ContactEdge>> m_adjList; //!< Adjacency list
-    std::vector<uint32_t> m_nextHopTable;            //!< Flattened next-hop table
-    std::vector<double> m_capacity; //!< Per-node capacities (reused across Dijkstra runs)
-    std::vector<uint32_t> m_parent; //!< Parent pointers for path reconstruction
+    std::vector<uint32_t> m_nextHopTable; //!< Flattened all-pairs next-hop table
 
-    bool m_isDirty; //!< True when topology or volumes changed and table needs recompute
+    bool m_isDirty;                //!< True when volume runs out or edges are manually removed
+    Time m_nextTopologyChangeTime; //!< The exact simulation time the cache naturally expires
 };
 
 } // namespace ns3

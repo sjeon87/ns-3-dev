@@ -30,12 +30,14 @@ namespace ns3
  */
 struct ContactWindow
 {
-    std::string fromEID; //!< Source EID
-    std::string toEID;   //!< Destination EID
-    Time startTime;      //!< Simulation time when the contact opens
-    Time endTime;        //!< Simulation time when the contact closes
-    uint32_t dataRate;   //!< Nominal data rate (bps)
-    Time delay;          //!< Propagation delay
+    std::string fromEID;  //!< Source EID
+    std::string toEID;    //!< Destination EID
+    Time startTime;       //!< Simulation time when the contact opens
+    Time endTime;         //!< Simulation time when the contact closes
+    uint32_t dataRate;    //!< Nominal data rate (bps)
+    Time delay;           //!< Propagation delay
+    uint32_t totalVolume; //!< Maximum bytes this specific window can carry
+    uint32_t usedVolume;  //!< Bytes already committed during this window
 };
 
 class BaseRoutingEngine : public Object
@@ -98,17 +100,25 @@ class BaseRoutingEngine : public Object
 
     /**
      * Store a contact window record parsed from the contact plan.
-     * Does not affect the live routing graph — use AddContact for that.
+     * @param fromEID     Source EID.
+     * @param toEID       Destination EID.
+     * @param startTime   Simulation time when the contact opens.
+     * @param endTime     Simulation time when the contact closes.
+     * @param dataRate    Nominal link data rate (bps).
+     * @param delay       Propagation delay.
+     * @param totalVolume Maximum bytes this contact window can carry.
      */
-    void AddTimedContact(const std::string& fromEID,
-                         const std::string& toEID,
-                         Time startTime,
-                         Time endTime,
-                         uint32_t dataRate,
-                         Time delay);
+    virtual void AddTimedContact(const std::string& fromEID,
+                                 const std::string& toEID,
+                                 Time startTime,
+                                 Time endTime,
+                                 uint32_t dataRate,
+                                 Time delay,
+                                 uint32_t totalVolume);
 
     /**
      * Return the full list of contact windows recorded from the contact plan.
+     * @return vector of all contact windows
      */
     const std::vector<ContactWindow>& GetContactWindows() const;
 

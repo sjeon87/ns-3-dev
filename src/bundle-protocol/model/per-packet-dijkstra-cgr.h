@@ -16,6 +16,7 @@
 #include "base-routing-engine.h"
 #include "bundle.h"
 
+#include "ns3/nstime.h"
 #include "ns3/object.h"
 
 #include <string>
@@ -25,19 +26,10 @@ namespace ns3
 {
 
 /**
- * @brief Structure representing a directed edge in the contact graph.
- */
-struct ContactEdge
-{
-    uint32_t toNode;      //!< Index of the destination node
-    uint32_t dataRate;    //!< Nominal data rate of the contact (bps)
-    uint32_t usedVolume;  //!< Bytes already committed on this contact
-    uint32_t totalVolume; //!< Maximum bytes this contact window can carry (rate * duration).
-};
-
-/**
  * @ingroup BundleProtocol
  * @brief A routing engine that uses an adjacency list to maintain a contact graph and find routes.
+ * * This engine runs a time-varying Dijkstra algorithm per packet to find the path
+ * with the Earliest Arrival Time (EAT).
  */
 class PerPacketDijkstraCGR : public BaseRoutingEngine
 {
@@ -57,7 +49,8 @@ class PerPacketDijkstraCGR : public BaseRoutingEngine
     void InitializeMap(const std::vector<std::string>& eidList) override;
 
     /**
-     * Adds a contact edge between fromEID and toEID with weight dataRate.
+     * Adds a static contact edge. In a CGR context, this maps to an infinite
+     * contact window from time 0 to infinity, to support backwards compatibility.
      * @param fromEID EID 1 (src)
      * @param toEID EID 2 (dest)
      * @param dataRate weight of the edge
@@ -67,21 +60,7 @@ class PerPacketDijkstraCGR : public BaseRoutingEngine
                     uint32_t dataRate) override;
 
     /**
-     * Adds a contact edge with an explicit total volume budget.
-     * Total volume should be set to dataRate (bps) * contactDuration (s) converted to bytes.
-     *
-     * @param fromEID     Source EID.
-     * @param toEID       Destination EID.
-     * @param dataRate    Nominal link data rate (bps).
-     * @param totalVolume Maximum bytes this contact window can carry.
-     */
-    void AddContact(const std::string& fromEID,
-                    const std::string& toEID,
-                    uint32_t dataRate,
-                    uint32_t totalVolume);
-
-    /**
-     * Removes a contact edge between fromEID and toEID.
+     * Removes all contact edges between fromEID and toEID.
      * @param fromEID EID 1 (src)
      * @param toEID EID 2 (dest)
      */
@@ -89,16 +68,36 @@ class PerPacketDijkstraCGR : public BaseRoutingEngine
 
     /**
      * Records the bytes have been committed for transmission over the
-     * fromEID -> toEID link.
+     * fromEID -> toEID link for the currently active contact window.
      *
      * @param fromEID Source EID of the link.
      * @param toEID   Destination EID of the link.
      * @param bytes   Size of the bundle payload in bytes.
      */
-    void ReserveVolume(const std::string& fromEID, const std::string& toEID, uint32_t bytes);
+    void ReserveVolume(const std::string& fromEID,
+                       const std::string& toEID,
+                       uint32_t bytes) override;
 
     /**
-     * Returns the next best hop according to remaining link volume.
+     * Store a contact window record parsed from the contact plan.
+     * @param fromEID     Source EID.
+     * @param toEID       Destination EID.
+     * @param startTime   Simulation time when the contact opens.
+     * @param endTime     Simulation time when the contact closes.
+     * @param dataRate    Nominal link data rate (bps).
+     * @param delay       Propagation delay.
+     * @param totalVolume Maximum bytes this contact window can carry.
+     */
+    void AddTimedContact(const std::string& fromEID,
+                         const std::string& toEID,
+                         Time startTime,
+                         Time endTime,
+                         uint32_t dataRate,
+                         Time delay,
+                         uint32_t totalVolume) override;
+
+    /**
+     * Returns the next best hop according to Earliest Arrival Time (EAT).
      * @param bundle  Bundle to be transmitted (provides destinationEID).
      * @param currEID Current bundle holder's EID.
      * @return EID of the next best hop, or "" if no path exists.
@@ -113,9 +112,9 @@ class PerPacketDijkstraCGR : public BaseRoutingEngine
     uint32_t FindIndex(const std::string& eid) const;
 
   private:
-    std::vector<std::string> m_eidList;              //!< EIDs mapped to indices
-    std::vector<std::vector<ContactEdge>> m_adjList; //!< Adjacency list
-    uint32_t m_size;                                 //!< Total number of nodes
+    std::vector<std::string> m_eidList;                //!< EIDs mapped to indices
+    std::vector<std::vector<ContactWindow>> m_adjList; //!< Adjacency list of scheduled contacts
+    uint32_t m_size;                                   //!< Total number of nodes
 };
 
 } // namespace ns3
