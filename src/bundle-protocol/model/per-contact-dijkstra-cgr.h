@@ -91,9 +91,7 @@ class PerContactDijkstraCGR : public BaseRoutingEngine
      * @param toEID   Destination EID of the link.
      * @param bytes   Size of the bundle in bytes.
      */
-    void ReserveVolume(const std::string& fromEID,
-                       const std::string& toEID,
-                       uint32_t bytes);
+    void ReserveVolume(const std::string& fromEID, const std::string& toEID, uint32_t bytes);
 
     /**
      * Returns the next best hop based on the precomputed Dijkstra routing table.
@@ -129,9 +127,9 @@ class PerContactDijkstraCGR : public BaseRoutingEngine
     uint32_t m_size;                                        //!< Total number of nodes
 
     std::vector<std::vector<ContactEdge>> m_adjList; //!< Adjacency list
-    std::vector<uint32_t> m_nextHopTable; //!< Flattened next-hop table
-    std::vector<double> m_capacity;       //!< Per-node capacities (reused across Dijkstra runs)
-    std::vector<uint32_t> m_parent;       //!< Parent pointers for path reconstruction
+    std::vector<uint32_t> m_nextHopTable;            //!< Flattened next-hop table
+    std::vector<double> m_capacity; //!< Per-node capacities (reused across Dijkstra runs)
+    std::vector<uint32_t> m_parent; //!< Parent pointers for path reconstruction
 
     bool m_isDirty; //!< True when topology or volumes changed and table needs recompute
 };

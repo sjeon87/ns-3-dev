@@ -10,9 +10,9 @@
 #include "ns3/inet-socket-address.h"
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
-#include "ns3/udp-convergence-layer-adapter.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/udp-convergence-layer-adapter.h"
 
 #include <map>
 #include <string>
@@ -66,8 +66,8 @@ LinkUp(Ptr<BundleAgent> agent,
        uint32_t dataRate)
 {
     NS_LOG_INFO("At time " << Simulator::Now().GetSeconds()
-                           << "s: Contact UP - Registering CLA for " << destEid
-                           << " at " << dataRate << " bps");
+                           << "s: Contact UP - Registering CLA for " << destEid << " at "
+                           << dataRate << " bps");
 
     device->SetAttribute("DataRate", DataRateValue(DataRate(dataRate)));
     agent->RegisterCla(destEid, cla);
@@ -181,17 +181,15 @@ main(int argc, char* argv[])
 
             TimeValue tv;
             channel->GetAttribute("Delay", tv);
-            NS_LOG_INFO("Channel " << eidI << " <-> " << eidJ
-                        << " delay=" << tv.Get().GetSeconds() << "s"
-                        << " (requested=" << linkDelay.GetSeconds() << "s)");
+            NS_LOG_INFO("Channel " << eidI << " <-> " << eidJ << " delay=" << tv.Get().GetSeconds()
+                                   << "s"
+                                   << " (requested=" << linkDelay.GetSeconds() << "s)");
 
             Ipv4InterfaceContainer ifaces = address.Assign(devices);
             address.NewNetwork();
 
-            Ptr<PointToPointNetDevice> devI =
-                DynamicCast<PointToPointNetDevice>(devices.Get(0));
-            Ptr<PointToPointNetDevice> devJ =
-                DynamicCast<PointToPointNetDevice>(devices.Get(1));
+            Ptr<PointToPointNetDevice> devI = DynamicCast<PointToPointNetDevice>(devices.Get(0));
+            Ptr<PointToPointNetDevice> devJ = DynamicCast<PointToPointNetDevice>(devices.Get(1));
 
             Ptr<UdpBundleCla> claI = CreateObject<UdpBundleCla>();
             Ptr<UdpBundleCla> claJ = CreateObject<UdpBundleCla>();

@@ -106,11 +106,10 @@ ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> con
         Time delay = Seconds(kv.second.delaySeconds);
 
         double durationSeconds = (tEnd - tStart).GetSeconds();
-        uint32_t totalVolume = static_cast<uint32_t>(static_cast<double>(rate) *
-                                                     durationSeconds / 8.0);
+        uint32_t totalVolume =
+            static_cast<uint32_t>(static_cast<double>(rate) * durationSeconds / 8.0);
 
-        NS_LOG_DEBUG("Contact " << from << " -> " << to
-                                << " | rate=" << rate << " bps"
+        NS_LOG_DEBUG("Contact " << from << " -> " << to << " | rate=" << rate << " bps"
                                 << " | duration=" << durationSeconds << " s"
                                 << " | totalVolume=" << totalVolume << " bytes");
 
@@ -127,8 +126,8 @@ ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> con
     }
 
     NS_LOG_INFO("Successfully scheduled "
-                << contactMap.size() << " combined contacts/ranges across "
-                << uniqueNodes.size() << " unique nodes.");
+                << contactMap.size() << " combined contacts/ranges across " << uniqueNodes.size()
+                << " unique nodes.");
     return true;
 }
 

@@ -87,17 +87,17 @@ PerPacketDijkstraCGR::InitializeMap(const std::vector<std::string>& eidList)
 
 void
 PerPacketDijkstraCGR::AddContact(const std::string& fromEID,
-                         const std::string& toEID,
-                         uint32_t dataRate)
+                                 const std::string& toEID,
+                                 uint32_t dataRate)
 {
     AddContact(fromEID, toEID, dataRate, 0);
 }
 
 void
 PerPacketDijkstraCGR::AddContact(const std::string& fromEID,
-                         const std::string& toEID,
-                         uint32_t dataRate,
-                         uint32_t totalVolume)
+                                 const std::string& toEID,
+                                 uint32_t dataRate,
+                                 uint32_t totalVolume)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID << dataRate << totalVolume);
 
@@ -145,8 +145,8 @@ PerPacketDijkstraCGR::RemoveContact(const std::string& fromEID, const std::strin
 
 void
 PerPacketDijkstraCGR::ReserveVolume(const std::string& fromEID,
-                            const std::string& toEID,
-                            uint32_t bytes)
+                                    const std::string& toEID,
+                                    uint32_t bytes)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID << bytes);
 
@@ -163,18 +163,16 @@ PerPacketDijkstraCGR::ReserveVolume(const std::string& fromEID,
     {
         if (edge.toNode == node2)
         {
-            uint32_t available = (edge.totalVolume > edge.usedVolume)
-                                     ? (edge.totalVolume - edge.usedVolume)
-                                     : 0;
+            uint32_t available =
+                (edge.totalVolume > edge.usedVolume) ? (edge.totalVolume - edge.usedVolume) : 0;
             uint32_t reserved = std::min(bytes, available);
             edge.usedVolume += reserved;
 
             if (reserved < bytes)
             {
-                NS_LOG_WARN("ReserveVolume: link " << fromEID << " -> " << toEID
-                                                   << " only had " << available
-                                                   << " bytes remaining; tried to reserve "
-                                                   << bytes << " bytes.");
+                NS_LOG_WARN("ReserveVolume: link "
+                            << fromEID << " -> " << toEID << " only had " << available
+                            << " bytes remaining; tried to reserve " << bytes << " bytes.");
             }
             return;
         }
@@ -230,9 +228,8 @@ PerPacketDijkstraCGR::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID)
             double effectiveCapacity;
             if (edge.totalVolume > 0)
             {
-                effectiveCapacity = static_cast<double>(edge.totalVolume > edge.usedVolume
-                                                            ? edge.totalVolume - edge.usedVolume
-                                                            : 0);
+                effectiveCapacity = static_cast<double>(
+                    edge.totalVolume > edge.usedVolume ? edge.totalVolume - edge.usedVolume : 0);
             }
             else
             {

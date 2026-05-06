@@ -31,16 +31,15 @@ NS_OBJECT_ENSURE_REGISTERED(PerContactDijkstraCGR);
 TypeId
 PerContactDijkstraCGR::GetTypeId()
 {
-    static TypeId tid =
-        TypeId("ns3::PerContactDijkstraCGR")
-            .SetParent<BaseRoutingEngine>()
-            .SetGroupName("BundleProtocol")
-            .AddConstructor<PerContactDijkstraCGR>()
-            .AddAttribute("GraphSize",
-                          "Total number of nodes in simulation",
-                          UintegerValue(0),
-                          MakeUintegerAccessor(&PerContactDijkstraCGR::m_size),
-                          MakeUintegerChecker<uint32_t>());
+    static TypeId tid = TypeId("ns3::PerContactDijkstraCGR")
+                            .SetParent<BaseRoutingEngine>()
+                            .SetGroupName("BundleProtocol")
+                            .AddConstructor<PerContactDijkstraCGR>()
+                            .AddAttribute("GraphSize",
+                                          "Total number of nodes in simulation",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&PerContactDijkstraCGR::m_size),
+                                          MakeUintegerChecker<uint32_t>());
     return tid;
 }
 
@@ -90,17 +89,17 @@ PerContactDijkstraCGR::InitializeMap(const std::vector<std::string>& eidList)
 
 void
 PerContactDijkstraCGR::AddContact(const std::string& fromEID,
-                                            const std::string& toEID,
-                                            uint32_t dataRate)
+                                  const std::string& toEID,
+                                  uint32_t dataRate)
 {
     AddContact(fromEID, toEID, dataRate, 0);
 }
 
 void
 PerContactDijkstraCGR::AddContact(const std::string& fromEID,
-                                            const std::string& toEID,
-                                            uint32_t dataRate,
-                                            uint32_t totalVolume)
+                                  const std::string& toEID,
+                                  uint32_t dataRate,
+                                  uint32_t totalVolume)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID << dataRate << totalVolume);
 
@@ -115,13 +114,12 @@ PerContactDijkstraCGR::AddContact(const std::string& fromEID,
 
     m_adjList[srcIt->second].push_back({dstIt->second, dataRate, 0, totalVolume});
     m_isDirty = true;
-    NS_LOG_INFO("AddContact succeeded: " << fromEID << " -> " << toEID 
-            << " idx " << srcIt->second << " -> " << dstIt->second);
+    NS_LOG_INFO("AddContact succeeded: " << fromEID << " -> " << toEID << " idx " << srcIt->second
+                                         << " -> " << dstIt->second);
 }
 
 void
-PerContactDijkstraCGR::RemoveContact(const std::string& fromEID,
-                                               const std::string& toEID)
+PerContactDijkstraCGR::RemoveContact(const std::string& fromEID, const std::string& toEID)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID);
 
@@ -147,8 +145,8 @@ PerContactDijkstraCGR::RemoveContact(const std::string& fromEID,
 
 void
 PerContactDijkstraCGR::ReserveVolume(const std::string& fromEID,
-                                               const std::string& toEID,
-                                               uint32_t bytes)
+                                     const std::string& toEID,
+                                     uint32_t bytes)
 {
     NS_LOG_FUNCTION(this << fromEID << toEID << bytes);
 
@@ -169,9 +167,8 @@ PerContactDijkstraCGR::ReserveVolume(const std::string& fromEID,
         {
             if (edge.totalVolume > 0)
             {
-                uint32_t available = (edge.totalVolume > edge.usedVolume)
-                                         ? (edge.totalVolume - edge.usedVolume)
-                                         : 0;
+                uint32_t available =
+                    (edge.totalVolume > edge.usedVolume) ? (edge.totalVolume - edge.usedVolume) : 0;
                 uint32_t reserved = std::min(bytes, available);
                 edge.usedVolume += reserved;
 
@@ -193,10 +190,9 @@ PerContactDijkstraCGR::ReserveVolume(const std::string& fromEID,
 void
 PerContactDijkstraCGR::RecomputeRoutingTable()
 {
+    NS_LOG_INFO("Recomputing: m_size=" << m_size << " adjList[0].size()="
+                                       << (m_size > 0 ? m_adjList[0].size() : 0));
 
-    NS_LOG_INFO("Recomputing: m_size=" << m_size << " adjList[0].size()=" 
-            << (m_size > 0 ? m_adjList[0].size() : 0));
-            
     if (!m_isDirty || m_size == 0)
     {
         return;
@@ -233,10 +229,9 @@ PerContactDijkstraCGR::RecomputeRoutingTable()
                 double effectiveCapacity;
                 if (edge.totalVolume > 0)
                 {
-                    effectiveCapacity =
-                        static_cast<double>(edge.totalVolume > edge.usedVolume
-                                                ? edge.totalVolume - edge.usedVolume
-                                                : 0);
+                    effectiveCapacity = static_cast<double>(edge.totalVolume > edge.usedVolume
+                                                                ? edge.totalVolume - edge.usedVolume
+                                                                : 0);
                 }
                 else
                 {
@@ -287,8 +282,8 @@ PerContactDijkstraCGR::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID
     {
         for (const auto& e : m_adjList[i])
         {
-            NS_LOG_INFO("  edge: " << m_indexToEid[i] << " -> " 
-                        << m_indexToEid[e.toNode] << " cap=" << e.dataRate);
+            NS_LOG_INFO("  edge: " << m_indexToEid[i] << " -> " << m_indexToEid[e.toNode]
+                                   << " cap=" << e.dataRate);
         }
     }
 

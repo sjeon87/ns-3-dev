@@ -95,9 +95,7 @@ class PerPacketDijkstraCGR : public BaseRoutingEngine
      * @param toEID   Destination EID of the link.
      * @param bytes   Size of the bundle payload in bytes.
      */
-    void ReserveVolume(const std::string& fromEID,
-                       const std::string& toEID,
-                       uint32_t bytes);
+    void ReserveVolume(const std::string& fromEID, const std::string& toEID, uint32_t bytes);
 
     /**
      * Returns the next best hop according to remaining link volume.

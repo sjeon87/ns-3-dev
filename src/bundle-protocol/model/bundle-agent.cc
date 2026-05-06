@@ -352,8 +352,8 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
 
         if (ForwardBundle(handle) != 0)
         {
-            NS_LOG_DEBUG("RecvBundle: no CLA available for " << destination << ", bundle "
-                                                             << handle << " held in storage");
+            NS_LOG_DEBUG("RecvBundle: no CLA available for " << destination << ", bundle " << handle
+                                                             << " held in storage");
         }
         return 0;
     }
@@ -501,8 +501,7 @@ BundleAgent::ProcessAllBacklog()
         }
     }
 
-    m_backlogCheckEvent =
-        Simulator::Schedule(Seconds(10.0), &BundleAgent::ProcessAllBacklog, this);
+    m_backlogCheckEvent = Simulator::Schedule(Seconds(10.0), &BundleAgent::ProcessAllBacklog, this);
 }
 
 } // namespace ns3

@@ -30,12 +30,12 @@ namespace ns3
  */
 struct ContactWindow
 {
-    std::string fromEID;    //!< Source EID
-    std::string toEID;      //!< Destination EID
-    Time startTime;         //!< Simulation time when the contact opens
-    Time endTime;           //!< Simulation time when the contact closes
-    uint32_t dataRate;      //!< Nominal data rate (bps)
-    Time delay;             //!< Propagation delay
+    std::string fromEID; //!< Source EID
+    std::string toEID;   //!< Destination EID
+    Time startTime;      //!< Simulation time when the contact opens
+    Time endTime;        //!< Simulation time when the contact closes
+    uint32_t dataRate;   //!< Nominal data rate (bps)
+    Time delay;          //!< Propagation delay
 };
 
 class BaseRoutingEngine : public Object
