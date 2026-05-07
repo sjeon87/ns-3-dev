@@ -33,10 +33,10 @@
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /*
@@ -62,32 +62,13 @@ namespace ns3
 class TraceContainer;
 
 /**
- * @ingroup traffic-control
- *
  * @brief A RED packet queue disc
+ *
+ * @ingroup traffic-control
  */
 class RedQueueDisc : public QueueDisc
 {
   public:
-    /**
-     * @brief Get the type ID.
-     * @return the object TypeId
-     */
-    static TypeId GetTypeId();
-    /**
-     * @brief RedQueueDisc Constructor
-     *
-     * Create a RED queue disc
-     */
-    RedQueueDisc();
-
-    /**
-     * @brief Destructor
-     *
-     * Destructor
-     */
-    ~RedQueueDisc() override;
-
     /**
      * @brief Used in Feng's Adaptive RED
      */
@@ -109,6 +90,27 @@ class RedQueueDisc : public QueueDisc
     };
 
     /**
+     * @brief Get the type ID.
+     *
+     * @return the object TypeId
+     */
+    static TypeId GetTypeId();
+
+    /**
+     * @brief RedQueueDisc Constructor
+     *
+     * Create a RED queue disc
+     */
+    RedQueueDisc();
+
+    /**
+     * @brief Destructor
+     *
+     * Destructor
+     */
+    ~RedQueueDisc() override;
+
+    /**
      * @brief Set the alpha value to adapt m_curMaxP.
      *
      * @param alpha The value of alpha to adapt m_curMaxP.
@@ -118,7 +120,7 @@ class RedQueueDisc : public QueueDisc
     /**
      * @brief Get the alpha value to adapt m_curMaxP.
      *
-     * @returns The alpha value to adapt m_curMaxP.
+     * @return The alpha value to adapt m_curMaxP.
      */
     double GetAredAlpha();
 
@@ -132,7 +134,7 @@ class RedQueueDisc : public QueueDisc
     /**
      * @brief Get the beta value to adapt m_curMaxP.
      *
-     * @returns The beta value to adapt m_curMaxP.
+     * @return The beta value to adapt m_curMaxP.
      */
     double GetAredBeta();
 
@@ -146,7 +148,7 @@ class RedQueueDisc : public QueueDisc
     /**
      * @brief Get the alpha value to adapt m_curMaxP in Feng's Adaptive RED.
      *
-     * @returns The alpha value to adapt m_curMaxP in Feng's Adaptive RED.
+     * @return The alpha value to adapt m_curMaxP in Feng's Adaptive RED.
      */
     double GetFengAdaptiveA();
 
@@ -160,7 +162,7 @@ class RedQueueDisc : public QueueDisc
     /**
      * @brief Get the beta value to adapt m_curMaxP in Feng's Adaptive RED.
      *
-     * @returns The beta value to adapt m_curMaxP in Feng's Adaptive RED.
+     * @return The beta value to adapt m_curMaxP in Feng's Adaptive RED.
      */
     double GetFengAdaptiveB();
 
@@ -173,12 +175,12 @@ class RedQueueDisc : public QueueDisc
     void SetTh(double minTh, double maxTh);
 
     /**
-     * Assign a fixed random variable stream number to the random variables
-     * used by this model.  Return the number of streams (possibly zero) that
-     * have been assigned.
+     * @brief Assign a fixed random variable stream number to the random variables used by this
+     * model.
      *
-     * @param stream first stream index to use
-     * @return the number of stream indices assigned by this model
+     * @param stream First stream index to use.
+     *
+     * @return The number of stream indices assigned by this model.
      */
     int64_t AssignStreams(int64_t stream);
 
@@ -196,112 +198,87 @@ class RedQueueDisc : public QueueDisc
     void DoDispose() override;
 
   private:
+    //!< Core queue operations
     bool DoEnqueue(Ptr<QueueDiscItem> item) override;
     Ptr<QueueDiscItem> DoDequeue() override;
     Ptr<const QueueDiscItem> DoPeek() override;
     bool CheckConfig() override;
-
-    /**
-     * @brief Initialize the queue parameters.
-     *
-     * Note: if the link bandwidth changes in the course of the
-     * simulation, the bandwidth-dependent RED parameters do not change.
-     * This should be fixed, but it would require some extra parameters,
-     * and didn't seem worth the trouble...
-     */
     void InitializeParams() override;
-    /**
-     * @brief Compute the average queue size
-     * @param nQueued number of queued packets
-     * @param m simulated number of packets arrival during idle period
-     * @param qAvg average queue size
-     * @param qW queue weight given to cur q size sample
-     * @returns new average queue size
-     */
-    double Estimator(uint32_t nQueued, uint32_t m, double qAvg, double qW);
-    /**
-     * @brief Update m_curMaxP
-     * @param newAve new average queue length
-     */
-    void UpdateMaxP(double newAve);
-    /**
-     * @brief Update m_curMaxP based on Feng's Adaptive RED
-     * @param newAve new average queue length
-     */
-    void UpdateMaxPFeng(double newAve);
-    /**
-     * @brief Check if a packet needs to be dropped due to probability mark
-     * @param item queue item
-     * @param qSize queue size
-     * @returns false for no drop/mark, true for drop
-     */
-    bool DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize);
-    /**
-     * @brief Returns a probability using these function parameters for the DropEarly function
-     * @returns Prob. of packet drop before "count"
-     */
-    double CalculatePNew();
-    /**
-     * @brief Returns a probability using these function parameters for the DropEarly function
-     * @param p Prob. of packet drop before "count"
-     * @param size packet size
-     * @returns Prob. of packet drop
-     */
-    double ModifyP(double p, uint32_t size);
 
-    // ** Variables supplied by user
-    uint32_t m_meanPktSize; //!< Avg pkt size
-    uint32_t m_idlePktSize; //!< Avg pkt size used during idle times
-    bool m_isWait;          //!< True for waiting between dropped packets
-    bool m_isGentle;        //!< True to increase dropping prob. slowly when m_qAvg exceeds m_maxTh
-    bool m_isARED;          //!< True to enable Adaptive RED
-    bool m_isAdaptMaxP;     //!< True to adapt m_curMaxP
-    double m_minTh;         //!< Minimum threshold for m_qAvg (bytes or packets)
+    //!< Queue average estimation
+    double Estimator(uint32_t currQLen, uint32_t m, double oldavg, double wQ);
+
+    //!< Drop probability computation
+    double CalculatePNew();
+    double ModifyP(double p, uint32_t size);
+    bool DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize);
+
+    //!< Max drop probability adaptation
+    void UpdateMaxP(double newAvg);
+    void UpdateMaxPFeng(double newAvg);
+
+    //!< Variables supplied by user
+    uint32_t m_meanPktSize;  //!< Avg pkt size
+    uint32_t m_idleQPktSize; //!< Avg pkt size used during idle times
+    bool m_isWait;           //!< True for waiting between dropped packets
+    bool m_isGentle;         //!< True to increase dropping prob. slowly when m_qAvg exceeds m_maxTh
+    bool m_isARED;           //!< True to enable Adaptive RED
+    bool m_isAdaptMaxP;      //!< True to adapt m_curMaxP
+    double m_minTh;          //!< Minimum threshold for m_qAvg (bytes or packets)
     double m_maxTh;   //!< Maximum threshold for m_qAvg (bytes or packets), should be >= 2 * m_minTh
-    double m_qW;      //!< Queue weight given to cur queue size sample
+    double m_qWeight; //!< Queue weight given to cur queue size sample (This is same as Wq)
     double m_lInterm; //!< The max probability of dropping a packet
-    Time m_targetDelay;       //!< Target average queuing delay in ARED
-    Time m_interval;          //!< Time interval to update m_curMaxP
-    double m_top;             //!< Upper bound for m_curMaxP in ARED
-    double m_bottom;          //!< Lower bound for m_curMaxP in ARED
-    double m_alpha;           //!< Increment parameter for m_curMaxP in ARED
-    double m_beta;            //!< Decrement parameter for m_curMaxP in ARED
-    Time m_rtt;               //!< Rtt to be considered while automatically setting m_bottom in ARED
     bool m_isFengAdaptive;    //!< True to enable Feng's Adaptive RED
     bool m_isNonlinear;       //!< True to enable Nonlinear RED
-    double m_b;               //!< Increment parameter for m_curMaxP in Feng's Adaptive RED
-    double m_a;               //!< Decrement parameter for m_curMaxP in Feng's Adaptive RED
     bool m_isNs1Compat;       //!< Ns-1 compatibility
     DataRate m_linkBandwidth; //!< Link bandwidth
     Time m_linkDelay;         //!< Link delay
     bool m_useEcn;            //!< True if ECN is used (packets are marked instead of being dropped)
     bool m_useHardDrop;       //!< True if packets are always dropped above max threshold
 
-    // ** Variables maintained by RED
-    double m_vA;             //!< 1.0 / (m_maxTh - m_minTh)
-    double m_vB;             //!< -m_minTh / (m_maxTh - m_minTh)
-    double m_vC;             //!< (1.0 - m_curMaxP) / m_maxTh - used in "gentle" mode
-    double m_vD;             //!< 2.0 * m_curMaxP - 1.0 - used in "gentle" mode
-    double m_curMaxP;        //!< Current max_p
-    Time m_lastSet;          //!< Last time m_curMaxP was updated
-    double m_vProb;          //!< Prob. of packet drop
-    uint32_t m_countBytes;   //!< Number of bytes since last drop
-    uint32_t m_old;          //!< 0 when average queue first exceeds threshold
-    uint32_t m_idle;         //!< 0/1 idle status
-    double m_ptc;            //!< packet time constant in packets/second
-    double m_qAvg;           //!< Average queue length
-    uint32_t m_count;        //!< Number of packets since last random number generation
-    FengStatus m_fengStatus; //!< For use in Feng's Adaptive RED
+    //!< Variables maintained by RED
+    double m_vA;           //!< 1.0 / (m_maxTh - m_minTh)
+    double m_vB;           //!< -m_minTh / (m_maxTh - m_minTh)
+    double m_curMaxP;      //!< Current max_p
+    double m_Pa;           //!< Prob. of packet drop
+    uint32_t m_countBytes; //!< Number of bytes since last drop
+    uint32_t m_aboveMinTh; //!< 0 when average queue first exceeds threshold
+    uint32_t m_isIdle;     //!< 0/1 idle status
+    double m_ptc;          //!< Packet time constant in packets/second
+    double m_qAvg;         //!< Average queue length
+    uint32_t m_count;      //!< Number of packets since last random number generation
     /**
      * 0 for default RED
      * 1 experimental (see red-queue-disc.cc)
      * 2 experimental (see red-queue-disc.cc)
      * 3 use Idle packet size in the ptc
      */
-    uint32_t m_cautious;
+    uint32_t m_cautionMode;
     Time m_idleTime; //!< Start of current idle period
 
-    Ptr<UniformRandomVariable> m_uv; //!< rng stream
+    //!< Variables maintained by Gentle RED
+    double m_vC; //!< (1.0 - m_curMaxP) / m_maxTh - used in "gentle" mode
+    double m_vD; //!< 2.0 * m_curMaxP - 1.0 - used in "gentle" mode
+
+    // ** Variables maintained by Nonlinear RED (NLRED)
+    // (m_isNonlinear flag above gates this path; probability shaping is done
+    //  entirely inside CalculatePNew() / ModifyP() with no extra state fields)
+
+    //!< Variables maintained by Feng's Adaptive RED
+    double m_fengAlpha;      //!< Decrement parameter for m_curMaxP in Feng's Adaptive RED
+    double m_fengBeta;       //!< Increment parameter for m_curMaxP in Feng's Adaptive RED
+    FengStatus m_fengStatus; //!< Tracks queue state (Above / Between / Below thresholds)
+
+    //!< Variables maintained by Adaptive RED (ARED)
+    Time m_targetQDelay; //!< Target average queuing delay in ARED
+    Time m_interval;     //!< Time interval to update m_curMaxP
+    double m_minCurMaxP; //!< Lower bound for m_curMaxP in ARED
+    double m_aredAlpha;  //!< Increment parameter for m_curMaxP in ARED
+    double m_aredBeta;   //!< Decrement parameter for m_curMaxP in ARED
+    Time m_rtt;          //!< RTT used when auto-setting m_minCurMaxP in ARED
+    Time m_lastSet;      //!< Last time m_curMaxP was updated
+
+    Ptr<UniformRandomVariable> m_uv; //!< random number generator stream
 };
 
 }; // namespace ns3

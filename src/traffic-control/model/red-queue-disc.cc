@@ -7,7 +7,6 @@
  *
  * Thanks to: Duy Nguyen<duy@soe.ucsc.edu> by RED efforts in NS3
  *
- *
  * This file incorporates work covered by the following copyright and
  * permission notice:
  *
@@ -38,7 +37,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 /*
  * PORT NOTE: This code was ported from ns-2 (queue/red.cc).  Almost all
  * comments have also been ported from NS-2
@@ -69,142 +67,196 @@ RedQueueDisc::GetTypeId()
             .SetParent<QueueDisc>()
             .SetGroupName("TrafficControl")
             .AddConstructor<RedQueueDisc>()
+
+            /*
+             * Packet sizing and link characterisation
+             *
+             */
             .AddAttribute("MeanPktSize",
                           "Average of packet size",
                           UintegerValue(500),
                           MakeUintegerAccessor(&RedQueueDisc::m_meanPktSize),
                           MakeUintegerChecker<uint32_t>())
-            .AddAttribute("IdlePktSize",
-                          "Average packet size used during idle times. Used when m_cautions = 3",
-                          UintegerValue(0),
-                          MakeUintegerAccessor(&RedQueueDisc::m_idlePktSize),
-                          MakeUintegerChecker<uint32_t>())
+
+            // not necessary as IdleQPktSize never gets updated in the entire code and used only
+            // when m_cautionMode=3
+            /* .AddAttribute("IdleQPktSize",
+                           "Average packet size used during idle times. Used when m_cautionMode =
+               3", UintegerValue(0), MakeUintegerAccessor(&RedQueueDisc::m_idleQPktSize),
+                           MakeUintegerChecker<uint32_t>()) */
+
+            .AddAttribute("LinkBandwidth",
+                          "The RED link bandwidth",
+                          DataRateValue(DataRate("1.5Mbps")),
+                          MakeDataRateAccessor(&RedQueueDisc::m_linkBandwidth),
+                          MakeDataRateChecker())
+
+            .AddAttribute("LinkDelay",
+                          "The RED link delay",
+                          TimeValue(MilliSeconds(20)),
+                          MakeTimeAccessor(&RedQueueDisc::m_linkDelay),
+                          MakeTimeChecker())
+
+            /*
+             * Queue thresholds
+             *
+             */
+            .AddAttribute("MinTh",
+                          "Minimum average length threshold in packets/bytes",
+                          DoubleValue(5),
+                          MakeDoubleAccessor(&RedQueueDisc::m_minTh),
+                          MakeDoubleChecker<double>())
+
+            .AddAttribute("MaxTh",
+                          "Maximum average length threshold in packets/bytes",
+                          DoubleValue(15),
+                          MakeDoubleAccessor(&RedQueueDisc::m_maxTh),
+                          MakeDoubleChecker<double>())
+
+            .AddAttribute("MaxSize",
+                          "The maximum number of packets accepted by this queue disc",
+                          QueueSizeValue(QueueSize("25p")),
+                          MakeQueueSizeAccessor(&QueueDisc::SetMaxSize, &QueueDisc::GetMaxSize),
+                          MakeQueueSizeChecker())
+            /*
+             * EWMA weight
+             *
+             */
+            .AddAttribute("QW",
+                          "Queue weight related to the exponential weighted moving average (EWMA)",
+                          DoubleValue(0.002),
+                          MakeDoubleAccessor(&RedQueueDisc::m_qWeight),
+                          MakeDoubleChecker<double>())
+            /*
+             * Drop probability
+             *
+             */
+            .AddAttribute("LInterm",
+                          "The maximum probability of dropping a packet",
+                          DoubleValue(50),
+                          MakeDoubleAccessor(&RedQueueDisc::m_lInterm),
+                          MakeDoubleChecker<double>())
+            /*
+             * Behavioural flags
+             *
+             */
             .AddAttribute("Wait",
                           "True for waiting between dropped packets",
                           BooleanValue(true),
                           MakeBooleanAccessor(&RedQueueDisc::m_isWait),
                           MakeBooleanChecker())
+
             .AddAttribute("Gentle",
                           "True to increases dropping probability slowly when average queue "
                           "exceeds maxthresh",
                           BooleanValue(true),
                           MakeBooleanAccessor(&RedQueueDisc::m_isGentle),
                           MakeBooleanChecker())
-            .AddAttribute("ARED",
-                          "True to enable ARED",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&RedQueueDisc::m_isARED),
-                          MakeBooleanChecker())
-            .AddAttribute("AdaptMaxP",
-                          "True to adapt m_curMaxP",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&RedQueueDisc::m_isAdaptMaxP),
-                          MakeBooleanChecker())
-            .AddAttribute("FengAdaptive",
-                          "True to enable Feng's Adaptive RED",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&RedQueueDisc::m_isFengAdaptive),
-                          MakeBooleanChecker())
-            .AddAttribute("NLRED",
-                          "True to enable Nonlinear RED",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&RedQueueDisc::m_isNonlinear),
-                          MakeBooleanChecker())
-            .AddAttribute("MinTh",
-                          "Minimum average length threshold in packets/bytes",
-                          DoubleValue(5),
-                          MakeDoubleAccessor(&RedQueueDisc::m_minTh),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("MaxTh",
-                          "Maximum average length threshold in packets/bytes",
-                          DoubleValue(15),
-                          MakeDoubleAccessor(&RedQueueDisc::m_maxTh),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("MaxSize",
-                          "The maximum number of packets accepted by this queue disc",
-                          QueueSizeValue(QueueSize("25p")),
-                          MakeQueueSizeAccessor(&QueueDisc::SetMaxSize, &QueueDisc::GetMaxSize),
-                          MakeQueueSizeChecker())
-            .AddAttribute("QW",
-                          "Queue weight related to the exponential weighted moving average (EWMA)",
-                          DoubleValue(0.002),
-                          MakeDoubleAccessor(&RedQueueDisc::m_qW),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("LInterm",
-                          "The maximum probability of dropping a packet",
-                          DoubleValue(50),
-                          MakeDoubleAccessor(&RedQueueDisc::m_lInterm),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("TargetDelay",
-                          "Target average queuing delay in ARED",
-                          TimeValue(Seconds(0.005)),
-                          MakeTimeAccessor(&RedQueueDisc::m_targetDelay),
-                          MakeTimeChecker())
-            .AddAttribute("Interval",
-                          "Time interval to update m_curMaxP",
-                          TimeValue(Seconds(0.5)),
-                          MakeTimeAccessor(&RedQueueDisc::m_interval),
-                          MakeTimeChecker())
-            .AddAttribute("Top",
-                          "Upper bound for m_curMaxP in ARED",
-                          DoubleValue(0.5),
-                          MakeDoubleAccessor(&RedQueueDisc::m_top),
-                          MakeDoubleChecker<double>(0, 1))
-            .AddAttribute("Bottom",
-                          "Lower bound for m_curMaxP in ARED",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&RedQueueDisc::m_bottom),
-                          MakeDoubleChecker<double>(0, 1))
-            .AddAttribute("Alpha",
-                          "Increment parameter for m_curMaxP in ARED",
-                          DoubleValue(0.01),
-                          MakeDoubleAccessor(&RedQueueDisc::SetAredAlpha),
-                          MakeDoubleChecker<double>(0, 1))
-            .AddAttribute("Beta",
-                          "Decrement parameter for m_curMaxP in ARED",
-                          DoubleValue(0.9),
-                          MakeDoubleAccessor(&RedQueueDisc::SetAredBeta),
-                          MakeDoubleChecker<double>(0, 1))
-            .AddAttribute("FengAlpha",
-                          "Decrement parameter for m_curMaxP in Feng's Adaptive RED",
-                          DoubleValue(3.0),
-                          MakeDoubleAccessor(&RedQueueDisc::SetFengAdaptiveA),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("FengBeta",
-                          "Increment parameter for m_curMaxP in Feng's Adaptive RED",
-                          DoubleValue(2.0),
-                          MakeDoubleAccessor(&RedQueueDisc::SetFengAdaptiveB),
-                          MakeDoubleChecker<double>())
-            .AddAttribute("LastSet",
-                          "Store the last time m_curMaxP was updated",
-                          TimeValue(Seconds(0)),
-                          MakeTimeAccessor(&RedQueueDisc::m_lastSet),
-                          MakeTimeChecker())
-            .AddAttribute("Rtt",
-                          "Round Trip Time to be considered while automatically setting m_bottom",
-                          TimeValue(Seconds(0.1)),
-                          MakeTimeAccessor(&RedQueueDisc::m_rtt),
-                          MakeTimeChecker())
+
             .AddAttribute("Ns1Compat",
                           "NS-1 compatibility",
                           BooleanValue(false),
                           MakeBooleanAccessor(&RedQueueDisc::m_isNs1Compat),
                           MakeBooleanChecker())
-            .AddAttribute("LinkBandwidth",
-                          "The RED link bandwidth",
-                          DataRateValue(DataRate("1.5Mbps")),
-                          MakeDataRateAccessor(&RedQueueDisc::m_linkBandwidth),
-                          MakeDataRateChecker())
-            .AddAttribute("LinkDelay",
-                          "The RED link delay",
-                          TimeValue(MilliSeconds(20)),
-                          MakeTimeAccessor(&RedQueueDisc::m_linkDelay),
+
+            /*
+             * Adaptive RED (ARED)
+             *
+             */
+            .AddAttribute("ARED",
+                          "True to enable ARED",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RedQueueDisc::m_isARED),
+                          MakeBooleanChecker())
+
+            .AddAttribute("AdaptMaxP",
+                          "True to adapt m_curMaxP",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RedQueueDisc::m_isAdaptMaxP),
+                          MakeBooleanChecker())
+
+            .AddAttribute("TargetDelay",
+                          "Target average queuing delay in ARED",
+                          TimeValue(Seconds(0.005)),
+                          MakeTimeAccessor(&RedQueueDisc::m_targetQDelay),
                           MakeTimeChecker())
+
+            .AddAttribute("Interval",
+                          "Time interval to update m_curMaxP",
+                          TimeValue(Seconds(0.5)),
+                          MakeTimeAccessor(&RedQueueDisc::m_interval),
+                          MakeTimeChecker())
+
+            .AddAttribute("MinCurMaxP",
+                          "Lower bound for m_curMaxP in ARED",
+                          DoubleValue(0.0),
+                          MakeDoubleAccessor(&RedQueueDisc::m_minCurMaxP),
+                          MakeDoubleChecker<double>(0, 1))
+            .AddAttribute("AREDAlpha",
+                          "Increment parameter for m_curMaxP in ARED",
+                          DoubleValue(0.01),
+                          MakeDoubleAccessor(&RedQueueDisc::SetAredAlpha),
+                          MakeDoubleChecker<double>(0, 1))
+
+            .AddAttribute("AREDBeta",
+                          "Decrement parameter for m_curMaxP in ARED",
+                          DoubleValue(0.9),
+                          MakeDoubleAccessor(&RedQueueDisc::SetAredBeta),
+                          MakeDoubleChecker<double>(0, 1))
+
+            .AddAttribute("LastSet",
+                          "Store the last time m_curMaxP was updated",
+                          TimeValue(Seconds(0)),
+                          MakeTimeAccessor(&RedQueueDisc::m_lastSet),
+                          MakeTimeChecker())
+
+            .AddAttribute(
+                "Rtt",
+                "Round Trip Time to be considered while automatically setting m_lbCurMaxP",
+                TimeValue(Seconds(0.1)),
+                MakeTimeAccessor(&RedQueueDisc::m_rtt),
+                MakeTimeChecker())
+            /*
+             * Feng's Adaptive RED
+             *
+             */
+            .AddAttribute("FengAdaptive",
+                          "True to enable Feng's Adaptive RED",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RedQueueDisc::m_isFengAdaptive),
+                          MakeBooleanChecker())
+
+            .AddAttribute("FengAlpha",
+                          "Decrement parameter for m_curMaxP in Feng's Adaptive RED",
+                          DoubleValue(3.0),
+                          MakeDoubleAccessor(&RedQueueDisc::SetFengAdaptiveA),
+                          MakeDoubleChecker<double>())
+
+            .AddAttribute("FengBeta",
+                          "Increment parameter for m_curMaxP in Feng's Adaptive RED",
+                          DoubleValue(2.0),
+                          MakeDoubleAccessor(&RedQueueDisc::SetFengAdaptiveB),
+                          MakeDoubleChecker<double>())
+            /*
+             * Nonlinear RED  [NLRED]
+             *
+             */
+            .AddAttribute("NLRED",
+                          "True to enable Nonlinear RED",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RedQueueDisc::m_isNonlinear),
+                          MakeBooleanChecker())
+
+            /*
+             * ECN support
+             *
+             */
             .AddAttribute("UseEcn",
                           "True to use ECN (packets are marked instead of being dropped)",
                           BooleanValue(false),
                           MakeBooleanAccessor(&RedQueueDisc::m_useEcn),
                           MakeBooleanChecker())
+
             .AddAttribute("UseHardDrop",
                           "True to always drop packets above max threshold",
                           BooleanValue(true),
@@ -213,6 +265,10 @@ RedQueueDisc::GetTypeId()
 
     return tid;
 }
+
+/*
+ * Constructor / Destructor
+ */
 
 RedQueueDisc::RedQueueDisc()
     : QueueDisc(QueueDiscSizePolicy::SINGLE_INTERNAL_QUEUE)
@@ -226,6 +282,14 @@ RedQueueDisc::~RedQueueDisc()
     NS_LOG_FUNCTION(this);
 }
 
+/**
+ * @brief Releases the random variable stream and delegates cleanup to the base class.
+ *
+ * @param None
+ *
+ * @return void
+ */
+
 void
 RedQueueDisc::DoDispose()
 {
@@ -234,13 +298,23 @@ RedQueueDisc::DoDispose()
     QueueDisc::DoDispose();
 }
 
+/*
+ * ARED alpha/beta setters
+ *
+ */
+
 void
 RedQueueDisc::SetAredAlpha(double alpha)
 {
     NS_LOG_FUNCTION(this << alpha);
-    m_alpha = alpha;
+    m_aredAlpha = alpha;
 
-    if (m_alpha > 0.01)
+    /*
+     * alpha <= 0.01
+     * [Ref: https://www.icir.org/floyd/papers/adaptiveRed.pdf] Section - 4.2
+     */
+
+    if (m_aredAlpha > 0.01)
     {
         NS_LOG_WARN("Alpha value is above the recommended bound!");
     }
@@ -250,16 +324,20 @@ double
 RedQueueDisc::GetAredAlpha()
 {
     NS_LOG_FUNCTION(this);
-    return m_alpha;
+    return m_aredAlpha;
 }
 
 void
 RedQueueDisc::SetAredBeta(double beta)
 {
     NS_LOG_FUNCTION(this << beta);
-    m_beta = beta;
+    m_aredBeta = beta;
 
-    if (m_beta < 0.83)
+    /*
+     * beta  >= 0.83
+     * [Ref: https://www.icir.org/floyd/papers/adaptiveRed.pdf] Section - 4.2
+     */
+    if (m_aredBeta < 0.83)
     {
         NS_LOG_WARN("Beta value is below the recommended bound!");
     }
@@ -269,16 +347,24 @@ double
 RedQueueDisc::GetAredBeta()
 {
     NS_LOG_FUNCTION(this);
-    return m_beta;
+    return m_aredBeta;
 }
 
+/*
+ * Feng alpha/beta setters
+ *
+ */
 void
 RedQueueDisc::SetFengAdaptiveA(double a)
 {
     NS_LOG_FUNCTION(this << a);
-    m_a = a;
+    m_fengAlpha = a;
 
-    if (m_a != 3)
+    /*
+     * fengAlpha is set to 3
+     * [Ref: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=752150] Section - IV
+     */
+    if (m_fengAlpha != 3)
     {
         NS_LOG_WARN("Alpha value does not follow the recommendations!");
     }
@@ -288,16 +374,20 @@ double
 RedQueueDisc::GetFengAdaptiveA()
 {
     NS_LOG_FUNCTION(this);
-    return m_a;
+    return m_fengAlpha;
 }
 
 void
 RedQueueDisc::SetFengAdaptiveB(double b)
 {
     NS_LOG_FUNCTION(this << b);
-    m_b = b;
+    m_fengBeta = b;
 
-    if (m_b != 2)
+    /*
+     * fengBeta is set to 2
+     * [Ref: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=752150] Section - IV
+     */
+    if (m_fengBeta != 2)
     {
         NS_LOG_WARN("Beta value does not follow the recommendations!");
     }
@@ -307,9 +397,15 @@ double
 RedQueueDisc::GetFengAdaptiveB()
 {
     NS_LOG_FUNCTION(this);
-    return m_b;
+    return m_fengBeta;
 }
 
+/**
+ * @brief Sets the minimum and maximum average queue length thresholds.
+ *
+ * @param minTh Lower queue average threshold in bytes or packets.
+ * @param maxTh Upper queue average threshold in bytes or packets.
+ */
 void
 RedQueueDisc::SetTh(double minTh, double maxTh)
 {
@@ -319,6 +415,14 @@ RedQueueDisc::SetTh(double minTh, double maxTh)
     m_maxTh = maxTh;
 }
 
+/**
+ * @brief Binds the internal uniform random variable to a fixed stream index for reproducible
+ * simulations.
+ *
+ * @param stream First stream index to assign.
+ *
+ * @return Number of stream indices consumed (always 1).
+ */
 int64_t
 RedQueueDisc::AssignStreams(int64_t stream)
 {
@@ -327,24 +431,39 @@ RedQueueDisc::AssignStreams(int64_t stream)
     return 1;
 }
 
+/**
+ * @brief Processes an incoming packet using the RED algorithm.
+ *
+ * Computes average queue length (EWMA), determines drop type
+ * (none, probabilistic, or forced), and either drops, ECN
+ * marks, or enqueues the packet into the internal queue.
+ *
+ * @param item Pointer to the queue disc item to enqueue.
+ *
+ * @return True if the packet was successfully enqueued, false if dropped.
+ */
 bool
 RedQueueDisc::DoEnqueue(Ptr<QueueDiscItem> item)
 {
     NS_LOG_FUNCTION(this << item);
 
-    uint32_t nQueued = GetInternalQueue(0)->GetCurrentSize().GetValue();
+    uint32_t currQLen = GetInternalQueue(0)->GetCurrentSize().GetValue();
+    /*
+     * If the queue was empty before (idle), we estimate how long it stayed empty.
+     * We convert that idle time into an equivalent number of packets (m),
+     * so the average queue size can decrease properly during that time.
+     */
+    uint32_t m = 0; // idle-period equivalent packet count
 
-    // simulate number of packets arrival during idle period
-    uint32_t m = 0;
-
-    if (m_idle == 1)
+    if (m_isIdle == 1)
     {
         NS_LOG_DEBUG("RED Queue Disc is idle.");
         Time now = Simulator::Now();
 
-        if (m_cautious == 3)
+        if (m_cautionMode == 3)
         {
-            double ptc = m_ptc * m_meanPktSize / m_idlePktSize;
+            // When idle packets differ in size from active packets, rescale ptc
+            double ptc = m_ptc * m_meanPktSize / m_idleQPktSize;
             m = uint32_t(ptc * (now - m_idleTime).GetSeconds());
         }
         else
@@ -352,10 +471,14 @@ RedQueueDisc::DoEnqueue(Ptr<QueueDiscItem> item)
             m = uint32_t(m_ptc * (now - m_idleTime).GetSeconds());
         }
 
-        m_idle = 0;
+        m_isIdle = 0;
     }
 
-    m_qAvg = Estimator(nQueued, m + 1, m_qAvg, m_qW);
+    /*
+     * Update EWMA average queue length
+     *   m_qAvg = (1 - w_q)^(m+1) * m_qAvg + w_q * qLen
+     */
+    m_qAvg = Estimator(currQLen, m + 1, m_qAvg, m_qWeight);
 
     NS_LOG_DEBUG("\t bytesInQueue  " << GetInternalQueue(0)->GetNBytes() << "\tQavg " << m_qAvg);
     NS_LOG_DEBUG("\t packetsInQueue  " << GetInternalQueue(0)->GetNPackets() << "\tQavg "
@@ -364,38 +487,43 @@ RedQueueDisc::DoEnqueue(Ptr<QueueDiscItem> item)
     m_count++;
     m_countBytes += item->GetSize();
 
+    // Classify drop type
+
     uint32_t dropType = DTYPE_NONE;
-    if (m_qAvg >= m_minTh && nQueued > 1)
+
+    if (m_qAvg >= m_minTh && currQLen > 1)
     {
+        // Forced-drop zone: average is above the upper threshold
         if ((!m_isGentle && m_qAvg >= m_maxTh) || (m_isGentle && m_qAvg >= 2 * m_maxTh))
         {
             NS_LOG_DEBUG("adding DROP FORCED MARK");
             dropType = DTYPE_FORCED;
         }
-        else if (m_old == 0)
+        else if (m_aboveMinTh == 0)
         {
             /*
-             * The average queue size has just crossed the
-             * threshold from below to above m_minTh, or
-             * from above m_minTh with an empty queue to
-             * above m_minTh with a nonempty queue.
+             * First time crossing min threshold:
+             * reset counters and start tracking drops
              */
             m_count = 1;
             m_countBytes = item->GetSize();
-            m_old = 1;
+            m_aboveMinTh = 1;
         }
-        else if (DropEarly(item, nQueued))
+        else if (DropEarly(item, currQLen))
         {
+            // Probabilistic drop based on p_a from CalculatePNew()+ModifyP()
             NS_LOG_LOGIC("DropEarly returns 1");
             dropType = DTYPE_UNFORCED;
         }
     }
     else
     {
-        // No packets are being dropped
-        m_vProb = 0.0;
-        m_old = 0;
+        // Below min_th: no drops; reset state
+        m_Pa = 0.0;
+        m_aboveMinTh = 0;
     }
+
+    // Execute drop or ECN mark
 
     if (dropType == DTYPE_UNFORCED)
     {
@@ -422,87 +550,124 @@ RedQueueDisc::DoEnqueue(Ptr<QueueDiscItem> item)
         }
         NS_LOG_DEBUG("\t Marking due to Hard Mark " << m_qAvg);
     }
+    // Admit packet to the internal DropTail queue
+    bool enqueued = GetInternalQueue(0)->Enqueue(item);
 
-    bool retval = GetInternalQueue(0)->Enqueue(item);
+    // If enqueue fails (queue full), packet is automatically dropped
 
-    // If Queue::Enqueue fails, QueueDisc::DropBeforeEnqueue is called by the
-    // internal queue because QueueDisc::AddInternalQueue sets the trace callback
+    NS_LOG_LOGIC("After enqueue:Number packets " << GetInternalQueue(0)->GetNPackets());
+    NS_LOG_LOGIC("After enqueue:Number bytes " << GetInternalQueue(0)->GetNBytes());
 
-    NS_LOG_LOGIC("Number packets " << GetInternalQueue(0)->GetNPackets());
-    NS_LOG_LOGIC("Number bytes " << GetInternalQueue(0)->GetNBytes());
-
-    return retval;
+    return enqueued;
 }
 
-/*
- * Note: if the link bandwidth changes in the course of the
- * simulation, the bandwidth-dependent RED parameters do not change.
- * This should be fixed, but it would require some extra parameters,
- * and didn't seem worth the trouble...
+/**
+ * @brief Initializes RED queue parameters and derives all computed values from configured
+ * attributes.
+ *
+ * Handles ARED and Feng adaptive modes, sets thresholds, weights, and packet
+ * transmission capacity before the simulation starts.
  */
+
 void
 RedQueueDisc::InitializeParams()
 {
     NS_LOG_FUNCTION(this);
     NS_LOG_INFO("Initializing RED params.");
 
-    m_cautious = 0;
+    m_cautionMode = 0;
+    /*
+     * Packet Transmission Capacity: maximum packets/s at the configured rate
+     * ptc = C / (8 * mean_pkt_size)   C in bits/s
+     */
     m_ptc = m_linkBandwidth.GetBitRate() / (8.0 * m_meanPktSize);
 
+    /*
+     * If using ARED:
+     * reset thresholds and weight so they will be set automatically,
+     * and enable adaptive max probability
+     */
     if (m_isARED)
     {
-        // Set m_minTh, m_maxTh and m_qW to zero for automatic setting
+        // Set m_minTh, m_maxTh and m_qWeight to zero for automatic setting
         m_minTh = 0;
         m_maxTh = 0;
-        m_qW = 0;
+        m_qWeight = 0;
 
         // Turn on m_isAdaptMaxP to adapt m_curMaxP
         m_isAdaptMaxP = true;
     }
 
+    /*
+     * If using Feng Adaptive RED:
+     * start in "Above" state for proper behavior
+     */
     if (m_isFengAdaptive)
     {
         // Initialize m_fengStatus
         m_fengStatus = Above;
     }
 
+    // If thresholds are not set, choose default values
+
     if (m_minTh == 0 && m_maxTh == 0)
     {
         m_minTh = 5.0;
 
-        // set m_minTh to max(m_minTh, targetqueue/2.0) [Ref:
-        // http://www.icir.org/floyd/papers/adaptiveRed.pdf]
-        double targetqueue = m_targetDelay.GetSeconds() * m_ptc;
+        /*
+         * set m_minTh to max(m_minTh, targetQ/2.0)
+         * [Ref: http://www.icir.org/floyd/papers/adaptiveRed.pdf] Section - 6
+         * Target queue in packets = targetQDelay * ptc
+         */
+        double targetQ = m_targetQDelay.GetSeconds() * m_ptc;
 
-        if (m_minTh < targetqueue / 2.0)
+        if (m_minTh < targetQ / 2.0)
         {
-            m_minTh = targetqueue / 2.0;
+            m_minTh = targetQ / 2.0;
         }
+
+        // Convert threshold to bytes if the queue is measured in bytes
         if (GetMaxSize().GetUnit() == QueueSizeUnit::BYTES)
         {
             m_minTh = m_minTh * m_meanPktSize;
         }
 
-        // set m_maxTh to three times m_minTh [Ref:
-        // http://www.icir.org/floyd/papers/adaptiveRed.pdf]
+        /*
+         * set m_maxTh to three times m_minTh
+         * [Ref: http://www.icir.org/floyd/papers/adaptiveRed.pdf] Section - 6
+         */
         m_maxTh = 3 * m_minTh;
     }
 
     NS_ASSERT(m_minTh <= m_maxTh);
 
-    m_qAvg = 0.0;
-    m_count = 0;
-    m_countBytes = 0;
-    m_old = 0;
-    m_idle = 1;
+    // Initialize variables
+    m_qAvg = 0.0;     // EWMA average queue length
+    m_count = 0;      // packets since last drop/mark
+    m_countBytes = 0; // bytes   since last drop/mark
+    m_aboveMinTh = 0; // flag: currently above min_th
+    m_isIdle = 1;     // queue is initially empty/idle
 
+    /*
+     * Precompute piecewise-linear drop-probability coefficients
+     *
+     * Region 1 (min_th <= avg < max_th):
+     *   p_b = p_max * (v_a * avg + v_b)
+     *   v_a =  1 / (max_th - min_th)
+     *   v_b = -min_th / (max_th - min_th)
+     *
+     * Region 2 (Gentle mode, avg >= max_th):
+     *   p_b = v_c * avg + v_d
+     *   v_c = (1 - p_max) / max_th
+     *   v_d = 2 * p_max - 1
+     */
     double th_diff = (m_maxTh - m_minTh);
     if (th_diff == 0)
     {
-        th_diff = 1.0;
+        th_diff = 1.0; // guard against divide-by-zero
     }
     m_vA = 1.0 / th_diff;
-    m_curMaxP = 1.0 / m_lInterm;
+    m_curMaxP = 1.0 / m_lInterm; // max drop probability
     m_vB = -m_minTh / th_diff;
 
     if (m_isGentle)
@@ -513,102 +678,123 @@ RedQueueDisc::InitializeParams()
     m_idleTime = NanoSeconds(0);
 
     /*
-     * If m_qW=0, set it to a reasonable value of 1-exp(-1/C)
-     * This corresponds to choosing m_qW to be of that value for
-     * which the packet time constant -1/ln(1-m)qW) per default RTT
+     * If m_qWeight=0, set it to a reasonable value of 1-exp(-1/C)
+     * This corresponds to choosing m_qWeight to be of that value for
+     * which the packet time constant -1/ln(1-m)qWeight) per default RTT
      * of 100ms is an order of magnitude more than the link capacity, C.
      *
-     * If m_qW=-1, then the queue weight is set to be a function of
+     * If m_qWeight=-1, then the queue weight is set to be a function of
      * the bandwidth and the link propagation delay.  In particular,
      * the default RTT is assumed to be three times the link delay and
      * transmission delay, if this gives a default RTT greater than 100 ms.
      *
-     * If m_qW=-2, set it to a reasonable value of 1-exp(-10/C).
+     * If m_qWeight=-2, set it to a reasonable value of 1-exp(-10/C).
      */
-    if (m_qW == 0.0)
+
+    // Auto-configure queue weight m_qWeight from sentinel values
+    if (m_qWeight == 0.0)
     {
-        m_qW = 1.0 - std::exp(-1.0 / m_ptc);
+        // Default: one packet-time constant equals one slot
+        m_qWeight = 1.0 - std::exp(-1.0 / m_ptc);
     }
-    else if (m_qW == -1.0)
+    else if (m_qWeight == -1.0)
     {
         double rtt = 3.0 * (m_linkDelay.GetSeconds() + 1.0 / m_ptc);
 
         if (rtt < 0.1)
         {
-            rtt = 0.1;
+            rtt = 0.1; // floor at 100 ms
         }
-        m_qW = 1.0 - std::exp(-1.0 / (10 * rtt * m_ptc));
+        m_qWeight = 1.0 - std::exp(-1.0 / (10 * rtt * m_ptc));
     }
-    else if (m_qW == -2.0)
+    else if (m_qWeight == -2.0)
     {
-        m_qW = 1.0 - std::exp(-10.0 / m_ptc);
+        // 10× faster adaptation variant
+        m_qWeight = 1.0 - std::exp(-10.0 / m_ptc);
     }
 
-    if (m_bottom == 0)
+    if (m_minCurMaxP == 0)
     {
-        m_bottom = 0.01;
-        // Set bottom to at most 1/W, where W is the delay-bandwidth
-        // product in packets for a connection.
-        // So W = m_linkBandwidth.GetBitRate () / (8.0 * m_meanPktSize * m_rtt.GetSeconds())
+        m_minCurMaxP = 0.01;
+        /* Set m_minCurMaxP to at most 1/W, where W is the delay-bandwidth
+         * product in packets for a connection.
+         * So W = m_linkBandwidth.GetBitRate () / (8.0 * m_meanPktSize * m_rtt.GetSeconds())
+         */
         double bottom1 = (8.0 * m_meanPktSize * m_rtt.GetSeconds()) / m_linkBandwidth.GetBitRate();
-        if (bottom1 < m_bottom)
+        if (bottom1 < m_minCurMaxP)
         {
-            m_bottom = bottom1;
+            m_minCurMaxP = bottom1;
         }
     }
 
-    NS_LOG_DEBUG("\tm_delay " << m_linkDelay.GetSeconds() << "; m_isWait " << m_isWait << "; m_qW "
-                              << m_qW << "; m_ptc " << m_ptc << "; m_minTh " << m_minTh
-                              << "; m_maxTh " << m_maxTh << "; m_isGentle " << m_isGentle
-                              << "; th_diff " << th_diff << "; lInterm " << m_lInterm << "; va "
-                              << m_vA << "; cur_max_p " << m_curMaxP << "; v_b " << m_vB
-                              << "; m_vC " << m_vC << "; m_vD " << m_vD);
+    NS_LOG_DEBUG("\t m_delay " << m_linkDelay.GetSeconds() << "; m_isWait " << m_isWait << "; m_qW "
+                               << m_qWeight << "; m_ptc " << m_ptc << "; m_minTh " << m_minTh
+                               << "; m_maxTh " << m_maxTh << "; m_isGentle " << m_isGentle
+                               << "; th_diff " << th_diff << "; lInterm " << m_lInterm << "; va "
+                               << m_vA << "; cur_max_p " << m_curMaxP << "; v_b " << m_vB
+                               << "; m_vC " << m_vC << "; m_vD " << m_vD);
 }
 
-// Updating m_curMaxP, following the pseudocode
-// from: A Self-Configuring RED Gateway, INFOCOMM '99.
-// They recommend m_a = 3, and m_b = 2.
-void
-RedQueueDisc::UpdateMaxPFeng(double newAve)
-{
-    NS_LOG_FUNCTION(this << newAve);
+/**
+ * @brief Adjusts the current maximum drop probability using Feng's adaptive MIMD scheme.
+ *
+ * @param newAvg The current EWMA queue length.
+ */
 
-    if (m_minTh < newAve && newAve < m_maxTh)
+void
+RedQueueDisc::UpdateMaxPFeng(double newAvg)
+{
+    NS_LOG_FUNCTION(this << newAvg);
+
+    if (m_minTh < newAvg && newAvg < m_maxTh)
     {
         m_fengStatus = Between;
     }
-    else if (newAve < m_minTh && m_fengStatus != Below)
+    else if (newAvg < m_minTh && m_fengStatus != Below)
     {
         m_fengStatus = Below;
-        m_curMaxP = m_curMaxP / m_a;
+        m_curMaxP = m_curMaxP / m_fengAlpha; // decrease drop probability
     }
-    else if (newAve > m_maxTh && m_fengStatus != Above)
+    else if (newAvg > m_maxTh && m_fengStatus != Above)
     {
         m_fengStatus = Above;
-        m_curMaxP = m_curMaxP * m_b;
+        m_curMaxP = m_curMaxP * m_fengBeta; // increase drop probability
     }
 }
 
-// Update m_curMaxP to keep the average queue length within the target range.
+/**
+ * @brief Adjusts the current maximum drop probability using AIMD rules to keep the average queue
+ * length within the target range.
+ *
+ * @param newAvg The current exponentially weighted average queue length.
+ */
+
 void
-RedQueueDisc::UpdateMaxP(double newAve)
+RedQueueDisc::UpdateMaxP(double newAvg)
 {
-    NS_LOG_FUNCTION(this << newAve);
+    NS_LOG_FUNCTION(this << newAvg);
 
     Time now = Simulator::Now();
-    double m_part = 0.4 * (m_maxTh - m_minTh);
+    double m_threshMargin = 0.4 * (m_maxTh - m_minTh);
     // AIMD rule to keep target Q~1/2(m_minTh + m_maxTh)
-    if (newAve < m_minTh + m_part && m_curMaxP > m_bottom)
+    if (newAvg < m_minTh + m_threshMargin && m_curMaxP > m_minCurMaxP)
     {
         // we should increase the average queue size, so decrease m_curMaxP
-        m_curMaxP = m_curMaxP * m_beta;
+        m_curMaxP = m_curMaxP * m_aredBeta;
         m_lastSet = now;
     }
-    else if (newAve > m_maxTh - m_part && m_top > m_curMaxP)
+
+    /*The guideline restricts max_p to stay within the range [0.01,0.5]
+    [Ref: https://www.icir.org/floyd/papers/adaptiveRed.pdf] Section - 4 */
+
+    else if (newAvg > m_maxTh - m_threshMargin && 0.5 > m_curMaxP)
+
     {
         // we should decrease the average queue size, so increase m_curMaxP
-        double alpha = m_alpha;
-        if (alpha > 0.25 * m_curMaxP)
+        double alpha = m_aredAlpha;
+        if (alpha >
+            0.25 *
+                m_curMaxP) //[Ref: https://www.icir.org/floyd/papers/adaptiveRed.pdf] Section - 4.2
         {
             alpha = 0.25 * m_curMaxP;
         }
@@ -617,39 +803,58 @@ RedQueueDisc::UpdateMaxP(double newAve)
     }
 }
 
-// Compute the average queue size
-double
-RedQueueDisc::Estimator(uint32_t nQueued, uint32_t m, double qAvg, double qW)
-{
-    NS_LOG_FUNCTION(this << nQueued << m << qAvg << qW);
+/**
+ * @brief Computes the new EWMA queue length and triggers adaptive max probability updates.
+ *
+ * @param currQLen Current instantaneous queue length.
+ * @param m        Number of packets arriving since the queue was last updated.
+ * @param oldAvg   Previous average queue length.
+ * @param qWeight  Queue weight factor for the EWMA calculation.
+ *
+ * @return The updated average queue length.
+ */
 
-    double newAve = qAvg * std::pow(1.0 - qW, m);
-    newAve += qW * nQueued;
+double
+RedQueueDisc::Estimator(uint32_t currQLen, uint32_t m, double oldAvg, double qWeight)
+{
+    NS_LOG_FUNCTION(this << currQLen << m << oldAvg << qWeight);
+
+    double newAvg = oldAvg * std::pow(1.0 - qWeight, m);
+    newAvg += qWeight * currQLen;
 
     Time now = Simulator::Now();
     if (m_isAdaptMaxP && now > m_lastSet + m_interval)
     {
-        UpdateMaxP(newAve);
+        UpdateMaxP(newAvg); // ARED: interval-based update
     }
     else if (m_isFengAdaptive)
     {
-        UpdateMaxPFeng(newAve); // Update m_curMaxP in MIMD fashion.
+        UpdateMaxPFeng(newAvg); // Update m_curMaxP in MIMD fashion.
     }
 
-    return newAve;
+    return newAvg;
 }
 
-// Check if packet p needs to be dropped due to probability mark
+/**
+ * @brief Determines whether an incoming packet should be dropped or marked based on computed drop
+ * probability and optional queue caution modes.
+ *
+ * @param item  The incoming packet being evaluated.
+ * @param qSize Current instantaneous queue size in bytes.
+ *
+ * @return True if the packet should be dropped, false otherwise.
+ */
+
 bool
 RedQueueDisc::DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize)
 {
     NS_LOG_FUNCTION(this << item << qSize);
 
     double prob1 = CalculatePNew();
-    m_vProb = ModifyP(prob1, item->GetSize());
+    m_Pa = ModifyP(prob1, item->GetSize());
 
     // Drop probability is computed, pick random number and act
-    if (m_cautious == 1)
+    if (m_cautionMode == 1)
     {
         /*
          * Don't drop/mark if the instantaneous queue is much below the average.
@@ -657,7 +862,7 @@ RedQueueDisc::DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize)
          * pkts: the number of packets arriving in 50 ms
          */
         double pkts = m_ptc * 0.05;
-        double fraction = std::pow((1 - m_qW), pkts);
+        double fraction = std::pow((1 - m_qWeight), pkts);
 
         if ((double)qSize < fraction * m_qAvg)
         {
@@ -666,9 +871,9 @@ RedQueueDisc::DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize)
         }
     }
 
-    double u = m_uv->GetValue();
+    double R = m_uv->GetValue();
 
-    if (m_cautious == 2)
+    if (m_cautionMode == 2)
     {
         /*
          * Decrease the drop probability if the instantaneous
@@ -677,18 +882,18 @@ RedQueueDisc::DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize)
          * pkts: the number of packets arriving in 50 ms
          */
         double pkts = m_ptc * 0.05;
-        double fraction = std::pow((1 - m_qW), pkts);
+        double fraction = std::pow((1 - m_qWeight), pkts);
         double ratio = qSize / (fraction * m_qAvg);
 
         if (ratio < 1.0)
         {
-            u *= 1.0 / ratio;
+            R *= 1.0 / ratio;
         }
     }
 
-    if (u <= m_vProb)
+    if (R <= m_Pa)
     {
-        NS_LOG_LOGIC("u <= m_vProb; u " << u << "; m_vProb " << m_vProb);
+        NS_LOG_LOGIC("R <= m_Pa; R " << R << "; m_Pa " << m_Pa);
 
         // DROP or MARK
         m_count = 0;
@@ -701,57 +906,76 @@ RedQueueDisc::DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize)
     return false; // no drop/mark
 }
 
-// Returns a probability using these function parameters for the DropEarly function
+/**
+ * @brief Computes the drop probability based on the current average queue size relative to the
+ * minimum and maximum thresholds.
+ *
+ * @return The calculated drop probability.
+ */
+
 double
 RedQueueDisc::CalculatePNew()
 {
     NS_LOG_FUNCTION(this);
-    double p;
+    double Pd;
 
     if (m_isGentle && m_qAvg >= m_maxTh)
     {
-        // p ranges from m_curMaxP to 1 as the average queue
+        // Pd ranges from m_curMaxP to 1 as the average queue
         // size ranges from m_maxTh to twice m_maxTh
-        p = m_vC * m_qAvg + m_vD;
+        Pd = m_vC * m_qAvg + m_vD;
     }
     else if (!m_isGentle && m_qAvg >= m_maxTh)
     {
         /*
-         * OLD: p continues to range linearly above m_curMaxP as
+         * OLD: Pd continues to range linearly above m_curMaxP as
          * the average queue size ranges above m_maxTh.
-         * NEW: p is set to 1.0
+         * NEW: Pd is set to 1.0
          */
-        p = 1.0;
+        Pd = 1.0;
     }
     else
     {
         /*
-         * p ranges from 0 to m_curMaxP as the average queue size ranges from
+         * Pd ranges from 0 to m_curMaxP as the average queue size ranges from
          * m_minTh to m_maxTh
          */
-        p = m_vA * m_qAvg + m_vB;
+        Pd = m_vA * m_qAvg + m_vB;
 
         if (m_isNonlinear)
         {
-            p *= p * 1.5;
+            Pd *= Pd * 1.5;
+            /*
+             * set Pd in Non-linear RED to 1.5*Pd
+             * [Ref: https://www.sciencedirect.com/science/article/pii/S1389128606000879?via%3Dihub]
+             * Section - 3.1
+             */
         }
 
-        p *= m_curMaxP;
+        Pd *= m_curMaxP;
     }
 
-    if (p > 1.0)
+    if (Pd > 1.0)
     {
-        p = 1.0;
+        Pd = 1.0;
     }
 
-    return p;
+    return Pd;
 }
 
-// Returns a probability using these function parameters for the DropEarly function
+/**
+ * @brief Adjusts the drop probability based on queue count and packet size.
+ *
+ * @param Pd   Initial drop probability.
+ * @param size Packet size in bytes.
+ *
+ * @return The adjusted drop probability.
+ */
+
 double
-RedQueueDisc::ModifyP(double p, uint32_t size)
+RedQueueDisc::ModifyP(double Pd, uint32_t size)
 {
-    NS_LOG_FUNCTION(this << p << size);
+    NS_LOG_FUNCTION(this << Pd << size);
     auto count1 = (double)m_count;
 
     if (GetMaxSize().GetUnit() == QueueSizeUnit::BYTES)
@@ -761,43 +985,49 @@ RedQueueDisc::ModifyP(double p, uint32_t size)
 
     if (m_isWait)
     {
-        if (count1 * p < 1.0)
+        if (count1 * Pd < 1.0)
         {
-            p = 0.0;
+            Pd = 0.0;
         }
-        else if (count1 * p < 2.0)
+        else if (count1 * Pd < 2.0)
         {
-            p /= (2.0 - count1 * p);
+            Pd /= (2.0 - count1 * Pd);
         }
         else
         {
-            p = 1.0;
+            Pd = 1.0;
         }
     }
     else
     {
-        if (count1 * p < 1.0)
+        if (count1 * Pd < 1.0)
         {
-            p /= (1.0 - count1 * p);
+            Pd /= (1.0 - count1 * Pd);
         }
         else
         {
-            p = 1.0;
+            Pd = 1.0;
         }
     }
 
-    if ((GetMaxSize().GetUnit() == QueueSizeUnit::BYTES) && (p < 1.0))
+    if ((GetMaxSize().GetUnit() == QueueSizeUnit::BYTES) && (Pd < 1.0))
     {
-        p = (p * size) / m_meanPktSize;
+        Pd = (Pd * size) / m_meanPktSize;
     }
 
-    if (p > 1.0)
+    if (Pd > 1.0)
     {
-        p = 1.0;
+        Pd = 1.0;
     }
 
-    return p;
+    return Pd;
 }
+
+/**
+ * @brief Removes and returns the front packet from the internal queue.
+ *
+ * @return The dequeued packet, or nullptr if the queue is empty.
+ */
 
 Ptr<QueueDiscItem>
 RedQueueDisc::DoDequeue()
@@ -807,14 +1037,14 @@ RedQueueDisc::DoDequeue()
     if (GetInternalQueue(0)->IsEmpty())
     {
         NS_LOG_LOGIC("Queue empty");
-        m_idle = 1;
+        m_isIdle = 1;
         m_idleTime = Simulator::Now();
 
         return nullptr;
     }
     else
     {
-        m_idle = 0;
+        m_isIdle = 0;
         Ptr<QueueDiscItem> item = GetInternalQueue(0)->Dequeue();
 
         NS_LOG_LOGIC("Popped " << item);
@@ -825,6 +1055,12 @@ RedQueueDisc::DoDequeue()
         return item;
     }
 }
+
+/**
+ * @brief Returns the front packet of the internal queue without removing it.
+ *
+ * @return Pointer to the front of the queue, or nullptr if the queue is empty.
+ */
 
 Ptr<const QueueDiscItem>
 RedQueueDisc::DoPeek()
@@ -844,15 +1080,25 @@ RedQueueDisc::DoPeek()
     return item;
 }
 
+/**
+ * @brief Validates the queue disc configuration before the simulation starts.
+ *
+ * @return True if the configuration is valid, false otherwise.
+ */
+
 bool
 RedQueueDisc::CheckConfig()
 {
     NS_LOG_FUNCTION(this);
+
+    // RED is classless, single-queue discipline
     if (GetNQueueDiscClasses() > 0)
     {
         NS_LOG_ERROR("RedQueueDisc cannot have classes");
         return false;
     }
+
+    // All packets follow the same path; no filters are used
 
     if (GetNPacketFilters() > 0)
     {
@@ -873,6 +1119,9 @@ RedQueueDisc::CheckConfig()
         NS_LOG_ERROR("RedQueueDisc needs 1 internal queue");
         return false;
     }
+
+    // ARED/AdaptMaxP and Feng's RED both modify m_curMaxP with different rules and cannot run
+    // simultaneously.
 
     if ((m_isARED || m_isAdaptMaxP) && m_isFengAdaptive)
     {
