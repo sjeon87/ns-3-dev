@@ -10,6 +10,7 @@ build_lib(
     model/bundle.cc
     model/base-routing-engine.cc
     model/cbor.cc
+    model/contact-multigraph-routing.cc
     model/contact-parser.cc
     model/eid.cc
     model/generic-convergence-layer-adapter.cc
@@ -31,6 +32,7 @@ build_lib(
     model/bundle-protocol-flags.h
     model/base-routing-engine.h
     model/cbor.h
+    model/contact-multigraph-routing.h
     model/contact-parser.h
     model/eid.h
     model/generic-convergence-layer-adapter.h

@@ -119,7 +119,7 @@ main(int argc, char* argv[])
     ContactGraphHelper cgrHelper;
     cgrHelper.SetContactPlan(contactPlanPath);
 
-    cgrHelper.SetRoutingEngine("ns3::PerPacketDijkstraCGR");
+    cgrHelper.SetRoutingEngine("ns3::ContactMultigraphRouting");
 
     Ptr<BaseRoutingEngine> contactGraph = cgrHelper.Install();
 

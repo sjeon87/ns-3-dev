@@ -501,7 +501,8 @@ BundleAgent::ProcessAllBacklog()
         }
     }
 
-    m_backlogCheckEvent = Simulator::Schedule(Seconds(10.0), &BundleAgent::ProcessAllBacklog, this);
+    // m_backlogCheckEvent = Simulator::Schedule(Seconds(10.0), &BundleAgent::ProcessAllBacklog,
+    // this);
 }
 
 } // namespace ns3

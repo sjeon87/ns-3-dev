@@ -144,7 +144,7 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     NS_LOG_FUNCTION(this << &start);
     Buffer::Iterator i = start;
 
-    uint64_t arraySize = Cbor::ReadArray(i);
+    Cbor::ReadArray(i);
     m_version = Cbor::ReadUint(i);
     m_procFlags = Cbor::ReadUint(i);
     m_crcType = Cbor::ReadUint(i);

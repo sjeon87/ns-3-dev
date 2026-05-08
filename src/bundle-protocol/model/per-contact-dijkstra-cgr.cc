@@ -202,9 +202,6 @@ PerContactDijkstraCGR::ReserveVolume(const std::string& fromEID,
 
             uint32_t reserved = std::min(bytes, available);
             contact.usedVolume += reserved;
-
-            // Mark dirty so the routing table re-evaluates the new volume constraint
-            m_isDirty = true;
             return;
         }
     }
