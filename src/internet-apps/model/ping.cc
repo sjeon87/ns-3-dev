@@ -248,13 +248,6 @@ Ping::Receive(Ptr<Socket> socket)
                 packet->RemoveHeader(destUnreach);
 
                 const uint8_t code = icmp.GetCode();
-                if (code != Icmpv4DestinationUnreachable::ICMPV4_NET_UNREACHABLE &&
-                    code != Icmpv4DestinationUnreachable::ICMPV4_HOST_UNREACHABLE)
-                {
-                    NS_LOG_INFO("Received Destination Unreachable (code="
-                                << static_cast<uint32_t>(code) << ") from " << realFrom.GetIpv4());
-                    break;
-                }
 
                 uint8_t quotedPayload[8];
                 destUnreach.GetData(quotedPayload);
@@ -273,19 +266,32 @@ Ping::Receive(Ptr<Socket> socket)
 
                 if (!m_sent.at(recvSeq).acked)
                 {
-                    m_sent.at(recvSeq).acked = true;
-
-                    const bool isHostUnreachable =
-                        code == Icmpv4DestinationUnreachable::ICMPV4_HOST_UNREACHABLE;
-                    m_dropTrace(recvSeq,
-                                isHostUnreachable ? DropReason::DROP_HOST_UNREACHABLE
-                                                  : DropReason::DROP_NET_UNREACHABLE);
-
-                    if (m_verbose == VerboseMode::VERBOSE)
+                    if (code == Icmpv4DestinationUnreachable::ICMPV4_HOST_UNREACHABLE)
                     {
-                        std::cout << "From " << realFrom.GetIpv4() << " icmp_seq=" << recvSeq
-                                  << " Destination " << (isHostUnreachable ? "Host" : "Network")
-                                  << " Unreachable\n";
+                        m_sent.at(recvSeq).acked = true;
+                        m_dropTrace(recvSeq, DropReason::DROP_HOST_UNREACHABLE);
+
+                        if (m_verbose == VerboseMode::VERBOSE)
+                        {
+                            std::cout << "From " << realFrom.GetIpv4() << " icmp_seq=" << recvSeq
+                                      << " Destination Host Unreachable\n";
+                        }
+                    }
+                    else if (code == Icmpv4DestinationUnreachable::ICMPV4_NET_UNREACHABLE)
+                    {
+                        m_sent.at(recvSeq).acked = true;
+                        m_dropTrace(recvSeq, DropReason::DROP_NET_UNREACHABLE);
+
+                        if (m_verbose == VerboseMode::VERBOSE)
+                        {
+                            std::cout << "From " << realFrom.GetIpv4() << " icmp_seq=" << recvSeq
+                                      << " Destination Network Unreachable\n";
+                        }
+                    }
+                    else
+                    {
+                        // Unsupported destination-unreachable codes are intentionally ignored
+                        // by phase-1 drop mapping.
                     }
                 }
 
