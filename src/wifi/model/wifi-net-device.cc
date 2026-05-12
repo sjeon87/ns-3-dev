@@ -390,6 +390,14 @@ WifiNetDevice::GetAddress() const
     return m_mac->GetAddress();
 }
 
+Address
+WifiNetDevice::GetAddressFor(const Address& remoteAddr) const
+{
+    const auto macAddr = Mac48Address::ConvertFrom(remoteAddr);
+    NS_ABORT_MSG_IF(macAddr.IsGroup(), "Did not expect a group address " << macAddr);
+    return m_mac->GetLocalAddress(macAddr);
+}
+
 bool
 WifiNetDevice::SetMtu(const uint16_t mtu)
 {
@@ -507,7 +515,7 @@ WifiNetDevice::ForwardUp(Ptr<const Packet> packet, Mac48Address from, Mac48Addre
     {
         type = NetDevice::PACKET_MULTICAST;
     }
-    else if (to == GetAddress())
+    else if (to == GetAddress() || to == m_mac->GetLocalAddress(from))
     {
         type = NetDevice::PACKET_HOST;
     }
