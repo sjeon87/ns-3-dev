@@ -10,9 +10,9 @@
 #include "ns3/inet-socket-address.h"
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
+#include "ns3/ltp-convergence-layer-adapter.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
-#include "ns3/udp-convergence-layer-adapter.h"
 
 #include <map>
 #include <string>
@@ -21,47 +21,85 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("MarsRelayNetworkExample");
 
+uint32_t g_bundlesSent = 500;
+uint32_t g_bundlesReceived = 0;
+double g_totalDelaySeconds = 0.0;
+
+struct StorageStats
+{
+    uint64_t cumulativeBundles = 0;
+    uint32_t sampleCount = 0;
+};
+
+std::map<std::string, StorageStats> g_storageMetrics;
+
 struct LinkElements
 {
-    Ptr<UdpBundleCla> cla;
+    Ptr<LtpBundleCla> cla;
     Ptr<PointToPointNetDevice> device;
 };
 
 void
 SendDeepSpaceBundle(Ptr<BundleAgent> agent, std::string destEid)
 {
-    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds()
-                           << "s: Initiating bundle transmission to " << destEid);
+    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s: Transmitting burst of "
+                           << g_bundlesSent << " bundles...");
 
-    uint32_t payloadSize = 1;
+    uint32_t payloadSize = 100;
     std::vector<uint8_t> payloadData(payloadSize, 0xAA);
-
     Time ttl = Hours(24);
 
-    agent->TransmitBundle(destEid, "dtn:none", payloadData.data(), payloadSize, ttl, 0);
+    for (uint32_t i = 0; i < g_bundlesSent; i++)
+    {
+        agent->TransmitBundle(destEid, "dtn:none", payloadData.data(), payloadSize, ttl, 0);
+    }
 }
 
 void
 OnBundleReceived(Ptr<Bundle> bundle)
 {
-    NS_LOG_INFO("==================================================");
-    NS_LOG_INFO("SUCCESS! Destination received the Bundle at " << Simulator::Now().GetSeconds()
-                                                               << "s");
-    NS_LOG_INFO("Source EID: " << bundle->GetSourceEID());
-    NS_LOG_INFO("Destination EID: " << bundle->GetDestinationEID());
+    Time creationTime = bundle->GetPrimaryBlock()->GetHeader().GetCreationTime();
+    Time rxTime = Simulator::Now();
+    Time delay = rxTime - creationTime;
 
-    Ptr<PayloadBlock> payload = bundle->GetPayloadBlock();
-    if (payload)
+    g_bundlesReceived++;
+    g_totalDelaySeconds += delay.GetSeconds();
+
+    NS_LOG_INFO("Received Bundle " << g_bundlesReceived << "/" << g_bundlesSent
+                                   << " | OWT: " << delay.GetSeconds() << "s");
+
+    if (g_bundlesReceived == g_bundlesSent)
     {
-        NS_LOG_INFO("Payload Size: " << payload->GetPayload()->GetSize() << " bytes");
+        NS_LOG_INFO("==================================================");
+        NS_LOG_INFO("SUCCESS! All " << g_bundlesSent << " bundles arrived.");
+        NS_LOG_INFO("Final Average OWT: " << (g_totalDelaySeconds / g_bundlesReceived) << " s");
+        NS_LOG_INFO("==================================================");
     }
-    NS_LOG_INFO("==================================================");
+}
+
+void
+MonitorStorage(Ptr<BundleAgent> agent, std::string nodeName, Time interval)
+{
+    uint32_t bytesInStorage = agent->GetStorageEngineSize();
+    uint32_t estimatedBundles = bytesInStorage / 1061;
+
+    if (bytesInStorage > 0)
+    {
+        NS_LOG_INFO(">>> [STORAGE MONITOR] At " << Simulator::Now().GetSeconds() << "s | "
+                                                << nodeName << " has " << estimatedBundles
+                                                << " bundles in custody.");
+    }
+
+    g_storageMetrics[nodeName].cumulativeBundles += estimatedBundles;
+    g_storageMetrics[nodeName].sampleCount++;
+
+    Simulator::Schedule(interval, &MonitorStorage, agent, nodeName, interval);
 }
 
 void
 LinkUp(Ptr<BundleAgent> agent,
        std::string destEid,
-       Ptr<UdpBundleCla> cla,
+       Ptr<LtpBundleCla> cla,
        Ptr<PointToPointNetDevice> device,
        uint32_t dataRate)
 {
@@ -80,7 +118,7 @@ LinkDown(Ptr<BundleAgent> agent, std::string destEid, Ptr<PointToPointNetDevice>
                            << "s: Contact DOWN - Unregistering CLA for " << destEid);
 
     agent->UnregisterCla(destEid);
-    device->SetAttribute("DataRate", DataRateValue(DataRate(0)));
+    device->SetAttribute("DataRate", DataRateValue(DataRate("1bps")));
 }
 
 Time
@@ -102,6 +140,7 @@ int
 main(int argc, char* argv[])
 {
     LogComponentEnable("MarsRelayNetworkExample", LOG_LEVEL_ALL);
+    // LogComponentEnable("LtpBundleCla", LOG_LEVEL_ALL);
 
     std::string contactPlanPath = "src/bundle-protocol/examples/contactGraph.csv";
 
@@ -179,26 +218,26 @@ main(int argc, char* argv[])
             Ptr<Channel> channel = devices.Get(0)->GetChannel();
             channel->SetAttribute("Delay", TimeValue(linkDelay));
 
-            TimeValue tv;
-            channel->GetAttribute("Delay", tv);
-            NS_LOG_INFO("Channel " << eidI << " <-> " << eidJ << " delay=" << tv.Get().GetSeconds()
-                                   << "s"
-                                   << " (requested=" << linkDelay.GetSeconds() << "s)");
-
             Ipv4InterfaceContainer ifaces = address.Assign(devices);
             address.NewNetwork();
 
             Ptr<PointToPointNetDevice> devI = DynamicCast<PointToPointNetDevice>(devices.Get(0));
             Ptr<PointToPointNetDevice> devJ = DynamicCast<PointToPointNetDevice>(devices.Get(1));
 
-            Ptr<UdpBundleCla> claI = CreateObject<UdpBundleCla>();
-            Ptr<UdpBundleCla> claJ = CreateObject<UdpBundleCla>();
+            Ptr<LtpBundleCla> claI = CreateObject<LtpBundleCla>();
+            Ptr<LtpBundleCla> claJ = CreateObject<LtpBundleCla>();
+
+            claI->SetAttribute("OnewayLightTime", TimeValue(linkDelay));
+            claJ->SetAttribute("OnewayLightTime", TimeValue(linkDelay));
 
             InetSocketAddress addrI(ifaces.GetAddress(0), ltpPort);
             InetSocketAddress addrJ(ifaces.GetAddress(1), ltpPort);
 
             claI->Setup(nodes.Get(i), addrI, addrJ);
             claJ->Setup(nodes.Get(j), addrJ, addrI);
+
+            claI->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, agentMap[eidI]));
+            claJ->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, agentMap[eidJ]));
 
             linkMap[{eidI, eidJ}] = {claI, devI};
             linkMap[{eidJ, eidI}] = {claJ, devJ};
@@ -226,11 +265,6 @@ main(int argc, char* argv[])
                                 window.dataRate);
             Simulator::Schedule(window.endTime, &LinkDown, srcAgent, window.toEID, link.device);
         }
-        else
-        {
-            NS_LOG_WARN("Skipping schedule: Cannot find physical link or agent for "
-                        << window.fromEID << " to " << window.toEID);
-        }
     }
 
     Ptr<BundleAgent> dsnAgent = agentMap["dtn://earth/dsn"];
@@ -238,13 +272,59 @@ main(int argc, char* argv[])
 
     Simulator::Schedule(Seconds(0.0), &SendDeepSpaceBundle, dsnAgent, destinationEid);
 
+    // Track storage for key nodes along the expected paths
+    Time checkInterval = Seconds(500.0);
+    Simulator::Schedule(Seconds(1.0),
+                        &MonitorStorage,
+                        agentMap["dtn://earth/dsn"],
+                        "Earth DSN",
+                        checkInterval);
+    Simulator::Schedule(Seconds(1.0),
+                        &MonitorStorage,
+                        agentMap["dtn://mars/tgo"],
+                        "Mars TGO",
+                        checkInterval);
+    Simulator::Schedule(Seconds(1.0),
+                        &MonitorStorage,
+                        agentMap["dtn://mars/m2020"],
+                        "Perseverance",
+                        checkInterval);
+
     NS_LOG_INFO("Starting Deep Space MRN Simulation...");
 
-    Simulator::Stop(Seconds(20000.0));
+    Simulator::Stop(Seconds(86400.0));
     Simulator::Run();
-    Simulator::Destroy();
 
     NS_LOG_INFO("Simulation Finished.");
+    NS_LOG_INFO("================= SIMULATION RESULTS =================");
+    NS_LOG_INFO("Total Bundles Sent:     " << g_bundlesSent);
+    NS_LOG_INFO("Total Bundles Received: " << g_bundlesReceived);
+
+    if (g_bundlesReceived > 0)
+    {
+        NS_LOG_INFO("Delivery Ratio:         "
+                    << ((double)g_bundlesReceived / g_bundlesSent) * 100.0 << "%");
+        NS_LOG_INFO("Average One-Way Time:   " << (g_totalDelaySeconds / g_bundlesReceived)
+                                               << " seconds");
+    }
+    else
+    {
+        NS_LOG_INFO("Average One-Way Time:   N/A (0 bundles received)");
+    }
+
+    NS_LOG_INFO("----------------- BUFFER UTILIZATION -----------------");
+    for (const auto& pair : g_storageMetrics)
+    {
+        double averageBundles = 0.0;
+        if (pair.second.sampleCount > 0)
+        {
+            averageBundles = (double)pair.second.cumulativeBundles / pair.second.sampleCount;
+        }
+        NS_LOG_INFO(pair.first << " Average Backlog: " << averageBundles << " bundles");
+    }
+    NS_LOG_INFO("======================================================");
+
+    Simulator::Destroy();
 
     return 0;
 }
