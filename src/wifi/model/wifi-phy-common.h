@@ -190,7 +190,10 @@ enum WifiPreamble
     WIFI_PREAMBLE_HE_MU,
     WIFI_PREAMBLE_HE_TB,
     WIFI_PREAMBLE_EHT_MU,
-    WIFI_PREAMBLE_EHT_TB
+    WIFI_PREAMBLE_EHT_TB,
+    WIFI_PREAMBLE_UHR_MU,
+    WIFI_PREAMBLE_UHR_TB,
+    WIFI_PREAMBLE_UHR_ELR
 };
 
 /**
@@ -233,6 +236,12 @@ operator<<(std::ostream& os, const WifiPreamble& preamble)
         return (os << "EHT_MU");
     case WIFI_PREAMBLE_EHT_TB:
         return (os << "EHT_TB");
+    case WIFI_PREAMBLE_UHR_MU:
+        return (os << "UHR_MU");
+    case WIFI_PREAMBLE_UHR_TB:
+        return (os << "UHR_TB");
+    case WIFI_PREAMBLE_UHR_ELR:
+        return (os << "UHR_ELR");
     default:
         NS_FATAL_ERROR("Invalid preamble");
         return (os << "INVALID");
@@ -261,7 +270,8 @@ enum WifiModulationClass
     WIFI_MOD_CLASS_DMG_SC,    //!< DMG (Clause 21)
     WIFI_MOD_CLASS_DMG_LP_SC, //!< DMG (Clause 21)
     WIFI_MOD_CLASS_HE,        //!< HE (Clause 27)
-    WIFI_MOD_CLASS_EHT        //!< EHT (Clause 36)
+    WIFI_MOD_CLASS_EHT,       //!< EHT (Clause 36)
+    WIFI_MOD_CLASS_UHR        //!< UHR (Clause 38)
 };
 
 /**
@@ -300,6 +310,8 @@ operator<<(std::ostream& os, const WifiModulationClass& modulation)
         return (os << "HE");
     case WIFI_MOD_CLASS_EHT:
         return (os << "EHT");
+    case WIFI_MOD_CLASS_UHR:
+        return (os << "UHR");
     default:
         NS_FATAL_ERROR("Unknown modulation");
         return (os << "unknown");
@@ -332,6 +344,9 @@ enum WifiPpduField
     WIFI_PPDU_FIELD_SIG_B,    //!< SIG-B field
     WIFI_PPDU_FIELD_U_SIG,    //!< U-SIG field
     WIFI_PPDU_FIELD_EHT_SIG,  //!< EHT-SIG field
+    WIFI_PPDU_FIELD_UHR_SIG,  //!< UHR-SIG field
+    WIFI_PPDU_FIELD_ELR_MARK, //!< ELR-MARK field
+    WIFI_PPDU_FIELD_ELR_SIG,  //!< ELR-SIG field
     WIFI_PPDU_FIELD_DATA      //!< data field
 };
 
@@ -363,6 +378,12 @@ operator<<(std::ostream& os, const WifiPpduField& field)
         return (os << "U-SIG");
     case WIFI_PPDU_FIELD_EHT_SIG:
         return (os << "EHT-SIG");
+    case WIFI_PPDU_FIELD_UHR_SIG:
+        return (os << "UHR-SIG");
+    case WIFI_PPDU_FIELD_ELR_MARK:
+        return (os << "ELR-MARK");
+    case WIFI_PPDU_FIELD_ELR_SIG:
+        return (os << "ELR-SIG");
     case WIFI_PPDU_FIELD_DATA:
         return (os << "data");
     default:
@@ -429,6 +450,9 @@ enum WifiPhyRxfailureReason
     SIG_B_FAILURE,
     U_SIG_FAILURE,
     EHT_SIG_FAILURE,
+    UHR_SIG_FAILURE,
+    ELR_MARK_FAILURE,
+    ELR_SIG_FAILURE,
     PREAMBLE_DETECTION_PACKET_SWITCH,
     FRAME_CAPTURE_PACKET_SWITCH,
     OBSS_PD_CCA_RESET,
@@ -719,6 +743,14 @@ MHz_u GetChannelWidthInMhz(WifiChannelWidthType width);
  * @return true if the provided preamble corresponds to an EHT transmission
  */
 bool IsEht(WifiPreamble preamble);
+
+/**
+ * Return true if a preamble corresponds to an UHR transmission.
+ *
+ * @param preamble the preamble
+ * @return true if the provided preamble corresponds to an UHR transmission
+ */
+bool IsUhr(WifiPreamble preamble);
 
 /**
  * @brief map a given channel list type to the corresponding scaling factor

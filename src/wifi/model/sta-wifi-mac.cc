@@ -469,6 +469,10 @@ StaWifiMac::GetProbeRequest(uint8_t linkId) const
     {
         probe.Get<EhtCapabilities>() = GetEhtCapabilities(linkId);
     }
+    if (GetUhrSupported())
+    {
+        probe.Get<UhrCapabilities>() = GetUhrCapabilities(linkId);
+    }
     return probe;
 }
 
@@ -595,6 +599,10 @@ StaWifiMac::GetAssociationRequest(bool isReassoc, uint8_t linkId) const
         if (GetEhtSupported())
         {
             frame.template Get<EhtCapabilities>() = GetEhtCapabilities(linkId);
+        }
+        if (GetUhrSupported())
+        {
+            frame.template Get<UhrCapabilities>() = GetUhrCapabilities(linkId);
         }
     };
 
@@ -1858,6 +1866,16 @@ StaWifiMac::RecordOperations(const MgtFrameType& frame, const Mac48Address& from
         if (const auto& ehtOperation = frame.template Get<EhtOperation>())
         {
             remoteStationManager->AddStationEhtOperation(from, *ehtOperation);
+        }
+
+        if (!GetUhrSupported())
+        {
+            return;
+        }
+        /* UHR station */
+        if (const auto& uhrOperation = frame.template Get<UhrOperation>())
+        {
+            remoteStationManager->AddStationUhrOperation(from, *uhrOperation);
         }
     };
 

@@ -17,6 +17,8 @@
 #include "ns3/ht-capabilities.h"
 #include "ns3/log.h"
 #include "ns3/packet.h"
+#include "ns3/uhr-capabilities.h"
+#include "ns3/uhr-operation.h"
 #include "ns3/vht-capabilities.h"
 
 namespace ns3

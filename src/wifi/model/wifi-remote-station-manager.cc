@@ -28,6 +28,7 @@
 #include "ns3/ht-phy.h"
 #include "ns3/log.h"
 #include "ns3/simulator.h"
+#include "ns3/uhr-configuration.h"
 #include "ns3/uinteger.h"
 #include "ns3/vht-configuration.h"
 
@@ -294,6 +295,12 @@ bool
 WifiRemoteStationManager::GetEhtSupported() const
 {
     return bool(m_wifiPhy->GetDevice()->GetEhtConfiguration());
+}
+
+bool
+WifiRemoteStationManager::GetUhrSupported() const
+{
+    return bool(m_wifiPhy->GetDevice()->GetUhrConfiguration());
 }
 
 bool
@@ -673,7 +680,11 @@ WifiRemoteStationManager::GetCtsToSelfTxVector()
 {
     WifiMode defaultMode = GetDefaultMode();
     WifiPreamble defaultPreamble;
-    if (defaultMode.GetModulationClass() == WIFI_MOD_CLASS_EHT)
+    if (defaultMode.GetModulationClass() == WIFI_MOD_CLASS_UHR)
+    {
+        defaultPreamble = WIFI_PREAMBLE_UHR_MU;
+    }
+    else if (defaultMode.GetModulationClass() == WIFI_MOD_CLASS_EHT)
     {
         defaultPreamble = WIFI_PREAMBLE_EHT_MU;
     }
@@ -1223,7 +1234,7 @@ WifiRemoteStationManager::NeedRts(const WifiMacHeader& header, const WifiTxParam
     if (m_erpProtectionMode == RTS_CTS &&
         ((modulationClass == WIFI_MOD_CLASS_ERP_OFDM) || (modulationClass == WIFI_MOD_CLASS_HT) ||
          (modulationClass == WIFI_MOD_CLASS_VHT) || (modulationClass == WIFI_MOD_CLASS_HE) ||
-         (modulationClass == WIFI_MOD_CLASS_EHT)) &&
+         (modulationClass == WIFI_MOD_CLASS_EHT) || (modulationClass == WIFI_MOD_CLASS_UHR)) &&
         m_useNonErpProtection)
     {
         NS_LOG_DEBUG(
@@ -1254,7 +1265,8 @@ WifiRemoteStationManager::NeedCtsToSelf(const WifiTxVector& txVector, const Wifi
          (txVector.GetModulationClass() == WIFI_MOD_CLASS_HT) ||
          (txVector.GetModulationClass() == WIFI_MOD_CLASS_VHT) ||
          (txVector.GetModulationClass() == WIFI_MOD_CLASS_HE) ||
-         (txVector.GetModulationClass() == WIFI_MOD_CLASS_EHT)))
+         (txVector.GetModulationClass() == WIFI_MOD_CLASS_EHT) ||
+         (txVector.GetModulationClass() == WIFI_MOD_CLASS_UHR)))
     {
         NS_LOG_DEBUG(
             "WifiRemoteStationManager::NeedCtsToSelf returning true to protect non-ERP stations");
@@ -1512,6 +1524,8 @@ WifiRemoteStationManager::LookupState(Mac48Address address) const
     state->m_ehtOperation = nullptr;
     state->m_mleCommonInfo = nullptr;
     state->m_emlsrEnabled = false;
+    state->m_uhrCapabilities = nullptr;
+    state->m_uhrOperation = nullptr;
     state->m_channelWidth = m_wifiPhy->GetChannelWidth();
     state->m_guardInterval = GetGuardInterval();
     state->m_ness = 0;
@@ -1837,6 +1851,31 @@ WifiRemoteStationManager::AddStationMleCommonInfo(
         state);
 }
 
+void
+WifiRemoteStationManager::AddStationUhrCapabilities(const Mac48Address& from,
+                                                    const UhrCapabilities& uhrCapabilities)
+{
+    // Used by all stations to record UHR capabilities of remote stations
+    NS_LOG_FUNCTION(this << from << uhrCapabilities);
+    auto state = LookupState(from);
+    for (const auto& mcs : m_wifiPhy->GetMcsList(WIFI_MOD_CLASS_UHR))
+    {
+        // TODO: assume all MCS are supported as long as UHR capabilities IE is not fully defined
+        AddSupportedMcs(from, mcs);
+    }
+    state->m_uhrCapabilities = Create<const UhrCapabilities>(uhrCapabilities);
+    SetQosSupport(from, true);
+}
+
+void
+WifiRemoteStationManager::AddStationUhrOperation(const Mac48Address& from,
+                                                 const UhrOperation& uhrOperation)
+{
+    NS_LOG_FUNCTION(this << from << uhrOperation);
+    auto state = LookupState(from);
+    state->m_uhrOperation = Create<const UhrOperation>(uhrOperation);
+}
+
 Ptr<const HtCapabilities>
 WifiRemoteStationManager::GetStationHtCapabilities(Mac48Address from)
 {
@@ -1911,6 +1950,18 @@ WifiRemoteStationManager::GetStationMldCapabilities(const Mac48Address& from)
         return state->m_mleCommonInfo->m_mldCapabilities.value();
     }
     return std::nullopt;
+}
+
+Ptr<const UhrCapabilities>
+WifiRemoteStationManager::GetStationUhrCapabilities(const Mac48Address& from)
+{
+    return LookupState(from)->m_uhrCapabilities;
+}
+
+Ptr<const UhrOperation>
+WifiRemoteStationManager::GetStationUhrOperation(const Mac48Address& from)
+{
+    return LookupState(from)->m_uhrOperation;
 }
 
 bool
@@ -2166,9 +2217,10 @@ WifiRemoteStationManager::GetGroupcastTxVector(const WifiMacHeader& header, MHz_
         /* HT/VHT: short or long GI */
         {WIFI_MOD_CLASS_HT, WIFI_MOD_CLASS_HT},
         {WIFI_MOD_CLASS_VHT, WIFI_MOD_CLASS_HT},
-        /* HE/EHT: 3 possible GIs */
+        /* HE/EHT/UHR: 3 possible GIs */
         {WIFI_MOD_CLASS_HE, WIFI_MOD_CLASS_HE},
-        {WIFI_MOD_CLASS_EHT, WIFI_MOD_CLASS_HE}};
+        {WIFI_MOD_CLASS_EHT, WIFI_MOD_CLASS_HE},
+        {WIFI_MOD_CLASS_UHR, WIFI_MOD_CLASS_HE}};
     for (const auto& staAddress : groupStas)
     {
         // Get the equivalent TXVECTOR if the frame would be a unicast frame to that STA in order to
@@ -2411,6 +2463,12 @@ WifiRemoteStationManager::GetEmlsrEnabled(const WifiRemoteStation* station) cons
     return station->m_state->m_emlsrEnabled;
 }
 
+bool
+WifiRemoteStationManager::GetUhrSupported(const WifiRemoteStation* station) const
+{
+    return (bool)(station->m_state->m_uhrCapabilities);
+}
+
 uint8_t
 WifiRemoteStationManager::GetNMcsSupported(const WifiRemoteStation* station) const
 {
@@ -2528,6 +2586,12 @@ WifiRemoteStationManager::GetEmlsrEnabled(const Mac48Address& address) const
         return stateIt->second->m_emlsrEnabled;
     }
     return false;
+}
+
+bool
+WifiRemoteStationManager::GetUhrSupported(Mac48Address address) const
+{
+    return (bool)(LookupState(address)->m_uhrCapabilities);
 }
 
 void

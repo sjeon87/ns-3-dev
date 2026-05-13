@@ -25,8 +25,6 @@ namespace ns3
 /**
  * @brief EHT PPDU (11be)
  * @ingroup wifi
- *
- * EhtPpdu is currently identical to HePpdu
  */
 class EhtPpdu : public HePpdu
 {
@@ -54,10 +52,10 @@ class EhtPpdu : public HePpdu
         uint8_t m_bssColor : 6 {0};             ///< BSS color field
         uint8_t m_ppduType : 2 {0};             ///< PPDU Type And Compressed Mode field
         uint8_t m_puncturedChannelInfo : 5 {0}; ///< Punctured Channel Information field
-        uint8_t m_ehtSigMcs : 2 {0};            ///< EHT-SIG-B MCS
+        uint8_t m_ehtSigMcs : 2 {0};            ///< EHT-SIG MCS
 
         // EHT-SIG fields
-        uint8_t m_giLtfSize{0}; ///< GI+LTF Size field
+        uint8_t m_giLtfSize : 2 {0}; ///< GI+LTF Size field
 
         std::optional<RuAllocation> m_ruAllocationA; //!< RU Allocation-A that are going to be
                                                      //!< carried in EHT-SIG common subfields
@@ -81,13 +79,15 @@ class EhtPpdu : public HePpdu
      * @param ppduDuration the transmission duration of this PPDU
      * @param uid the unique ID of this PPDU or of the triggering PPDU if this is an EHT TB PPDU
      * @param flag the flag indicating the type of Tx PSD to build
+     * @param instantiateHeaders flag used to instantiate EHT header, should be disabled by child
      */
     EhtPpdu(const WifiConstPsduMap& psdus,
             const WifiTxVector& txVector,
             const WifiPhyOperatingChannel& channel,
             Time ppduDuration,
             uint64_t uid,
-            TxPsdFlag flag);
+            TxPsdFlag flag,
+            bool instantiateHeaders = true);
 
     WifiPpduType GetType() const override;
     Ptr<const WifiPsdu> GetPsdu(uint8_t bssColor, uint16_t staId = SU_STA_ID) const override;
@@ -152,30 +152,11 @@ class EhtPpdu : public HePpdu
                                     std::optional<bool> isLow80MHz);
 
   protected:
+    uint8_t GetBssColor() const override;
     WifiRu::RuSpec GetRuSpec(std::size_t ruAllocIndex,
                              MHz_u bw,
                              RuType ruType,
                              std::size_t phyIndex) const override;
-
-  private:
-    bool IsDlMu() const override;
-    bool IsUlMu() const override;
-    void SetTxVectorFromPhyHeaders(WifiTxVector& txVector) const override;
-
-    /**
-     * Fill in the PHY headers.
-     *
-     * @param txVector the TXVECTOR that was used for this PPDU
-     * @param ppduDuration the transmission duration of this PPDU
-     */
-    void SetPhyHeaders(const WifiTxVector& txVector, Time ppduDuration) override;
-
-    /**
-     * Fill in the EHT PHY header.
-     *
-     * @param txVector the TXVECTOR that was used for this PPDU
-     */
-    void SetEhtPhyHeader(const WifiTxVector& txVector);
 
     /**
      * Convert channel width expressed in MHz to bandwidth field encoding in U-SIG.
@@ -194,6 +175,34 @@ class EhtPpdu : public HePpdu
      * @return the channel width in MHz
      */
     static MHz_u GetChannelWidthMhzFromEncoding(uint8_t bandwidth);
+
+  private:
+    bool IsDlMu() const override;
+    bool IsUlMu() const override;
+    void SetTxVectorFromPhyHeaders(WifiTxVector& txVector) const override;
+
+    /**
+     * Get the WifiMode corresponding to a given MCS index to use for this PPDU.
+     *
+     * @param mcs the MCS index
+     * @return the WifiMode corresponding to the MCS index
+     */
+    virtual WifiMode GetMcs(uint8_t mcs) const;
+
+    /**
+     * Fill in the PHY headers.
+     *
+     * @param txVector the TXVECTOR that was used for this PPDU
+     * @param ppduDuration the transmission duration of this PPDU
+     */
+    void SetPhyHeaders(const WifiTxVector& txVector, Time ppduDuration) override;
+
+    /**
+     * Fill in the EHT PHY header.
+     *
+     * @param txVector the TXVECTOR that was used for this PPDU
+     */
+    void SetEhtPhyHeader(const WifiTxVector& txVector);
 
     EhtPhyHeader m_ehtPhyHeader; //!< the EHT PHY header
 };

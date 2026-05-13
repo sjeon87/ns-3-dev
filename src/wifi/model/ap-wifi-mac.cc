@@ -1454,6 +1454,30 @@ ApWifiMac::GetEhtOperation(uint8_t linkId) const
     return operation;
 }
 
+UhrOperation
+ApWifiMac::GetUhrOperation(uint8_t linkId) const
+{
+    NS_ASSERT(GetUhrSupported());
+    UhrOperation operation;
+    auto remoteStationManager = GetWifiRemoteStationManager(linkId);
+
+    auto maxSpatialStream = GetWifiPhy(linkId)->GetMaxSupportedRxSpatialStreams();
+    for (const auto& sta : GetLink(linkId).staList)
+    {
+        if (remoteStationManager->GetUhrSupported(sta.second))
+        {
+            if (remoteStationManager->GetNumberOfSupportedStreams(sta.second) < maxSpatialStream)
+            {
+                maxSpatialStream = remoteStationManager->GetNumberOfSupportedStreams(sta.second);
+            }
+        }
+    }
+    operation.SetMaxRxNss(maxSpatialStream, 0, WIFI_UHR_MAX_MCS_INDEX);
+    operation.SetMaxTxNss(maxSpatialStream, 0, WIFI_UHR_MAX_MCS_INDEX);
+
+    return operation;
+}
+
 void
 ApWifiMac::EnqueueProbeResp(const MgtProbeResponseHeader& probeResp,
                             Mac48Address to,
@@ -1545,7 +1569,10 @@ ApWifiMac::GetProbeRespProfile(uint8_t linkId) const
         probe.Get<EhtCapabilities>() = GetEhtCapabilities(linkId);
         probe.Get<EhtOperation>() = GetEhtOperation(linkId);
     }
-
+    if (GetUhrSupported())
+    {
+        probe.Get<UhrCapabilities>() = GetUhrCapabilities(linkId);
+    }
     return probe;
 }
 
@@ -1644,6 +1671,10 @@ ApWifiMac::GetAssocResp(Mac48Address to, uint8_t linkId)
         // (Re)Association Response frame the TID-to-link Mapping element.
         // (Sec. 35.3.7.1.8 of 802.11be D3.1).
         // For now, we assume that AP MLDs always accept requested TID-to-link mappings.
+    }
+    if (GetUhrSupported())
+    {
+        assoc.Get<UhrCapabilities>() = GetUhrCapabilities(linkId);
     }
     return assoc;
 }
@@ -1914,6 +1945,10 @@ ApWifiMac::SendOneBeacon(uint8_t linkId)
              */
             beacon.Get<MultiLinkElement>() = GetMultiLinkElement(linkId, WIFI_MAC_MGT_BEACON);
         }
+    }
+    if (GetUhrSupported())
+    {
+        beacon.Get<UhrCapabilities>() = GetUhrCapabilities(linkId);
     }
     packet->AddHeader(beacon);
 

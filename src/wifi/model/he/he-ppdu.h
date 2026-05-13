@@ -46,8 +46,10 @@ class HePpdu : public OfdmPpdu
         uint8_t mcs : 4;     ///< MCS index
     };
 
+    /// HE SIG-B Content Channel
+    using HeSigBContentChannel = std::vector<HeSigBUserSpecificField>;
     /// HE SIG-B Content Channels
-    using HeSigBContentChannels = std::vector<std::vector<HeSigBUserSpecificField>>;
+    using HeSigBContentChannels = std::vector<HeSigBContentChannel>;
 
     /**
      * HE-SIG PHY header for HE SU PPDUs (HE-SIG-A1/A2)
@@ -266,6 +268,12 @@ class HePpdu : public OfdmPpdu
                           const HeSigBContentChannels& contentChannels,
                           bool sigBCompression,
                           uint8_t numMuMimoUsers) const;
+
+    /**
+     * Get the BSS color for this PPDU
+     * @return the BSS color
+     */
+    virtual uint8_t GetBssColor() const;
 
     /**
      * Get the RU specification that has been assigned a given user.

@@ -13,7 +13,7 @@
 #include "wifi-utils.h"
 
 #include "ns3/abort.h"
-#include "ns3/eht-phy.h"
+#include "ns3/uhr-phy.h"
 
 #include <algorithm>
 #include <iterator>
@@ -136,6 +136,8 @@ WifiTxVector::GetMode(uint16_t staId) const
     NS_ASSERT(userInfoIt != m_muUserInfos.cend());
     switch (GetModulationClassForPreamble(m_preamble))
     {
+    case WIFI_MOD_CLASS_UHR:
+        return UhrPhy::GetUhrMcs(userInfoIt->second.mcs);
     case WIFI_MOD_CLASS_EHT:
         return EhtPhy::GetEhtMcs(userInfoIt->second.mcs);
     case WIFI_MOD_CLASS_HE:
@@ -430,7 +432,7 @@ WifiTxVector::GetRuAllocation(uint8_t p20Index) const
 void
 WifiTxVector::SetEhtPpduType(uint8_t type)
 {
-    NS_ASSERT(IsEht(m_preamble));
+    NS_ASSERT(IsEht(m_preamble) || IsUhr(m_preamble));
     m_ehtPpduType = type;
 }
 
@@ -545,7 +547,8 @@ WifiTxVector::IsMu() const
 bool
 WifiTxVector::IsDlMu() const
 {
-    return ns3::IsDlMu(m_preamble) && !(IsEht(m_preamble) && m_ehtPpduType == 1);
+    return ns3::IsDlMu(m_preamble) &&
+           !((IsEht(m_preamble) || IsUhr(m_preamble)) && m_ehtPpduType == 1);
 }
 
 bool
@@ -561,7 +564,7 @@ WifiTxVector::IsDlOfdma() const
     {
         return false;
     }
-    if (IsEht(m_preamble))
+    if (IsEht(m_preamble) || IsUhr(m_preamble))
     {
         return m_ehtPpduType == 0;
     }
@@ -588,7 +591,7 @@ WifiTxVector::IsDlMuMimo() const
     {
         return false;
     }
-    if (IsEht(m_preamble))
+    if (IsEht(m_preamble) || IsUhr(m_preamble))
     {
         return m_ehtPpduType == 2;
     }
@@ -761,7 +764,7 @@ operator<<(std::ostream& os, const WifiTxVector& v)
                   puncturedSubchannels.cend(),
                   std::ostream_iterator<bool>(os, ", "));
     }
-    if (IsEht(v.GetPreambleType()))
+    if (IsEht(v.GetPreambleType()) || IsUhr(v.GetPreambleType()))
     {
         os << " EHT PPDU type: " << +v.GetEhtPpduType();
     }

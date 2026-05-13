@@ -130,6 +130,12 @@ set(source_files
     model/threshold-preamble-detection-model.cc
     model/tim.cc
     model/txop.cc
+    model/uhr/uhr-capabilities.cc
+    model/uhr/uhr-configuration.cc
+    model/uhr/uhr-frame-exchange-manager.cc
+    model/uhr/uhr-operation.cc
+    model/uhr/uhr-phy.cc
+    model/uhr/uhr-ppdu.cc
     model/vht/vht-capabilities.cc
     model/vht/vht-configuration.cc
     model/vht/vht-frame-exchange-manager.cc
@@ -307,6 +313,12 @@ set(header_files
     model/threshold-preamble-detection-model.h
     model/tim.h
     model/txop.h
+    model/uhr/uhr-capabilities.h
+    model/uhr/uhr-configuration.h
+    model/uhr/uhr-frame-exchange-manager.h
+    model/uhr/uhr-operation.h
+    model/uhr/uhr-phy.h
+    model/uhr/uhr-ppdu.h
     model/vht/vht-capabilities.h
     model/vht/vht-configuration.h
     model/vht/vht-frame-exchange-manager.h
@@ -421,5 +433,6 @@ build_lib(
     test/wifi-phy-mu-mimo-test.cc
     test/wifi-operating-channel-test.cc
     test/wifi-tx-stats-helper-test.cc
+    test/wifi-uhr-info-elems-test.cc
   GENERATE_EXPORT_HEADER
 )

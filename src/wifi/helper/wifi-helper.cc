@@ -30,6 +30,7 @@
 #include "ns3/qos-utils.h"
 #include "ns3/radiotap-header.h"
 #include "ns3/sta-wifi-mac.h"
+#include "ns3/uhr-configuration.h"
 #include "ns3/vht-configuration.h"
 #include "ns3/wifi-mac-queue.h"
 #include "ns3/wifi-mac-trailer.h"
@@ -1008,6 +1009,7 @@ WifiHelper::WifiHelper()
     m_vhtConfig.SetTypeId("ns3::VhtConfiguration");
     m_heConfig.SetTypeId("ns3::HeConfiguration");
     m_ehtConfig.SetTypeId("ns3::EhtConfiguration");
+    m_uhrConfig.SetTypeId("ns3::UhrConfiguration");
 }
 
 namespace
@@ -1045,6 +1047,10 @@ const std::unordered_map<std::string, WifiStandard> WIFI_STANDARDS_NAME_MAP{
     {"802.11be", WIFI_STANDARD_80211be},
     {"11be",     WIFI_STANDARD_80211be},
     {"EHT",      WIFI_STANDARD_80211be},
+
+    {"802.11bn", WIFI_STANDARD_80211bn},
+    {"11bn",     WIFI_STANDARD_80211bn},
+    {"UHR",      WIFI_STANDARD_80211bn},
     // clang-format on
 };
 } // namespace
@@ -1117,6 +1123,11 @@ WifiHelper::Install(const WifiPhyHelper& phyHelper,
         {
             auto ehtConfiguration = m_ehtConfig.Create<EhtConfiguration>();
             device->SetEhtConfiguration(ehtConfiguration);
+        }
+        if (m_standard >= WIFI_STANDARD_80211bn)
+        {
+            auto uhrConfiguration = m_uhrConfig.Create<UhrConfiguration>();
+            device->SetUhrConfiguration(uhrConfiguration);
         }
         std::vector<Ptr<WifiRemoteStationManager>> managers;
         std::vector<Ptr<WifiPhy>> phys = phyHelper.Create(node, device);
@@ -1275,6 +1286,10 @@ WifiHelper::EnableLogComponents(LogLevel logLevel)
     LogComponentEnable("ThompsonSamplingWifiManager", logLevel);
     LogComponentEnable("ThresholdPreambleDetectionModel", logLevel);
     LogComponentEnable("Txop", logLevel);
+    LogComponentEnable("UhrConfiguration", logLevel);
+    LogComponentEnable("UhrFrameExchangeManager", logLevel);
+    LogComponentEnable("UhrPhy", logLevel);
+    LogComponentEnable("UhrPpdu", logLevel);
     LogComponentEnable("VhtConfiguration", logLevel);
     LogComponentEnable("VhtFrameExchangeManager", logLevel);
     LogComponentEnable("VhtPhy", logLevel);

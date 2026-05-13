@@ -58,7 +58,11 @@ GetGuardIntervalForMode(WifiMode mode, bool htShortGuardInterval, Time heGuardIn
 WifiPreamble
 GetPreambleForTransmission(WifiModulationClass modulation, bool useShortPreamble /* = false */)
 {
-    if (modulation == WIFI_MOD_CLASS_EHT)
+    if (modulation == WIFI_MOD_CLASS_UHR)
+    {
+        return WIFI_PREAMBLE_UHR_MU;
+    }
+    else if (modulation == WIFI_MOD_CLASS_EHT)
     {
         return WIFI_PREAMBLE_EHT_MU;
     }
@@ -116,6 +120,10 @@ GetModulationClassForPreamble(WifiPreamble preamble)
     case WIFI_PREAMBLE_EHT_MU:
     case WIFI_PREAMBLE_EHT_TB:
         return WIFI_MOD_CLASS_EHT;
+    case WIFI_PREAMBLE_UHR_MU:
+    case WIFI_PREAMBLE_UHR_TB:
+    case WIFI_PREAMBLE_UHR_ELR:
+        return WIFI_MOD_CLASS_UHR;
     default:
         NS_ABORT_MSG("Unsupported preamble type: " << preamble);
     }
@@ -141,6 +149,7 @@ IsAllowedControlAnswerModulationClass(WifiModulationClass modClassReq,
     case WIFI_MOD_CLASS_VHT:
     case WIFI_MOD_CLASS_HE:
     case WIFI_MOD_CLASS_EHT:
+    case WIFI_MOD_CLASS_UHR:
         return true;
     default:
         NS_FATAL_ERROR("Modulation class not defined");
@@ -164,6 +173,9 @@ GetPpduMaxTime(WifiPreamble preamble)
     case WIFI_PREAMBLE_HE_TB:
     case WIFI_PREAMBLE_EHT_MU:
     case WIFI_PREAMBLE_EHT_TB:
+    case WIFI_PREAMBLE_UHR_MU:
+    case WIFI_PREAMBLE_UHR_TB:
+    case WIFI_PREAMBLE_UHR_ELR:
         duration = MicroSeconds(5484);
         break;
     default:
@@ -182,13 +194,15 @@ IsMu(WifiPreamble preamble)
 bool
 IsDlMu(WifiPreamble preamble)
 {
-    return ((preamble == WIFI_PREAMBLE_HE_MU) || (preamble == WIFI_PREAMBLE_EHT_MU));
+    return ((preamble == WIFI_PREAMBLE_HE_MU) || (preamble == WIFI_PREAMBLE_EHT_MU) ||
+            (preamble == WIFI_PREAMBLE_UHR_MU));
 }
 
 bool
 IsUlMu(WifiPreamble preamble)
 {
-    return ((preamble == WIFI_PREAMBLE_HE_TB) || (preamble == WIFI_PREAMBLE_EHT_TB));
+    return ((preamble == WIFI_PREAMBLE_HE_TB) || (preamble == WIFI_PREAMBLE_EHT_TB) ||
+            (preamble == WIFI_PREAMBLE_UHR_TB));
 }
 
 WifiModulationClass
@@ -223,6 +237,9 @@ GetModulationClassForStandard(WifiStandard standard)
     case WIFI_STANDARD_80211be:
         modulationClass = WIFI_MOD_CLASS_EHT;
         break;
+    case WIFI_STANDARD_80211bn:
+        modulationClass = WIFI_MOD_CLASS_UHR;
+        break;
     case WIFI_STANDARD_UNSPECIFIED:
         [[fallthrough]];
     default:
@@ -253,6 +270,7 @@ GetSupportedChannelWidthSet(WifiStandard standard, WifiPhyBand band)
                    ? std::set<MHz_u>{MHz_u{20}, MHz_u{40}}
                    : std::set<MHz_u>{MHz_u{20}, MHz_u{80}, MHz_u{160}};
     case WIFI_STANDARD_80211be:
+    case WIFI_STANDARD_80211bn:
         switch (band)
         {
         case WifiPhyBand::WIFI_PHY_BAND_2_4GHZ:
@@ -288,6 +306,7 @@ GetMaximumChannelWidth(WifiModulationClass modulation)
     case WIFI_MOD_CLASS_HE:
         return MHz_u{160};
     case WIFI_MOD_CLASS_EHT:
+    case WIFI_MOD_CLASS_UHR:
         return MHz_u{320};
     default:
         NS_ABORT_MSG("Unknown modulation class: " << modulation);
@@ -331,6 +350,13 @@ bool
 IsEht(WifiPreamble preamble)
 {
     return ((preamble == WIFI_PREAMBLE_EHT_MU) || (preamble == WIFI_PREAMBLE_EHT_TB));
+}
+
+bool
+IsUhr(WifiPreamble preamble)
+{
+    return ((preamble == WIFI_PREAMBLE_UHR_MU) || (preamble == WIFI_PREAMBLE_UHR_TB) ||
+            (preamble == WIFI_PREAMBLE_UHR_ELR));
 }
 
 } // namespace ns3
