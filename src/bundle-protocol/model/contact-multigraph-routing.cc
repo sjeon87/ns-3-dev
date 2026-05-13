@@ -130,7 +130,7 @@ ContactMultigraphRouting::AddTimedContact(const std::string& fromEID,
     std::vector<ContactWindow>& edgeList = m_multigraph[src][dst];
 
     bool inserted = false;
-    for (std::vector<ContactWindow>::iterator it = edgeList.begin(); it != edgeList.end(); ++it)
+    for (auto it = edgeList.begin(); it != edgeList.end(); ++it)
     {
         if (cw.startTime < it->startTime)
         {

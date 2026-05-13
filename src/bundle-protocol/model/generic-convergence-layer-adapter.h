@@ -40,7 +40,7 @@ class BundleCla : public Object
     static TypeId GetTypeId();
 
     BundleCla();
-    virtual ~BundleCla() override;
+    ~BundleCla() override;
 
     /**
      * @brief Callback signature for passing received bundles up to the agent.

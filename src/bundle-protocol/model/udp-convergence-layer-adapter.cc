@@ -108,7 +108,7 @@ UdpBundleCla::HandleRead(Ptr<Socket> socket)
     {
         NS_LOG_DEBUG("Received UDP datagram of size " << packet->GetSize() << " from " << from);
         uint32_t size = packet->GetSize();
-        uint8_t* buf = new uint8_t[size];
+        auto* buf = new uint8_t[size];
         packet->CopyData(buf, size);
         Ptr<Packet> fresh = Create<Packet>(buf, size);
         delete[] buf;

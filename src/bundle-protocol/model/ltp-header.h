@@ -138,7 +138,7 @@ class LtpExtension
         LTPEXT_COOKIE = 1 //!< LTP cookie extension
     };
 
-    uint32_t GetSerializedSize(void) const;
+    uint32_t GetSerializedSize() const;
 
     uint32_t Deserialize(Buffer::Iterator& start);
     void Serialize(Buffer::Iterator& start) const;
@@ -210,16 +210,16 @@ class LtpHeader : public Header
      * @param sId Session Id.
      */
     LtpHeader(SegmentType segmentType, SessionId sId);
-    ~LtpHeader();
+    ~LtpHeader() override;
 
-    static TypeId GetTypeId(void);
-    virtual TypeId GetInstanceTypeId(void) const;
+    static TypeId GetTypeId();
+    TypeId GetInstanceTypeId() const override;
 
-    virtual uint32_t Deserialize(Buffer::Iterator start);
-    virtual void Serialize(Buffer::Iterator start) const;
+    uint32_t Deserialize(Buffer::Iterator start) override;
+    void Serialize(Buffer::Iterator start) const override;
 
-    virtual uint32_t GetSerializedSize(void) const;
-    virtual void Print(std::ostream& os) const;
+    uint32_t GetSerializedSize() const override;
+    void Print(std::ostream& os) const override;
 
     /* Setter Methods */
 
@@ -323,16 +323,16 @@ class LtpTrailer : public Trailer
 {
   public:
     LtpTrailer();
-    ~LtpTrailer();
+    ~LtpTrailer() override;
 
-    static TypeId GetTypeId(void);
-    virtual TypeId GetInstanceTypeId(void) const;
+    static TypeId GetTypeId();
+    TypeId GetInstanceTypeId() const override;
 
-    virtual uint32_t Deserialize(Buffer::Iterator start);
-    virtual void Serialize(Buffer::Iterator start) const;
+    uint32_t Deserialize(Buffer::Iterator start) override;
+    void Serialize(Buffer::Iterator start) const override;
 
-    virtual uint32_t GetSerializedSize(void) const;
-    virtual void Print(std::ostream& os) const;
+    uint32_t GetSerializedSize() const override;
+    void Print(std::ostream& os) const override;
 
     /**
      * @param extension Extension object.
@@ -370,14 +370,14 @@ class LtpContentHeader : public Header
 
     LtpContentHeader();
     LtpContentHeader(SegmentType);
-    ~LtpContentHeader();
+    ~LtpContentHeader() override;
 
-    static TypeId GetTypeId(void);
-    virtual TypeId GetInstanceTypeId(void) const;
-    virtual uint32_t Deserialize(Buffer::Iterator start);
-    virtual void Serialize(Buffer::Iterator start) const;
-    virtual uint32_t GetSerializedSize(void) const;
-    virtual void Print(std::ostream& os) const;
+    static TypeId GetTypeId();
+    TypeId GetInstanceTypeId() const override;
+    uint32_t Deserialize(Buffer::Iterator start) override;
+    void Serialize(Buffer::Iterator start) const override;
+    uint32_t GetSerializedSize() const override;
+    void Print(std::ostream& os) const override;
 
     /* Setter Methods */
 

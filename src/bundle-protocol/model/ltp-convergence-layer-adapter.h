@@ -99,7 +99,7 @@ class LtpQueueSet : public Object
      * @brief Get Type Id.
      * @return the object TypeId
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
 
     /**
      * @brief LtpQueueSet Constructor
@@ -112,7 +112,7 @@ class LtpQueueSet : public Object
      * @brief Destructor
      * Destructor
      */
-    virtual ~LtpQueueSet();
+    ~LtpQueueSet() override;
     /**
      * Push a packet in the queue set, this method checks the LTP Segment type and enqueues
      * it in the corresponding priority queue.
@@ -125,23 +125,23 @@ class LtpQueueSet : public Object
      * extracted first)
      * @return the packet.
      */
-    Ptr<Packet> Dequeue(void);
+    Ptr<Packet> Dequeue();
     /**
      * Peek the front packet based on priority
      * @return the packet.
      */
-    Ptr<const Packet> Peek(void) const;
+    Ptr<const Packet> Peek() const;
     /**
      * Pull a packet from the queue based on priority (internal operation queue packets are
      * extracted first)
      * @return the packet.
      */
-    Ptr<Packet> Remove(void);
+    Ptr<Packet> Remove();
     /**
      * Get N packets from the queue
      * @return the packet.
      */
-    uint32_t GetNPackets(void) const;
+    uint32_t GetNPackets() const;
 
     std::queue<Ptr<Packet>> m_internalOps; //!< Internal Operation Queue.
     std::queue<Ptr<Packet>> m_appData;     //!< Application Data Queue.
@@ -162,7 +162,7 @@ class ClientServiceStatus : public Object
      * @brief Get the type ID.
      * @return the object TypeId
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
 
     /**
      * @brief Default constructor.
@@ -251,7 +251,7 @@ class SessionStateRecord : public Object
      * @brief Get the type ID.
      * @return the object TypeId
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
 
     /**
      * @brief Default Constructor
@@ -363,13 +363,13 @@ class SessionStateRecord : public Object
      * @brief Dequeue a packet to transmit
      * @return Dequeued Packet.
      */
-    Ptr<Packet> Dequeue(void);
+    Ptr<Packet> Dequeue();
 
     /**
      * @brief Get number of queued packets
      * @return Number of packets.
      */
-    uint32_t GetNPackets(void) const;
+    uint32_t GetNPackets() const;
 
     /**
      * @brief Insert a reception claim. Should be called upon reception of a data
@@ -668,7 +668,7 @@ class SenderSessionStateRecord : public SessionStateRecord
      * @brief Get the type ID.
      * @return the object TypeId
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
 
     /**
      * @brief Default Constructor
@@ -763,7 +763,7 @@ class ReceiverSessionStateRecord : public SessionStateRecord
      * @brief Get the type ID.
      * @return the object TypeId
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
 
     /**
      * @brief Default Constructor

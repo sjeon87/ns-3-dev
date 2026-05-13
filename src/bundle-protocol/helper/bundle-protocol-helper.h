@@ -85,7 +85,7 @@ class BundleAgentContainer
      *
      * @returns an iterator which refers to the first BundleAgent in the container.
      */
-    Iterator Begin(void) const;
+    Iterator Begin() const;
 
     /**
      * @brief Get an iterator which indicates past-the-last BundleAgent in the
@@ -106,7 +106,7 @@ class BundleAgentContainer
      *
      * @returns an iterator which indicates an ending condition for a loop.
      */
-    Iterator End(void) const;
+    Iterator End() const;
 
     /**
      * @brief Get the number of Ptr<BundleAgent> stored in this container.
@@ -128,7 +128,7 @@ class BundleAgentContainer
      *
      * @returns the number of Ptr<BundleAgent> stored in this container.
      */
-    uint32_t GetN(void) const;
+    uint32_t GetN() const;
 
     /**
      * @brief Get the Ptr<BundleAgent> stored in this container at a given
@@ -258,19 +258,19 @@ class BundleClaContainer
      * Get an iterator to the first CLA.
      * @returns Iterator to first CLA.
      */
-    Iterator Begin(void) const;
+    Iterator Begin() const;
 
     /**
      * Get an iterator to the last CLA.
      * @returns Iterator to last CLA.
      */
-    Iterator End(void) const;
+    Iterator End() const;
 
     /**
      * Returns the size of the CLA Container
      * @returns size of CLA pointer list.
      */
-    uint32_t GetN(void) const;
+    uint32_t GetN() const;
 
     /**
      * Returns a pointer to the i-th CLA.

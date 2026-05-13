@@ -60,7 +60,8 @@ Eid::Read(Buffer::Iterator& i)
     else if (scheme == 2)
     {
         uint8_t peek = i.PeekU8();
-        uint64_t nodeNum, serviceNum;
+        uint64_t nodeNum;
+        uint64_t serviceNum;
         if ((peek & 0xE0) == 0x80)
         {
             Cbor::ReadArray(i);

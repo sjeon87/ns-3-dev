@@ -58,7 +58,7 @@ PrimaryBlock::SerializeToPacket() const
     if (m_header.GetCrcType() == 1)
     {
         uint32_t size = p->GetSize();
-        uint8_t* buf = new uint8_t[size];
+        auto* buf = new uint8_t[size];
         p->CopyData(buf, size);
 
         buf[size - 2] = 0x00;
@@ -140,7 +140,7 @@ PayloadBlock::Deserialize(Ptr<Packet> p)
     NS_LOG_FUNCTION(this << p);
 
     uint32_t available = p->GetSize();
-    uint8_t* buf = new uint8_t[available];
+    auto* buf = new uint8_t[available];
     p->CopyData(buf, available);
 
     Buffer tmp;

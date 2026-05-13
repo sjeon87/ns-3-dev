@@ -106,8 +106,7 @@ ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> con
         Time delay = Seconds(kv.second.delaySeconds);
 
         double durationSeconds = (tEnd - tStart).GetSeconds();
-        uint32_t totalVolume =
-            static_cast<uint32_t>(static_cast<double>(rate) * durationSeconds / 8.0);
+        auto totalVolume = static_cast<uint32_t>(static_cast<double>(rate) * durationSeconds / 8.0);
 
         NS_LOG_DEBUG("Contact " << from << " -> " << to << " | rate=" << rate << " bps"
                                 << " | duration=" << durationSeconds << " s"
