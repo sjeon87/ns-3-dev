@@ -5,7 +5,10 @@
  */
 #include "udp-echo-client.h"
 
+#include "seq-ts-echo-header.h"
+
 #include "ns3/address-utils.h"
+#include "ns3/boolean.h"
 #include "ns3/log.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
@@ -67,6 +70,11 @@ UdpEchoClient::GetTypeId()
                 UintegerValue(100),
                 MakeUintegerAccessor(&UdpEchoClient::SetDataSize, &UdpEchoClient::GetDataSize),
                 MakeUintegerChecker<uint32_t>())
+            .AddAttribute("EnableSeqTsEchoHeader",
+                          "Enable use of SeqTsEchoHeader for sequence number and timestamps",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&UdpEchoClient::m_enableSeqTsEchoHeader),
+                          MakeBooleanChecker())
             .AddTraceSource("Rx",
                             "A packet has been received",
                             MakeTraceSourceAccessor(&UdpEchoClient::m_rxTrace),
@@ -78,7 +86,11 @@ UdpEchoClient::GetTypeId()
             .AddTraceSource("RxWithAddresses",
                             "A packet has been received",
                             MakeTraceSourceAccessor(&UdpEchoClient::m_rxTraceWithAddresses),
-                            "ns3::Packet::TwoAddressTracedCallback");
+                            "ns3::Packet::TwoAddressTracedCallback")
+            .AddTraceSource("RxWithSeqTsEchoHeader",
+                            "A packet has been received",
+                            MakeTraceSourceAccessor(&UdpEchoClient::m_rxTraceWithSeqTsEcho),
+                            "ns3::UdpEchoClient::SeqTsEchoCallback");
     return tid;
 }
 
@@ -87,6 +99,7 @@ UdpEchoClient::UdpEchoClient()
 {
     NS_LOG_FUNCTION(this);
     m_protocolTid = TypeId::LookupByName("ns3::UdpSocketFactory");
+    m_enableSeqTsEchoHeader = false;
 }
 
 UdpEchoClient::~UdpEchoClient()
@@ -96,6 +109,12 @@ UdpEchoClient::~UdpEchoClient()
     delete[] m_data;
     m_data = nullptr;
     m_dataSize = 0;
+}
+
+void
+UdpEchoClient::DoDispose()
+{
+    SourceApplication::DoDispose();
 }
 
 void
@@ -164,6 +183,11 @@ void
 UdpEchoClient::DoStartApplication()
 {
     NS_LOG_FUNCTION(this);
+    if (m_socket == nullptr)
+    {
+        m_socket = Socket::CreateSocket(GetNode(), m_protocolTid);
+        m_socket->Bind();
+    }
     m_socket->SetRecvCallback(MakeCallback(&UdpEchoClient::HandleRead, this));
     m_socket->SetAllowBroadcast(true);
     ScheduleTransmit(Time(0));
@@ -308,7 +332,19 @@ UdpEchoClient::Send()
         // this case, we don't worry about it either.  But we do allow m_size
         // to have a value different from the (zero) m_dataSize.
         //
-        p = Create<Packet>(m_size);
+        if (m_enableSeqTsEchoHeader)
+        {
+            SeqTsEchoHeader header;
+            header.SetSeq(m_sent);
+            header.SetTsValue(Simulator::Now());
+            NS_ABORT_IF(m_size < header.GetSerializedSize());
+            p = Create<Packet>(m_size - header.GetSerializedSize());
+            p->AddHeader(header);
+        }
+        else
+        {
+            p = Create<Packet>(m_size);
+        }
     }
     Address localAddress;
     m_socket->GetSockName(localAddress);
@@ -316,7 +352,7 @@ UdpEchoClient::Send()
     // so that tags added to the packet can be sent as well
     m_txTrace(p);
     m_txTraceWithAddresses(p, localAddress, m_peer);
-    m_socket->Send(p);
+    m_socket->SendTo(p, 0, m_peer);
     ++m_sent;
 
     if (InetSocketAddress::IsMatchingType(m_peer))
@@ -363,6 +399,16 @@ UdpEchoClient::HandleRead(Ptr<Socket> socket)
         socket->GetSockName(localAddress);
         m_rxTrace(packet);
         m_rxTraceWithAddresses(packet, from, localAddress);
+
+        if (m_enableSeqTsEchoHeader)
+        {
+            SeqTsEchoHeader header;
+            packet->RemoveHeader(header);
+            NS_LOG_DEBUG("Seq=" << header.GetSeq() << " TsValue=" << header.GetTsValue().As(Time::S)
+                                << " TsEchoReply=" << header.GetTsEchoReply().As(Time::S));
+            header.SetTsValue(Simulator::Now() - header.GetTsEchoReply());
+            m_rxTraceWithSeqTsEcho(packet, from, localAddress, header);
+        }
     }
 }
 

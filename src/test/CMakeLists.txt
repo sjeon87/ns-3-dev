@@ -9,7 +9,28 @@ if((dsr IN_LIST ns3-all-enabled-modules)
 endif()
 # cmake-format: on
 
-set(application_sources)
+set(applications_sources)
+if(applications
+   IN_LIST
+   ns3-all-enabled-modules
+)
+  if((traffic-control
+      IN_LIST
+      ns3-all-enabled-modules
+     )
+     AND (point-to-point
+          IN_LIST
+          ns3-all-enabled-modules
+         )
+  )
+    # cmake-format: off
+  set(applications_sources
+      applications/flent-application-test-suite.cc
+  )
+  # cmake-format: on
+  endif()
+endif()
+set(tcp_sources)
 set(csma_sources)
 set(wifi_sources)
 if(applications
@@ -21,7 +42,7 @@ if(applications
      ns3-all-enabled-modules
   )
     # cmake-format: off
-    set(applications_sources
+set(tcp_sources
         ns3tcp/ns3tcp-cubic-test-suite.cc
         ns3tcp/ns3tcp-loss-test-suite.cc
         ns3tcp/ns3tcp-no-delay-test-suite.cc
@@ -96,6 +117,7 @@ add_library(
   ${PROJECT_SOURCE_DIR}/build-support/empty.cc # empty source file if only
   # libcore is enabled
   ${applications_sources}
+  ${tcp_sources}
   ${csma_sources}
   ${dsr_sources}
   ${internet_sources}

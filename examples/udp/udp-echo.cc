@@ -7,7 +7,7 @@
 //       n0    n1   n2   n3
 //       |     |    |    |
 //       =================
-//              LAN
+//             LAN
 //
 // - UDP flows from n0 to n1 and back
 // - DropTail queues
@@ -41,10 +41,12 @@ main(int argc, char* argv[])
     // run-time, via command-line arguments
     //
     bool useV6 = false;
+    bool enableSeqTsEchoHeader = false;
     Address serverAddress;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("useIpv6", "Use Ipv6", useV6);
+    cmd.AddValue("enableSeqTsEchoHeader", "enable SeqTsEchoHeader", enableSeqTsEchoHeader);
     cmd.Parse(argc, argv);
     //
     // Explicitly create the nodes required by the topology (shown above).
@@ -91,6 +93,7 @@ main(int argc, char* argv[])
     //
     uint16_t port = 9; // well-known echo port number
     UdpEchoServerHelper server(port);
+    server.SetAttribute("EnableSeqTsEchoHeader", BooleanValue(enableSeqTsEchoHeader));
     ApplicationContainer apps = server.Install(n.Get(1));
     apps.Start(Seconds(1));
     apps.Stop(Seconds(10));
@@ -106,6 +109,7 @@ main(int argc, char* argv[])
     client.SetAttribute("MaxPackets", UintegerValue(maxPacketCount));
     client.SetAttribute("Interval", TimeValue(interPacketInterval));
     client.SetAttribute("PacketSize", UintegerValue(packetSize));
+    client.SetAttribute("EnableSeqTsEchoHeader", BooleanValue(enableSeqTsEchoHeader));
     apps = client.Install(n.Get(0));
     apps.Start(Seconds(2));
     apps.Stop(Seconds(10));

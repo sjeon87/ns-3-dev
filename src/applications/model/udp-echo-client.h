@@ -7,6 +7,7 @@
 #ifndef UDP_ECHO_CLIENT_H
 #define UDP_ECHO_CLIENT_H
 
+#include "seq-ts-echo-header.h"
 #include "source-application.h"
 
 #include "ns3/deprecated.h"
@@ -21,6 +22,7 @@ namespace ns3
 {
 
 class Packet;
+class SeqTsEchoHeader;
 
 /**
  * @ingroup udpecho
@@ -120,6 +122,22 @@ class UdpEchoClient : public SourceApplication
      */
     void SetFill(uint8_t* fill, uint32_t fillSize, uint32_t dataSize);
 
+    /**
+     * TracedCallback signature for a reception with addresses and SeqTsEchoHeader
+     *
+     * @param p The packet received (without the SeqTsEcho header)
+     * @param from From address
+     * @param to Local address
+     * @param header The SeqTsEcho header
+     */
+    typedef void (*SeqTsEchoCallback)(Ptr<const Packet> p,
+                                      const Address& from,
+                                      const Address& to,
+                                      const SeqTsEchoHeader& header);
+
+  protected:
+    void DoDispose(void) override;
+
   private:
     void DoStartApplication() override;
     void CancelEvents() override;
@@ -165,8 +183,9 @@ class UdpEchoClient : public SourceApplication
     Time m_interval;  //!< Packet inter-send time
     uint32_t m_size;  //!< Size of the sent packet
 
-    uint32_t m_dataSize{0};   //!< packet payload size (must be equal to m_size)
-    uint8_t* m_data{nullptr}; //!< packet payload data
+    uint32_t m_dataSize{0};       //!< packet payload size (must be equal to m_size)
+    uint8_t* m_data{nullptr};     //!< packet payload data
+    bool m_enableSeqTsEchoHeader; //!< Enable or disable use of SeqTsEchoHeader
 
     uint32_t m_sent{0};                 //!< Counter for sent packets
     std::optional<uint16_t> m_peerPort; //!< Remote peer port (deprecated) // NS_DEPRECATED_3_44
@@ -180,6 +199,11 @@ class UdpEchoClient : public SourceApplication
 
     /// Callbacks for tracing the packet Rx events, includes source and destination addresses
     TracedCallback<Ptr<const Packet>, const Address&, const Address&> m_rxTraceWithAddresses;
+
+    /// Callback for tracing the packet Rx events, includes source, destination, the packet sent,
+    /// and header
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsEchoHeader&>
+        m_rxTraceWithSeqTsEcho;
 };
 
 } // namespace ns3

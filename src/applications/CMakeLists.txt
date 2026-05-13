@@ -2,6 +2,7 @@ build_lib(
   LIBNAME applications
   SOURCE_FILES
     helper/bulk-send-helper.cc
+    helper/flent-helper.cc
     helper/on-off-helper.cc
     helper/packet-sink-helper.cc
     helper/three-gpp-http-helper.cc
@@ -9,6 +10,7 @@ build_lib(
     helper/udp-echo-helper.cc
     model/application-packet-probe.cc
     model/bulk-send-application.cc
+    model/flent-application.cc
     model/onoff-application.cc
     model/packet-loss-counter.cc
     model/packet-sink.cc
@@ -32,6 +34,7 @@ build_lib(
     model/udp-trace-client.cc
   HEADER_FILES
     helper/bulk-send-helper.h
+    helper/flent-helper.h
     helper/on-off-helper.h
     helper/packet-sink-helper.h
     helper/three-gpp-http-helper.h
@@ -39,6 +42,7 @@ build_lib(
     helper/udp-echo-helper.h
     model/application-packet-probe.h
     model/bulk-send-application.h
+    model/flent-application.h
     model/onoff-application.h
     model/packet-loss-counter.h
     model/packet-sink.h
@@ -60,7 +64,11 @@ build_lib(
     model/udp-echo-server.h
     model/udp-server.h
     model/udp-trace-client.h
-  LIBRARIES_TO_LINK ${libinternet}
+  LIBRARIES_TO_LINK
+    ${libinternet}
+    ${libinternet-apps}
+    ${libstats}
+    jsoncpp
   TEST_SOURCES
     test/three-gpp-http-client-server-test.cc
     test/bulk-send-application-test-suite.cc

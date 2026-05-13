@@ -51,3 +51,16 @@ build_lib_example(
     ${libinternet}
     ${libnetwork}
 )
+
+build_lib_example(
+  NAME flent-example
+  SOURCE_FILES flent-example.cc
+  LIBRARIES_TO_LINK
+    ${libapplications}
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libnetwork}
+    ${libcore}
+    ${libtraffic-control}
+    ${libinternet-apps}
+)
