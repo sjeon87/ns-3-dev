@@ -18,24 +18,6 @@
 namespace ns3
 {
 
-bool
-operator==(const WifiMode& a, const WifiMode& b)
-{
-    return a.GetUid() == b.GetUid();
-}
-
-bool
-operator!=(const WifiMode& a, const WifiMode& b)
-{
-    return a.GetUid() != b.GetUid();
-}
-
-bool
-operator<(const WifiMode& a, const WifiMode& b)
-{
-    return a.GetUid() < b.GetUid();
-}
-
 std::ostream&
 operator<<(std::ostream& os, const WifiMode& mode)
 {

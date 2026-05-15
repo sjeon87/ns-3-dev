@@ -54,27 +54,16 @@ struct WifiSpectrumModelId
     MHz_u channelWidth;                   ///< channel width
     Hz_u carrierSpacing;                  ///< carrier spacing
     MHz_u guardBandwidth;                 ///< guard band width
-};
 
-/**
- * Less than operator
- * @param lhs the left hand side wifi spectrum to compare
- * @param rhs the right hand side wifi spectrum to compare
- * @returns true if the left hand side spectrum is less than the right hand side spectrum
- */
-bool
-operator<(const WifiSpectrumModelId& lhs, const WifiSpectrumModelId& rhs)
-{
-    return std::tie(lhs.centerFrequencies,
-                    lhs.channelWidth,
-                    lhs.carrierSpacing,
-                    lhs.guardBandwidth) < std::tie(rhs.centerFrequencies,
-                                                   rhs.channelWidth,
-                                                   rhs.carrierSpacing,
-                                                   rhs.guardBandwidth);
-    // TODO: replace with default spaceship operator, but it seems currently not working with all
-    // compilers
-}
+    /**
+     * Spaceship comparison operator.
+     * All the other comparison operators are automatically generated from this one.
+     *
+     * @param other WifiSpectrumModelId to compare to this one
+     * @returns The result of the comparison.
+     */
+    auto operator<=>(const WifiSpectrumModelId& other) const = default;
+};
 
 static std::map<WifiSpectrumModelId, Ptr<SpectrumModel>>
     g_wifiSpectrumModelMap; ///< static initializer for the class
@@ -1114,22 +1103,16 @@ WifiSpectrumValueHelper::GetBandPowerW(Ptr<SpectrumValue> psd,
     return power;
 }
 
-bool
-operator<(const FrequencyRange& left, const FrequencyRange& right)
+std::partial_ordering
+operator<=>(const FrequencyRange& left, const FrequencyRange& right)
 {
-    return left.minFrequency < right.minFrequency;
+    return left.minFrequency <=> right.minFrequency;
 }
 
 bool
 operator==(const FrequencyRange& left, const FrequencyRange& right)
 {
     return (left.minFrequency == right.minFrequency) && (left.maxFrequency == right.maxFrequency);
-}
-
-bool
-operator!=(const FrequencyRange& left, const FrequencyRange& right)
-{
-    return !(left == right);
 }
 
 std::ostream&

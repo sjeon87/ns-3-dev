@@ -311,14 +311,14 @@ struct FrequencyRange
 };
 
 /**
- * Compare two FrequencyRange values
+ * Three-way compare two FrequencyRange values
  *
  * @param lhs the FrequencyRange value on the left of operator
  * @param rhs the FrequencyRange value on the right of operator
  *
- * @return true if minFrequency of left is less than minFrequency of right, false otherwise
+ * @return The result of the comparison.
  */
-bool operator<(const FrequencyRange& lhs, const FrequencyRange& rhs);
+std::partial_ordering operator<=>(const FrequencyRange& lhs, const FrequencyRange& rhs);
 
 /**
  * Compare two FrequencyRange values
@@ -330,17 +330,6 @@ bool operator<(const FrequencyRange& lhs, const FrequencyRange& rhs);
  * maxFrequency of right respectively, false otherwise
  */
 bool operator==(const FrequencyRange& lhs, const FrequencyRange& rhs);
-
-/**
- * Compare two FrequencyRange values
- *
- * @param lhs the FrequencyRange value on the left of operator
- * @param rhs the FrequencyRange value on the right of operator
- *
- * @return true if either minFrequency or maxFrequency of left different from minFrequency or
- * maxFrequency of right respectively, false otherwise
- */
-bool operator!=(const FrequencyRange& lhs, const FrequencyRange& rhs);
 
 /**
  * Serialize FrequencyRange values to ostream (human-readable).

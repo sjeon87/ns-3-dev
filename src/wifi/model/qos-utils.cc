@@ -72,44 +72,24 @@ WifiAc::GetOtherTid(uint8_t tid) const
     NS_ABORT_MSG("TID " << tid << " does not belong to this AC");
 }
 
-bool
-operator>(AcIndex left, AcIndex right)
+std::strong_ordering
+operator<=>(AcIndex left, AcIndex right)
 {
     NS_ABORT_MSG_IF(left > 3 || right > 3, "Cannot compare non-QoS ACs");
 
     if (left == right)
     {
-        return false;
+        return std::strong_ordering::equal;
     }
     if (left == AC_BK)
     {
-        return false;
+        return std::strong_ordering::less;
     }
     if (right == AC_BK)
     {
-        return true;
+        return std::strong_ordering::greater;
     }
-    return static_cast<uint8_t>(left) > static_cast<uint8_t>(right);
-}
-
-bool
-operator>=(AcIndex left, AcIndex right)
-{
-    NS_ABORT_MSG_IF(left > 3 || right > 3, "Cannot compare non-QoS ACs");
-
-    return (left == right || left > right);
-}
-
-bool
-operator<(AcIndex left, AcIndex right)
-{
-    return !(left >= right);
-}
-
-bool
-operator<=(AcIndex left, AcIndex right)
-{
-    return !(left > right);
+    return static_cast<uint8_t>(left) <=> static_cast<uint8_t>(right);
 }
 
 const std::map<AcIndex, WifiAc> wifiAcList = {

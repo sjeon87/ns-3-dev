@@ -774,12 +774,6 @@ HeMuUserInfo::operator==(const HeMuUserInfo& other) const
     return ru == other.ru && mcs == other.mcs && nss == other.nss;
 }
 
-bool
-HeMuUserInfo::operator!=(const HeMuUserInfo& other) const
-{
-    return !(*this == other);
-}
-
 WifiTxVector::UserInfoMapOrderedByRus
 WifiTxVector::GetUserInfoMapOrderedByRus(uint8_t p20Index) const
 {

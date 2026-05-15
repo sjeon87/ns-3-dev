@@ -342,16 +342,10 @@ operator==(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs)
     return lhs.m_rxTag == rhs.m_rxTag;
 }
 
-bool
-operator!=(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs)
+std::weak_ordering
+operator<=>(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs)
 {
-    return !(lhs == rhs);
-}
-
-bool
-operator<(const WifiPpduRxRecord& lhs, const WifiPpduRxRecord& rhs)
-{
-    return lhs.m_rxTag < rhs.m_rxTag;
+    return lhs.m_rxTag <=> rhs.m_rxTag;
 }
 
 WifiPhyTraceStatistics
@@ -385,12 +379,6 @@ operator==(const WifiPhyTraceStatistics& lhs, const WifiPhyTraceStatistics& rhs)
            lhs.m_failedPpdus == rhs.m_failedPpdus && lhs.m_receivedPpdus == rhs.m_receivedPpdus &&
            lhs.m_receivedMpdus == rhs.m_receivedMpdus && lhs.m_failedMpdus == rhs.m_failedMpdus &&
            lhs.m_ppduDropReasons == rhs.m_ppduDropReasons;
-}
-
-bool
-operator!=(const WifiPhyTraceStatistics& lhs, const WifiPhyTraceStatistics& rhs)
-{
-    return !(lhs == rhs);
 }
 
 void
