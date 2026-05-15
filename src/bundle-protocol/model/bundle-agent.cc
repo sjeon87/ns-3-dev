@@ -131,8 +131,8 @@ BundleAgent::RegisterCla(const std::string& destinationEID, Ptr<BundleCla> cla)
 
     if (ret.second)
     {
-        NS_LOG_DEBUG("Registered new CLA for " << destinationEID
-                                               << ". Checking entire storage backlog...");
+        NS_LOG_DEBUG(m_localEID << " - Registered new CLA for " << destinationEID
+                                << ". Checking entire storage backlog...");
         ProcessAllBacklog();
     }
 
@@ -143,6 +143,7 @@ void
 BundleAgent::UnregisterCla(const std::string& destinationEID)
 {
     NS_LOG_FUNCTION(this << destinationEID);
+    NS_LOG_DEBUG(m_localEID << " - Deregistered CLA for " << destinationEID);
     m_clas.erase(destinationEID);
 }
 
@@ -155,7 +156,7 @@ BundleAgent::GetClaForDestination(const std::string& eid) const
     {
         return it->second;
     }
-    NS_LOG_WARN("No CLA registered for destination EID: " << eid);
+    NS_LOG_WARN(m_localEID << " - No CLA registered for destination EID: " << eid);
     return nullptr;
 }
 
@@ -211,7 +212,7 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
 
     if (IsLocalDestination(destinationEID))
     {
-        NS_LOG_DEBUG("TransmitBundle: Destination is local, routing to self.");
+        NS_LOG_DEBUG(m_localEID << " - TransmitBundle: Destination is local, routing to self.");
         RecvBundle(bundle);
         return 0;
     }
@@ -219,7 +220,8 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     uint32_t handle = m_bundleStorageEngine->StoreBundle(bundle);
     if (handle == 0)
     {
-        NS_LOG_WARN("TransmitBundle: storage full, dropping bundle to " << destinationEID);
+        NS_LOG_WARN(m_localEID << " - TransmitBundle: storage full, dropping bundle to "
+                               << destinationEID);
         return 0;
     }
 
@@ -229,8 +231,8 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
     uint32_t result = ForwardBundle(handle);
     if (result != 0)
     {
-        NS_LOG_DEBUG("TransmitBundle: no CLA available yet, bundle "
-                     << handle << " held in storage for " << destinationEID);
+        NS_LOG_DEBUG(m_localEID << " - TransmitBundle: no CLA available yet, bundle " << handle
+                                << " held in storage for " << destinationEID);
         return handle;
     }
     return 0;
@@ -244,7 +246,7 @@ BundleAgent::ForwardBundle(uint32_t handle)
     Ptr<Bundle> bundle = m_bundleStorageEngine->RetrieveBundle(handle);
     if (!bundle)
     {
-        NS_LOG_WARN("ForwardBundle: handle " << handle << " not found in storage");
+        NS_LOG_WARN(m_localEID << " - ForwardBundle: handle " << handle << " not found in storage");
         return 1;
     }
 
@@ -252,7 +254,7 @@ BundleAgent::ForwardBundle(uint32_t handle)
 
     if (!m_contactGraph)
     {
-        NS_LOG_WARN("ForwardBundle: No ContactGraph set! Cannot route.");
+        NS_LOG_WARN(m_localEID << " - ForwardBundle: No ContactGraph set! Cannot route.");
         return 1;
     }
 
@@ -260,14 +262,16 @@ BundleAgent::ForwardBundle(uint32_t handle)
 
     if (nextHopEID.empty())
     {
-        NS_LOG_DEBUG("ForwardBundle: No active route to " << destination << " yet. Bundle held.");
+        NS_LOG_DEBUG(m_localEID << " - ForwardBundle: No active route to " << destination
+                                << " yet. Bundle held.");
         return 1;
     }
 
     Ptr<BundleCla> cla = GetClaForDestination(nextHopEID);
     if (!cla)
     {
-        NS_LOG_DEBUG("ForwardBundle: no CLA for next hop " << nextHopEID << ", bundle held");
+        NS_LOG_DEBUG(m_localEID << " - ForwardBundle: no CLA for next hop " << nextHopEID
+                                << ", bundle held");
         return 1;
     }
 
@@ -275,9 +279,9 @@ BundleAgent::ForwardBundle(uint32_t handle)
     uint32_t bundleSize = packet->GetSize();
     cla->Send(packet);
 
-    NS_LOG_DEBUG("ForwardBundle: sent bundle handle="
-                 << handle << " to final destination " << destination << " via next hop "
-                 << nextHopEID << " size=" << bundleSize << " bytes");
+    NS_LOG_DEBUG(m_localEID << " - ForwardBundle: sent bundle handle=" << handle
+                            << " to final destination " << destination << " via next hop "
+                            << nextHopEID << " size=" << bundleSize << " bytes");
     m_contactGraph->ReserveVolume(m_localEID, nextHopEID, bundleSize);
 
     auto evIt = m_expiryEvents.find(handle);
@@ -297,11 +301,11 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
     NS_ASSERT_MSG(bundle, "RecvBundle called with null bundle");
 
     std::string destination = bundle->GetDestinationEID();
-    NS_LOG_DEBUG("RecvBundle: received bundle destined for " << destination);
+    NS_LOG_DEBUG(m_localEID << " - RecvBundle: received bundle destined for " << destination);
 
     if (IsLocalDestination(destination))
     {
-        NS_LOG_DEBUG("RecvBundle: delivering bundle locally");
+        NS_LOG_DEBUG(m_localEID << " - RecvBundle: delivering bundle locally");
 
         if (!m_receiveCallback.IsNull())
         {
@@ -311,7 +315,7 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
         uint32_t handle = m_bundleStorageEngine->StoreBundle(bundle);
         if (handle == 0)
         {
-            NS_LOG_WARN("RecvBundle: storage full, dropping received bundle");
+            NS_LOG_WARN(m_localEID << " - RecvBundle: storage full, dropping received bundle");
             return 1;
         }
 
@@ -331,12 +335,14 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
     }
     else
     {
-        NS_LOG_DEBUG("RecvBundle: intermediate node, storing for forwarding to " << destination);
+        NS_LOG_DEBUG(m_localEID << " - RecvBundle: intermediate node, storing for forwarding to "
+                                << destination);
 
         uint32_t handle = m_bundleStorageEngine->StoreBundle(bundle);
         if (handle == 0)
         {
-            NS_LOG_WARN("RecvBundle: storage full, cannot store bundle for forwarding");
+            NS_LOG_WARN(m_localEID
+                        << " - RecvBundle: storage full, cannot store bundle for forwarding");
             return 1;
         }
 
@@ -352,8 +358,8 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
 
         if (ForwardBundle(handle) != 0)
         {
-            NS_LOG_DEBUG("RecvBundle: no CLA available for " << destination << ", bundle " << handle
-                                                             << " held in storage");
+            NS_LOG_DEBUG(m_localEID << " - RecvBundle: no CLA available for " << destination
+                                    << ", bundle " << handle << " held in storage");
         }
         return 0;
     }
@@ -370,8 +376,8 @@ BundleAgent::ExpireBundle(uint32_t handle)
         return 0;
     }
 
-    NS_LOG_DEBUG("ExpireBundle: bundle handle=" << handle << " destined for "
-                                                << bundle->GetDestinationEID() << " has expired");
+    NS_LOG_DEBUG(m_localEID << " - ExpireBundle: bundle handle=" << handle << " destined for "
+                            << bundle->GetDestinationEID() << " has expired");
 
     uint32_t flags = bundle->GetPrimaryBlock()->GetHeader().GetProcFlags();
 
@@ -477,8 +483,8 @@ BundleAgent::ProcessBacklog(const std::string& destinationEID)
         return;
     }
 
-    NS_LOG_DEBUG("ProcessBacklog: Found " << pendingHandles.size() << " bundles waiting for "
-                                          << destinationEID);
+    NS_LOG_DEBUG(m_localEID << " - ProcessBacklog: Found " << pendingHandles.size()
+                            << " bundles waiting for " << destinationEID << " from " << m_localEID);
 
     for (uint32_t handle : pendingHandles)
     {

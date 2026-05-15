@@ -14,6 +14,7 @@
  */
 #include "ltp-convergence-layer-adapter.h"
 
+#include "ns3/double.h"
 #include "ns3/ipv4-header.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
@@ -935,7 +936,18 @@ void
 ReceiverSessionStateRecord::StoreGreenDataSegment(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
-    m_rxGreendBuffer.push(p);
+
+    LtpHeader header;
+    LtpContentHeader contentHeader;
+    Ptr<Packet> packet = p->Copy();
+
+    packet->RemoveHeader(header);
+    contentHeader.SetSegmentType(header.GetSegmentType());
+    packet->RemoveHeader(contentHeader);
+
+    std::pair<uint32_t, Ptr<Packet>> entry;
+    entry = std::make_pair(contentHeader.GetOffset(), p);
+    m_rxRedBuffer.insert(entry);
 }
 
 Ptr<Packet>
@@ -1013,50 +1025,56 @@ ReceiverSessionStateRecord::GetRpRtxNumber() const
 TypeId
 LtpBundleCla::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::LtpBundleCla")
-                            .SetParent<BundleCla>()
-                            .SetGroupName("BundleProtocol")
-                            .AddConstructor<LtpBundleCla>()
-                            .AddAttribute("CheckPointRetransLimit",
-                                          "Limit for checkpoint retransmissions.",
-                                          UintegerValue(5),
-                                          MakeUintegerAccessor(&LtpBundleCla::m_cpRtxLimit),
-                                          MakeUintegerChecker<uint32_t>())
-                            .AddAttribute("ReportRetransLimit",
-                                          "Limit for report segment retransmissions.",
-                                          UintegerValue(5),
-                                          MakeUintegerAccessor(&LtpBundleCla::m_rpRtxLimit),
-                                          MakeUintegerChecker<uint32_t>())
-                            .AddAttribute("RxProblemLimit",
-                                          "Reception problem limit.",
-                                          UintegerValue(5),
-                                          MakeUintegerAccessor(&LtpBundleCla::m_rxProblemLimit),
-                                          MakeUintegerChecker<uint32_t>())
-                            .AddAttribute("CancellationRetransLimit",
-                                          "Limit for cancellation segment retransmissions.",
-                                          UintegerValue(5),
-                                          MakeUintegerAccessor(&LtpBundleCla::m_cxRtxLimit),
-                                          MakeUintegerChecker<uint32_t>())
-                            .AddAttribute("RetransCycleLimit",
-                                          "Global retransmission cycle limit.",
-                                          UintegerValue(5),
-                                          MakeUintegerAccessor(&LtpBundleCla::m_rtxCycleLimit),
-                                          MakeUintegerChecker<uint32_t>())
-                            .AddAttribute("EngineVersion",
-                                          "LTP Engine Version.",
-                                          UintegerValue(0),
-                                          MakeUintegerAccessor(&LtpBundleCla::m_version),
-                                          MakeUintegerChecker<uint8_t>())
-                            .AddAttribute("LocalDelays",
-                                          "Computed local delay constraint.",
-                                          TimeValue(Seconds(0)),
-                                          MakeTimeAccessor(&LtpBundleCla::m_localDelays),
-                                          MakeTimeChecker())
-                            .AddAttribute("OnewayLightTime",
-                                          "Hard limit on light-time propagation.",
-                                          TimeValue(Seconds(0)),
-                                          MakeTimeAccessor(&LtpBundleCla::SetOnewayLightTime),
-                                          MakeTimeChecker());
+    static TypeId tid =
+        TypeId("ns3::LtpBundleCla")
+            .SetParent<BundleCla>()
+            .SetGroupName("BundleProtocol")
+            .AddConstructor<LtpBundleCla>()
+            .AddAttribute("CheckPointRetransLimit",
+                          "Limit for checkpoint retransmissions.",
+                          UintegerValue(5),
+                          MakeUintegerAccessor(&LtpBundleCla::m_cpRtxLimit),
+                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("ReportRetransLimit",
+                          "Limit for report segment retransmissions.",
+                          UintegerValue(5),
+                          MakeUintegerAccessor(&LtpBundleCla::m_rpRtxLimit),
+                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("RxProblemLimit",
+                          "Reception problem limit.",
+                          UintegerValue(5),
+                          MakeUintegerAccessor(&LtpBundleCla::m_rxProblemLimit),
+                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("CancellationRetransLimit",
+                          "Limit for cancellation segment retransmissions.",
+                          UintegerValue(5),
+                          MakeUintegerAccessor(&LtpBundleCla::m_cxRtxLimit),
+                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("RetransCycleLimit",
+                          "Global retransmission cycle limit.",
+                          UintegerValue(5),
+                          MakeUintegerAccessor(&LtpBundleCla::m_rtxCycleLimit),
+                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("EngineVersion",
+                          "LTP Engine Version.",
+                          UintegerValue(0),
+                          MakeUintegerAccessor(&LtpBundleCla::m_version),
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute("LocalDelays",
+                          "Computed local delay constraint.",
+                          TimeValue(Seconds(0)),
+                          MakeTimeAccessor(&LtpBundleCla::m_localDelays),
+                          MakeTimeChecker())
+            .AddAttribute("OnewayLightTime",
+                          "Hard limit on light-time propagation.",
+                          TimeValue(Seconds(0)),
+                          MakeTimeAccessor(&LtpBundleCla::SetOnewayLightTime),
+                          MakeTimeChecker())
+            .AddAttribute("RedPartRatio",
+                          "Ratio of the block to be sent as reliable Red data (0.0 to 1.0).",
+                          DoubleValue(1.0),
+                          MakeDoubleAccessor(&LtpBundleCla::m_redPartRatio),
+                          MakeDoubleChecker<double>(0.0, 1.0));
     return tid;
 }
 
@@ -1181,11 +1199,12 @@ LtpBundleCla::Send(Ptr<Packet> p)
     m_activeSessions.insert(std::make_pair(id, ssend));
     m_activeSessionId = id;
 
-    uint64_t rdSize = p->GetSize();
+    uint64_t totalSize = p->GetSize();
+    auto rdSize = static_cast<uint64_t>(totalSize * m_redPartRatio);
 
-    auto* buffer = new uint8_t[rdSize];
-    p->CopyData(buffer, rdSize);
-    std::vector<uint8_t> data(buffer, buffer + rdSize);
+    auto* buffer = new uint8_t[totalSize];
+    p->CopyData(buffer, totalSize);
+    std::vector<uint8_t> data(buffer, buffer + totalSize);
     ssend->CopyBlockData(data);
     delete[] buffer;
 
@@ -1199,13 +1218,16 @@ LtpBundleCla::Send(Ptr<Packet> p)
 
     ssend->SetBlockFinished();
 
-    RedSegmentInfo info;
-    info.CpserialNum = ssend->GetCpCurrentSerialNumber();
-    info.RpserialNum = 0;
-    info.low_bound = 0;
-    info.high_bound = rdSize;
+    if (rdSize > 0)
+    {
+        RedSegmentInfo info;
+        info.CpserialNum = ssend->GetCpCurrentSerialNumber();
+        info.RpserialNum = 0;
+        info.low_bound = 0;
+        info.high_bound = rdSize;
 
-    SetCheckPointTransmissionTimer(id, info);
+        SetCheckPointTransmissionTimer(id, info);
+    }
 }
 
 bool
@@ -1398,6 +1420,36 @@ LtpBundleCla::CloseSession(SessionId id)
             Simulator::Schedule(m_localDelays, &LtpBundleCla::CloseSession, this, id);
             return;
         }
+
+        if (ssr->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
+        {
+            Ptr<ReceiverSessionStateRecord> srecv = DynamicCast<ReceiverSessionStateRecord>(ssr);
+            std::vector<uint8_t> blockData;
+            Ptr<Packet> p = nullptr;
+            LtpHeader header;
+            LtpContentHeader contentHeader;
+
+            while ((p = srecv->RemoveRedDataSegment()))
+            {
+                p->RemoveHeader(header);
+                contentHeader.SetSegmentType(header.GetSegmentType());
+                p->RemoveHeader(contentHeader);
+                uint32_t size = p->GetSize();
+                auto* raw_data = new uint8_t[size];
+                p->CopyData(raw_data, size);
+                blockData.insert(blockData.end(), raw_data, raw_data + size);
+                delete[] raw_data;
+            }
+
+            if (!blockData.empty())
+            {
+                Ptr<Packet> assembledPacket = Create<Packet>(blockData.data(), blockData.size());
+                Ptr<Bundle> bundle = CreateObject<Bundle>();
+                bundle->Deserialize(assembledPacket);
+                NotifyReception(bundle);
+            }
+        }
+
         ssr->CancelTimer(CHECKPOINT);
         ssr->CancelTimer(REPORT);
         auto itCls = m_activeClients.find(ssr->GetLocalClientServiceId());
@@ -1420,41 +1472,11 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
         std::vector<uint8_t> blockData;
         bool EOB = false;
         Address remoteLtp = it->second->GetPeerLtpEngineId();
-        if (it->second->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
-        {
-            Ptr<ReceiverSessionStateRecord> ssr =
-                DynamicCast<ReceiverSessionStateRecord>(it->second);
-            Ptr<Packet> p = nullptr;
-            LtpHeader header;
-            LtpContentHeader contentHeader;
-            while ((p = ssr->RemoveRedDataSegment()))
-            {
-                p->RemoveHeader(header);
-                contentHeader.SetSegmentType(header.GetSegmentType());
-                p->RemoveHeader(contentHeader);
-                uint32_t size = p->GetSize();
-                auto* raw_data = new uint8_t[size];
-                p->CopyData(raw_data, size);
-                std::vector<uint8_t> packetData(raw_data, raw_data + size);
-                blockData.insert(blockData.end(), packetData.begin(), packetData.end());
-                delete[] raw_data;
-            }
-            if (header.GetSegmentType() == LTPTYPE_RD_CP_EORP_EOB)
-            {
-                EOB = true;
-            }
-        }
+
         if (itCls != m_activeClients.end())
         {
             itCls->second
                 ->ReportStatus(id, RED_PART_RCV, blockData, blockData.size(), EOB, remoteLtp);
-        }
-        if (!blockData.empty())
-        {
-            Ptr<Packet> assembledPacket = Create<Packet>(blockData.data(), blockData.size());
-            Ptr<Bundle> bundle = CreateObject<Bundle>();
-            bundle->Deserialize(assembledPacket);
-            NotifyReception(bundle);
         }
     }
 }

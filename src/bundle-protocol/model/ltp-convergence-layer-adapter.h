@@ -1175,6 +1175,7 @@ class LtpBundleCla : public BundleCla
     Callback<void, Ptr<LtpBundleCla>> m_linkDown;               //!< Link down trigger.
     Time m_localDelays;     //!< Computed local delay constraint.
     Time m_onewayLightTime; //!< Hard limit on light-time propagation.
+    double m_redPartRatio;  //!< Ratio of the packet sent as Red data (0.0 to 1.0)
     std::queue<ActivationInterval> m_localOperatingSchedule; //!< Active network windows.
 
     Address m_peerLtpEngineId; //!< Peer Engine ID.

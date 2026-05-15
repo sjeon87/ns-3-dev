@@ -13,6 +13,7 @@
 #include "ns3/ltp-convergence-layer-adapter.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/udp-convergence-layer-adapter.h"
 
 #include <map>
 #include <string>
@@ -21,77 +22,98 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("MarsRelayNetworkExample");
 
-uint32_t g_bundlesSent = 500;
-uint32_t g_bundlesReceived = 0;
-double g_totalDelaySeconds = 0.0;
+static uint32_t g_bundlesSent = 100;
+static uint32_t g_bundlesReceived = 0;
+static double g_totalDelaySeconds = 0.0;
 
 struct StorageStats
 {
     uint64_t cumulativeBundles = 0;
     uint32_t sampleCount = 0;
+    uint32_t peakBundles = 0;
+    double peakTime = 0.0;
 };
 
-std::map<std::string, StorageStats> g_storageMetrics;
+static std::map<std::string, StorageStats> g_storageStats;
 
 struct LinkElements
 {
     Ptr<LtpBundleCla> cla;
-    Ptr<PointToPointNetDevice> device;
+    Ptr<PointToPointNetDevice> localDevice;
+    Ptr<PointToPointNetDevice> remoteDevice;
 };
 
 void
-SendDeepSpaceBundle(Ptr<BundleAgent> agent, std::string destEid)
+SendPacedBundle(Ptr<BundleAgent> agent,
+                std::string destEid,
+                uint32_t bundlesLeft,
+                uint32_t totalSent)
 {
-    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s: Transmitting burst of "
-                           << g_bundlesSent << " bundles...");
-
-    uint32_t payloadSize = 100;
-    std::vector<uint8_t> payloadData(payloadSize, 0xAA);
-    Time ttl = Hours(24);
-
-    for (uint32_t i = 0; i < g_bundlesSent; i++)
+    if (bundlesLeft == 0)
     {
-        agent->TransmitBundle(destEid, "dtn:none", payloadData.data(), payloadSize, ttl, 0);
+        NS_LOG_INFO("Finished sending all " << totalSent << " bundles.");
+        return;
     }
+
+    const uint32_t payloadSize = 100;
+    std::vector<uint8_t> payload(payloadSize, 0xAA);
+    const Time ttl = Hours(24);
+
+    agent->TransmitBundle(destEid, "dtn:none", payload.data(), payloadSize, ttl, 0);
+
+    NS_LOG_INFO("At " << Simulator::Now().GetSeconds() << "s: Sent bundle "
+                      << (totalSent - bundlesLeft + 1) << "/" << totalSent);
+
+    Simulator::Schedule(Seconds(10.0),
+                        &SendPacedBundle,
+                        agent,
+                        destEid,
+                        bundlesLeft - 1,
+                        totalSent);
 }
 
 void
 OnBundleReceived(Ptr<Bundle> bundle)
 {
-    Time creationTime = bundle->GetPrimaryBlock()->GetHeader().GetCreationTime();
-    Time rxTime = Simulator::Now();
-    Time delay = rxTime - creationTime;
+    const Time creationTime = bundle->GetPrimaryBlock()->GetHeader().GetCreationTime();
+    const Time delay = Simulator::Now() - creationTime;
 
-    g_bundlesReceived++;
+    ++g_bundlesReceived;
     g_totalDelaySeconds += delay.GetSeconds();
 
-    NS_LOG_INFO("Received Bundle " << g_bundlesReceived << "/" << g_bundlesSent
-                                   << " | OWT: " << delay.GetSeconds() << "s");
+    NS_LOG_INFO("Received bundle " << g_bundlesReceived << "/" << g_bundlesSent
+                                   << " | OWT: " << delay.GetSeconds() << " s");
 
     if (g_bundlesReceived == g_bundlesSent)
     {
-        NS_LOG_INFO("==================================================");
-        NS_LOG_INFO("SUCCESS! All " << g_bundlesSent << " bundles arrived.");
-        NS_LOG_INFO("Final Average OWT: " << (g_totalDelaySeconds / g_bundlesReceived) << " s");
-        NS_LOG_INFO("==================================================");
+        NS_LOG_INFO("SUCCESS: all " << g_bundlesSent << " bundles delivered.");
+        NS_LOG_INFO("Average OWT: " << (g_totalDelaySeconds / g_bundlesReceived) << " s");
     }
 }
+
+static const uint32_t BUNDLE_SIZE_BYTES = 162;
 
 void
 MonitorStorage(Ptr<BundleAgent> agent, std::string nodeName, Time interval)
 {
-    uint32_t bytesInStorage = agent->GetStorageEngineSize();
-    uint32_t estimatedBundles = bytesInStorage / 1061;
+    const uint32_t bytes = agent->GetStorageEngineSize();
+    const uint32_t estimatedBundles = bytes / BUNDLE_SIZE_BYTES;
 
-    if (bytesInStorage > 0)
+    StorageStats& stats = g_storageStats[nodeName];
+    stats.cumulativeBundles += estimatedBundles;
+    ++stats.sampleCount;
+
+    if (estimatedBundles > stats.peakBundles)
     {
-        NS_LOG_INFO(">>> [STORAGE MONITOR] At " << Simulator::Now().GetSeconds() << "s | "
-                                                << nodeName << " has " << estimatedBundles
-                                                << " bundles in custody.");
+        stats.peakBundles = estimatedBundles;
+        stats.peakTime = Simulator::Now().GetSeconds();
     }
 
-    g_storageMetrics[nodeName].cumulativeBundles += estimatedBundles;
-    g_storageMetrics[nodeName].sampleCount++;
+    if (bytes > 0)
+    {
+        NS_LOG_INFO("[STORAGE] " << Simulator::Now().GetSeconds() << "s | " << nodeName << ": "
+                                 << estimatedBundles << " bundle(s) in custody.");
+    }
 
     Simulator::Schedule(interval, &MonitorStorage, agent, nodeName, interval);
 }
@@ -100,35 +122,42 @@ void
 LinkUp(Ptr<BundleAgent> agent,
        std::string destEid,
        Ptr<LtpBundleCla> cla,
-       Ptr<PointToPointNetDevice> device,
-       uint32_t dataRate)
+       Ptr<PointToPointNetDevice> localDevice,
+       Ptr<PointToPointNetDevice> remoteDevice,
+       uint32_t dataRateBps)
 {
-    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds()
-                           << "s: Contact UP - Registering CLA for " << destEid << " at "
-                           << dataRate << " bps");
+    NS_LOG_INFO("At " << Simulator::Now().GetSeconds() << "s: Contact UP  " << agent->GetLocalEID()
+                      << " -> " << destEid << " @ " << dataRateBps << " bps");
 
-    device->SetAttribute("DataRate", DataRateValue(DataRate(dataRate)));
+    DataRateValue dr{DataRate(dataRateBps)};
+    localDevice->SetAttribute("DataRate", dr);
+    remoteDevice->SetAttribute("DataRate", dr);
     agent->RegisterCla(destEid, cla);
 }
 
 void
-LinkDown(Ptr<BundleAgent> agent, std::string destEid, Ptr<PointToPointNetDevice> device)
+LinkDown(Ptr<BundleAgent> agent,
+         std::string destEid,
+         Ptr<PointToPointNetDevice> localDevice,
+         Ptr<PointToPointNetDevice> remoteDevice)
 {
-    NS_LOG_INFO("At time " << Simulator::Now().GetSeconds()
-                           << "s: Contact DOWN - Unregistering CLA for " << destEid);
+    NS_LOG_INFO("At " << Simulator::Now().GetSeconds() << "s: Contact DOWN " << agent->GetLocalEID()
+                      << " -> " << destEid);
 
     agent->UnregisterCla(destEid);
-    device->SetAttribute("DataRate", DataRateValue(DataRate("1bps")));
+    DataRateValue sentinel{DataRate("1bps")};
+    localDevice->SetAttribute("DataRate", sentinel);
+    remoteDevice->SetAttribute("DataRate", sentinel);
 }
 
 Time
-GetDelayForPair(const std::string& eidA,
-                const std::string& eidB,
-                const std::vector<ContactWindow>& windows)
+GetPropagationDelay(const std::string& fromEid,
+                    const std::string& toEid,
+                    const std::vector<ContactWindow>& windows)
 {
     for (const auto& w : windows)
     {
-        if (w.fromEID == eidA && w.toEID == eidB)
+        if (w.fromEID == fromEid && w.toEID == toEid)
         {
             return w.delay;
         }
@@ -140,29 +169,25 @@ int
 main(int argc, char* argv[])
 {
     LogComponentEnable("MarsRelayNetworkExample", LOG_LEVEL_ALL);
+    // LogComponentEnable("BundleAgent", LOG_LEVEL_ALL);
     // LogComponentEnable("LtpBundleCla", LOG_LEVEL_ALL);
 
-    std::string contactPlanPath = "src/bundle-protocol/examples/contactGraph.csv";
-
-    std::vector<std::string> mrnEids = {"dtn://earth/dsn",
-                                        "dtn://mars/mro",
-                                        "dtn://mars/odyssey",
-                                        "dtn://mars/mvn",
-                                        "dtn://mars/tgo",
-                                        "dtn://mars/msl",
-                                        "dtn://mars/m2020",
-                                        "dtn://mars/insight",
-                                        "dtn://mars/ingenuity"};
-    uint32_t numNodes = mrnEids.size();
+    const std::string contactPlanPath = "src/bundle-protocol/examples/contactGraph.csv";
 
     ContactGraphHelper cgrHelper;
     cgrHelper.SetContactPlan(contactPlanPath);
-
     cgrHelper.SetRoutingEngine("ns3::ContactMultigraphRouting");
 
     Ptr<BaseRoutingEngine> contactGraph = cgrHelper.Install();
+    const std::vector<ContactWindow>& windows = contactGraph->GetContactWindows();
 
-    const auto& contactWindows = contactGraph->GetContactWindows();
+    const std::vector<std::string> eids = {
+        "dtn://earth/dsn",
+        "dtn://mars/tgo",
+        "dtn://mars/mro",
+        "dtn://mars/ingenuity",
+    };
+    const uint32_t numNodes = eids.size();
 
     NodeContainer nodes;
     nodes.Create(numNodes);
@@ -170,54 +195,45 @@ main(int argc, char* argv[])
     InternetStackHelper stack;
     stack.Install(nodes);
 
-    Ipv4AddressHelper address;
-    address.SetBase("10.1.1.0", "255.255.255.252");
+    std::map<std::string, Ptr<BundleAgent>> agentMap;
 
     BundleAgentHelper agentHelper;
-
-    std::map<std::string, Ptr<BundleAgent>> agentMap;
-    std::map<std::pair<std::string, std::string>, LinkElements> linkMap;
-
     for (uint32_t i = 0; i < numNodes; ++i)
     {
-        Ptr<Node> node = nodes.Get(i);
-        const std::string& eid = mrnEids[i];
+        agentHelper.SetBpEndpointId(eids[i]);
+        BundleAgentContainer container = agentHelper.Install(nodes.Get(i));
+        Ptr<BundleAgent> agent = container.Get(0);
 
-        agentHelper.SetBpEndpointId(eid);
-        BundleAgentContainer agentContainer = agentHelper.Install(node);
-        Ptr<BundleAgent> agent = agentContainer.Get(0);
-        node->AggregateObject(agent);
-
+        nodes.Get(i)->AggregateObject(agent);
         agent->SetContactGraph(contactGraph);
         agent->SetReceiveCallback(MakeCallback(&OnBundleReceived));
 
-        agentMap[eid] = agent;
+        agentMap[eids[i]] = agent;
     }
 
-    PointToPointHelper p2p;
-    p2p.SetDeviceAttribute("DataRate", StringValue("1bps"));
-    p2p.SetChannelAttribute("Delay", StringValue("1ms"));
+    Ipv4AddressHelper address;
+    address.SetBase("10.1.1.0", "255.255.255.252");
 
-    uint16_t ltpPort = 1113;
+    const uint16_t ltpPort = 1113;
+
+    std::map<std::pair<std::string, std::string>, LinkElements> linkMap;
 
     for (uint32_t i = 0; i < numNodes; ++i)
     {
         for (uint32_t j = i + 1; j < numNodes; ++j)
         {
-            std::string eidI = mrnEids[i];
-            std::string eidJ = mrnEids[j];
+            const std::string& eidI = eids[i];
+            const std::string& eidJ = eids[j];
+            const Time delay = GetPropagationDelay(eidI, eidJ, windows);
 
-            Time linkDelay = GetDelayForPair(eidI, eidJ, contactWindows);
+            NS_LOG_INFO("Creating link " << eidI << " <-> " << eidJ
+                                         << " | prop delay: " << delay.GetSeconds() << " s");
 
             PointToPointHelper p2p;
             p2p.SetDeviceAttribute("DataRate", StringValue("1bps"));
-            p2p.SetChannelAttribute("Delay", TimeValue(linkDelay));
+            p2p.SetChannelAttribute("Delay", TimeValue(delay));
 
             NetDeviceContainer devices = p2p.Install(nodes.Get(i), nodes.Get(j));
-
-            Ptr<Channel> channel = devices.Get(0)->GetChannel();
-            channel->SetAttribute("Delay", TimeValue(linkDelay));
-
             Ipv4InterfaceContainer ifaces = address.Assign(devices);
             address.NewNetwork();
 
@@ -227,104 +243,110 @@ main(int argc, char* argv[])
             Ptr<LtpBundleCla> claI = CreateObject<LtpBundleCla>();
             Ptr<LtpBundleCla> claJ = CreateObject<LtpBundleCla>();
 
-            claI->SetAttribute("OnewayLightTime", TimeValue(linkDelay));
-            claJ->SetAttribute("OnewayLightTime", TimeValue(linkDelay));
-
             InetSocketAddress addrI(ifaces.GetAddress(0), ltpPort);
             InetSocketAddress addrJ(ifaces.GetAddress(1), ltpPort);
 
             claI->Setup(nodes.Get(i), addrI, addrJ);
             claJ->Setup(nodes.Get(j), addrJ, addrI);
 
+            claI->SetAttribute("OnewayLightTime", TimeValue(delay));
+            claI->SetAttribute("RedPartRatio", DoubleValue(0.2));
+            claJ->SetAttribute("OnewayLightTime", TimeValue(delay));
+            claJ->SetAttribute("RedPartRatio", DoubleValue(0.2));
+
             claI->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, agentMap[eidI]));
             claJ->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, agentMap[eidJ]));
 
-            linkMap[{eidI, eidJ}] = {claI, devI};
-            linkMap[{eidJ, eidI}] = {claJ, devJ};
+            linkMap[{eidI, eidJ}] = {claI, devI, devJ};
+            linkMap[{eidJ, eidI}] = {claJ, devJ, devI};
         }
     }
 
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
-    for (const auto& window : contactWindows)
+    for (const auto& w : windows)
     {
-        auto linkIt = linkMap.find({window.fromEID, window.toEID});
-        auto agentIt = agentMap.find(window.fromEID);
+        auto linkIt = linkMap.find({w.fromEID, w.toEID});
+        auto agentIt = agentMap.find(w.fromEID);
 
-        if (linkIt != linkMap.end() && agentIt != agentMap.end())
+        if (linkIt == linkMap.end() || agentIt == agentMap.end())
         {
-            LinkElements link = linkIt->second;
-            Ptr<BundleAgent> srcAgent = agentIt->second;
-
-            Simulator::Schedule(window.startTime,
-                                &LinkUp,
-                                srcAgent,
-                                window.toEID,
-                                link.cla,
-                                link.device,
-                                window.dataRate);
-            Simulator::Schedule(window.endTime, &LinkDown, srcAgent, window.toEID, link.device);
+            continue;
         }
+
+        const LinkElements& link = linkIt->second;
+        Ptr<BundleAgent> agent = agentIt->second;
+
+        Simulator::Schedule(w.startTime,
+                            &LinkUp,
+                            agent,
+                            w.toEID,
+                            link.cla,
+                            link.localDevice,
+                            link.remoteDevice,
+                            w.dataRate);
+
+        Simulator::Schedule(w.endTime,
+                            &LinkDown,
+                            agent,
+                            w.toEID,
+                            link.localDevice,
+                            link.remoteDevice);
     }
 
     Ptr<BundleAgent> dsnAgent = agentMap["dtn://earth/dsn"];
-    std::string destinationEid = "dtn://mars/ingenuity";
+    const std::string destEid = "dtn://mars/ingenuity";
+    const Time sendStart = Seconds(1000.0);
 
-    Simulator::Schedule(Seconds(0.0), &SendDeepSpaceBundle, dsnAgent, destinationEid);
+    Simulator::Schedule(sendStart,
+                        &SendPacedBundle,
+                        dsnAgent,
+                        destEid,
+                        g_bundlesSent,
+                        g_bundlesSent);
 
-    // Track storage for key nodes along the expected paths
-    Time checkInterval = Seconds(500.0);
-    Simulator::Schedule(Seconds(1.0),
-                        &MonitorStorage,
-                        agentMap["dtn://earth/dsn"],
-                        "Earth DSN",
-                        checkInterval);
+    const Time monitorInterval = Seconds(200.0);
+
     Simulator::Schedule(Seconds(1.0),
                         &MonitorStorage,
                         agentMap["dtn://mars/tgo"],
                         "Mars TGO",
-                        checkInterval);
+                        monitorInterval);
     Simulator::Schedule(Seconds(1.0),
                         &MonitorStorage,
-                        agentMap["dtn://mars/m2020"],
-                        "Perseverance",
-                        checkInterval);
+                        agentMap["dtn://mars/mro"],
+                        "Mars MRO",
+                        monitorInterval);
+    Simulator::Schedule(Seconds(1.0),
+                        &MonitorStorage,
+                        agentMap["dtn://earth/dsn"],
+                        "Earth DSN",
+                        monitorInterval);
 
-    NS_LOG_INFO("Starting Deep Space MRN Simulation...");
+    NS_LOG_INFO("Starting Mars Relay Network simulation...");
 
     Simulator::Stop(Seconds(86400.0));
     Simulator::Run();
 
-    NS_LOG_INFO("Simulation Finished.");
-    NS_LOG_INFO("================= SIMULATION RESULTS =================");
-    NS_LOG_INFO("Total Bundles Sent:     " << g_bundlesSent);
-    NS_LOG_INFO("Total Bundles Received: " << g_bundlesReceived);
+    NS_LOG_INFO("Simulation finished.");
+    NS_LOG_INFO("Bundles sent:     " << g_bundlesSent);
+    NS_LOG_INFO("Bundles received: " << g_bundlesReceived);
 
     if (g_bundlesReceived > 0)
     {
-        NS_LOG_INFO("Delivery Ratio:         "
-                    << ((double)g_bundlesReceived / g_bundlesSent) * 100.0 << "%");
-        NS_LOG_INFO("Average One-Way Time:   " << (g_totalDelaySeconds / g_bundlesReceived)
-                                               << " seconds");
-    }
-    else
-    {
-        NS_LOG_INFO("Average One-Way Time:   N/A (0 bundles received)");
+        NS_LOG_INFO("Delivery ratio:   " << (100.0 * g_bundlesReceived / g_bundlesSent) << " %");
+        NS_LOG_INFO("Average OWT:      " << (g_totalDelaySeconds / g_bundlesReceived) << " s");
     }
 
-    NS_LOG_INFO("----------------- BUFFER UTILIZATION -----------------");
-    for (const auto& pair : g_storageMetrics)
+    for (const auto& [name, stats] : g_storageStats)
     {
-        double averageBundles = 0.0;
-        if (pair.second.sampleCount > 0)
-        {
-            averageBundles = (double)pair.second.cumulativeBundles / pair.second.sampleCount;
-        }
-        NS_LOG_INFO(pair.first << " Average Backlog: " << averageBundles << " bundles");
+        const double avg = stats.sampleCount > 0
+                               ? static_cast<double>(stats.cumulativeBundles) / stats.sampleCount
+                               : 0.0;
+        NS_LOG_INFO(name << " | avg backlog: " << avg << " bundles | peak: " << stats.peakBundles
+                         << " bundles at t=" << stats.peakTime << " s");
     }
-    NS_LOG_INFO("======================================================");
 
     Simulator::Destroy();
-
     return 0;
 }
