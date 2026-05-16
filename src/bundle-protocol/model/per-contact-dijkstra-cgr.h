@@ -127,8 +127,9 @@ class PerContactDijkstraCGR : public BaseRoutingEngine
      * * Runs one Dijkstra per source node using Wait Time, Transmission Time, and
      * Propagation Delay to find the path with the Earliest Arrival Time (EAT).
      * Calculates and sets the next time the cache naturally expires based on the contact plan.
+     * @param bundleSize size of the bundle.
      */
-    void RecomputeRoutingTable();
+    void RecomputeRoutingTable(uint32_t bundleSize);
 
     std::vector<std::string> m_eidList;                //!< Index -> EID lookup
     uint32_t m_size;                                   //!< Total number of nodes

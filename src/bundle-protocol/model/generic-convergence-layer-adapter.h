@@ -61,16 +61,23 @@ class BundleCla : public Object
 
     /**
      * @brief Send a serialized bundle packet out over the convergence layer.
-     * * @param packet The serialized bundle to send.
-     * * @note This is a pure virtual function and must be implemented by concrete CLAs.
+     * @param packet The serialized bundle to send.
+     * @param bundleHandle The handle for the bundle to be sent.
+     * @note This is a pure virtual function and must be implemented by concrete CLAs.
      */
-    virtual void Send(Ptr<Packet> packet) = 0;
+    virtual void Send(Ptr<Packet> packet, uint32_t bundleHandle = 0) = 0;
 
     /**
      * @brief Check if the CLA is ready to send data.
      * @return true if the underlying link/socket is up.
      */
     virtual bool IsUp() const = 0;
+
+    /**
+     * @brief Sets the callback for the result of a Tx
+     * @param cb Callback for the TxResult
+     */
+    void SetTxResultCallback(Callback<void, uint32_t, bool> cb);
 
   protected:
     /**
@@ -80,8 +87,9 @@ class BundleCla : public Object
      */
     void ForwardUp(Ptr<Bundle> bundle);
 
-  private:
+  protected:
     RxCallback m_rxCallback; //!< The callback to trigger on bundle reception
+    Callback<void, uint32_t, bool> m_txResultCb;
 };
 
 } // namespace ns3

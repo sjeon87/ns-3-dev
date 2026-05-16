@@ -314,7 +314,6 @@ void
 SessionStateRecord::CancelTimer(TimerCode type)
 {
     NS_LOG_FUNCTION(this << type);
-
     switch (type)
     {
     case CHECKPOINT:
@@ -399,7 +398,6 @@ SessionStateRecord::SetCpStartSerialNumber(uint64_t serialNum)
     if (m_firstCpSerialNumber == 0)
     {
         m_firstCpSerialNumber = serialNum;
-
         if (m_currentCpSerialNumber == 0)
         {
             m_currentCpSerialNumber = serialNum;
@@ -445,17 +443,14 @@ SessionStateRecord::InsertClaim(uint32_t serialNum,
                                 LtpContentHeader::ReceptionClaim claim)
 {
     NS_LOG_FUNCTION(this << serialNum << low << high << claim.offset << claim.length);
-
     auto it = m_rcvSegments.find(serialNum);
     bool ret = false;
-
     if (it == m_rcvSegments.end())
     {
         RedSegmentInfo info;
         info.low_bound = low;
         info.high_bound = high;
         info.claims.insert(claim);
-
         std::pair<uint64_t, RedSegmentInfo> entry;
         entry = std::make_pair(serialNum, info);
         ret = m_rcvSegments.insert(entry).second;
@@ -466,7 +461,6 @@ SessionStateRecord::InsertClaim(uint32_t serialNum,
         it->second.high_bound = high;
         ret = it->second.claims.insert(claim).second;
     }
-
     return ret;
 }
 
@@ -474,22 +468,18 @@ bool
 SessionStateRecord::StoreClaims(LtpContentHeader reportHeader)
 {
     NS_LOG_FUNCTION(this);
-
     bool ret = false;
-
     for (uint32_t i = 0; i < reportHeader.GetRxClaimCnt(); i++)
     {
         ret = InsertClaim(reportHeader.GetRpSerialNumber(),
                           reportHeader.GetLowerBound(),
                           reportHeader.GetUpperBound(),
                           reportHeader.GetReceptionClaim(i));
-
         if (!ret)
         {
             break;
         }
     }
-
     return ret;
 }
 
@@ -497,14 +487,11 @@ uint32_t
 SessionStateRecord::GetNClaims(uint32_t serialNum) const
 {
     NS_LOG_FUNCTION(this << serialNum);
-
     auto it = m_rcvSegments.find(serialNum);
-
     if (it != m_rcvSegments.end())
     {
         return it->second.claims.size();
     }
-
     return 0;
 }
 
@@ -512,11 +499,8 @@ uint32_t
 SessionStateRecord::GetClaimsUpperBound(uint32_t serialNum)
 {
     NS_LOG_FUNCTION(this << serialNum);
-
     auto it = m_rcvSegments.find(serialNum);
-
     uint32_t upper = 0;
-
     if (it != m_rcvSegments.end())
     {
         upper = it->second.high_bound;
@@ -528,11 +512,8 @@ uint32_t
 SessionStateRecord::GetClaimsLowerBound(uint32_t serialNum)
 {
     NS_LOG_FUNCTION(this << serialNum);
-
     uint32_t lower = 0;
-
     auto it = m_rcvSegments.find(serialNum);
-
     if (it != m_rcvSegments.end())
     {
         lower = it->second.high_bound;
@@ -544,9 +525,7 @@ std::set<LtpContentHeader::ReceptionClaim>
 SessionStateRecord::GetClaims(uint64_t reportSerialNumber)
 {
     NS_LOG_FUNCTION(this << reportSerialNumber);
-
     auto it = m_rcvSegments.find(reportSerialNumber);
-
     if (it != m_rcvSegments.end())
     {
         return it->second.claims;
@@ -563,7 +542,6 @@ SessionStateRecord::FindMissingClaims(uint32_t serialNum)
     NS_LOG_FUNCTION(this << serialNum);
     uint32_t last_upper = 0;
     std::set<LtpContentHeader::ReceptionClaim> report_claims = GetClaims(serialNum);
-
     RedSegmentInfo missing_claims;
     missing_claims.high_bound = GetRedPartLength();
     missing_claims.low_bound = 0;
@@ -589,7 +567,6 @@ SessionStateRecord::FindMissingClaims(uint32_t serialNum)
         missing.length = redPartLength - last_upper;
         missing_claims.claims.insert(missing);
     }
-
     return missing_claims;
 }
 
@@ -777,7 +754,8 @@ SenderSessionStateRecord::SenderSessionStateRecord()
       m_destinationClientServiceId(0),
       m_txData(),
       m_cpTxCnt(0),
-      m_redpartAckSuccess(false)
+      m_redpartAckSuccess(false),
+      m_bundleHandle(0)
 {
     NS_LOG_FUNCTION(this);
 }
@@ -791,14 +769,13 @@ SenderSessionStateRecord::SenderSessionStateRecord(Address localLtpEngineId,
       m_destinationClientServiceId(destinationClientService),
       m_txData(),
       m_cpTxCnt(0),
-      m_redpartAckSuccess(false)
+      m_redpartAckSuccess(false),
+      m_bundleHandle(0)
 {
     NS_LOG_FUNCTION(this << localLtpEngineId << localClientServiceId << destinationClientService
                          << destinationLtpEngine << number);
-
     m_sessionId =
         SessionId(0, number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER));
-
     m_firstCpSerialNumber =
         number->GetInteger(MIN_INITIAL_SERIAL_NUMBER, MAX_INITIAL_SERIAL_NUMBER);
     m_currentCpSerialNumber = m_firstCpSerialNumber;
@@ -869,6 +846,18 @@ SenderSessionStateRecord::IncrementCpRtxNumber()
     m_cpTxCnt++;
 }
 
+void
+SenderSessionStateRecord::SetBundleHandle(uint32_t handle)
+{
+    m_bundleHandle = handle;
+}
+
+uint32_t
+SenderSessionStateRecord::GetBundleHandle() const
+{
+    return m_bundleHandle;
+}
+
 TypeId
 ReceiverSessionStateRecord::GetTypeId()
 {
@@ -898,7 +887,6 @@ ReceiverSessionStateRecord::ReceiverSessionStateRecord(Address localLtpEngineId,
       m_rxGreendBuffer()
 {
     NS_LOG_FUNCTION(this << localLtpEngineId << localClientServiceId << session);
-
     m_sessionId = session;
     m_firstCpSerialNumber = 0;
     m_currentCpSerialNumber = 0;
@@ -916,19 +904,14 @@ void
 ReceiverSessionStateRecord::StoreRedDataSegment(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
-
     LtpHeader header;
     LtpContentHeader contentHeader;
-
     Ptr<Packet> packet = p->Copy();
-
     packet->RemoveHeader(header);
     contentHeader.SetSegmentType(header.GetSegmentType());
     packet->RemoveHeader(contentHeader);
-
     std::pair<uint32_t, Ptr<Packet>> entry;
     entry = std::make_pair(contentHeader.GetOffset(), p);
-
     m_rxRedBuffer.insert(entry);
 }
 
@@ -936,15 +919,12 @@ void
 ReceiverSessionStateRecord::StoreGreenDataSegment(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
-
     LtpHeader header;
     LtpContentHeader contentHeader;
     Ptr<Packet> packet = p->Copy();
-
     packet->RemoveHeader(header);
     contentHeader.SetSegmentType(header.GetSegmentType());
     packet->RemoveHeader(contentHeader);
-
     std::pair<uint32_t, Ptr<Packet>> entry;
     entry = std::make_pair(contentHeader.GetOffset(), p);
     m_rxRedBuffer.insert(entry);
@@ -1081,7 +1061,6 @@ LtpBundleCla::GetTypeId()
 LtpBundleCla::LtpBundleCla()
 {
     NS_LOG_FUNCTION(this);
-
     m_linkUp = MakeNullCallback<void, Ptr<LtpBundleCla>>();
     m_linkDown = MakeNullCallback<void, Ptr<LtpBundleCla>>();
     m_checkpointSent = MakeNullCallback<void, SessionId, RedSegmentInfo>();
@@ -1102,15 +1081,12 @@ LtpBundleCla::Setup(Ptr<Node> node, Address localAddress, Address remoteAddress)
     m_node = node;
     m_localEngineId = localAddress;
     SetRemoteEngineId(remoteAddress);
-
     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
     m_rcvSocket = Socket::CreateSocket(m_node, tid);
-
     if (m_rcvSocket->Bind(localAddress) == -1)
     {
         NS_LOG_ERROR("Failed to bind LTP socket to local address");
     }
-
     m_rcvSocket->SetRecvCallback(MakeCallback(&LtpBundleCla::HandleRead, this));
 }
 
@@ -1124,20 +1100,14 @@ void
 LtpBundleCla::SendSegment(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
-
     m_rcvSocket->SendTo(p, 0, GetRemoteEngineId());
-
     LtpHeader header;
     LtpContentHeader contentHeader;
-
     Ptr<Packet> packet = p->Copy();
-
     packet->RemoveHeader(header);
     contentHeader.SetSegmentType(header.GetSegmentType());
     packet->RemoveHeader(contentHeader);
-
     RedSegmentInfo info;
-
     switch (header.GetSegmentType())
     {
     case LTPTYPE_RD_CP_EORP_EOB:
@@ -1153,7 +1123,6 @@ LtpBundleCla::SendSegment(Ptr<Packet> p)
             info.RpserialNum = contentHeader.GetRpSerialNumber();
             info.high_bound = contentHeader.GetUpperBound();
             info.low_bound = contentHeader.GetLowerBound();
-
             m_checkpointSent(m_activeSessionId, info);
         }
         break;
@@ -1170,7 +1139,6 @@ LtpBundleCla::SendSegment(Ptr<Packet> p)
             info.RpserialNum = contentHeader.GetRpSerialNumber();
             info.high_bound = contentHeader.GetUpperBound();
             info.low_bound = contentHeader.GetLowerBound();
-
             m_reportSent(m_activeSessionId, info);
         }
         break;
@@ -1186,38 +1154,30 @@ LtpBundleCla::SendSegment(Ptr<Packet> p)
 }
 
 void
-LtpBundleCla::Send(Ptr<Packet> p)
+LtpBundleCla::Send(Ptr<Packet> p, uint32_t bundleHandle)
 {
     NS_LOG_FUNCTION(this << p);
-
     Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
     Ptr<SenderSessionStateRecord> ssend =
         CreateObject<SenderSessionStateRecord>(m_localEngineId, 0, 0, GetRemoteEngineId(), uv);
-
+    ssend->SetBundleHandle(bundleHandle);
     SessionId id = ssend->GetSessionId();
-
     m_activeSessions.insert(std::make_pair(id, ssend));
     m_activeSessionId = id;
-
     uint64_t totalSize = p->GetSize();
     auto rdSize = static_cast<uint64_t>(totalSize * m_redPartRatio);
-
     auto* buffer = new uint8_t[totalSize];
     p->CopyData(buffer, totalSize);
     std::vector<uint8_t> data(buffer, buffer + totalSize);
     ssend->CopyBlockData(data);
     delete[] buffer;
-
     EncapsulateBlockData(GetRemoteEngineId(), ssend, p, rdSize, false);
-
     Ptr<Packet> segment;
     while ((segment = ssend->Dequeue()))
     {
         SendSegment(segment);
     }
-
     ssend->SetBlockFinished();
-
     if (rdSize > 0)
     {
         RedSegmentInfo info;
@@ -1225,7 +1185,6 @@ LtpBundleCla::Send(Ptr<Packet> p)
         info.RpserialNum = 0;
         info.low_bound = 0;
         info.high_bound = rdSize;
-
         SetCheckPointTransmissionTimer(id, info);
     }
 }
@@ -1301,6 +1260,15 @@ LtpBundleCla::CancelSession(SessionId id)
     if (it != m_activeSessions.end())
     {
         it->second->Cancel(LOCAL_CANCEL, (CxReasonCode)0);
+        if (it->second->GetInstanceTypeId() == SenderSessionStateRecord::GetTypeId())
+        {
+            Ptr<SenderSessionStateRecord> ssend = DynamicCast<SenderSessionStateRecord>(it->second);
+            uint32_t handle = ssend->GetBundleHandle();
+            if (!m_txResultCb.IsNull() && handle != 0)
+            {
+                m_txResultCb(handle, false);
+            }
+        }
         auto itCls = m_activeClients.find(it->second->GetLocalClientServiceId());
         if (itCls != m_activeClients.end())
         {
@@ -1334,7 +1302,6 @@ LtpBundleCla::EncapsulateBlockData(Address remoteAddress,
     p->CopyData(buffer, dataSize);
     std::vector<uint8_t> data(buffer, buffer + dataSize);
     delete[] buffer;
-
     while (offset < dataSize)
     {
         header.SetVersion(version);
@@ -1420,15 +1387,22 @@ LtpBundleCla::CloseSession(SessionId id)
             Simulator::Schedule(m_localDelays, &LtpBundleCla::CloseSession, this, id);
             return;
         }
-
-        if (ssr->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
+        if (ssr->GetInstanceTypeId() == SenderSessionStateRecord::GetTypeId())
+        {
+            Ptr<SenderSessionStateRecord> ssend = DynamicCast<SenderSessionStateRecord>(ssr);
+            uint32_t handle = ssend->GetBundleHandle();
+            if (!m_txResultCb.IsNull() && handle != 0)
+            {
+                m_txResultCb(handle, true);
+            }
+        }
+        else if (ssr->GetInstanceTypeId() == ReceiverSessionStateRecord::GetTypeId())
         {
             Ptr<ReceiverSessionStateRecord> srecv = DynamicCast<ReceiverSessionStateRecord>(ssr);
             std::vector<uint8_t> blockData;
             Ptr<Packet> p = nullptr;
             LtpHeader header;
             LtpContentHeader contentHeader;
-
             while ((p = srecv->RemoveRedDataSegment()))
             {
                 p->RemoveHeader(header);
@@ -1440,7 +1414,6 @@ LtpBundleCla::CloseSession(SessionId id)
                 blockData.insert(blockData.end(), raw_data, raw_data + size);
                 delete[] raw_data;
             }
-
             if (!blockData.empty())
             {
                 Ptr<Packet> assembledPacket = Create<Packet>(blockData.data(), blockData.size());
@@ -1449,7 +1422,6 @@ LtpBundleCla::CloseSession(SessionId id)
                 NotifyReception(bundle);
             }
         }
-
         ssr->CancelTimer(CHECKPOINT);
         ssr->CancelTimer(REPORT);
         auto itCls = m_activeClients.find(ssr->GetLocalClientServiceId());
@@ -1472,7 +1444,6 @@ LtpBundleCla::SignifyRedPartReception(SessionId id)
         std::vector<uint8_t> blockData;
         bool EOB = false;
         Address remoteLtp = it->second->GetPeerLtpEngineId();
-
         if (itCls != m_activeClients.end())
         {
             itCls->second
@@ -1634,17 +1605,24 @@ LtpBundleCla::RetransmitSegment(SessionId id, RedSegmentInfo info)
     if (it != m_activeSessions.end())
     {
         Ptr<SenderSessionStateRecord> ssr = DynamicCast<SenderSessionStateRecord>(it->second);
-        if (ssr && m_cpRtxLimit > ssr->GetCpRtxNumber())
+        if (ssr)
         {
-            std::vector<uint8_t> rdData = ssr->GetBlockData();
-            Ptr<Packet> p = Create<Packet>((uint8_t*)rdData.data(), rdData.size());
-            EncapsulateBlockData(ssr->GetPeerLtpEngineId(), ssr, p, rdData.size(), true);
-            ssr->IncrementCpRtxNumber();
-            while (Ptr<Packet> pkt = ssr->Dequeue())
+            if (m_cpRtxLimit > ssr->GetCpRtxNumber())
             {
-                SendSegment(pkt);
+                std::vector<uint8_t> rdData = ssr->GetBlockData();
+                Ptr<Packet> p = Create<Packet>((uint8_t*)rdData.data(), rdData.size());
+                EncapsulateBlockData(ssr->GetPeerLtpEngineId(), ssr, p, rdData.size(), true);
+                ssr->IncrementCpRtxNumber();
+                while (Ptr<Packet> pkt = ssr->Dequeue())
+                {
+                    SendSegment(pkt);
+                }
+                SetCheckPointTransmissionTimer(id, info);
             }
-            SetCheckPointTransmissionTimer(id, info);
+            else
+            {
+                CancelSession(id);
+            }
         }
     }
 }
@@ -1657,9 +1635,19 @@ LtpBundleCla::RetransmitReport(SessionId id, RedSegmentInfo info)
     if (it != m_activeSessions.end())
     {
         Ptr<ReceiverSessionStateRecord> srecv = DynamicCast<ReceiverSessionStateRecord>(it->second);
-        if (srecv && m_rpRtxLimit > srecv->GetRpRtxNumber())
+        if (srecv)
         {
-            ReportSegmentTransmission(id, info.CpserialNum);
+            if (m_rpRtxLimit > srecv->GetRpRtxNumber())
+            {
+                ReportSegmentTransmission(id, info.CpserialNum);
+
+                srecv->IncrementRpRtxNumber();
+                SetReportReTransmissionTimer(id, info);
+            }
+            else
+            {
+                CancelSession(id);
+            }
         }
     }
 }
@@ -1830,7 +1818,6 @@ uint16_t
 LtpBundleCla::GetMtu() const
 {
     NS_LOG_FUNCTION(this);
-    // MTU = 1500 bytes, IPv4 = 20 bytes, UDP = 8 bytes.
     return 1472;
 }
 

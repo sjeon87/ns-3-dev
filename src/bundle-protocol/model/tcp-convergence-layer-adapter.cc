@@ -104,13 +104,18 @@ TcpBundleCla::ConnectionSucceeded(Ptr<Socket> socket)
     NS_LOG_DEBUG("TCP Connection established to " << m_remoteAddress);
     m_connected = true;
 
-    // Flush any bundles that were queued while we were waiting for the handshake
     while (!m_sendQueue.empty())
     {
-        Ptr<Packet> p = m_sendQueue.front();
+        auto pair = m_sendQueue.front();
         m_sendQueue.pop();
-        int bytes = m_sendSocket->Send(p);
+
+        int bytes = m_sendSocket->Send(pair.first);
         NS_LOG_DEBUG("Flushed queued packet of size " << bytes << " bytes");
+
+        if (!m_txResultCb.IsNull() && pair.second != 0)
+        {
+            m_txResultCb(pair.second, bytes > 0);
+        }
     }
 }
 
@@ -120,37 +125,33 @@ TcpBundleCla::ConnectionFailed(Ptr<Socket> socket)
     NS_LOG_FUNCTION(this << socket);
     NS_LOG_WARN("TCP Connection failed to " << m_remoteAddress);
     m_connected = false;
+
+    while (!m_sendQueue.empty())
+    {
+        auto pair = m_sendQueue.front();
+        m_sendQueue.pop();
+
+        if (!m_txResultCb.IsNull() && pair.second != 0)
+        {
+            m_txResultCb(pair.second, false);
+        }
+    }
 }
 
 void
-TcpBundleCla::Send(Ptr<Packet> packet)
+TcpBundleCla::Send(Ptr<Packet> packet, uint32_t bundleHandle)
 {
-    NS_LOG_FUNCTION(this << packet->GetSize());
-
-    if (!m_isUp)
-    {
-        NS_LOG_WARN("Cannot send: CLA is not configured.");
-        return;
-    }
-
     if (m_connected)
     {
-        // Connection is up, send immediately
         int bytesSent = m_sendSocket->Send(packet);
-        if (bytesSent < 0)
+        if (!m_txResultCb.IsNull() && bundleHandle != 0)
         {
-            NS_LOG_WARN("Socket Send failed.");
-        }
-        else
-        {
-            NS_LOG_DEBUG("Sent " << bytesSent << " bytes via TCP to " << m_remoteAddress);
+            m_txResultCb(bundleHandle, bytesSent > 0);
         }
     }
     else
     {
-        // Handshake is still happening, queue the bundle
-        NS_LOG_DEBUG("Connection pending. Queuing bundle of size " << packet->GetSize());
-        m_sendQueue.push(packet);
+        m_sendQueue.emplace(packet, bundleHandle);
     }
 }
 

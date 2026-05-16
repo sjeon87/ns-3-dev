@@ -743,11 +743,24 @@ class SenderSessionStateRecord : public SessionStateRecord
      */
     void IncrementCpRtxNumber();
 
+    /**
+     * @brief Set the bundle handle for this session.
+     * @param handle The storage engine bundle handle.
+     */
+    void SetBundleHandle(uint32_t handle);
+
+    /**
+     * @brief Get the bundle handle for this session.
+     * @return The storage engine bundle handle.
+     */
+    uint32_t GetBundleHandle() const;
+
   private:
     uint64_t m_destinationClientServiceId; //!< Destination Client Service instance
     std::vector<uint8_t> m_txData;         //!< Block Data to transmit
     uint64_t m_cpTxCnt;                    //!< Count Number of retransmitted checkpoints
     bool m_redpartAckSuccess;              //!< Red part Acknowledged successfully
+    uint32_t m_bundleHandle;               //!< Handle of the bundle in the agent's storage
 };
 
 /**
@@ -899,9 +912,10 @@ class LtpBundleCla : public BundleCla
 
     /**
      * @brief Send a serialized bundle via the LTP connection.
-     * @param packet The serialized bundle to send over the network.
+     * @param p The serialized bundle to send over the network.
+     * @param bundleHandle The tracking handle for the bundle agent's storage.
      */
-    void Send(Ptr<Packet> packet) override;
+    void Send(Ptr<Packet> p, uint32_t bundleHandle) override;
 
     /**
      * @brief Check if the CLA has been configured and is ready to process data.

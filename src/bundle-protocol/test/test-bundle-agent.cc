@@ -38,10 +38,16 @@ class MockBundleCla : public BundleCla
     {
     }
 
-    void Send(Ptr<Packet> packet) override
+    void Send(Ptr<Packet> packet, uint32_t bundleHandle) override
     {
         m_sentCount++;
         m_lastPacketSize = packet->GetSize();
+
+        // Fire the success callback so the BundleAgent knows to delete the bundle from storage
+        if (!m_txResultCb.IsNull() && bundleHandle != 0)
+        {
+            m_txResultCb(bundleHandle, true);
+        }
     }
 
     bool IsUp() const override

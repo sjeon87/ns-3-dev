@@ -22,6 +22,7 @@
 #include "ns3/socket.h"
 
 #include <queue>
+#include <utility>
 #include <vector>
 
 namespace ns3
@@ -73,7 +74,7 @@ class TcpBundleCla : public BundleCla
      * If the handshake is still pending, the packet is queued locally.
      * * @param packet The serialized bundle packet to send over the network.
      */
-    void Send(Ptr<Packet> packet) override;
+    void Send(Ptr<Packet> packet, uint32_t bundleHandle) override;
 
     /**
      * @brief Check if the CLA has been configured and is ready to process data.
@@ -124,7 +125,7 @@ class TcpBundleCla : public BundleCla
     bool m_connected; //!< Flag indicating if the outgoing TCP connection is fully established
     bool m_isUp;      //!< Flag indicating if the Setup method has been executed
 
-    std::queue<Ptr<Packet>>
+    std::queue<std::pair<Ptr<Packet>, uint32_t>>
         m_sendQueue; //!< Queue for packets generated before the connection is established
 };
 

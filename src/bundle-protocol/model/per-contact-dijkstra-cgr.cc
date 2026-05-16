@@ -208,7 +208,7 @@ PerContactDijkstraCGR::ReserveVolume(const std::string& fromEID,
 }
 
 void
-PerContactDijkstraCGR::RecomputeRoutingTable()
+PerContactDijkstraCGR::RecomputeRoutingTable(uint32_t bundleSize)
 {
     if (m_size == 0)
     {
@@ -240,8 +240,6 @@ PerContactDijkstraCGR::RecomputeRoutingTable()
                 << "s");
 
     std::fill(m_nextHopTable.begin(), m_nextHopTable.end(), m_size);
-
-    uint32_t avgBundleSize = 1000;
 
     for (uint32_t s = 0; s < m_size; ++s)
     {
@@ -283,7 +281,7 @@ PerContactDijkstraCGR::RecomputeRoutingTable()
                     continue;
                 }
 
-                if (contact.usedVolume + avgBundleSize > contact.totalVolume)
+                if (contact.usedVolume + bundleSize > contact.totalVolume)
                 {
                     continue;
                 }
@@ -294,7 +292,7 @@ PerContactDijkstraCGR::RecomputeRoutingTable()
                     waitTime = contact.startTime - arrivalTime[u];
                 }
 
-                double txSeconds = (double)(avgBundleSize * 8) / contact.dataRate;
+                double txSeconds = (double)(bundleSize * 8) / contact.dataRate;
                 Time txTime = Seconds(txSeconds);
 
                 if (arrivalTime[u] + waitTime + txTime > contact.endTime)
@@ -358,9 +356,11 @@ PerContactDijkstraCGR::GetNextHop(Ptr<Bundle> bundle, const std::string& currEID
         return destEID;
     }
 
+    uint32_t bundleSize = bundle->GetTotalSize();
+
     if (m_isDirty || Simulator::Now() >= m_nextTopologyChangeTime)
     {
-        RecomputeRoutingTable();
+        RecomputeRoutingTable(bundleSize);
     }
 
     uint32_t nextHop = m_nextHopTable[s * m_size + d];

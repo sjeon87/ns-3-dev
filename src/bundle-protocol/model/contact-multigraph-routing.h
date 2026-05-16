@@ -63,7 +63,7 @@ class ContactMultigraphRouting : public BaseRoutingEngine
     uint32_t FindIndex(const std::string& eid) const;
 
   private:
-    void RecomputeRoutingTable();
+    void RecomputeRoutingTable(uint32_t bundleSize);
 
     std::vector<std::string> m_eidList;
     uint32_t m_size;

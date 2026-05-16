@@ -22,7 +22,7 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("MarsRelayNetworkExample");
 
-static uint32_t g_bundlesSent = 100;
+static uint32_t g_bundlesSent = 15;
 static uint32_t g_bundlesReceived = 0;
 static double g_totalDelaySeconds = 0.0;
 
@@ -44,6 +44,13 @@ struct LinkElements
 };
 
 void
+CheckBacklog(Ptr<BundleAgent> agent)
+{
+    agent->ProcessAllBacklog();
+    Simulator::Schedule(Seconds(1000.0), &CheckBacklog, agent);
+}
+
+void
 SendPacedBundle(Ptr<BundleAgent> agent,
                 std::string destEid,
                 uint32_t bundlesLeft,
@@ -55,7 +62,7 @@ SendPacedBundle(Ptr<BundleAgent> agent,
         return;
     }
 
-    const uint32_t payloadSize = 100;
+    const uint32_t payloadSize = 2000000;
     std::vector<uint8_t> payload(payloadSize, 0xAA);
     const Time ttl = Hours(24);
 
@@ -64,12 +71,7 @@ SendPacedBundle(Ptr<BundleAgent> agent,
     NS_LOG_INFO("At " << Simulator::Now().GetSeconds() << "s: Sent bundle "
                       << (totalSent - bundlesLeft + 1) << "/" << totalSent);
 
-    Simulator::Schedule(Seconds(10.0),
-                        &SendPacedBundle,
-                        agent,
-                        destEid,
-                        bundlesLeft - 1,
-                        totalSent);
+    Simulator::Schedule(Seconds(0.1), &SendPacedBundle, agent, destEid, bundlesLeft - 1, totalSent);
 }
 
 void
@@ -91,7 +93,7 @@ OnBundleReceived(Ptr<Bundle> bundle)
     }
 }
 
-static const uint32_t BUNDLE_SIZE_BYTES = 162;
+static const uint32_t BUNDLE_SIZE_BYTES = 2000162;
 
 void
 MonitorStorage(Ptr<BundleAgent> agent, std::string nodeName, Time interval)
@@ -169,8 +171,6 @@ int
 main(int argc, char* argv[])
 {
     LogComponentEnable("MarsRelayNetworkExample", LOG_LEVEL_ALL);
-    // LogComponentEnable("BundleAgent", LOG_LEVEL_ALL);
-    // LogComponentEnable("LtpBundleCla", LOG_LEVEL_ALL);
 
     const std::string contactPlanPath = "src/bundle-protocol/examples/contactGraph.csv";
 
@@ -196,8 +196,8 @@ main(int argc, char* argv[])
     stack.Install(nodes);
 
     std::map<std::string, Ptr<BundleAgent>> agentMap;
-
     BundleAgentHelper agentHelper;
+
     for (uint32_t i = 0; i < numNodes; ++i)
     {
         agentHelper.SetBpEndpointId(eids[i]);
@@ -215,7 +215,6 @@ main(int argc, char* argv[])
     address.SetBase("10.1.1.0", "255.255.255.252");
 
     const uint16_t ltpPort = 1113;
-
     std::map<std::pair<std::string, std::string>, LinkElements> linkMap;
 
     for (uint32_t i = 0; i < numNodes; ++i)
@@ -226,12 +225,10 @@ main(int argc, char* argv[])
             const std::string& eidJ = eids[j];
             const Time delay = GetPropagationDelay(eidI, eidJ, windows);
 
-            NS_LOG_INFO("Creating link " << eidI << " <-> " << eidJ
-                                         << " | prop delay: " << delay.GetSeconds() << " s");
-
             PointToPointHelper p2p;
             p2p.SetDeviceAttribute("DataRate", StringValue("1bps"));
             p2p.SetChannelAttribute("Delay", TimeValue(delay));
+            p2p.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize", StringValue("100000p"));
 
             NetDeviceContainer devices = p2p.Install(nodes.Get(i), nodes.Get(j));
             Ipv4InterfaceContainer ifaces = address.Assign(devices);
@@ -251,8 +248,11 @@ main(int argc, char* argv[])
 
             claI->SetAttribute("OnewayLightTime", TimeValue(delay));
             claI->SetAttribute("RedPartRatio", DoubleValue(0.2));
+            claI->SetAttribute("CheckPointRetransLimit", UintegerValue(0));
+
             claJ->SetAttribute("OnewayLightTime", TimeValue(delay));
             claJ->SetAttribute("RedPartRatio", DoubleValue(0.2));
+            claJ->SetAttribute("CheckPointRetransLimit", UintegerValue(0));
 
             claI->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, agentMap[eidI]));
             claJ->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, agentMap[eidJ]));
@@ -274,54 +274,50 @@ main(int argc, char* argv[])
             continue;
         }
 
-        const LinkElements& link = linkIt->second;
-        Ptr<BundleAgent> agent = agentIt->second;
-
         Simulator::Schedule(w.startTime,
                             &LinkUp,
-                            agent,
+                            agentIt->second,
                             w.toEID,
-                            link.cla,
-                            link.localDevice,
-                            link.remoteDevice,
+                            linkIt->second.cla,
+                            linkIt->second.localDevice,
+                            linkIt->second.remoteDevice,
                             w.dataRate);
-
         Simulator::Schedule(w.endTime,
                             &LinkDown,
-                            agent,
+                            agentIt->second,
                             w.toEID,
-                            link.localDevice,
-                            link.remoteDevice);
+                            linkIt->second.localDevice,
+                            linkIt->second.remoteDevice);
     }
 
     Ptr<BundleAgent> dsnAgent = agentMap["dtn://earth/dsn"];
-    const std::string destEid = "dtn://mars/ingenuity";
-    const Time sendStart = Seconds(1000.0);
 
-    Simulator::Schedule(sendStart,
+    Simulator::Schedule(Seconds(2000.0), &CheckBacklog, dsnAgent);
+
+    Simulator::Schedule(Seconds(1000.0),
                         &SendPacedBundle,
                         dsnAgent,
-                        destEid,
+                        "dtn://mars/ingenuity",
                         g_bundlesSent,
                         g_bundlesSent);
 
-    const Time monitorInterval = Seconds(200.0);
+    const Time monitorInterval = Seconds(1.0);
 
-    Simulator::Schedule(Seconds(1.0),
-                        &MonitorStorage,
-                        agentMap["dtn://mars/tgo"],
-                        "Mars TGO",
-                        monitorInterval);
-    Simulator::Schedule(Seconds(1.0),
-                        &MonitorStorage,
-                        agentMap["dtn://mars/mro"],
-                        "Mars MRO",
-                        monitorInterval);
-    Simulator::Schedule(Seconds(1.0),
-                        &MonitorStorage,
-                        agentMap["dtn://earth/dsn"],
-                        "Earth DSN",
-                        monitorInterval);
+    // Simulator::Schedule(Seconds(1.0),
+    //                     &MonitorStorage,
+    //                     agentMap["dtn://mars/tgo"],
+    //                     "Mars TGO",
+    //                     monitorInterval);
+    // Simulator::Schedule(Seconds(1.0),
+    //                     &MonitorStorage,
+    //                     agentMap["dtn://mars/mro"],
+    //                     "Mars MRO",
+    //                     monitorInterval);
+    // Simulator::Schedule(Seconds(1.0),
+    //                     &MonitorStorage,
+    //                     agentMap["dtn://earth/dsn"],
+    //                     "Earth DSN",
+    //                     monitorInterval);
 
     NS_LOG_INFO("Starting Mars Relay Network simulation...");
 

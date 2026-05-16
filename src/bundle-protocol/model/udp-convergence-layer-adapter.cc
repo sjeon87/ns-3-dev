@@ -70,7 +70,7 @@ UdpBundleCla::Setup(Ptr<Node> node, Address localAddress, Address remoteAddress)
 }
 
 void
-UdpBundleCla::Send(Ptr<Packet> packet)
+UdpBundleCla::Send(Ptr<Packet> packet, uint32_t bundleHandle)
 {
     NS_LOG_FUNCTION(this << packet->GetSize());
 
@@ -89,6 +89,11 @@ UdpBundleCla::Send(Ptr<Packet> packet)
     else
     {
         NS_LOG_DEBUG("Sent " << bytesSent << " bytes via UDP to " << m_remoteAddress);
+    }
+
+    if (!m_txResultCb.IsNull() && bundleHandle != 0)
+    {
+        m_txResultCb(bundleHandle, true);
     }
 }
 

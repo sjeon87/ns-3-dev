@@ -57,6 +57,12 @@ BundleCla::NotifyReception(Ptr<Bundle> bundle)
 }
 
 void
+BundleCla::SetTxResultCallback(Callback<void, uint32_t, bool> cb)
+{
+    m_txResultCb = cb;
+}
+
+void
 BundleCla::ForwardUp(Ptr<Bundle> bundle)
 {
     NS_LOG_FUNCTION(this << bundle);

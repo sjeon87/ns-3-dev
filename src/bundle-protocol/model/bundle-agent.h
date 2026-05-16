@@ -23,6 +23,7 @@
 #include "ns3/ptr.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -193,6 +194,13 @@ class BundleAgent : public Object
      */
     bool IsLocalDestination(const std::string& eid) const;
 
+    /**
+     * @brief Processes the result of a transaction
+     * @param handle Handle for a bundle sent
+     * @param success Whether or not the transaction was successful
+     */
+    void OnTxResult(uint32_t handle, bool success);
+
     std::string m_localEID;                         //!< Local EID of process
     uint32_t m_seqNumber = 0;                       //!< Sequence number of messages sent
     Ptr<BundleStorageEngine> m_bundleStorageEngine; //!< Storage engine for node
@@ -201,6 +209,7 @@ class BundleAgent : public Object
     BundleReceiveCallback m_receiveCallback;        //!< Receiving application callback
     Ptr<BaseRoutingEngine> m_contactGraph;          //!< Routing oracle
     EventId m_backlogCheckEvent;                    //!< Event to periodically check backlog
+    std::set<uint32_t> m_inTransit;
 };
 
 } // namespace ns3

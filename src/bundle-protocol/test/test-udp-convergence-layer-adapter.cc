@@ -104,7 +104,7 @@ UdpBundleClaTestCase::DoRun()
     bundle->AddBlock(pl);
     Ptr<Packet> packetToSend = bundle->Serialize();
 
-    Simulator::Schedule(Seconds(1.0), &UdpBundleCla::Send, claA, packetToSend);
+    Simulator::Schedule(Seconds(1.0), &UdpBundleCla::Send, claA, packetToSend, 0);
 
     Simulator::Stop(Seconds(2.0));
     Simulator::Run();

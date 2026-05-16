@@ -57,8 +57,9 @@ class UdpBundleCla : public BundleCla
     /**
      * @brief Send a serialized bundle packet over the UDP socket.
      * @param packet The serialized bundle to send.
+     * @param bundleHanlde Handle for the bundle to be sent.
      */
-    void Send(Ptr<Packet> packet) override;
+    void Send(Ptr<Packet> packet, uint32_t bundleHandle) override;
 
     /**
      * @brief Check if the CLA is ready to send/receive data.

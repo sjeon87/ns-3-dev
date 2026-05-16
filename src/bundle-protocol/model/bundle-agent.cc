@@ -126,6 +126,7 @@ BundleAgent::RegisterCla(const std::string& destinationEID, Ptr<BundleCla> cla)
 {
     NS_LOG_FUNCTION(this << destinationEID << cla);
     cla->SetRxCallback(MakeCallback(&BundleAgent::RecvBundle, this));
+    cla->SetTxResultCallback(MakeCallback(&BundleAgent::OnTxResult, this));
 
     auto ret = m_clas.insert(std::make_pair(destinationEID, cla));
 
@@ -243,6 +244,11 @@ BundleAgent::ForwardBundle(uint32_t handle)
 {
     NS_LOG_FUNCTION(this << handle);
 
+    if (m_inTransit.find(handle) != m_inTransit.end())
+    {
+        return 0;
+    }
+
     Ptr<Bundle> bundle = m_bundleStorageEngine->RetrieveBundle(handle);
     if (!bundle)
     {
@@ -277,20 +283,14 @@ BundleAgent::ForwardBundle(uint32_t handle)
 
     Ptr<Packet> packet = bundle->Serialize();
     uint32_t bundleSize = packet->GetSize();
-    cla->Send(packet);
+    m_inTransit.insert(handle);
+    cla->Send(packet, handle);
 
     NS_LOG_DEBUG(m_localEID << " - ForwardBundle: sent bundle handle=" << handle
                             << " to final destination " << destination << " via next hop "
                             << nextHopEID << " size=" << bundleSize << " bytes");
     m_contactGraph->ReserveVolume(m_localEID, nextHopEID, bundleSize);
 
-    auto evIt = m_expiryEvents.find(handle);
-    if (evIt != m_expiryEvents.end())
-    {
-        evIt->second.Cancel();
-        m_expiryEvents.erase(evIt);
-    }
-    m_bundleStorageEngine->DeleteBundle(handle);
     return 0;
 }
 
@@ -509,6 +509,28 @@ BundleAgent::ProcessAllBacklog()
 
     // m_backlogCheckEvent = Simulator::Schedule(Seconds(10.0), &BundleAgent::ProcessAllBacklog,
     // this);
+}
+
+void
+BundleAgent::OnTxResult(uint32_t handle, bool success)
+{
+    m_inTransit.erase(handle);
+
+    if (success)
+    {
+        NS_LOG_DEBUG(m_localEID << " - Delivery confirmed for handle " << handle);
+        auto evIt = m_expiryEvents.find(handle);
+        if (evIt != m_expiryEvents.end())
+        {
+            evIt->second.Cancel();
+            m_expiryEvents.erase(evIt);
+        }
+        m_bundleStorageEngine->DeleteBundle(handle);
+    }
+    else
+    {
+        NS_LOG_WARN(m_localEID << " - Tx failed for handle " << handle << ". Retained in storage.");
+    }
 }
 
 } // namespace ns3

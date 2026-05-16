@@ -1,5 +1,9 @@
 /*
+ * Copyright (c) 2026 Michigan State University
+ *
  * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
 #include "contact-multigraph-routing.h"
@@ -193,7 +197,7 @@ ContactMultigraphRouting::ReserveVolume(const std::string& fromEID,
 }
 
 void
-ContactMultigraphRouting::RecomputeRoutingTable()
+ContactMultigraphRouting::RecomputeRoutingTable(uint32_t bundleSize)
 {
     if (m_size == 0)
     {
@@ -224,7 +228,6 @@ ContactMultigraphRouting::RecomputeRoutingTable()
     }
 
     std::fill(m_nextHopTable.begin(), m_nextHopTable.end(), m_size);
-    uint32_t avgBundleSize = 1000;
 
     for (uint32_t s = 0; s < m_size; ++s)
     {
@@ -261,7 +264,7 @@ ContactMultigraphRouting::RecomputeRoutingTable()
                     {
                         continue;
                     }
-                    if (contact.usedVolume + avgBundleSize > contact.totalVolume)
+                    if (contact.usedVolume + bundleSize > contact.totalVolume)
                     {
                         continue;
                     }
@@ -272,7 +275,7 @@ ContactMultigraphRouting::RecomputeRoutingTable()
                         waitTime = contact.startTime - arrivalTime[u];
                     }
 
-                    Time txTime = Seconds((double)(avgBundleSize * 8) / contact.dataRate);
+                    Time txTime = Seconds((double)(bundleSize * 8) / contact.dataRate);
                     if (arrivalTime[u] + waitTime + txTime > contact.endTime)
                     {
                         continue;
@@ -333,9 +336,11 @@ ContactMultigraphRouting::GetNextHop(Ptr<Bundle> bundle, const std::string& curr
         return destEID;
     }
 
+    uint32_t bundleSize = bundle->GetTotalSize();
+
     if (m_isDirty || Simulator::Now() >= m_nextTopologyChangeTime)
     {
-        RecomputeRoutingTable();
+        RecomputeRoutingTable(bundleSize);
     }
 
     uint32_t nextHop = m_nextHopTable[s * m_size + d];
