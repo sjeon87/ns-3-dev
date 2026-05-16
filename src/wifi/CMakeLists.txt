@@ -119,6 +119,7 @@ set(source_files
     model/recipient-block-ack-agreement.cc
     model/reduced-neighbor-report.cc
     model/reference/error-rate-tables.cc
+    model/rr-wifi-queue-scheduler.cc
     model/simple-frame-capture-model.cc
     model/snr-tag.cc
     model/spectrum-wifi-phy.cc
@@ -149,6 +150,7 @@ set(source_files
     model/wifi-mac-queue-container.cc
     model/wifi-mac-queue-elem.cc
     model/wifi-mac-queue-scheduler.cc
+    model/wifi-mac-queue-scheduler-impl.cc
     model/wifi-mac-queue.cc
     model/wifi-mac-trailer.cc
     model/wifi-mac.cc
@@ -296,6 +298,7 @@ set(header_files
     model/recipient-block-ack-agreement.h
     model/reduced-neighbor-report.h
     model/reference/error-rate-tables.h
+    model/rr-wifi-queue-scheduler.h
     model/simple-frame-capture-model.h
     model/snr-tag.h
     model/spectrum-wifi-phy.h
@@ -408,6 +411,7 @@ build_lib(
     test/wifi-phy-thresholds-test.cc
     test/wifi-primary-channels-test.cc
     test/wifi-probe-exchange-test.cc
+    test/wifi-queue-scheduler-test.cc
     test/wifi-retransmit-test.cc
     test/wifi-ru-allocation-test.cc
     test/wifi-channel-switching-test.cc
