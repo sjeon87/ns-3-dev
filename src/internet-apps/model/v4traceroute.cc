@@ -96,12 +96,12 @@ V4TraceRoute::V4TraceRoute()
       m_maxTtl(30),
       m_waitIcmpReplyTimeout(Seconds(5))
 {
-    m_osRoute.clear();
-    m_routeIpv4.clear();
+    NS_LOG_FUNCTION(this);
 }
 
 V4TraceRoute::~V4TraceRoute()
 {
+    NS_LOG_FUNCTION(this);
 }
 
 void
@@ -114,15 +114,15 @@ void
 V4TraceRoute::StartApplication()
 {
     NS_LOG_FUNCTION(this);
-    NS_LOG_LOGIC("Application started");
+    NS_LOG_INFO("Application started");
     m_started = Simulator::Now();
 
     NS_ABORT_MSG_IF(m_remote.IsAny(), "'Remote' attribute not properly set");
 
     if (m_verbose)
     {
-        NS_LOG_UNCOND("Traceroute to " << m_remote << ", " << m_maxTtl << " hops Max, " << m_size
-                                       << " bytes of data.");
+        std::cout << "Traceroute to " << m_remote << ", " << m_maxTtl << " hops Max, " << m_size
+                  << " bytes of data." << std::endl;
     }
 
     if (m_printStream)
@@ -135,13 +135,12 @@ V4TraceRoute::StartApplication()
     m_socket->SetAttribute("Protocol", UintegerValue(Icmpv4L4Protocol::PROT_NUMBER));
     m_socket->SetIpTos(m_tos); // Affects only IPv4 sockets.
 
-    NS_ASSERT(m_socket);
     m_socket->SetRecvCallback(MakeCallback(&V4TraceRoute::Receive, this));
 
     InetSocketAddress src = InetSocketAddress(Ipv4Address::GetAny(), 0);
     int status;
     status = m_socket->Bind(src);
-    NS_ASSERT(status != -1);
+    NS_ASSERT_MSG(status != -1, "Socket::Bind() failed");
 
     m_next = Simulator::ScheduleNow(&V4TraceRoute::StartWaitReplyTimer, this);
 }
@@ -150,6 +149,7 @@ void
 V4TraceRoute::StopApplication()
 {
     NS_LOG_FUNCTION(this);
+    NS_LOG_INFO("Application stopped");
 
     if (m_next.IsPending())
     {
@@ -168,7 +168,7 @@ V4TraceRoute::StopApplication()
 
     if (m_verbose)
     {
-        NS_LOG_UNCOND("\nTrace Complete");
+        std::cout << "\nTrace Complete" << std::endl;
     }
 
     if (m_printStream)
@@ -194,7 +194,6 @@ V4TraceRoute::DoDispose()
 uint32_t
 V4TraceRoute::GetApplicationId() const
 {
-    NS_LOG_FUNCTION(this);
     Ptr<Node> node = GetNode();
     for (uint32_t i = 0; i < node->GetNApplications(); ++i)
     {
@@ -216,7 +215,7 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
     {
         Address from;
         Ptr<Packet> p = m_socket->RecvFrom(0xffffffff, 0, from);
-        NS_LOG_DEBUG("recv " << p->GetSize() << " bytes");
+        NS_LOG_INFO("Receive packet size=" << p->GetSize() << " bytes");
         NS_ASSERT(InetSocketAddress::IsMatchingType(from));
         InetSocketAddress realFrom = InetSocketAddress::ConvertFrom(from);
         NS_ASSERT(realFrom.GetPort() == 1);
@@ -257,7 +256,8 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
                 {
                     if (m_verbose)
                     {
-                        NS_LOG_UNCOND(m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str());
+                        std::cout << m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str()
+                                  << std::endl;
                     }
 
                     if (m_printStream)
@@ -304,7 +304,7 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
                 if (dataSize == m_size)
                 {
                     Time sendTime = i->second;
-                    NS_ASSERT(Simulator::Now() >= sendTime);
+                    NS_ASSERT_MSG(Simulator::Now() >= sendTime, "Send time is in the future");
                     Time delta = Simulator::Now() - sendTime;
 
                     m_sent.erase(i);
@@ -318,8 +318,8 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
 
                         if (m_probeCount == m_maxProbes)
                         {
-                            NS_LOG_UNCOND(m_ttl << " " << m_routeIpv4.str() << " "
-                                                << m_osRoute.str());
+                            std::cout << m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str()
+                                      << std::endl;
                             if (m_printStream)
                             {
                                 *m_printStream->GetStream() << m_ttl << " " << m_routeIpv4.str()
@@ -342,7 +342,7 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
             {
                 if (m_verbose)
                 {
-                    NS_LOG_UNCOND("\nTrace Complete");
+                    std::cout << "\nTrace Complete" << std::endl;
                 }
 
                 if (m_printStream)
@@ -362,7 +362,7 @@ V4TraceRoute::Receive(Ptr<Socket> socket)
 void
 V4TraceRoute::Send()
 {
-    NS_LOG_INFO("m_seq=" << m_seq);
+    NS_LOG_FUNCTION(this);
     Ptr<Packet> p = Create<Packet>();
     Icmpv4Echo echo;
     echo.SetSequenceNumber(m_seq);
@@ -404,6 +404,7 @@ V4TraceRoute::Send()
     m_socket->SetIpTtl(m_ttl);
 
     InetSocketAddress dst = InetSocketAddress(m_remote, 0);
+    NS_LOG_INFO("Sending packet size=" << p->GetSize() << " m_seq=" << m_seq << " to " << m_remote);
     m_socket->SendTo(p, 0, dst);
 }
 
@@ -413,7 +414,7 @@ V4TraceRoute::StartWaitReplyTimer()
     NS_LOG_FUNCTION(this);
     if (!m_waitIcmpReplyTimer.IsPending())
     {
-        NS_LOG_LOGIC("Starting WaitIcmpReplyTimer at " << Simulator::Now() << " for "
+        NS_LOG_DEBUG("Starting WaitIcmpReplyTimer at " << Simulator::Now() << " for "
                                                        << m_waitIcmpReplyTimeout);
 
         m_waitIcmpReplyTimer = Simulator::Schedule(m_waitIcmpReplyTimeout,
@@ -426,6 +427,7 @@ V4TraceRoute::StartWaitReplyTimer()
 void
 V4TraceRoute::HandleWaitReplyTimeout()
 {
+    NS_LOG_FUNCTION(this);
     if (m_ttl < m_maxTtl + 1)
     {
         m_next = Simulator::Schedule(m_interval, &V4TraceRoute::StartWaitReplyTimer, this);
@@ -436,7 +438,7 @@ V4TraceRoute::HandleWaitReplyTimeout()
     {
         if (m_verbose)
         {
-            NS_LOG_UNCOND(m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str());
+            std::cout << m_ttl << " " << m_routeIpv4.str() << " " << m_osRoute.str() << std::endl;
         }
 
         if (m_printStream)
