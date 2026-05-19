@@ -329,12 +329,12 @@ class PayloadBlockHeader : public Header
     uint32_t GetBlockLength() const;
 
   private:
-    uint8_t m_blockType = 1;    //!< Block type identifier (Payload = 1)
-    uint32_t m_blockNumber = 1; //!< Unique block number
-    uint8_t m_procFlags = 0;    //!< Block processing control flags
-    uint8_t m_crcType = 0;      //!< CRC Type
-    uint32_t m_blockLength = 0; //!< Length of the block data
-    uint8_t m_deserializedArraySize = 0;
+    uint8_t m_blockType = 1;             //!< Block type identifier (Payload = 1)
+    uint32_t m_blockNumber = 1;          //!< Unique block number
+    uint8_t m_procFlags = 0;             //!< Block processing control flags
+    uint8_t m_crcType = 0;               //!< CRC Type
+    uint32_t m_blockLength = 0;          //!< Length of the block data
+    uint8_t m_deserializedArraySize = 0; //!< Number of elements in the deserialized CBOR array
 };
 
 /**

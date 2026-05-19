@@ -78,11 +78,11 @@ enum CancellationState
  */
 struct RedSegmentInfo
 {
-    uint32_t CpserialNum;
-    uint32_t RpserialNum;
-    uint32_t low_bound;
-    uint32_t high_bound;
-    std::set<LtpContentHeader::ReceptionClaim> claims;
+    uint32_t CpserialNum;                              //!< Checkpoint serial number.
+    uint32_t RpserialNum;                              //!< Report serial number.
+    uint32_t low_bound;                                //!< Lower bound of the segment data.
+    uint32_t high_bound;                               //!< Upper bound of the segment data.
+    std::set<LtpContentHeader::ReceptionClaim> claims; //!< Missing or received data claims.
 };
 
 /**
@@ -991,8 +991,10 @@ class LtpBundleCla : public BundleCla
     void RegisterClientService(uint64_t id, Ptr<ClientServiceStatus> client);
 
   private:
-    typedef std::map<SessionId, Ptr<SessionStateRecord>> SessionStateRecords;
-    typedef std::map<uint64_t, Ptr<ClientServiceStatus>> ClientServiceInstances;
+    typedef std::map<SessionId, Ptr<SessionStateRecord>>
+        SessionStateRecords; //!< Map of active session state records.
+    typedef std::map<uint64_t, Ptr<ClientServiceStatus>>
+        ClientServiceInstances; //!< Map of active client service instances.
 
     /**
      * @brief Encapsulate block data into MTU-sized transmission segments.
@@ -1197,10 +1199,6 @@ class LtpBundleCla : public BundleCla
 
 /**
  * @brief Template to assign an action to a specific protocol timer.
- * @tparam FN Function pointer type.
- * @param fn The function to execute on expiration.
- * @param delay Time offset until expiration.
- * @param type Target timer definition.
  */
 template <typename FN>
 void
@@ -1226,13 +1224,7 @@ SessionStateRecord::SetTimerFunction(FN fn, const Time delay, TimerCode type)
 }
 
 /**
- * @brief Template to assign a member method to a specific protocol timer without arguments.
- * @tparam MEM_PTR Class method pointer type.
- * @tparam OBJ_PTR Object instance pointer type.
- * @param memPtr Pointer to the execution method.
- * @param objPtr Pointer to the target object.
- * @param delay Time offset until expiration.
- * @param type Target timer definition.
+ * @brief Template to assign an action to a specific protocol timer.
  */
 template <typename MEM_PTR, typename OBJ_PTR>
 void
@@ -1261,15 +1253,7 @@ SessionStateRecord::SetTimerFunction(MEM_PTR memPtr,
 }
 
 /**
- * @brief Template to assign a member method to a specific protocol timer with one argument.
- * @tparam MEM_PTR Class method pointer type.
- * @tparam OBJ_PTR Object instance pointer type.
- * @tparam T1 Method argument type.
- * @param memPtr Pointer to the execution method.
- * @param objPtr Pointer to the target object.
- * @param param The passed argument.
- * @param delay Time offset until expiration.
- * @param type Target timer definition.
+ * @brief Template to assign an action to a specific protocol timer.
  */
 template <typename MEM_PTR, typename OBJ_PTR, typename T1>
 void
@@ -1302,17 +1286,7 @@ SessionStateRecord::SetTimerFunction(MEM_PTR memPtr,
 }
 
 /**
- * @brief Template to assign a member method to a specific protocol timer with two arguments.
- * @tparam MEM_PTR Class method pointer type.
- * @tparam OBJ_PTR Object instance pointer type.
- * @tparam T1 First method argument type.
- * @tparam T2 Second method argument type.
- * @param memPtr Pointer to the execution method.
- * @param objPtr Pointer to the target object.
- * @param param First passed argument.
- * @param param2 Second passed argument.
- * @param delay Time offset until expiration.
- * @param type Target timer definition.
+ * @brief Template to assign an action to a specific protocol timer.
  */
 template <typename MEM_PTR, typename OBJ_PTR, typename T1, typename T2>
 void

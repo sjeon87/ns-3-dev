@@ -30,6 +30,12 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("LtpProtocolTests");
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief Test case for verifying LTP header serialization and deserialization methods.
+ */
 class LtpHeaderTestCase : public TestCase
 {
   public:
@@ -39,25 +45,49 @@ class LtpHeaderTestCase : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * @brief Set up SessionId test cases.
+     */
     void SetSessionIds();
+
+    /**
+     * @brief Set up LtpExtension test cases.
+     */
     void SetExtensions();
+
+    /**
+     * @brief Set up LtpHeader test cases.
+     */
     void SetHeaderTests();
+
+    /**
+     * @brief Set up LtpTrailer test cases.
+     */
     void SetTrailerTests();
+
+    /**
+     * @brief Set up LtpContentHeader test cases.
+     */
     void SetContentHeaderTests();
 
+    /**
+     * @brief Template class representing a generic test vector.
+     * @tparam T The type of data to test.
+     */
     template <class T>
     class TestVector
     {
       public:
-        uint8_t m_expectedEncodedSz;
-        T m_data;
+        uint8_t m_expectedEncodedSz; ///< The expected size in bytes after encoding.
+        T m_data;                    ///< The data object to be tested.
     };
 
-    TestVectors<TestVector<SessionId>> m_sessionIds;
-    TestVectors<TestVector<LtpExtension>> m_extensions;
-    TestVectors<TestVector<LtpHeader>> m_mainHeaderTests;
-    TestVectors<TestVector<LtpTrailer>> m_mainTrailerTests;
-    TestVectors<TestVector<LtpContentHeader>> m_mainContentHeaderTests;
+    TestVectors<TestVector<SessionId>> m_sessionIds;        ///< Test vectors for SessionId
+    TestVectors<TestVector<LtpExtension>> m_extensions;     ///< Test vectors for LtpExtension
+    TestVectors<TestVector<LtpHeader>> m_mainHeaderTests;   ///< Test vectors for LtpHeader
+    TestVectors<TestVector<LtpTrailer>> m_mainTrailerTests; ///< Test vectors for LtpTrailer
+    TestVectors<TestVector<LtpContentHeader>>
+        m_mainContentHeaderTests; ///< Test vectors for LtpContentHeader
 };
 
 LtpHeaderTestCase::LtpHeaderTestCase()
@@ -345,6 +375,12 @@ LtpHeaderTestCase::DoRun()
     }
 }
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief Test case for checking LtpQueueSet behavior and priorities.
+ */
 class LtpQueueSetTestCase : public TestCase
 {
   public:
@@ -354,17 +390,24 @@ class LtpQueueSetTestCase : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * @brief Setup the initial test vectors.
+     */
     void SetTests();
 
+    /**
+     * @brief Template class for tracking expected queue positions.
+     * @tparam T The type of data to be stored.
+     */
     template <class T>
     class TestVector
     {
       public:
-        uint8_t m_position;
-        T m_data;
+        uint8_t m_position; ///< The expected extraction order position of this packet.
+        T m_data;           ///< The packet to test enqueueing and dequeueing on.
     };
 
-    TestVectors<TestVector<Ptr<ns3::Packet>>> m_tests;
+    TestVectors<TestVector<Ptr<ns3::Packet>>> m_tests; ///< The collection of test vectors.
 };
 
 LtpQueueSetTestCase::LtpQueueSetTestCase()
@@ -436,6 +479,13 @@ LtpQueueSetTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ((m_tests.Get(1).m_data == packet), true, "Wrong queue order");
 }
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief Test case to verify internal behavior of LTP session state records, including timers and
+ * claims.
+ */
 class LtpSessionStateRecordTestCase : public TestCase
 {
   public:
@@ -445,20 +495,36 @@ class LtpSessionStateRecordTestCase : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * @brief Setup test vectors for timer expiration logic.
+     */
     void SetTimerTests();
-    void TimerTest(uint32_t);
-    void ResumeTimers(uint32_t);
 
+    /**
+     * @brief Method triggered upon timer execution to validate timing.
+     * @param index The index of the TestTimer in m_testTimers.
+     */
+    void TimerTest(uint32_t index);
+
+    /**
+     * @brief Helper to resume a paused timer during testing.
+     * @param index The index of the timer to resume.
+     */
+    void ResumeTimers(uint32_t index);
+
+    /**
+     * @brief Configuration for a simulated session timer.
+     */
     struct TestTimer
     {
-        uint64_t lapse;
-        uint64_t total;
-        uint8_t stops;
-        uint8_t stop_lapses;
-        TimerCode timeCode;
+        uint64_t lapse;      ///< The initial duration before expiration.
+        uint64_t total;      ///< The total expected simulation time upon expiration.
+        uint8_t stops;       ///< How many times the timer will be suspended.
+        uint8_t stop_lapses; ///< The duration of each suspension.
+        TimerCode timeCode;  ///< The LTP timer code category.
     };
 
-    TestVectors<TestTimer> m_testTimers;
+    TestVectors<TestTimer> m_testTimers; ///< The list of simulated timer tests.
 };
 
 LtpSessionStateRecordTestCase::LtpSessionStateRecordTestCase()
@@ -603,6 +669,12 @@ LtpSessionStateRecordTestCase::SetTimerTests()
     m_testTimers.Add(test);
 }
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief Test case checking the integration and attachment of the LTP CLA to the BundleAgent.
+ */
 class BundleAgentLtpClaTestCase : public TestCase
 {
   public:
@@ -643,6 +715,12 @@ BundleAgentLtpClaTestCase::DoRun()
     agent->UnregisterCla("dtn:nodeB");
 }
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief Main test suite encapsulating all unit tests for the LTP protocol layer.
+ */
 class LtpProtocolTestSuite : public TestSuite
 {
   public:

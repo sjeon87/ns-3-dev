@@ -55,54 +55,62 @@ class Cbor
     /**
      * Reads a uint32_t value from the buffer.
      * @param i Iterator of the buffer to read from.
+     * @return The parsed uint64_t value.
      */
     static uint64_t ReadUint(Buffer::Iterator& i);
 
     /**
      * Reads a byte-array from the buffer.
      * @param i Iterator of the buffer to read from.
+     * @return The size of the array.
      */
     static uint64_t ReadArray(Buffer::Iterator& i);
 
     /**
      * Reads a string value from the buffer.
      * @param i Iterator of the buffer to read from.
+     * @return The parsed string.
      */
     static std::string ReadTextString(Buffer::Iterator& i);
 
     /**
      * Reads a string header from the buffer.
      * @param i Iterator of the buffer to read from.
+     * @return The length of the byte string.
      */
     static uint64_t ReadByteStringHeader(Buffer::Iterator& i);
 
     /**
      * Gets the size of the CBOR encoded uint64_t value
      * @param val Value to extract size from.
+     * @return The number of bytes required to encode the value.
      */
     static uint32_t GetUintSize(uint64_t val);
 
     /**
      * Gets the size of a CBOR encoded array.
      * @param size Size of the array.
+     * @return The number of bytes required to encode the array header.
      */
     static uint32_t GetArraySize(uint64_t size);
 
     /**
      * Gets the size of the CBOR string.
      * @param text String whose size is required.
+     * @return The number of bytes required to encode the text string.
      */
     static uint32_t GetTextStringSize(const std::string& text);
 
     /**
-     * Gets the size of the uint64_t value
-     * @param val Value to extract size from.
+     * Gets the size of the byte string header.
+     * @param len Length of the byte string.
+     * @return The number of bytes required to encode the byte string header.
      */
     static uint32_t GetByteStringHeaderSize(uint64_t len);
 
     /**
      * Computes the CRC-16/X-25 for a given data stream to return a checksum.
-     * * @param data Pointer to the array of bytes to check.
+     * @param data Pointer to the array of bytes to check.
      * @param length Number of bytes in the data stream.
      * @return The 16-bit checksum value of the data stream.
      */

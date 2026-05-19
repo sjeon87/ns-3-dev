@@ -60,9 +60,8 @@ class TcpBundleCla : public BundleCla
 
     /**
      * @brief Configure the TCP CLA to listen on a local port and connect to a remote address.
-     * * This method binds the server-side socket for incoming connections and asynchronously
-     * initiates the client-side TCP handshake to the remote address.
-     * * @param node The local node instance where the sockets will be created.
+     *
+     * @param node The local node instance where the sockets will be created.
      * @param localAddress The local IP address and port to bind and listen on.
      * @param remoteAddress The destination IP address and port to connect to.
      */
@@ -70,9 +69,9 @@ class TcpBundleCla : public BundleCla
 
     /**
      * @brief Send a serialized bundle packet via the TCP connection.
-     * * If the TCP connection is fully established, the packet is sent immediately.
-     * If the handshake is still pending, the packet is queued locally.
-     * * @param packet The serialized bundle packet to send over the network.
+     *
+     * @param packet The serialized bundle packet to send over the network.
+     * @param bundleHandle The tracking handle for the bundle agent's storage.
      */
     void Send(Ptr<Packet> packet, uint32_t bundleHandle) override;
 

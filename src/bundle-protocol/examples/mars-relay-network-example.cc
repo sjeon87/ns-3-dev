@@ -26,21 +26,33 @@ static uint32_t g_bundlesSent = 15;
 static uint32_t g_bundlesReceived = 0;
 static double g_totalDelaySeconds = 0.0;
 
+/**
+ * @brief Statistics for bundle storage at a specific node.
+ *
+ * This structure is used to track the storage utilization of a bundle agent
+ * over time, allowing for the calculation of average and peak storage metrics.
+ */
 struct StorageStats
 {
-    uint64_t cumulativeBundles = 0;
-    uint32_t sampleCount = 0;
-    uint32_t peakBundles = 0;
-    double peakTime = 0.0;
+    uint64_t cumulativeBundles = 0; ///< The sum of bundles across all samples.
+    uint32_t sampleCount = 0;       ///< The total number of times the storage was sampled.
+    uint32_t peakBundles = 0; ///< The maximum number of bundles held in custody at any one time.
+    double peakTime = 0.0;    ///< The simulation time when the peak bundle count occurred.
 };
 
 static std::map<std::string, StorageStats> g_storageStats;
 
+/**
+ * @brief Elements comprising a network link between two DTN nodes.
+ *
+ * This structure holds the necessary network devices and the Convergence
+ * Layer Adapter (CLA) to manage dynamic link availability and data rates.
+ */
 struct LinkElements
 {
-    Ptr<LtpBundleCla> cla;
-    Ptr<PointToPointNetDevice> localDevice;
-    Ptr<PointToPointNetDevice> remoteDevice;
+    Ptr<LtpBundleCla> cla;                   ///< Pointer to the LTP CLA.
+    Ptr<PointToPointNetDevice> localDevice;  ///< Pointer to the local P2P network device.
+    Ptr<PointToPointNetDevice> remoteDevice; ///< Pointer to the remote P2P network device.
 };
 
 void

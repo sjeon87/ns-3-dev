@@ -40,37 +40,66 @@ struct ContactWindow
     uint32_t usedVolume;  //!< Bytes already committed during this window
 };
 
+/**
+ * @ingroup BundleProtocol
+ * @brief Base class for Bundle Protocol routing engines.
+ *
+ * This class defines the common interface for routing engines used within
+ * the Bundle Protocol. Implementations of this class are responsible for
+ * maintaining contact states and determining the next hop for a given bundle
+ * based on the current network topology and/or contact plan.
+ */
 class BaseRoutingEngine : public Object
 {
   public:
+    /**
+     * @brief Get the type ID.
+     * @return the object TypeId
+     */
     static TypeId GetTypeId();
+
+    /**
+     * @brief Constructor
+     */
     BaseRoutingEngine();
+
+    /**
+     * @brief Destructor
+     */
     ~BaseRoutingEngine() override;
 
     /**
-     * Initialise the engine with the full list of EIDs in the simulation.
-     * Must be called before any AddContact / GetNextHop call.
+     * @brief Initialise the engine with the full list of EIDs in the simulation.
+     *
+     * @param eidList List of all Endpoint IDs (EIDs) present in the simulation.
      */
     virtual void InitializeMap(const std::vector<std::string>& eidList) = 0;
 
     /**
-     * Add a directed contact edge with unknown total volume.
-     * Engines that track volume will treat this contact as unconstrained
-     * and fall back to raw dataRate for path-metric purposes.
+     * @brief Add a directed contact edge with unknown total volume.
+     *
+     * @param fromEID Source EID of the contact.
+     * @param toEID Destination EID of the contact.
+     * @param dataRate Nominal data rate of the contact in bps.
      */
     virtual void AddContact(const std::string& fromEID,
                             const std::string& toEID,
                             uint32_t dataRate) = 0;
 
     /**
-     * Remove a directed contact edge.
-     * Volume accounting for the edge is discarded; it resets if re-added.
+     * @brief Remove a directed contact edge.
+     *
+     * @param fromEID Source EID of the contact to remove.
+     * @param toEID Destination EID of the contact to remove.
      */
     virtual void RemoveContact(const std::string& fromEID, const std::string& toEID) = 0;
 
     /**
-     * Return the EID of the best next hop toward the bundle's destination.
-     * Returns "" when no path is currently known.
+     * @brief Return the EID of the best next hop toward the bundle's destination.
+     *
+     * @param bundle The bundle that needs to be routed.
+     * @param currEID The Endpoint ID of the current node holding the bundle.
+     * @return The Endpoint ID of the best next hop, or an empty string if no path is known.
      */
     virtual std::string GetNextHop(Ptr<Bundle> bundle, const std::string& currEID) = 0;
 
@@ -88,7 +117,7 @@ class BaseRoutingEngine : public Object
                                       uint32_t totalVolume);
 
     /**
-     * Record that `bytes` have been committed on the fromEID -> toEID link.
+     * Record that bytes have been committed on the fromEID -> toEID link.
      *
      * @param fromEID Source EID of the link.
      * @param toEID   Destination EID of the link.

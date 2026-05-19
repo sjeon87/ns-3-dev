@@ -68,6 +68,7 @@ class BundleAgent : public Object
 
     /**
      * @brief Set the Contact Graph routing oracle
+     * @param contactGraph The routing engine to use for Contact Graph Routing
      */
     void SetContactGraph(Ptr<BaseRoutingEngine> contactGraph);
 
@@ -157,10 +158,14 @@ class BundleAgent : public Object
     void ProcessAllBacklog();
 
     /**
+     * @brief Callback definition for the receipt of a bundle.
+     */
+    typedef Callback<void, Ptr<Bundle>> BundleReceiveCallback;
+
+    /**
      * @brief Registers a callback for the receipt of a bundle.
      * @param cb BundleReceiveCallback that calls a function upon receive of a bundle.
      */
-    typedef Callback<void, Ptr<Bundle>> BundleReceiveCallback;
     void SetReceiveCallback(BundleReceiveCallback cb);
 
     /**
@@ -189,8 +194,8 @@ class BundleAgent : public Object
 
     /**
      * @brief Placeholder for local node destinations
-     * @param EID of local process
-     * @return true or false for local destination
+     * @param eid EID of local process to check
+     * @return true if it is a local destination, false otherwise
      */
     bool IsLocalDestination(const std::string& eid) const;
 
@@ -209,7 +214,7 @@ class BundleAgent : public Object
     BundleReceiveCallback m_receiveCallback;        //!< Receiving application callback
     Ptr<BaseRoutingEngine> m_contactGraph;          //!< Routing oracle
     EventId m_backlogCheckEvent;                    //!< Event to periodically check backlog
-    std::set<uint32_t> m_inTransit;
+    std::set<uint32_t> m_inTransit;                 //!< Set of bundle handles currently in transit
 };
 
 } // namespace ns3

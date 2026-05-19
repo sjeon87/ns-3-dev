@@ -177,7 +177,7 @@ class BundleAgentContainer
     void Add(std::string name);
 
   private:
-    std::vector<Ptr<BundleAgent>> m_bundleAgents; /// vector of bundle protocols
+    std::vector<Ptr<BundleAgent>> m_bundleAgents; ///< vector of bundle protocols
 };
 
 /**
@@ -239,7 +239,7 @@ class BundleAgentHelper
     Ptr<BundleAgent> InstallPriv(Ptr<Node> node);
 
   private:
-    std::string m_eid; /// endpoint id
+    std::string m_eid; ///< endpoint id
 };
 
 /**
@@ -248,10 +248,30 @@ class BundleAgentHelper
 class BundleClaContainer
 {
   public:
+    /**
+     * Create an empty BundleClaContainer.
+     */
     BundleClaContainer();
+
+    /**
+     * Create a BundleClaContainer with exactly one CLA which has
+     * been previously instantiated.
+     *
+     * @param cla Pointer to the CLA to add to the container.
+     */
     BundleClaContainer(Ptr<BundleCla> cla);
+
+    /**
+     * Create a BundleClaContainer with exactly one CLA which has
+     * been previously instantiated and assigned a name.
+     *
+     * @param name The name of the CLA Object to add to the container.
+     */
     BundleClaContainer(std::string name);
 
+    /**
+     * iterator for BundleCla
+     */
     typedef std::vector<Ptr<BundleCla>>::const_iterator Iterator;
 
     /**
@@ -274,6 +294,7 @@ class BundleClaContainer
 
     /**
      * Returns a pointer to the i-th CLA.
+     * @param i the index of the requested CLA pointer.
      * @returns Pointer to i-th CLA.
      */
     Ptr<BundleCla> Get(uint32_t i) const;
@@ -297,7 +318,7 @@ class BundleClaContainer
     void Add(std::string name);
 
   private:
-    std::vector<Ptr<BundleCla>> m_clas; /// vector of convergence layer adapters
+    std::vector<Ptr<BundleCla>> m_clas; ///< vector of convergence layer adapters
 };
 
 /**
@@ -349,7 +370,7 @@ class BundleClaHelper
      */
     Ptr<BundleCla> InstallPriv(Ptr<Node> node);
 
-    ObjectFactory m_factory; /// Factory used to generate concrete CLA objects
+    ObjectFactory m_factory; //!< Factory used to generate concrete CLA objects
 };
 
 } // namespace ns3

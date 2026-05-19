@@ -18,10 +18,23 @@
 namespace ns3
 {
 
+/**
+ * @brief A helper class to parse contact plans and instantiate Contact Graph Routing (CGR) engines.
+ *
+ * This helper simplifies the process of reading an ION-format contact plan
+ * file and configuring a routing engine object (derived from BaseRoutingEngine).
+ */
 class ContactGraphHelper
 {
   public:
+    /**
+     * @brief Create a ContactGraphHelper.
+     */
     ContactGraphHelper();
+
+    /**
+     * @brief Destroy the ContactGraphHelper.
+     */
     ~ContactGraphHelper() = default;
 
     /**

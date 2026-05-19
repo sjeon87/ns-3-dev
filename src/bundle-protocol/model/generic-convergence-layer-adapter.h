@@ -55,7 +55,8 @@ class BundleCla : public Object
 
     /**
      * @brief Fire callback registered
-     * @param callback The callback (usually bound to BundleAgent::RecvBundle)
+     * @param bundle The bundle that was received and needs to be passed up.
+     * @return The result of the callback execution.
      */
     uint32_t NotifyReception(Ptr<Bundle> bundle);
 
@@ -82,14 +83,15 @@ class BundleCla : public Object
   protected:
     /**
      * @brief Helper function called by concrete CLAs to pass a parsed bundle
-     * to the upper layer (BundleAgent).
-     * * @param bundle The deserialized bundle object.
+     * to the upper layer.
+     *
+     * @param bundle The deserialized bundle object.
      */
     void ForwardUp(Ptr<Bundle> bundle);
 
   protected:
-    RxCallback m_rxCallback; //!< The callback to trigger on bundle reception
-    Callback<void, uint32_t, bool> m_txResultCb;
+    RxCallback m_rxCallback;                     //!< The callback to trigger on bundle reception
+    Callback<void, uint32_t, bool> m_txResultCb; //!< The callback to report transmission results
 };
 
 } // namespace ns3

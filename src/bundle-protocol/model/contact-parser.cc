@@ -19,12 +19,18 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("ContactParser");
 
+/**
+ * @brief Type definition for a unique contact identifier.
+ */
 using ContactKey = std::tuple<std::string, std::string, double, double>;
 
+/**
+ * @brief Used for parsing contact attributes.
+ */
 struct ContactData
 {
-    uint32_t rate = 0;
-    double delaySeconds = 0.0;
+    uint32_t rate = 0;         ///< Data rate of the contact in bps
+    double delaySeconds = 0.0; ///< Propagation delay across the link in seconds
 };
 
 bool

@@ -60,7 +60,7 @@ class BundleStorageEngine : public Object
 
     /**
      * @brief Set the total size of the database
-     * @param the total size of the database
+     * @param size the total size of the database
      */
     void SetTotalSize(uint32_t size);
 
@@ -93,7 +93,8 @@ class BundleStorageEngine : public Object
 
     /**
      * @brief Returns all stored bundles destined for a given EID
-     * @return vector of all stored bundles
+     * @param eid The destination Endpoint ID to search for
+     * @return vector of all stored bundle handles for the given destination
      */
     std::vector<uint32_t> GetHandlesForDestination(const std::string& eid) const;
 

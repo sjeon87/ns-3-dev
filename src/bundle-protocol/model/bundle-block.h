@@ -47,35 +47,31 @@ class BundleBlock : public Object
 
     /**
      * @brief Serialize this block into an ns-3 Packet.
-     * * This method constructs a packet representing the block, adding its specific
-     * header (and payload, if applicable) to it.
-     * * @return Ptr to the fully constructed packet for this block
+     *
+     * @return Ptr to the fully constructed packet for this block
      */
     virtual Ptr<Packet> SerializeToPacket() const = 0;
 
     /**
      * @brief Deserialize this block from a master packet stream.
-     * * This method removes the block's specific header from the front of the
-     * provided packet and extracts any associated payload data. This modifies
-     * the incoming packet by consuming the bytes belonging to this block.
-     * * @param p The master packet containing the serialized bundle stream
+     *
+     * @param p The master packet containing the serialized bundle stream
      * @return The number of bytes consumed from the packet
      */
     virtual uint32_t Deserialize(Ptr<Packet> p) = 0;
 
     /**
      * @brief Retrieve the standardized block type identifier.
-     * * @return the uint8_t block type (e.g., 0 for Primary, 1 for Payload)
+     * @return the uint8_t block type (e.g., 0 for Primary, 1 for Payload)
      */
     virtual uint8_t GetBlockType() const = 0;
 };
 
 /**
  * @ingroup dtn
- * * @brief Implementation of the Primary Bundle Block.
- * * The Primary Block is always the first block in a bundle sequence. It contains
- * critical routing, identification, and lifetime information required by the
- * Bundle Protocol Agent to process the bundle. It does not carry application payload.
+ *
+ * @brief Implementation of the Primary Bundle Block.
+ *
  */
 class PrimaryBlock : public BundleBlock
 {
@@ -129,10 +125,9 @@ class PrimaryBlock : public BundleBlock
 
 /**
  * @ingroup dtn
- * * @brief Implementation of the Payload Bundle Block.
- * * The Payload Block carries the actual application data being transported
- * across the DTN. It consists of a PayloadBlockHeader followed by the
- * opaque data payload.
+ *
+ * @brief Implementation of the Payload Bundle Block.
+ *
  */
 class PayloadBlock : public BundleBlock
 {
@@ -179,8 +174,7 @@ class PayloadBlock : public BundleBlock
 
     /**
      * @brief Set the application data payload for this block.
-     * * This automatically updates the length field in the underlying PayloadBlockHeader.
-     * * @param payload The ns-3 packet containing the application data
+     * @param payload The ns-3 packet containing the application data
      */
     void SetPayload(Ptr<Packet> payload);
 

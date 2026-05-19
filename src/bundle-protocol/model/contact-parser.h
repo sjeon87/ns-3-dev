@@ -26,6 +26,11 @@
 namespace ns3
 {
 
+/**
+ * @ingroup BundleProtocol
+ * @brief A utility class to parse contact plans for Delay Tolerant Networks.
+ *
+ */
 class ContactParser
 {
   public:

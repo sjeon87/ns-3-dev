@@ -23,9 +23,19 @@
 
 using namespace ns3;
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief A mock Convergence Layer Adapter for testing the BundleAgent.
+ */
 class MockBundleCla : public BundleCla
 {
   public:
+    /**
+     * @brief Get the type ID.
+     * @return the object TypeId
+     */
     static TypeId GetTypeId()
     {
         static TypeId tid =
@@ -55,24 +65,42 @@ class MockBundleCla : public BundleCla
         return true;
     }
 
+    /**
+     * @brief Get the total number of packets sent through this mock CLA.
+     * @return The number of sent packets.
+     */
     uint32_t GetSentCount() const
     {
         return m_sentCount;
     }
 
+    /**
+     * @brief Get the size of the last packet sent.
+     * @return The size of the last packet in bytes.
+     */
     uint32_t GetLastPacketSize() const
     {
         return m_lastPacketSize;
     }
 
   private:
-    uint32_t m_sentCount;
-    uint32_t m_lastPacketSize;
+    uint32_t m_sentCount;      ///< Total number of packets sent
+    uint32_t m_lastPacketSize; ///< Size of the most recently sent packet
 };
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief A mock Routing Engine for testing the BundleAgent.
+ */
 class MockRoutingEngine : public BaseRoutingEngine
 {
   public:
+    /**
+     * @brief Get the type ID.
+     * @return the object TypeId
+     */
     static TypeId GetTypeId()
     {
         static TypeId tid = TypeId("ns3::MockRoutingEngine")
@@ -118,10 +146,14 @@ class BundleAgentTestCase : public TestCase
     ~BundleAgentTestCase() override;
     void DoRun() override;
 
+    /**
+     * @brief Callback triggered when a bundle is received locally by the agent.
+     * @param bundle The bundle that was received.
+     */
     void LocalReceiveCallback(Ptr<Bundle> bundle);
 
   private:
-    uint32_t m_locallyReceivedCount;
+    uint32_t m_locallyReceivedCount; ///< Counter for the number of locally received bundles
 };
 
 BundleAgentTestCase::BundleAgentTestCase()

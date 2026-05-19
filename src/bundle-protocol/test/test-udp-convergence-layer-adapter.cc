@@ -38,10 +38,15 @@ class UdpBundleClaTestCase : public TestCase
     ~UdpBundleClaTestCase() override;
     void DoRun() override;
 
+    /**
+     * @brief Callback invoked when a bundle is received.
+     * @param bundle The received bundle.
+     * @return 0 on success.
+     */
     uint32_t ReceiveBundleCallback(Ptr<Bundle> bundle);
 
   private:
-    uint32_t m_receivedBundles;
+    uint32_t m_receivedBundles; //!< The number of received bundles
 };
 
 UdpBundleClaTestCase::UdpBundleClaTestCase()

@@ -20,6 +20,12 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("SdnvTest");
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief Test case for checking the correctness of SDNV encoding and decoding methods.
+ */
 class SdnvTest : public TestCase
 {
   public:
@@ -29,16 +35,23 @@ class SdnvTest : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * @brief Initialize test vectors containing unsigned integers and their expected SDNV encoded
+     * values.
+     */
     void SetTests();
 
+    /**
+     * @brief A structure to hold the unencoded data and its expected SDNV encoded form.
+     */
     class TestVector
     {
       public:
-        uint64_t m_data;
-        std::vector<uint8_t> m_encodedData;
+        uint64_t m_data;                    ///< The raw unencoded integer data
+        std::vector<uint8_t> m_encodedData; ///< The expected SDNV encoded byte sequence
     };
 
-    TestVectors<TestVector> m_testVectors;
+    TestVectors<TestVector> m_testVectors; ///< Collection of test vectors
 };
 
 SdnvTest::SdnvTest()
@@ -214,6 +227,12 @@ SdnvTest::DoRun()
     }
 }
 
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
+ * @brief Test suite encapsulating SDNV unit tests.
+ */
 class SdnvTestSuite : public TestSuite
 {
   public:

@@ -30,11 +30,20 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("PerPacketDijkstraCGR");
 NS_OBJECT_ENSURE_REGISTERED(PerPacketDijkstraCGR);
 
+/**
+ * @brief Priority queue item for Dijkstra's algorithm.
+ */
 struct PqItem
 {
-    uint32_t nodeIndex;
-    Time arrivalTime;
+    uint32_t nodeIndex; ///< Index of the node in the multigraph.
+    Time arrivalTime;   ///< The earliest calculated arrival time at this node.
 
+    /**
+     * @brief Less-than operator for priority queue ordering.
+     *
+     * @param other The other PqItem to compare against.
+     * @return true if this item has a later arrival time than the other item.
+     */
     bool operator<(const PqItem& other) const
     {
         return arrivalTime > other.arrivalTime;
