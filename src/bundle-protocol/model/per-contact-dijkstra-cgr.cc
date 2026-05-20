@@ -170,12 +170,15 @@ PerContactDijkstraCGR::RemoveContact(const std::string& fromEID, const std::stri
         return;
     }
 
+    Time currentTime = Simulator::Now();
     std::vector<ContactWindow> newEdges;
+
     for (uint32_t i = 0; i < m_adjList[node1].size(); i++)
     {
-        if (m_adjList[node1][i].toEID != toEID)
+        ContactWindow& cw = m_adjList[node1][i];
+        if (cw.toEID != toEID || !(cw.startTime <= currentTime && currentTime <= cw.endTime))
         {
-            newEdges.push_back(m_adjList[node1][i]);
+            newEdges.push_back(cw);
         }
     }
 

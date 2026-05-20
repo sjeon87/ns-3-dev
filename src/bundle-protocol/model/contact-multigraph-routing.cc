@@ -16,6 +16,7 @@
 
 #include <limits>
 #include <queue>
+#include <vector>
 
 namespace ns3
 {
@@ -171,7 +172,21 @@ ContactMultigraphRouting::RemoveContact(const std::string& fromEID, const std::s
         return;
     }
 
-    m_multigraph[src][dst].clear();
+    Time currentTime = Simulator::Now();
+    std::vector<ContactWindow>& edgeList = m_multigraph[src][dst];
+
+    for (auto it = edgeList.begin(); it != edgeList.end();)
+    {
+        if (it->startTime <= currentTime && currentTime <= it->endTime)
+        {
+            it = edgeList.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
     m_isDirty = true;
 }
 
