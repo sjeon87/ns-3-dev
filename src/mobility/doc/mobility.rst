@@ -609,6 +609,14 @@ Validation
 
 No formal validation has been done.
 
+Extra models
+------------
+
+.. toctree::
+   :maxdepth: 1
+
+   orbital-mobility
+
 References
 ----------
 
@@ -624,3 +632,5 @@ References
 .. _mobilityRef3:
 
 [`3 <https://sys.cs.uos.de/bonnmotion/doc/README.pdf>`_] BonnMotion documentation
+
+
