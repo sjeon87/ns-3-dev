@@ -15,6 +15,7 @@ namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("LocalClock");
+NS_OBJECT_ENSURE_REGISTERED(LocalClock);
 
 TypeId
 LocalClock::GetTypeId()
@@ -38,6 +39,13 @@ LocalClock::Now()
 {
     NS_LOG_FUNCTION(this);
     return m_ptime;
+}
+
+void
+LocalClock::SetLocalClock(Time ptime)
+{
+    NS_LOG_FUNCTION(this << ptime);
+    m_ptime = ptime;
 }
 
 } // namespace ns3

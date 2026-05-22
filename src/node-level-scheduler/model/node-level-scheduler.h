@@ -10,10 +10,10 @@
 #ifndef NODE_LEVEL_SCHEDULER_H
 #define NODE_LEVEL_SCHEDULER_H
 
-#include "event-id.h"
-#include "map-scheduler.h"
-#include "nstime.h"
-#include "object.h"
+#include "ns3/event-id.h"
+#include "ns3/map-scheduler.h"
+#include "ns3/nstime.h"
+#include "ns3/object.h"
 
 #include <map>
 #include <vector>
@@ -58,7 +58,7 @@ class NodeTimingGraph : public Object
      * @brief Get the type ID.
      * @return the object TypeId
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
 
     /**
      * @brief Constructor.
@@ -68,7 +68,7 @@ class NodeTimingGraph : public Object
     /**
      * @brief Destructor.
      */
-    virtual ~NodeTimingGraph();
+    ~NodeTimingGraph() override override;
 
     /**
      * @brief Add a new timing interval for a specific node.
@@ -152,7 +152,7 @@ class NodeLevelScheduler : public MapScheduler
      * @brief Get the type ID.
      * @return the object TypeId
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
 
     /**
      * @brief Constructor.
@@ -162,7 +162,7 @@ class NodeLevelScheduler : public MapScheduler
     /**
      * @brief Destructor.
      */
-    virtual ~NodeLevelScheduler();
+    ~NodeLevelScheduler() override override;
 
     /**
      * @brief Insert an event into the schedule.
@@ -173,7 +173,7 @@ class NodeLevelScheduler : public MapScheduler
      *
      * @param ev The event to schedule.
      */
-    virtual void Insert(const Event& ev) override;
+    void Insert(const Event& ev) override;
 
     /**
      * @brief Get the underlying timing graph.

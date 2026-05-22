@@ -9,10 +9,10 @@
 
 #include "node-level-scheduler.h"
 
-#include "double.h"
-#include "log.h"
-#include "random-variable-stream.h"
-#include "simulator.h"
+#include "ns3/double.h"
+#include "ns3/log.h"
+#include "ns3/random-variable-stream.h"
+#include "ns3/simulator.h"
 
 namespace ns3
 {
@@ -240,7 +240,7 @@ NodeLevelScheduler::AppendWindow(uint32_t nodeId)
     {
         m_updatePeriod = Seconds(1.0);
     }
-    uint32_t numIntervals =
+    auto numIntervals =
         static_cast<uint32_t>(m_windowSize.GetSeconds() / m_updatePeriod.GetSeconds());
     if (numIntervals == 0)
     {

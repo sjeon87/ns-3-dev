@@ -8,8 +8,7 @@
 #define MULTI_RATE_CLOCK_H
 
 #include "local-clock.h"
-
-#include "ns3/node-level-scheduler.h"
+#include "node-level-scheduler.h"
 
 namespace ns3
 {
@@ -25,7 +24,7 @@ class MultiRateClock : public LocalClock
   public:
     static TypeId GetTypeId();
     MultiRateClock();
-    virtual ~MultiRateClock();
+    ~MultiRateClock() override;
 
     /**
      * @brief Set the Node ID associated with this clock.
@@ -36,7 +35,7 @@ class MultiRateClock : public LocalClock
     /**
      * @brief Returns the skewed local time.
      */
-    virtual Time Now() override;
+    Time Now() override;
 
   private:
     uint32_t m_nodeId;

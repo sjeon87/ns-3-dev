@@ -31,10 +31,10 @@ class NodeLevelSchedulerAccuracyTestCase : public TestCase
 {
   public:
     NodeLevelSchedulerAccuracyTestCase();
-    virtual ~NodeLevelSchedulerAccuracyTestCase();
+    ~NodeLevelSchedulerAccuracyTestCase() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
     void EventHandler(uint32_t nodeId, Time scheduledNodeTime);
 
     Time m_lastSimTime;
@@ -69,7 +69,7 @@ NodeLevelSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduled
 }
 
 void
-NodeLevelSchedulerAccuracyTestCase::DoRun(void)
+NodeLevelSchedulerAccuracyTestCase::DoRun()
 {
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
@@ -103,10 +103,10 @@ class NodeLevelSchedulerFutureEventTestCase : public TestCase
 {
   public:
     NodeLevelSchedulerFutureEventTestCase();
-    virtual ~NodeLevelSchedulerFutureEventTestCase();
+    ~NodeLevelSchedulerFutureEventTestCase() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
     void FarFutureHandler(uint32_t nodeId);
     bool m_eventRan;
 };
@@ -138,7 +138,7 @@ NodeLevelSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId)
 }
 
 void
-NodeLevelSchedulerFutureEventTestCase::DoRun(void)
+NodeLevelSchedulerFutureEventTestCase::DoRun()
 {
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
@@ -168,10 +168,10 @@ class NodeLevelSchedulerStressTestCase : public TestCase
 {
   public:
     NodeLevelSchedulerStressTestCase();
-    virtual ~NodeLevelSchedulerStressTestCase();
+    ~NodeLevelSchedulerStressTestCase() override;
 
   private:
-    virtual void DoRun(void);
+    void DoRun() override;
     void StressHandler(uint32_t nodeId);
     uint32_t m_eventCount;
 };
@@ -193,7 +193,7 @@ NodeLevelSchedulerStressTestCase::StressHandler(uint32_t nodeId)
 }
 
 void
-NodeLevelSchedulerStressTestCase::DoRun(void)
+NodeLevelSchedulerStressTestCase::DoRun()
 {
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");

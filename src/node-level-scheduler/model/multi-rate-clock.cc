@@ -6,8 +6,9 @@
 
 #include "multi-rate-clock.h"
 
+#include "node-level-scheduler.h"
+
 #include "ns3/log.h"
-#include "ns3/node-level-scheduler.h"
 #include "ns3/simulator.h"
 
 namespace ns3

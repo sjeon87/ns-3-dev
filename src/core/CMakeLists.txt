@@ -175,7 +175,6 @@ set(source_files
     model/hash.cc
     model/des-metrics.cc
     model/ascii-file.cc
-    model/node-level-scheduler.cc
     model/node-printer.cc
     model/show-progress.cc
     model/time-printer.cc
@@ -245,7 +244,6 @@ set(header_files
     model/map-scheduler.h
     model/math.h
     model/names.h
-    model/node-level-scheduler.h
     model/node-printer.h
     model/nstime.h
     model/object-base.h
@@ -317,7 +315,6 @@ set(test_sources
     test/many-uniform-random-variables-one-get-value-call-test-suite.cc
     test/names-test-suite.cc
     test/nlohmann-json-test-suite.cc
-    test/node-level-scheduler-test-suite.cc
     test/object-test-suite.cc
     test/one-uniform-random-variable-many-get-value-calls-test-suite.cc
     test/pair-value-test-suite.cc

@@ -41,6 +41,12 @@ class LocalClock : public Object
      */
     virtual Time Now() = 0;
 
+    /**
+     * @brief Set the current time.
+     * @param ptime The time to be set.
+     */
+    virtual void SetLocalClock(Time ptime);
+
   private:
     Time m_ptime; ///< Current time
 };
