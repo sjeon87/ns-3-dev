@@ -68,7 +68,7 @@ class NodeTimingGraph : public Object
     /**
      * @brief Destructor.
      */
-    ~NodeTimingGraph() override override;
+    ~NodeTimingGraph() override;
 
     /**
      * @brief Add a new timing interval for a specific node.
@@ -162,7 +162,7 @@ class NodeLevelScheduler : public MapScheduler
     /**
      * @brief Destructor.
      */
-    ~NodeLevelScheduler() override override;
+    ~NodeLevelScheduler() override;
 
     /**
      * @brief Insert an event into the schedule.
