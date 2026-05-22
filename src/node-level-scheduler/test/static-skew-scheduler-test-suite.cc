@@ -8,29 +8,30 @@
 
 #include "ns3/double.h"
 #include "ns3/log.h"
-#include "ns3/node-level-scheduler.h"
+#include "ns3/node-timing-graph.h"
 #include "ns3/nstime.h"
 #include "ns3/object-factory.h"
 #include "ns3/pointer.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/simulator.h"
+#include "ns3/static-skew-scheduler.h"
 #include "ns3/test.h"
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("NodeLevelSchedulerTestSuite");
+NS_LOG_COMPONENT_DEFINE("StaticSkewSchedulerTest");
 
 Ptr<NodeTimingGraph>
 GetCurrentTimingGraph()
 {
-    return NodeLevelScheduler::GetCurrentGraph();
+    return StaticSkewScheduler::GetCurrentGraph();
 }
 
-class NodeLevelSchedulerAccuracyTestCase : public TestCase
+class StaticSkewSchedulerAccuracyTestCase : public TestCase
 {
   public:
-    NodeLevelSchedulerAccuracyTestCase();
-    ~NodeLevelSchedulerAccuracyTestCase() override;
+    StaticSkewSchedulerAccuracyTestCase();
+    ~StaticSkewSchedulerAccuracyTestCase() override;
 
   private:
     void DoRun() override;
@@ -39,17 +40,17 @@ class NodeLevelSchedulerAccuracyTestCase : public TestCase
     Time m_lastSimTime;
 };
 
-NodeLevelSchedulerAccuracyTestCase::NodeLevelSchedulerAccuracyTestCase()
+StaticSkewSchedulerAccuracyTestCase::StaticSkewSchedulerAccuracyTestCase()
     : TestCase("Verify that events are executed with correct skew translation")
 {
 }
 
-NodeLevelSchedulerAccuracyTestCase::~NodeLevelSchedulerAccuracyTestCase()
+StaticSkewSchedulerAccuracyTestCase::~StaticSkewSchedulerAccuracyTestCase()
 {
 }
 
 void
-NodeLevelSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduledNodeTime)
+StaticSkewSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduledNodeTime)
 {
     Time now = Simulator::Now();
 
@@ -57,7 +58,6 @@ NodeLevelSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduled
     m_lastSimTime = now;
 
     Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
-    // Fix: Check for null pointer implicitly or explicitly against nullptr
     bool graphExists = (graph != nullptr);
     NS_TEST_ASSERT_MSG_EQ(graphExists, true, "Could not retrieve NodeTimingGraph from Scheduler");
 
@@ -68,10 +68,10 @@ NodeLevelSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduled
 }
 
 void
-NodeLevelSchedulerAccuracyTestCase::DoRun()
+StaticSkewSchedulerAccuracyTestCase::DoRun()
 {
     ObjectFactory schedulerFactory;
-    schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
+    schedulerFactory.SetTypeId("ns3::StaticSkewScheduler");
     schedulerFactory.Set("WindowSize", TimeValue(Seconds(100)));
     schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10)));
     schedulerFactory.Set("MinimumSkew", DoubleValue(0.5));
@@ -87,7 +87,7 @@ NodeLevelSchedulerAccuracyTestCase::DoRun()
         Time t = Seconds(i * 5.0);
         Simulator::ScheduleWithContext(nodeId,
                                        t,
-                                       &NodeLevelSchedulerAccuracyTestCase::EventHandler,
+                                       &StaticSkewSchedulerAccuracyTestCase::EventHandler,
                                        this,
                                        nodeId,
                                        t);
@@ -98,11 +98,11 @@ NodeLevelSchedulerAccuracyTestCase::DoRun()
     Simulator::Destroy();
 }
 
-class NodeLevelSchedulerFutureEventTestCase : public TestCase
+class StaticSkewSchedulerFutureEventTestCase : public TestCase
 {
   public:
-    NodeLevelSchedulerFutureEventTestCase();
-    ~NodeLevelSchedulerFutureEventTestCase() override;
+    StaticSkewSchedulerFutureEventTestCase();
+    ~StaticSkewSchedulerFutureEventTestCase() override;
 
   private:
     void DoRun() override;
@@ -110,18 +110,18 @@ class NodeLevelSchedulerFutureEventTestCase : public TestCase
     bool m_eventRan;
 };
 
-NodeLevelSchedulerFutureEventTestCase::NodeLevelSchedulerFutureEventTestCase()
+StaticSkewSchedulerFutureEventTestCase::StaticSkewSchedulerFutureEventTestCase()
     : TestCase("Verify scheduling far into the future triggers graph extension"),
       m_eventRan(false)
 {
 }
 
-NodeLevelSchedulerFutureEventTestCase::~NodeLevelSchedulerFutureEventTestCase()
+StaticSkewSchedulerFutureEventTestCase::~StaticSkewSchedulerFutureEventTestCase()
 {
 }
 
 void
-NodeLevelSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId)
+StaticSkewSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId)
 {
     m_eventRan = true;
 
@@ -137,10 +137,10 @@ NodeLevelSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId)
 }
 
 void
-NodeLevelSchedulerFutureEventTestCase::DoRun()
+StaticSkewSchedulerFutureEventTestCase::DoRun()
 {
     ObjectFactory schedulerFactory;
-    schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
+    schedulerFactory.SetTypeId("ns3::StaticSkewScheduler");
     schedulerFactory.Set("WindowSize", TimeValue(Seconds(100)));
     schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10)));
 
@@ -150,7 +150,7 @@ NodeLevelSchedulerFutureEventTestCase::DoRun()
 
     Simulator::ScheduleWithContext(nodeId,
                                    Seconds(5000),
-                                   &NodeLevelSchedulerFutureEventTestCase::FarFutureHandler,
+                                   &StaticSkewSchedulerFutureEventTestCase::FarFutureHandler,
                                    this,
                                    nodeId);
 
@@ -163,11 +163,11 @@ NodeLevelSchedulerFutureEventTestCase::DoRun()
     Simulator::Destroy();
 }
 
-class NodeLevelSchedulerStressTestCase : public TestCase
+class StaticSkewSchedulerStressTestCase : public TestCase
 {
   public:
-    NodeLevelSchedulerStressTestCase();
-    ~NodeLevelSchedulerStressTestCase() override;
+    StaticSkewSchedulerStressTestCase();
+    ~StaticSkewSchedulerStressTestCase() override;
 
   private:
     void DoRun() override;
@@ -175,27 +175,27 @@ class NodeLevelSchedulerStressTestCase : public TestCase
     uint32_t m_eventCount;
 };
 
-NodeLevelSchedulerStressTestCase::NodeLevelSchedulerStressTestCase()
+StaticSkewSchedulerStressTestCase::StaticSkewSchedulerStressTestCase()
     : TestCase("Stress test with multiple nodes and frequent events"),
       m_eventCount(0)
 {
 }
 
-NodeLevelSchedulerStressTestCase::~NodeLevelSchedulerStressTestCase()
+StaticSkewSchedulerStressTestCase::~StaticSkewSchedulerStressTestCase()
 {
 }
 
 void
-NodeLevelSchedulerStressTestCase::StressHandler(uint32_t nodeId)
+StaticSkewSchedulerStressTestCase::StressHandler(uint32_t nodeId)
 {
     m_eventCount++;
 }
 
 void
-NodeLevelSchedulerStressTestCase::DoRun()
+StaticSkewSchedulerStressTestCase::DoRun()
 {
     ObjectFactory schedulerFactory;
-    schedulerFactory.SetTypeId("ns3::NodeLevelScheduler");
+    schedulerFactory.SetTypeId("ns3::StaticSkewScheduler");
     schedulerFactory.Set("WindowSize", TimeValue(Seconds(50)));
     schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(5)));
 
@@ -214,7 +214,7 @@ NodeLevelSchedulerStressTestCase::DoRun()
             Time t = Seconds(rng->GetValue(1.0, 500.0));
             Simulator::ScheduleWithContext(nodeId,
                                            t,
-                                           &NodeLevelSchedulerStressTestCase::StressHandler,
+                                           &StaticSkewSchedulerStressTestCase::StressHandler,
                                            this,
                                            nodeId);
         }
@@ -230,18 +230,18 @@ NodeLevelSchedulerStressTestCase::DoRun()
     Simulator::Destroy();
 }
 
-class NodeLevelSchedulerTestSuite : public TestSuite
+class StaticSkewSchedulerTestSuite : public TestSuite
 {
   public:
-    NodeLevelSchedulerTestSuite();
+    StaticSkewSchedulerTestSuite();
 };
 
-NodeLevelSchedulerTestSuite::NodeLevelSchedulerTestSuite()
-    : TestSuite("node-level-scheduler", TestSuite::Type::UNIT)
+StaticSkewSchedulerTestSuite::StaticSkewSchedulerTestSuite()
+    : TestSuite("static-skew-scheduler", TestSuite::Type::UNIT)
 {
-    AddTestCase(new NodeLevelSchedulerAccuracyTestCase, TestCase::Duration::QUICK);
-    AddTestCase(new NodeLevelSchedulerFutureEventTestCase, TestCase::Duration::QUICK);
-    AddTestCase(new NodeLevelSchedulerStressTestCase, TestCase::Duration::TAKES_FOREVER);
+    AddTestCase(new StaticSkewSchedulerAccuracyTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new StaticSkewSchedulerFutureEventTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new StaticSkewSchedulerStressTestCase, TestCase::Duration::TAKES_FOREVER);
 }
 
-static NodeLevelSchedulerTestSuite g_nodeLevelSchedulerTestSuite;
+static StaticSkewSchedulerTestSuite g_StaticSkewSchedulerTestSuite;

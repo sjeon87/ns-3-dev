@@ -7,9 +7,8 @@
  */
 #include "scheduler-clock.h"
 
-#include "node-level-scheduler.h"
-
 #include "ns3/log.h"
+#include "ns3/scheduler.h"
 #include "ns3/simulator.h"
 
 namespace ns3
@@ -42,17 +41,24 @@ SchedulerClock::~SchedulerClock()
 void
 SchedulerClock::SetNodeId(uint32_t nodeId)
 {
+    NS_LOG_FUNCTION(this << nodeId);
     m_nodeId = nodeId;
+}
+
+void
+SchedulerClock::SetNodeTimingGraph(Ptr<NodeTimingGraph> graph)
+{
+    NS_LOG_FUNCTION(this << graph);
+    m_graph = graph;
 }
 
 Time
 SchedulerClock::Now()
 {
-    Ptr<NodeTimingGraph> graph = NodeLevelScheduler::GetCurrentGraph();
-
-    if (graph)
+    NS_LOG_FUNCTION(this);
+    if (m_graph)
     {
-        return graph->GetNodeTimeFromSimulatorTime(m_nodeId, Simulator::Now());
+        return m_graph->GetNodeTimeFromSimulatorTime(m_nodeId, Simulator::Now());
     }
 
     return Simulator::Now();

@@ -9,7 +9,7 @@
 #define SCHEDULER_CLOCK_H
 
 #include "local-clock.h"
-#include "node-level-scheduler.h"
+#include "node-timing-graph.h"
 
 namespace ns3
 {
@@ -21,9 +21,9 @@ class SchedulerClock : public LocalClock
 {
   public:
     /**
-    * @brief Get the type ID.
-    * @return The object TypeId.
-    */
+     * @brief Get the type ID.
+     * @return The object TypeId.
+     */
     static TypeId GetTypeId();
 
     SchedulerClock();
@@ -36,13 +36,20 @@ class SchedulerClock : public LocalClock
     void SetNodeId(uint32_t nodeId);
 
     /**
+     * @brief Set the NodeTimingGraph associated with this clock.
+     * @param graph the NodeTimingGraph to be set.
+     */
+    void SetNodeTimingGraph(Ptr<NodeTimingGraph> graph);
+
+    /**
      * @brief Returns the skewed local time.
      * @return the current time for that node
      */
     Time Now() override;
 
   private:
-    uint32_t m_nodeId;
+    uint32_t m_nodeId;            //!< Node ID of the current clock
+    Ptr<NodeTimingGraph> m_graph; //!< Timing graph of all nodes
 };
 
 } // namespace ns3
