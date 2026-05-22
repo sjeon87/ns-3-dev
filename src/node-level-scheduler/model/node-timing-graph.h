@@ -60,6 +60,18 @@ class NodeTimingGraph : public Object
     void AddInterval(uint32_t nodeId, const Interval& interval);
 
     /**
+     * @brief Truncates the active interval at the given simulator time,
+     * dropping any pre-calculated future intervals, and seeds a new interval.
+     *
+     * @param nodeId The ID of the node.
+     * @param simNow The current global simulator time.
+     * @param localNow The current local time on the node.
+     * @param newSkew The new skew rate.
+     * @param duration The duration for the new interval.
+     */
+    void TruncateAndAdd(uint32_t nodeId, Time simNow, Time localNow, double newSkew, Time duration);
+
+    /**
      * @brief Check if timing information exists for a node.
      * @param nodeId The ID of the node.
      * @return True if the node is tracked, false otherwise.

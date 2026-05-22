@@ -63,7 +63,11 @@ NodeTimingGraph::GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) co
         {
             if (nodeTime >= interval.nodeStartTime && nodeTime < interval.nodeEndTime)
             {
-                Time deltaNodeTime = (nodeTime - interval.nodeStartTime);
+                if (interval.skew == 0.0)
+                {
+                    return interval.simulatorStartTime;
+                }
+                Time deltaNodeTime = nodeTime - interval.nodeStartTime;
                 Time scaledDelta = Seconds(deltaNodeTime.GetSeconds() / interval.skew);
                 return interval.simulatorStartTime + scaledDelta;
             }
@@ -78,7 +82,11 @@ NodeTimingGraph::GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) co
         {
             Time lastSimEnd = m_lastSimEndTime.at(nodeId);
             double skew = m_lastSkew.at(nodeId);
-            Time deltaNodeTime = (nodeTime - lastNodeEnd);
+            if (skew == 0.0)
+            {
+                return lastSimEnd;
+            }
+            Time deltaNodeTime = nodeTime - lastNodeEnd;
             Time scaledDelta = Seconds(deltaNodeTime.GetSeconds() / skew);
             return lastSimEnd + scaledDelta;
         }
@@ -99,7 +107,7 @@ NodeTimingGraph::GetNodeTimeFromSimulatorTime(uint32_t nodeId, Time simulatorTim
             if (simulatorTime >= interval.simulatorStartTime &&
                 simulatorTime < interval.simulatorEndTime)
             {
-                Time deltaSimTime = (simulatorTime - interval.simulatorStartTime);
+                Time deltaSimTime = simulatorTime - interval.simulatorStartTime;
                 Time scaledDelta = Seconds(deltaSimTime.GetSeconds() * interval.skew);
                 return interval.nodeStartTime + scaledDelta;
             }
@@ -114,7 +122,7 @@ NodeTimingGraph::GetNodeTimeFromSimulatorTime(uint32_t nodeId, Time simulatorTim
         {
             Time lastNodeEnd = m_lastNodeEndTime.at(nodeId);
             double skew = m_lastSkew.at(nodeId);
-            Time deltaSimTime = (simulatorTime - lastSimEnd);
+            Time deltaSimTime = simulatorTime - lastSimEnd;
             Time scaledDelta = Seconds(deltaSimTime.GetSeconds() * skew);
             return lastNodeEnd + scaledDelta;
         }
@@ -145,7 +153,7 @@ NodeTimingGraph::PruneIntervals(Time cutoff)
         auto eraseIt = intervals.begin();
         while (eraseIt != intervals.end() && eraseIt->simulatorEndTime < cutoff)
         {
-            eraseIt++;
+            ++eraseIt;
         }
         intervals.erase(intervals.begin(), eraseIt);
 
@@ -158,6 +166,47 @@ NodeTimingGraph::PruneIntervals(Time cutoff)
             ++it;
         }
     }
+}
+
+void
+NodeTimingGraph::TruncateAndAdd(uint32_t nodeId,
+                                Time simNow,
+                                Time localNow,
+                                double newSkew,
+                                Time duration)
+{
+    auto it = m_nodeIntervals.find(nodeId);
+    if (it != m_nodeIntervals.end() && !it->second.empty())
+    {
+        auto& intervals = it->second;
+
+        for (auto intervalIt = intervals.begin(); intervalIt != intervals.end(); ++intervalIt)
+        {
+            if (simNow >= intervalIt->simulatorStartTime && simNow < intervalIt->simulatorEndTime)
+            {
+                if (simNow == intervalIt->simulatorStartTime)
+                {
+                    intervals.erase(intervalIt, intervals.end());
+                }
+                else
+                {
+                    intervalIt->simulatorEndTime = simNow;
+                    intervalIt->nodeEndTime = localNow;
+                    intervals.erase(intervalIt + 1, intervals.end());
+                }
+                break;
+            }
+        }
+    }
+
+    Interval newInterval;
+    newInterval.simulatorStartTime = simNow;
+    newInterval.simulatorEndTime = simNow + duration;
+    newInterval.nodeStartTime = localNow;
+    newInterval.nodeEndTime = localNow + Seconds(duration.GetSeconds() * newSkew);
+    newInterval.skew = newSkew;
+
+    AddInterval(nodeId, newInterval);
 }
 
 } // namespace ns3

@@ -180,25 +180,15 @@ StaticSkewScheduler::Insert(const Event& ev)
         }
 
         Time requestedTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
-        Time simNow = Simulator::Now();
+        Time nodeLocalTs = m_nodeTimings->GetNodeTimeFromSimulatorTime(context, requestedTs);
 
-        Time delay = requestedTs - simNow;
-        if (delay.IsNegative())
+        ExtendTimingGraph(context, nodeLocalTs);
+
+        Time targetSimTime = m_nodeTimings->GetSimulatorTimeFromNodeTime(context, nodeLocalTs);
+
+        if (targetSimTime < Simulator::Now())
         {
-            delay = Seconds(0);
-        }
-
-        Time currentNodeTime = m_nodeTimings->GetNodeTimeFromSimulatorTime(context, simNow);
-
-        Time targetNodeTime = currentNodeTime + delay;
-
-        ExtendTimingGraph(context, targetNodeTime);
-
-        Time targetSimTime = m_nodeTimings->GetSimulatorTimeFromNodeTime(context, targetNodeTime);
-
-        if (targetSimTime < simNow)
-        {
-            targetSimTime = simNow;
+            targetSimTime = Simulator::Now();
         }
 
         Event adjustedEv = ev;
