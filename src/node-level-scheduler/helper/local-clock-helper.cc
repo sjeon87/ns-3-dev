@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Ishaan Lagwankar
+ * Copyright (c) 2026 Ishaan Lagwankar
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

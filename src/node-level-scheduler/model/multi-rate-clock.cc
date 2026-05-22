@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2025 Michigan State University
+ * Copyright (c) 2026 Ishaan Lagwankar
  *
  * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
-
 #include "multi-rate-clock.h"
 
 #include "node-level-scheduler.h"
@@ -47,7 +48,6 @@ MultiRateClock::SetNodeId(uint32_t nodeId)
 Time
 MultiRateClock::Now()
 {
-    // Use the static accessor to get the current graph linked to the active scheduler
     Ptr<NodeTimingGraph> graph = NodeLevelScheduler::GetCurrentGraph();
 
     if (graph)

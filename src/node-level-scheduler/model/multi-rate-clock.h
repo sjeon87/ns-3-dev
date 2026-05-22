@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2025 Michigan State University
+ * Copyright (c) 2026 Ishaan Lagwankar
  *
  * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
-
 #ifndef MULTI_RATE_CLOCK_H
 #define MULTI_RATE_CLOCK_H
 

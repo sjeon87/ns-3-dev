@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2016 IITP
- * Copyright (c) 2025 Michigan State University
+ * Copyright (c) 2026 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
