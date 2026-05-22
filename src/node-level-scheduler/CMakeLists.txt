@@ -16,9 +16,7 @@ build_lib(
   LIBNAME node-level-scheduler
   SOURCE_FILES ${source_files}
   HEADER_FILES ${header_files}
-  LIBRARIES_TO_LINK
-    ${libcore}
-    ${libnetwork}
-  TEST_SOURCES
-    test/node-level-scheduler-test-suite.cc
+  LIBRARIES_TO_LINK ${libcore}
+                    ${libnetwork}
+  TEST_SOURCES test/node-level-scheduler-test-suite.cc
 )
