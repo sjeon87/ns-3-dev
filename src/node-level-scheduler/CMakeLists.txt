@@ -1,13 +1,13 @@
 set(source_files
     model/local-clock.cc
-    model/multi-rate-clock.cc
+    model/scheduler-clock.cc
     model/node-level-scheduler.cc
     helper/local-clock-helper.cc
 )
 
 set(header_files
     model/local-clock.h
-    model/multi-rate-clock.h
+    model/scheduler-clock.h
     model/node-level-scheduler.h
     helper/local-clock-helper.h
 )

@@ -5,7 +5,7 @@
  *
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
-#include "multi-rate-clock.h"
+#include "scheduler-clock.h"
 
 #include "node-level-scheduler.h"
 
@@ -15,38 +15,38 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("MultiRateClock");
-NS_OBJECT_ENSURE_REGISTERED(MultiRateClock);
+NS_LOG_COMPONENT_DEFINE("SchedulerClock");
+NS_OBJECT_ENSURE_REGISTERED(SchedulerClock);
 
 TypeId
-MultiRateClock::GetTypeId()
+SchedulerClock::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::MultiRateClock")
+    static TypeId tid = TypeId("ns3::SchedulerClock")
                             .SetParent<LocalClock>()
                             .SetGroupName("Network")
-                            .AddConstructor<MultiRateClock>();
+                            .AddConstructor<SchedulerClock>();
     return tid;
 }
 
-MultiRateClock::MultiRateClock()
+SchedulerClock::SchedulerClock()
     : m_nodeId(0)
 {
     NS_LOG_FUNCTION(this);
 }
 
-MultiRateClock::~MultiRateClock()
+SchedulerClock::~SchedulerClock()
 {
     NS_LOG_FUNCTION(this);
 }
 
 void
-MultiRateClock::SetNodeId(uint32_t nodeId)
+SchedulerClock::SetNodeId(uint32_t nodeId)
 {
     m_nodeId = nodeId;
 }
 
 Time
-MultiRateClock::Now()
+SchedulerClock::Now()
 {
     Ptr<NodeTimingGraph> graph = NodeLevelScheduler::GetCurrentGraph();
 
