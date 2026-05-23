@@ -34,8 +34,8 @@ class PointToPointStarHelper : public Object
 {
   public:
     /**
-     * \brief Get the type ID.
-     * \return type ID
+     * @brief Get the type ID.
+     * @return type ID
      */
     static TypeId GetTypeId();
 
@@ -63,13 +63,13 @@ class PointToPointStarHelper : public Object
      * creates the specified number of spoke nodes (numSpokes) around it and installs
      * point-to-point links between the hub and the spoke nodes
      *
-     * \param hub the NodeContainer containing the already-created hub Node
+     * @param hub the NodeContainer containing the already-created hub Node
      *
-     * \param numSpokes the number of links attached to
+     * @param numSpokes the number of links attached to
      *        the hub node, creating a total of
      *        numSpokes + 1 nodes
      *
-     * \param p2pHelper the link helper for p2p links,
+     * @param p2pHelper the link helper for p2p links,
      *        used to link nodes together
      */
     PointToPointStarHelper(NodeContainer hub, uint32_t numSpokes, PointToPointHelper p2pHelper);
@@ -91,30 +91,30 @@ class PointToPointStarHelper : public Object
     Ptr<Node> GetSpokeNode(uint32_t i) const;
 
     /**
-     * \returns a node Container containing the set of spoke nodes
+     * @returns a node Container containing the set of spoke nodes
      */
     NodeContainer GetSpokeNodes() const;
 
     /**
-     * \brief  Get a NetDevice on the Hub Node
-     * \param i index into the NetDeviceContainer on the Hub Node
-     * \returns a Ptr to the i'th NetDevice on the Hub Node
+     * @brief  Get a NetDevice on the Hub Node
+     * @param i index into the NetDeviceContainer on the Hub Node
+     * @returns a Ptr to the i'th NetDevice on the Hub Node
      *
      */
     Ptr<NetDevice> GetHubNetDevice(uint32_t i) const;
 
     /**
-     * \brief Get a NetDevice from a given Spoke Node
-     * \param i index into the NetDeviceContainer containing the NetDevices
+     * @brief Get a NetDevice from a given Spoke Node
+     * @param i index into the NetDeviceContainer containing the NetDevices
      *  on all Spoke Nodes
      *
-     * \returns a Ptr to the NetDevice on the i'th Spoke Node
+     * @returns a Ptr to the NetDevice on the i'th Spoke Node
      *
      */
     Ptr<NetDevice> GetSpokeNetDevice(uint32_t i) const;
 
     /**
-     * \param i index into the hub interfaces
+     * @param i index into the hub interfaces
      *
      * @returns Ipv4Address according to indexed hub interface
      */
@@ -166,17 +166,17 @@ class PointToPointStarHelper : public Object
      * Assigns Ipv4 addresses for the interfaces between the hub and
      * a give spoke node
      *
-     * \param address an Ipv4AddressHelper which is used to install
+     * @param address an Ipv4AddressHelper which is used to install
      *                Ipv4 addresses on all the node interfaces in
      *                the star
      *
-     * \param spoke_id Id of the spoke node. Spoke nodes are zero-indexed
+     * @param spoke_id Id of the spoke node. Spoke nodes are zero-indexed
      *
      */
     void AssignIpv4AddressForSingleSpoke(Ipv4AddressHelper address, uint32_t spoke_id);
 
     /**
-     * \param network an IPv6 address representing the network portion
+     * @param network an IPv6 address representing the network portion
 >>>>>>> 1b3983224 (point-to-point-layout: Add tree layout)
      *                of the IPv6 Address
      * @param prefix the prefix length
@@ -187,11 +187,11 @@ class PointToPointStarHelper : public Object
      * Assigns Ipv6 addresses for the interfaces between the hub and
      * a give spoke node
      *
-     * \param network an IPv6 address representing the network portion
+     * @param network an IPv6 address representing the network portion
      *                of the IPv6 Address
-     * \param prefix the prefix length
+     * @param prefix the prefix length
      *
-     * \param spoke_id Id of the spoke node. Spoke nodes are zero-indexed
+     * @param spoke_id Id of the spoke node. Spoke nodes are zero-indexed
      *
      */
     void AssignIpv6AddressForSingleSpoke(Ipv6Address network, Ipv6Prefix prefix, uint32_t spoke_id);

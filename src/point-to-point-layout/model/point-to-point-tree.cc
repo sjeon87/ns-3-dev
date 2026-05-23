@@ -4,14 +4,15 @@
  * Author: John Abraham <john.abraham@gatech.edu>
  */
 
-#include "ns3/point-to-point-tree.h"
+#include "point-to-point-tree.h"
+
+#include "point-to-point-star.h"
 
 #include "ns3/constant-position-mobility-model.h"
 #include "ns3/log.h"
 #include "ns3/node-container.h"
 #include "ns3/node.h"
 #include "ns3/point-to-point-helper.h"
-#include "ns3/point-to-point-star.h"
 #include "ns3/ptr.h"
 
 #include <cmath>

@@ -38,9 +38,9 @@ namespace ns3
 {
 
 /**
- * \ingroup point-to-point-layout
+ * @ingroup point-to-point-layout
  *
- * \brief A helper to make it easier to create a tree topology
+ * @brief A helper to make it easier to create a tree topology
  * with PointToPoint links
  */
 class PointToPointTreeHelper : public Object
@@ -50,11 +50,11 @@ class PointToPointTreeHelper : public Object
      * Create a PointToPointTreeHelper in order to easily create
      * tree topologies using p2p links
      *
-     * \param nLevels the number of levels in the tree. Root node is level 0
+     * @param nLevels the number of levels in the tree. Root node is level 0
      *
-     * \param nBranches the number of branches nodes in each level.
+     * @param nBranches the number of branches nodes in each level.
      *
-     * \param p2pHelper the link helper for p2p links,
+     * @param p2pHelper the link helper for p2p links,
      *        used to link nodes together
      */
     PointToPointTreeHelper(uint32_t nLevels, uint32_t nBranches, PointToPointHelper p2pHelper);
@@ -64,12 +64,12 @@ class PointToPointTreeHelper : public Object
      * tree topologies using p2p links. This constructor needs to be used if the
      * branches for each node has to be chosen at random
      *
-     * \param nLevels the number of levels in the tree. Root node is level 0
+     * @param nLevels the number of levels in the tree. Root node is level 0
      *
-     * \param rv A pointer to a random variable that is used to choose
+     * @param rv A pointer to a random variable that is used to choose
      * the number of branches for a level nodes for each node during tree creation.
      *
-     * \param p2pHelper the link helper for p2p links,
+     * @param p2pHelper the link helper for p2p links,
      *        used to link nodes together
      */
     PointToPointTreeHelper(uint32_t nLevels,
@@ -81,11 +81,11 @@ class PointToPointTreeHelper : public Object
      * tree topologies using p2p links. This constructor needs to be used if the
      * branches for each level are unequal
      *
-     * \param nLevels the number of levels in the tree. Root node is level 0
+     * @param nLevels the number of levels in the tree. Root node is level 0
      *
-     * \param vec A Vector of uint32_t specifying the number of branches at each level
+     * @param vec A Vector of uint32_t specifying the number of branches at each level
      *
-     * \param p2pHelper the link helper for p2p links,
+     * @param p2pHelper the link helper for p2p links,
      *        used to link nodes together
      */
     PointToPointTreeHelper(uint32_t nLevels,
@@ -102,23 +102,23 @@ class PointToPointTreeHelper : public Object
      * Sets up the node canvas locations for every node in the tree.
      * This is needed for use with AnimationInterface
      *
-     * \param ulx upper left x value
-     * \param uly upper left y value
-     * \param lrx lower right x value
-     * \param lry lower right y value
+     * @param ulx upper left x value
+     * @param uly upper left y value
+     * @param lrx lower right x value
+     * @param lry lower right y value
      *
      */
     void BoundingBox(double ulx, double uly, double lrx, double lry);
 
     /**
-     * \brief Get the type ID.
+     * @brief Get the type ID.
      *
-     * \return type ID
+     * @return type ID
      */
     static TypeId GetTypeId();
 
     /**
-     * \param stack an InternetStackHelper which is used to install
+     * @param stack an InternetStackHelper which is used to install
      *              on every node in the star
      */
     void InstallStack(InternetStackHelper stack);
@@ -149,7 +149,7 @@ class PointToPointTreeHelper : public Object
      * Therefore 10.0.0.0/10 is divided to get 4 subnets by extending the
      * mask to /12.
      *
-     * \verbatim
+     * @verbatim
 
                                    Y       X (10.16.0.2/12)
                                     \     /
@@ -171,47 +171,47 @@ class PointToPointTreeHelper : public Object
      \endverbatim
      * The procedure is recursively repeated until the leaf node is reached
      *
-     * \param network The network address allocated for the root of the tree
-     * \param mask The mask allocated for this tree
+     * @param network The network address allocated for the root of the tree
+     * @param mask The mask allocated for this tree
      *
      */
     void AssignIpv4Address(Ipv4Address network, Ipv4Mask mask);
 
     /**
-     * \brief Get IPv4 Addr of the interface facing the Root level
-     * \param level Node Level
-     * \param nodeIndex Node index at the given level
-     * \returns Ipv4Address of the interface on the specified Node that faces the Root level
+     * @brief Get IPv4 Addr of the interface facing the Root level
+     * @param level Node Level
+     * @param nodeIndex Node index at the given level
+     * @returns Ipv4Address of the interface on the specified Node that faces the Root level
      *
      */
     Ipv4Address GetIpv4AddressTowardsRoot(uint32_t level, uint32_t nodeIndex);
 
     /**
-     * \brief Get IPv4 Addr of the interface facing the Leaf level
-     * \param level Node Level
-     * \param nodeIndex Node index at the given level
-     * \param branchIndex Index to the branch on the specified Node
-     * \returns Ipv4Address of the interface on the specified Node that faces the Leaf level
+     * @brief Get IPv4 Addr of the interface facing the Leaf level
+     * @param level Node Level
+     * @param nodeIndex Node index at the given level
+     * @param branchIndex Index to the branch on the specified Node
+     * @returns Ipv4Address of the interface on the specified Node that faces the Leaf level
      *
      */
     Ipv4Address GetIpv4AddressTowardsLeaf(uint32_t level, uint32_t nodeIndex, uint32_t branchIndex);
 
     /**
-     * \brief Get PointToPointNetDevice of the interface facing the Root level
-     * \param level Node Level
-     * \param nodeIndex Node index at the given level
-     * \returns Ptr to PointToPointNetDevice of the interface on the specified Node that faces the
+     * @brief Get PointToPointNetDevice of the interface facing the Root level
+     * @param level Node Level
+     * @param nodeIndex Node index at the given level
+     * @returns Ptr to PointToPointNetDevice of the interface on the specified Node that faces the
      * Root level
      *
      */
     Ptr<PointToPointNetDevice> GetNetDeviceTowardsRoot(uint32_t level, uint32_t nodeIndex);
 
     /**
-     * \brief Get PointToPointNetDevice of the interface facing the Leaf level
-     * \param level Node Level
-     * \param nodeIndex Node index at the given level
-     * \param branchIndex Index to the branch on the specified Node
-     * \returns Ptr to PointToPointNetDevice of the interface on the specified Node that faces the
+     * @brief Get PointToPointNetDevice of the interface facing the Leaf level
+     * @param level Node Level
+     * @param nodeIndex Node index at the given level
+     * @param branchIndex Index to the branch on the specified Node
+     * @returns Ptr to PointToPointNetDevice of the interface on the specified Node that faces the
      * Leaf level
      *
      */
@@ -221,16 +221,16 @@ class PointToPointTreeHelper : public Object
 
     /**
      * Get the Ipv4Address of the interface of a leaf node
-     * \param leafIndex of the leaf node (zero-indexed)
-     * \returns Ipv4 Address on the leaf node's interface
+     * @param leafIndex of the leaf node (zero-indexed)
+     * @returns Ipv4 Address on the leaf node's interface
      *
      */
     Ipv4Address GetLeafIpv4Address(uint32_t leafIndex);
 
     /**
      * Gets the Leaves of the tree (Nodes at the final level)
-     * \param leafIndex of the leaf node (zero-indexed)
-     * \returns Ptr to the leaf node
+     * @param leafIndex of the leaf node (zero-indexed)
+     * @returns Ptr to the leaf node
      *
      */
     Ptr<Node> GetLeaf(uint32_t leafIndex);
@@ -238,92 +238,92 @@ class PointToPointTreeHelper : public Object
     /**
      * Gets the Node at a particular index at a given level of the tree
      *
-     * \param level Level of the requested Node [Root node is at level 0.
+     * @param level Level of the requested Node [Root node is at level 0.
      *  i.e,Tree levels are zero-indexed]
-     * \param index Index of the requested Node [First node at a level has the index 0.
+     * @param index Index of the requested Node [First node at a level has the index 0.
      *  i.e, The nodes at a level are zero-indexed]
      *
-     * \returns a node pointer to the requested node.
+     * @returns a node pointer to the requested node.
      */
     Ptr<Node> GetNode(uint32_t level, uint32_t index);
 
     /**
-     * \brief Gets all the Nodes at a given level
-     * \param level The level
-     * \returns a node container containing all the Nodes on a given level
+     * @brief Gets all the Nodes at a given level
+     * @param level The level
+     * @returns a node container containing all the Nodes on a given level
      *
      */
     NodeContainer GetAllNodesForLevel(uint32_t level);
 
     /**
-     * \brief Get number of nodes on a level
-     * \param level The level
-     * \returns the number of nodes on a givel level
+     * @brief Get number of nodes on a level
+     * @param level The level
+     * @returns the number of nodes on a givel level
      *
      */
     uint32_t GetNNodesForLevel(uint32_t level);
 
     /**
-     * \brief Get number of leaves
-     * \returns the number of leaves in the tree
+     * @brief Get number of leaves
+     * @returns the number of leaves in the tree
      *
      */
     uint32_t GetNLeaves();
 
     /**
-     * \brief Get number of branches associated with a node
-     * \param level Node Level
-     * \param nodeIndex Node index at the given level
-     * \returns the number of branches associate with the specified node
+     * @brief Get number of branches associated with a node
+     * @param level Node Level
+     * @param nodeIndex Node index at the given level
+     * @returns the number of branches associate with the specified node
      *
      */
     uint32_t GetNBranches(uint32_t level, uint32_t nodeIndex);
 
     /**
-     * \brief Print Ipv4 Addresses for all Nodes (For Debugging)
+     * @brief Print Ipv4 Addresses for all Nodes (For Debugging)
      *
      */
     void PrintIpv4Addresses();
 
   private:
     /**
-     * \brief Assigns IPv4 addresses recursively.
-     * \param n The node to start the recursion from
-     * \param network The network address allocated for the root of the tree
-     * \param mask The mask allocated for this tree
+     * @brief Assigns IPv4 addresses recursively.
+     * @param n The node to start the recursion from
+     * @param network The network address allocated for the root of the tree
+     * @param mask The mask allocated for this tree
      */
     void AssignIpv4AddrHierarchicalRecursive(Ptr<Node> n, Ipv4Address network, Ipv4Mask mask);
 
     /**
-     * \brief Creates the topology.
-     * \param levels Number of levels
-     * \param p2pHelper The P2P helper
+     * @brief Creates the topology.
+     * @param levels Number of levels
+     * @param p2pHelper The P2P helper
      */
     void CreateTopology(uint32_t levels, PointToPointHelper p2pHelper);
 
     /**
-     * \brief Add a star topology to a node, and continue recursively.
-     * \param parentNode A node container (the first node is the one the recursion starts from)
-     * \param nLevels Number of levels
-     * \param p2pHelper The P2P helper
+     * @brief Add a star topology to a node, and continue recursively.
+     * @param parentNode A node container (the first node is the one the recursion starts from)
+     * @param nLevels Number of levels
+     * @param p2pHelper The P2P helper
      */
     void AddStarTopologyRecursively(NodeContainer parentNode,
                                     uint32_t nLevels,
                                     PointToPointHelper p2pHelper);
 
     /**
-     * \brief Set the nodes positions recursively.
-     * \param xDist Horizontal distance between the nodes
-     * \param interLevelHeight Vertical distance between levels
-     * \param currentLevel Current level
+     * @brief Set the nodes positions recursively.
+     * @param xDist Horizontal distance between the nodes
+     * @param interLevelHeight Vertical distance between levels
+     * @param currentLevel Current level
      */
     void BoundingBoxRecursiveHelper(double xDist, double interLevelHeight, uint32_t currentLevel);
 
     /**
-     * \brief Extend the network mask for a subnet.
-     * \param originalMask Original mask
-     * \param subnetsRequired Number of subnets required
-     * \return a modified network mask.
+     * @brief Extend the network mask for a subnet.
+     * @param originalMask Original mask
+     * @param subnetsRequired Number of subnets required
+     * @return a modified network mask.
      */
     Ipv4Mask ExtendIpv4MaskForSubnets(Ipv4Mask originalMask, uint32_t subnetsRequired);
 
