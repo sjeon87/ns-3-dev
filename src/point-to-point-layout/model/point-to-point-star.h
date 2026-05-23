@@ -160,9 +160,6 @@ class PointToPointStarHelper : public Object
     void AssignIpv4Addresses(Ipv4AddressHelper address);
 
     /**
-<<<<<<< HEAD
-     * @param network an IPv6 address representing the network portion
-=======
      * Assigns Ipv4 addresses for the interfaces between the hub and
      * a give spoke node
      *
@@ -177,7 +174,6 @@ class PointToPointStarHelper : public Object
 
     /**
      * @param network an IPv6 address representing the network portion
->>>>>>> 1b3983224 (point-to-point-layout: Add tree layout)
      *                of the IPv6 Address
      * @param prefix the prefix length
      */
