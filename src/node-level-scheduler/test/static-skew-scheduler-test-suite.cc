@@ -27,6 +27,21 @@ GetCurrentTimingGraph()
     return StaticSkewScheduler::GetCurrentGraph();
 }
 
+static ObjectFactory
+MakeSchedulerFactory(double windowSecs = 100.0,
+                     double updateSecs = 10.0,
+                     double minSkew = 0.5,
+                     double maxSkew = 1.5)
+{
+    ObjectFactory f;
+    f.SetTypeId("ns3::StaticSkewScheduler");
+    f.Set("WindowSize", TimeValue(Seconds(windowSecs)));
+    f.Set("UpdatePeriod", TimeValue(Seconds(updateSecs)));
+    f.Set("MinimumSkew", DoubleValue(minSkew));
+    f.Set("MaximumSkew", DoubleValue(maxSkew));
+    return f;
+}
+
 class StaticSkewSchedulerAccuracyTestCase : public TestCase
 {
   public:
@@ -35,13 +50,13 @@ class StaticSkewSchedulerAccuracyTestCase : public TestCase
 
   private:
     void DoRun() override;
-    void EventHandler(uint32_t nodeId, Time scheduledNodeTime);
+    void EventHandler(uint32_t nodeId, Time requestedSimTime);
 
     Time m_lastSimTime;
 };
 
 StaticSkewSchedulerAccuracyTestCase::StaticSkewSchedulerAccuracyTestCase()
-    : TestCase("Verify that events are executed with correct skew translation")
+    : TestCase("Verify that events are executed at the correctly translated simulator time")
 {
 }
 
@@ -50,7 +65,7 @@ StaticSkewSchedulerAccuracyTestCase::~StaticSkewSchedulerAccuracyTestCase()
 }
 
 void
-StaticSkewSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduledNodeTime)
+StaticSkewSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time requestedSimTime)
 {
     Time now = Simulator::Now();
 
@@ -58,39 +73,39 @@ StaticSkewSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time schedule
     m_lastSimTime = now;
 
     Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
-    bool graphExists = (graph != nullptr);
-    NS_TEST_ASSERT_MSG_EQ(graphExists, true, "Could not retrieve NodeTimingGraph from Scheduler");
+    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
+                          true,
+                          "Could not retrieve NodeTimingGraph from Scheduler");
 
-    Time expectedSimTime = graph->GetSimulatorTimeFromNodeTime(nodeId, scheduledNodeTime);
+    Time nodeLocalTime = graph->GetNodeTimeFromSimulatorTime(nodeId, requestedSimTime);
+    Time expectedSimTime = graph->GetSimulatorTimeFromNodeTime(nodeId, nodeLocalTime);
 
-    double diff = std::abs((now - expectedSimTime).GetSeconds());
-    NS_TEST_ASSERT_MSG_LT(diff, 1e-9, "Event executed at wrong Simulator Time compared to Graph");
+    double diffSeconds = std::abs((now - expectedSimTime).GetSeconds());
+    NS_TEST_ASSERT_MSG_LT(diffSeconds,
+                          1e-9,
+                          "Event fired at wrong simulator time for node " << nodeId);
 }
 
 void
 StaticSkewSchedulerAccuracyTestCase::DoRun()
 {
-    ObjectFactory schedulerFactory;
-    schedulerFactory.SetTypeId("ns3::StaticSkewScheduler");
-    schedulerFactory.Set("WindowSize", TimeValue(Seconds(100)));
-    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10)));
-    schedulerFactory.Set("MinimumSkew", DoubleValue(0.5));
-    schedulerFactory.Set("MaximumSkew", DoubleValue(1.5));
+    Simulator::SetScheduler(MakeSchedulerFactory());
 
-    Simulator::SetScheduler(schedulerFactory);
-
-    uint32_t nodeId = 1;
     m_lastSimTime = Seconds(0);
 
-    for (int i = 1; i <= 10; ++i)
+    const uint32_t nodeIds[] = {1, 2, 3};
+    for (uint32_t nodeId : nodeIds)
     {
-        Time t = Seconds(i * 5.0);
-        Simulator::ScheduleWithContext(nodeId,
-                                       t,
-                                       &StaticSkewSchedulerAccuracyTestCase::EventHandler,
-                                       this,
-                                       nodeId,
-                                       t);
+        for (int i = 1; i <= 10; ++i)
+        {
+            Time t = Seconds(i * 5.0);
+            Simulator::ScheduleWithContext(nodeId,
+                                           t,
+                                           &StaticSkewSchedulerAccuracyTestCase::EventHandler,
+                                           this,
+                                           nodeId,
+                                           t);
+        }
     }
 
     Simulator::Stop(Seconds(60.0));
@@ -106,12 +121,13 @@ class StaticSkewSchedulerFutureEventTestCase : public TestCase
 
   private:
     void DoRun() override;
-    void FarFutureHandler(uint32_t nodeId);
+    void FarFutureHandler(uint32_t nodeId, Time requestedSimTime);
+
     bool m_eventRan;
 };
 
 StaticSkewSchedulerFutureEventTestCase::StaticSkewSchedulerFutureEventTestCase()
-    : TestCase("Verify scheduling far into the future triggers graph extension"),
+    : TestCase("Verify far-future scheduling triggers graph extension and correct fire time"),
       m_eventRan(false)
 {
 }
@@ -121,44 +137,237 @@ StaticSkewSchedulerFutureEventTestCase::~StaticSkewSchedulerFutureEventTestCase(
 }
 
 void
-StaticSkewSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId)
+StaticSkewSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId, Time requestedSimTime)
 {
     m_eventRan = true;
 
     Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
-    bool graphExists = (graph != nullptr);
-    NS_TEST_ASSERT_MSG_EQ(graphExists, true, "Could not retrieve NodeTimingGraph from Scheduler");
+    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
+                          true,
+                          "Could not retrieve NodeTimingGraph from Scheduler");
 
-    Time maxNodeTime = graph->GetMaxNodeTime(nodeId);
-
-    NS_TEST_ASSERT_MSG_GT(maxNodeTime,
+    NS_TEST_ASSERT_MSG_GT(graph->GetMaxNodeTime(nodeId),
                           Seconds(4999),
                           "Graph did not extend to cover the event time");
+
+    Time now = Simulator::Now();
+    Time nodeLocalTime = graph->GetNodeTimeFromSimulatorTime(nodeId, requestedSimTime);
+    Time expectedSim = graph->GetSimulatorTimeFromNodeTime(nodeId, nodeLocalTime);
+
+    double diffSeconds = std::abs((now - expectedSim).GetSeconds());
+    NS_TEST_ASSERT_MSG_LT(diffSeconds, 1e-9, "Far-future event fired at wrong simulator time");
 }
 
 void
 StaticSkewSchedulerFutureEventTestCase::DoRun()
 {
-    ObjectFactory schedulerFactory;
-    schedulerFactory.SetTypeId("ns3::StaticSkewScheduler");
-    schedulerFactory.Set("WindowSize", TimeValue(Seconds(100)));
-    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(10)));
-
-    Simulator::SetScheduler(schedulerFactory);
+    Simulator::SetScheduler(MakeSchedulerFactory());
 
     uint32_t nodeId = 2;
+    Time requestedSimTime = Seconds(5000);
 
     Simulator::ScheduleWithContext(nodeId,
-                                   Seconds(5000),
+                                   requestedSimTime,
                                    &StaticSkewSchedulerFutureEventTestCase::FarFutureHandler,
                                    this,
-                                   nodeId);
+                                   nodeId,
+                                   requestedSimTime);
 
     Simulator::Stop(Seconds(60000));
-
     Simulator::Run();
 
-    NS_TEST_ASSERT_MSG_EQ(m_eventRan, true, "Far future event failed to execute");
+    NS_TEST_ASSERT_MSG_EQ(m_eventRan, true, "Far-future event failed to execute");
+
+    Simulator::Destroy();
+}
+
+class StaticSkewSchedulerInternalEventTestCase : public TestCase
+{
+  public:
+    StaticSkewSchedulerInternalEventTestCase();
+    ~StaticSkewSchedulerInternalEventTestCase() override;
+
+  private:
+    void DoRun() override;
+    void InternalHandler(Time expectedTime);
+
+    bool m_eventRan;
+};
+
+StaticSkewSchedulerInternalEventTestCase::StaticSkewSchedulerInternalEventTestCase()
+    : TestCase("Verify that context-less (0xffffffff) events bypass skew and fire on time"),
+      m_eventRan(false)
+{
+}
+
+StaticSkewSchedulerInternalEventTestCase::~StaticSkewSchedulerInternalEventTestCase()
+{
+}
+
+void
+StaticSkewSchedulerInternalEventTestCase::InternalHandler(Time expectedTime)
+{
+    m_eventRan = true;
+    Time now = Simulator::Now();
+    double diffSeconds = std::abs((now - expectedTime).GetSeconds());
+    NS_TEST_ASSERT_MSG_LT(diffSeconds,
+                          1e-9,
+                          "Internal event fired at wrong time; skew was incorrectly applied");
+}
+
+void
+StaticSkewSchedulerInternalEventTestCase::DoRun()
+{
+    Simulator::SetScheduler(MakeSchedulerFactory(100.0, 10.0, 0.1, 10.0));
+
+    Time scheduleAt = Seconds(15.0);
+    Simulator::Schedule(scheduleAt,
+                        &StaticSkewSchedulerInternalEventTestCase::InternalHandler,
+                        this,
+                        scheduleAt);
+
+    Simulator::Stop(Seconds(60.0));
+    Simulator::Run();
+
+    NS_TEST_ASSERT_MSG_EQ(m_eventRan, true, "Internal context-less event failed to execute");
+
+    Simulator::Destroy();
+}
+
+class StaticSkewSchedulerBoundaryTestCase : public TestCase
+{
+  public:
+    StaticSkewSchedulerBoundaryTestCase();
+    ~StaticSkewSchedulerBoundaryTestCase() override;
+
+  private:
+    void DoRun() override;
+    void BoundaryHandler(uint32_t nodeId, Time requestedSimTime);
+
+    uint32_t m_eventCount;
+};
+
+StaticSkewSchedulerBoundaryTestCase::StaticSkewSchedulerBoundaryTestCase()
+    : TestCase("Verify correct translation for events scheduled on interval boundaries"),
+      m_eventCount(0)
+{
+}
+
+StaticSkewSchedulerBoundaryTestCase::~StaticSkewSchedulerBoundaryTestCase()
+{
+}
+
+void
+StaticSkewSchedulerBoundaryTestCase::BoundaryHandler(uint32_t nodeId, Time requestedSimTime)
+{
+    ++m_eventCount;
+
+    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
+    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
+                          true,
+                          "Could not retrieve NodeTimingGraph from Scheduler");
+
+    Time now = Simulator::Now();
+    Time nodeLocalTime = graph->GetNodeTimeFromSimulatorTime(nodeId, requestedSimTime);
+    Time expectedSim = graph->GetSimulatorTimeFromNodeTime(nodeId, nodeLocalTime);
+
+    double diffSeconds = std::abs((now - expectedSim).GetSeconds());
+    NS_TEST_ASSERT_MSG_LT(diffSeconds,
+                          1e-9,
+                          "Boundary event fired at wrong simulator time for node " << nodeId);
+}
+
+void
+StaticSkewSchedulerBoundaryTestCase::DoRun()
+{
+    Simulator::SetScheduler(MakeSchedulerFactory(100.0, 10.0, 0.5, 1.5));
+
+    uint32_t nodeId = 5;
+    uint32_t expectedCount = 0;
+
+    for (int i = 1; i <= 5; ++i)
+    {
+        Time t = Seconds(i * 10.0);
+        Simulator::ScheduleWithContext(nodeId,
+                                       t,
+                                       &StaticSkewSchedulerBoundaryTestCase::BoundaryHandler,
+                                       this,
+                                       nodeId,
+                                       t);
+        ++expectedCount;
+    }
+
+    Simulator::Stop(Seconds(60.0));
+    Simulator::Run();
+
+    NS_TEST_ASSERT_MSG_EQ(m_eventCount, expectedCount, "Not all boundary events executed");
+
+    Simulator::Destroy();
+}
+
+class StaticSkewSchedulerCleanupTestCase : public TestCase
+{
+  public:
+    StaticSkewSchedulerCleanupTestCase();
+    ~StaticSkewSchedulerCleanupTestCase() override;
+
+  private:
+    void DoRun() override;
+    void LateHandler(uint32_t nodeId, Time requestedSimTime);
+
+    uint32_t m_eventCount;
+};
+
+StaticSkewSchedulerCleanupTestCase::StaticSkewSchedulerCleanupTestCase()
+    : TestCase("Verify that cleanup or pruning does not corrupt pending events"),
+      m_eventCount(0)
+{
+}
+
+StaticSkewSchedulerCleanupTestCase::~StaticSkewSchedulerCleanupTestCase()
+{
+}
+
+void
+StaticSkewSchedulerCleanupTestCase::LateHandler(uint32_t nodeId, Time requestedSimTime)
+{
+    ++m_eventCount;
+
+    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
+    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
+                          true,
+                          "Could not retrieve NodeTimingGraph from Scheduler");
+
+    NS_TEST_ASSERT_MSG_GT_OR_EQ(Simulator::Now(),
+                                requestedSimTime,
+                                "Event fired before its requested time after pruning");
+}
+
+void
+StaticSkewSchedulerCleanupTestCase::DoRun()
+{
+    Simulator::SetScheduler(MakeSchedulerFactory(20.0, 5.0, 0.5, 1.5));
+
+    uint32_t nodeId = 7;
+    uint32_t expectedCount = 5;
+
+    for (uint32_t i = 0; i < expectedCount; ++i)
+    {
+        Time t = Seconds(80.0 + i * 5.0);
+        Simulator::ScheduleWithContext(nodeId,
+                                       t,
+                                       &StaticSkewSchedulerCleanupTestCase::LateHandler,
+                                       this,
+                                       nodeId,
+                                       t);
+    }
+
+    Simulator::Stop(Seconds(120.0));
+    Simulator::Run();
+
+    NS_TEST_ASSERT_MSG_EQ(m_eventCount,
+                          expectedCount,
+                          "Cleanup pruning caused events to be lost or duplicated");
 
     Simulator::Destroy();
 }
@@ -172,11 +381,13 @@ class StaticSkewSchedulerStressTestCase : public TestCase
   private:
     void DoRun() override;
     void StressHandler(uint32_t nodeId);
+
     uint32_t m_eventCount;
+    std::map<uint32_t, Time> m_lastFireTime;
 };
 
 StaticSkewSchedulerStressTestCase::StaticSkewSchedulerStressTestCase()
-    : TestCase("Stress test with multiple nodes and frequent events"),
+    : TestCase("Stress test: multiple nodes, frequent events, monotonicity enforced"),
       m_eventCount(0)
 {
 }
@@ -188,21 +399,27 @@ StaticSkewSchedulerStressTestCase::~StaticSkewSchedulerStressTestCase()
 void
 StaticSkewSchedulerStressTestCase::StressHandler(uint32_t nodeId)
 {
-    m_eventCount++;
+    ++m_eventCount;
+
+    Time now = Simulator::Now();
+
+    auto it = m_lastFireTime.find(0xffffffff);
+    if (it != m_lastFireTime.end())
+    {
+        NS_TEST_ASSERT_MSG_GT_OR_EQ(now,
+                                    it->second,
+                                    "Global simulator time went backwards in stress test");
+    }
+    m_lastFireTime[0xffffffff] = now;
 }
 
 void
 StaticSkewSchedulerStressTestCase::DoRun()
 {
-    ObjectFactory schedulerFactory;
-    schedulerFactory.SetTypeId("ns3::StaticSkewScheduler");
-    schedulerFactory.Set("WindowSize", TimeValue(Seconds(50)));
-    schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(5)));
+    Simulator::SetScheduler(MakeSchedulerFactory(50.0, 5.0, 0.5, 1.5));
 
-    Simulator::SetScheduler(schedulerFactory);
-
-    uint32_t numNodes = 50;
-    uint32_t eventsPerNode = 100;
+    const uint32_t numNodes = 50;
+    const uint32_t eventsPerNode = 100;
 
     Ptr<UniformRandomVariable> rng = CreateObject<UniformRandomVariable>();
 
@@ -241,6 +458,9 @@ StaticSkewSchedulerTestSuite::StaticSkewSchedulerTestSuite()
 {
     AddTestCase(new StaticSkewSchedulerAccuracyTestCase, TestCase::Duration::QUICK);
     AddTestCase(new StaticSkewSchedulerFutureEventTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new StaticSkewSchedulerInternalEventTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new StaticSkewSchedulerBoundaryTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new StaticSkewSchedulerCleanupTestCase, TestCase::Duration::QUICK);
     AddTestCase(new StaticSkewSchedulerStressTestCase, TestCase::Duration::TAKES_FOREVER);
 }
 
