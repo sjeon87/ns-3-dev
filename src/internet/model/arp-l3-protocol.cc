@@ -58,7 +58,11 @@ ArpL3Protocol::GetTypeId()
                             "Packet dropped because not enough room "
                             "in pending queue for a specific cache entry.",
                             MakeTraceSourceAccessor(&ArpL3Protocol::m_dropTrace),
-                            "ns3::Packet::TracedCallback");
+                            "ns3::Packet::TracedCallback")
+            .AddTraceSource("ArpEvent",
+                            "ARP send and receive events.",
+                            MakeTraceSourceAccessor(&ArpL3Protocol::m_arpEventTrace),
+                            "ns3::ArpL3Protocol::ArpEvent");
     return tid;
 }
 
@@ -196,6 +200,13 @@ ArpL3Protocol::Receive(Ptr<NetDevice> device,
                                   << (arp.IsRequest() ? "request" : "reply") << " from "
                                   << arp.GetSourceIpv4Address() << " for address "
                                   << arp.GetDestinationIpv4Address() << "; we have addresses: ");
+    ArpEvent receiveEvent;
+    receiveEvent.kind = arp.IsRequest() ? "rx-request" : "rx-reply";
+    receiveEvent.source = arp.GetSourceIpv4Address();
+    receiveEvent.target = arp.GetDestinationIpv4Address();
+    receiveEvent.sourceMac = arp.GetSourceHardwareAddress();
+    receiveEvent.targetMac = arp.GetDestinationHardwareAddress();
+    m_arpEventTrace(receiveEvent);
     for (uint32_t i = 0; i < cache->GetInterface()->GetNAddresses(); i++)
     {
         NS_LOG_LOGIC(cache->GetInterface()->GetAddress(i).GetLocal() << ", ");
@@ -401,6 +412,13 @@ ArpL3Protocol::SendArpRequest(Ptr<const ArpCache> cache, Ipv4Address to)
     NS_LOG_LOGIC("ARP: sending request from node "
                  << m_node->GetId() << " || src: " << device->GetAddress() << " / " << source
                  << " || dst: " << device->GetBroadcast() << " / " << to);
+    ArpEvent transmitEvent;
+    transmitEvent.kind = "tx-request";
+    transmitEvent.source = source;
+    transmitEvent.target = to;
+    transmitEvent.sourceMac = device->GetAddress();
+    transmitEvent.targetMac = device->GetBroadcast();
+    m_arpEventTrace(transmitEvent);
     arp.SetRequest(device->GetAddress(), source, device->GetBroadcast(), to);
     NS_ASSERT(m_tc);
     m_tc->Send(device, Create<ArpQueueDiscItem>(packet, device->GetBroadcast(), PROT_NUMBER, arp));
@@ -417,6 +435,13 @@ ArpL3Protocol::SendArpReply(Ptr<const ArpCache> cache,
     NS_LOG_LOGIC("ARP: sending reply from node "
                  << m_node->GetId() << "|| src: " << cache->GetDevice()->GetAddress() << " / "
                  << myIp << " || dst: " << toMac << " / " << toIp);
+    ArpEvent transmitEvent;
+    transmitEvent.kind = "tx-reply";
+    transmitEvent.source = myIp;
+    transmitEvent.target = toIp;
+    transmitEvent.sourceMac = cache->GetDevice()->GetAddress();
+    transmitEvent.targetMac = toMac;
+    m_arpEventTrace(transmitEvent);
     arp.SetReply(cache->GetDevice()->GetAddress(), myIp, toMac, toIp);
     Ptr<Packet> packet = Create<Packet>();
     NS_ASSERT(m_tc);

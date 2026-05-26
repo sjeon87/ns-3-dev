@@ -56,6 +56,7 @@ HwmpProactiveRegressionTest::DoRun()
     RngSeedManager::SetRun(1);
     CreateNodes();
     CreateDevices();
+    ConnectTraces();
     InstallApplications();
 
     Simulator::Stop(m_time);
@@ -159,6 +160,46 @@ HwmpProactiveRegressionTest::CreateDevices()
 }
 
 void
+HwmpProactiveRegressionTest::ConnectTraces()
+{
+    m_observedEvents.clear();
+    for (uint32_t i = 0; i < m_nodes->GetN(); ++i)
+    {
+        Ptr<dot11s::HwmpProtocol> hwmp =
+            m_nodes->Get(i)->GetDevice(0)->GetObject<dot11s::HwmpProtocol>();
+        NS_TEST_ASSERT_MSG_NE(hwmp, nullptr, "HwmpProtocol should exist on node " << i);
+        hwmp->TraceConnectWithoutContext(
+            "MessageEvent",
+            MakeBoundCallback(&HwmpProactiveRegressionTest::HandleHwmpEvent, this, i));
+    }
+}
+
+void
+HwmpProactiveRegressionTest::HandleHwmpEvent(HwmpProactiveRegressionTest* testcase,
+                                             uint32_t nodeId,
+                                             dot11s::HwmpProtocol::MessageEvent event)
+{
+    std::ostringstream oss;
+    oss << "node " << nodeId << " " << event.kind << " src=" << event.source
+        << " dst=" << event.destination << " peer=" << event.peer
+        << " iface=" << event.interface;
+    testcase->m_observedEvents.push_back(oss.str());
+}
+
+size_t
+HwmpProactiveRegressionTest::FindEvent(std::string const& marker) const
+{
+    for (size_t i = 0; i < m_observedEvents.size(); ++i)
+    {
+        if (m_observedEvents[i].find(marker) != std::string::npos)
+        {
+            return i;
+        }
+    }
+    return m_observedEvents.size();
+}
+
+void
 HwmpProactiveRegressionTest::CheckResults()
 {
     // Instead of PCAP comparison, verify the mesh network behavior
@@ -192,8 +233,30 @@ HwmpProactiveRegressionTest::CheckResults()
     // TODO: Find a better way to validate HWMP routing table during simulation
     std::cout << "Skipping HWMP routing table validation - interface access issues" << std::endl;
 
-    // In proactive mode, check that the routing table exists
-    // 3. Verify data transmission occurred
+    // 3. Verify the observed HWMP control-plane sequence.
+    size_t proactivePreq = FindEvent("node 2 tx-preq");
+    size_t prepFromLeft = FindEvent("node 1 tx-prep");
+    size_t prepFromRight = FindEvent("node 3 tx-prep");
+    size_t reactiveRequest = FindEvent("reactive-request");
+
+    NS_TEST_ASSERT_MSG_NE(proactivePreq,
+                          m_observedEvents.size(),
+                          "Expected proactive PREQ trace");
+    NS_TEST_ASSERT_MSG_NE(prepFromLeft,
+                          m_observedEvents.size(),
+                          "Expected a PREP trace from node 1");
+    NS_TEST_ASSERT_MSG_NE(prepFromRight,
+                          m_observedEvents.size(),
+                          "Expected a PREP trace from node 3");
+    NS_TEST_ASSERT_MSG_EQ(reactiveRequest,
+                          m_observedEvents.size(),
+                          "Proactive test should not trigger reactive route discovery");
+    NS_TEST_ASSERT_MSG_LT(proactivePreq,
+                          prepFromLeft,
+                          "Node 1 PREP should follow the initial proactive PREQ");
+    NS_TEST_ASSERT_MSG_LT(proactivePreq,
+                          prepFromRight,
+                          "Node 3 PREP should follow the initial proactive PREQ");
     NS_TEST_ASSERT_MSG_GT(m_receivedPktsCounter, 0, "Server should have received packets");
     NS_TEST_ASSERT_MSG_GT(m_sentPktsCounter, 0, "Client should have sent packets");
 

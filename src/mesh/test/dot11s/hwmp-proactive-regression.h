@@ -7,9 +7,13 @@
  */
 
 #include "ns3/ipv4-interface-container.h"
+#include "ns3/hwmp-protocol.h"
 #include "ns3/node-container.h"
 #include "ns3/nstime.h"
 #include "ns3/test.h"
+
+#include <string>
+#include <vector>
 
 using namespace ns3;
 
@@ -42,6 +46,10 @@ using namespace ns3;
  *           |         |         |         |<--------|          DATA
  *                                             ^
  *               Further data is forwarded by proactive path
+ *
+ * This regression checks the ordering of the HWMP control messages and
+ * successful data delivery; it does not assert exact message times or ARP
+ * timing.
  * @endverbatim
  *
  */
@@ -71,6 +79,17 @@ class HwmpProactiveRegressionTest : public TestCase
     /// Reset position function
     void ResetPosition();
 
+    /// Connect trace sources used to validate the message sequence.
+    void ConnectTraces();
+
+    /// Record a HWMP trace event for a given node.
+    static void HandleHwmpEvent(HwmpProactiveRegressionTest* testcase,
+                  uint32_t nodeId,
+                  dot11s::HwmpProtocol::MessageEvent event);
+
+    /// Look up the first recorded event containing a marker.
+    size_t FindEvent(std::string const& marker) const;
+
     /// Server-side socket
     Ptr<Socket> m_serverSocket;
     /// Client-side socket
@@ -80,6 +99,9 @@ class HwmpProactiveRegressionTest : public TestCase
     uint32_t m_sentPktsCounter;
     /// received packets counter on server
     uint32_t m_receivedPktsCounter;
+
+    /// Recorded HWMP control-plane events.
+    std::vector<std::string> m_observedEvents;
 
     /**
      * Send data

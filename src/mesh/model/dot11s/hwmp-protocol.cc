@@ -134,6 +134,10 @@ HwmpProtocol::GetTypeId()
                             "The time of route discovery procedure",
                             MakeTraceSourceAccessor(&HwmpProtocol::m_routeDiscoveryTimeCallback),
                             "ns3::Time::TracedCallback")
+            .AddTraceSource("MessageEvent",
+                            "HWMP control-plane message exchanges",
+                            MakeTraceSourceAccessor(&HwmpProtocol::m_messageEventTraceSource),
+                            "ns3::dot11s::HwmpProtocol::MessageEventTracedCallback")
             .AddTraceSource("RouteChange",
                             "Routing table changed",
                             MakeTraceSourceAccessor(&HwmpProtocol::m_routeChangeTraceSource),
@@ -335,6 +339,13 @@ HwmpProtocol::ForwardUnicast(uint32_t sourceIface,
     if (result.retransmitter != Mac48Address::GetBroadcast())
     {
         // reply immediately:
+        MessageEvent event;
+        event.kind = "tx-unicast";
+        event.source = source;
+        event.destination = destination;
+        event.peer = result.retransmitter;
+        event.interface = result.ifIndex;
+        m_messageEventTraceSource(event);
         routeReply(true, packet, source, destination, protocolType, result.ifIndex);
         m_stats.txUnicast++;
         m_stats.txBytes += packet->GetSize();
@@ -370,6 +381,13 @@ HwmpProtocol::ForwardUnicast(uint32_t sourceIface,
     result = m_rtable->LookupReactiveExpired(destination);
     if (ShouldSendPreq(destination))
     {
+        MessageEvent event;
+        event.kind = "reactive-request";
+        event.source = source;
+        event.destination = destination;
+        event.peer = Mac48Address::GetBroadcast();
+        event.interface = sourceIface;
+        m_messageEventTraceSource(event);
         uint32_t originator_seqno = GetNextHwmpSeqno();
         uint32_t dst_seqno = 0;
         if (result.retransmitter != Mac48Address::GetBroadcast())
@@ -411,6 +429,15 @@ HwmpProtocol::ReceivePreq(IePreq preq,
                           uint32_t metric)
 {
     NS_LOG_FUNCTION(this << from << interface << fromMp << metric);
+    MessageEvent receiveEvent;
+    receiveEvent.kind = "rx-preq";
+    receiveEvent.source = preq.GetOriginatorAddress();
+    receiveEvent.destination = GetAddress();
+    receiveEvent.peer = from;
+    receiveEvent.interface = interface;
+    m_messageEventTraceSource(receiveEvent);
+    NS_LOG_DEBUG("Rx PREQ at " << GetAddress() << " from " << from << " originator "
+                                 << preq.GetOriginatorAddress());
     preq.IncrementMetric(metric);
     // acceptance cretirea:
     auto i = m_hwmpSeqnoMetricDatabase.find(preq.GetOriginatorAddress());
@@ -515,6 +542,15 @@ HwmpProtocol::ReceivePreq(IePreq preq,
             }
             if (!preq.IsNeedNotPrep())
             {
+                MessageEvent transmitEvent;
+                transmitEvent.kind = "tx-prep";
+                transmitEvent.source = GetAddress();
+                transmitEvent.destination = preq.GetOriginatorAddress();
+                transmitEvent.peer = from;
+                transmitEvent.interface = interface;
+                m_messageEventTraceSource(transmitEvent);
+                NS_LOG_DEBUG("Tx PREP from " << GetAddress() << " to "
+                                              << preq.GetOriginatorAddress() << " via " << from);
                 SendPrep(GetAddress(),
                          preq.GetOriginatorAddress(),
                          from,
@@ -597,6 +633,15 @@ HwmpProtocol::ReceivePrep(IePrep prep,
                           uint32_t metric)
 {
     NS_LOG_FUNCTION(this << from << interface << fromMp << metric);
+    MessageEvent receiveEvent;
+    receiveEvent.kind = "rx-prep";
+    receiveEvent.source = prep.GetOriginatorAddress();
+    receiveEvent.destination = prep.GetDestinationAddress();
+    receiveEvent.peer = from;
+    receiveEvent.interface = interface;
+    m_messageEventTraceSource(receiveEvent);
+    NS_LOG_DEBUG("Rx PREP at " << GetAddress() << " from " << from << " originator "
+                                 << prep.GetOriginatorAddress());
     prep.IncrementMetric(metric);
     // acceptance cretirea:
     auto i = m_hwmpSeqnoMetricDatabase.find(prep.GetOriginatorAddress());
@@ -746,6 +791,14 @@ HwmpProtocol::SendPrep(Mac48Address src,
     prep.SetOriginatorSeqNumber(originatorDsn);
     auto prep_sender = m_interfaces.find(interface);
     NS_ASSERT(prep_sender != m_interfaces.end());
+    MessageEvent transmitEvent;
+    transmitEvent.kind = "tx-prep";
+    transmitEvent.source = src;
+    transmitEvent.destination = dst;
+    transmitEvent.peer = retransmitter;
+    transmitEvent.interface = interface;
+    m_messageEventTraceSource(transmitEvent);
+    NS_LOG_DEBUG("Tx PREP from " << src << " to " << dst << " via " << retransmitter);
     prep_sender->second->SendPrep(prep, retransmitter);
     m_stats.initiatedPrep++;
 }
@@ -1178,6 +1231,14 @@ HwmpProtocol::SendProactivePreq()
     preq.SetOriginatorAddress(GetAddress());
     preq.SetPreqID(GetNextPreqId());
     preq.SetOriginatorSeqNumber(GetNextHwmpSeqno());
+    MessageEvent transmitEvent;
+    transmitEvent.kind = "tx-preq";
+    transmitEvent.source = GetAddress();
+    transmitEvent.destination = Mac48Address::GetBroadcast();
+    transmitEvent.peer = Mac48Address::GetBroadcast();
+    transmitEvent.interface = 0;
+    m_messageEventTraceSource(transmitEvent);
+    NS_LOG_DEBUG("Tx proactive PREQ from " << GetAddress());
     for (auto i = m_interfaces.begin(); i != m_interfaces.end(); i++)
     {
         i->second->SendPreq(preq);

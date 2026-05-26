@@ -17,6 +17,7 @@
 #include "ns3/traced-callback.h"
 
 #include <list>
+#include <string>
 
 namespace ns3
 {
@@ -44,6 +45,18 @@ class TrafficControlLayer;
 class ArpL3Protocol : public Object
 {
   public:
+    /**
+     * Structure that describes an ARP send or receive event.
+     */
+    struct ArpEvent
+    {
+        std::string kind;  ///< event kind, e.g., tx-request or rx-reply
+        Ipv4Address source; ///< source IPv4 address
+        Ipv4Address target; ///< target IPv4 address
+        Address sourceMac;  ///< source MAC address
+        Address targetMac;  ///< target MAC address
+    };
+
     /**
      * @brief Get the type ID.
      * @return the object TypeId
@@ -157,6 +170,7 @@ class ArpL3Protocol : public Object
     CacheList m_cacheList;                         //!< ARP cache container
     Ptr<Node> m_node;                              //!< node the ARP L3 protocol is associated with
     TracedCallback<Ptr<const Packet>> m_dropTrace; //!< trace for packets dropped by ARP
+    TracedCallback<ArpEvent> m_arpEventTrace;      //!< trace for ARP send/receive events
     Ptr<RandomVariableStream> m_requestJitter;     //!< jitter to de-sync ARP requests
     Ptr<TrafficControlLayer> m_tc;                 //!< The associated TrafficControlLayer
 };

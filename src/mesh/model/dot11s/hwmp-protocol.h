@@ -15,6 +15,7 @@
 #include "ns3/traced-value.h"
 
 #include <map>
+#include <string>
 #include <vector>
 
 namespace ns3
@@ -45,6 +46,18 @@ struct RouteChange
     uint32_t metric;            ///< metric of route
     Time lifetime;              ///< lifetime of route
     uint32_t seqnum;            ///< sequence number of route
+};
+
+/**
+ * Structure that describes a HWMP control-plane message exchange.
+ */
+struct MessageEvent
+{
+    std::string kind;         ///< event kind, e.g., tx-preq or rx-prep
+    Mac48Address source;      ///< originator or sender
+    Mac48Address destination; ///< final destination or receiver
+    Mac48Address peer;        ///< immediate peer on the wireless link
+    uint32_t interface;       ///< interface index
 };
 
 /**
@@ -343,6 +356,9 @@ class HwmpProtocol : public MeshL2RoutingProtocol
 
     /// Route discovery time:
     TracedCallback<Time> m_routeDiscoveryTimeCallback;
+    /// HWMP message exchange trace source
+    typedef TracedCallback<MessageEvent> MessageEventTracedCallback;
+    MessageEventTracedCallback m_messageEventTraceSource;
     /// RouteChangeTracedCallback typedef
     typedef TracedCallback<RouteChange> RouteChangeTracedCallback;
     /// Route change trace source
