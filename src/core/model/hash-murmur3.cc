@@ -419,7 +419,7 @@ void MurmurHash3_x86_128_fin ( const std::size_t len,
 
 //-----------------------------------------------------------------------------
 /** @copydoc MurmurHash3_x86_128_incr() */
-static void MurmurHash3_x64_128_incr ( const void * key, const std::size_t len,
+void MurmurHash3_x64_128_incr ( const void * key, const std::size_t len,
                                        uint64_t * seeds, void * out )
 {
   const uint8_t * data = (const uint8_t*)key;
@@ -484,7 +484,7 @@ static void MurmurHash3_x64_128_incr ( const void * key, const std::size_t len,
    ((uint64_t *)out)[1] = h2;
  }
 /** @copydoc MurmurHash3_x86_128_fin() */
-static void MurmurHash3_x64_128_fin ( const std::size_t len,
+void MurmurHash3_x64_128_fin ( const std::size_t len,
                                       const uint64_t * seeds,
                                       void * out )
 {
