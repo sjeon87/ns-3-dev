@@ -18,6 +18,7 @@
 #include "ns3/point-to-point-layout-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/simple-device-energy-model.h"
+#include "ns3/system-path.h"
 #include "ns3/udp-echo-helper.h"
 
 #include <iostream>
@@ -96,10 +97,13 @@ AbstractAnimationInterfaceTestCase::DoRun()
 void
 AbstractAnimationInterfaceTestCase::CheckFileExistence()
 {
-    FILE* fp = fopen(m_traceFileName, "r");
-    NS_TEST_ASSERT_MSG_NE(fp, nullptr, "Trace file was not created");
-    fclose(fp);
-    remove(m_traceFileName);
+    bool fileExists = SystemPath::Exists(m_traceFileName);
+    NS_TEST_ASSERT_MSG_EQ(fileExists, true, "Trace file was not created");
+
+    if (fileExists)
+    {
+        SystemPath::RemoveFile(m_traceFileName);
+    }
 }
 
 /**

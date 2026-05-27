@@ -16,6 +16,7 @@
 #include "ns3/point-to-point-helper.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/rng-seed-manager.h"
+#include "ns3/system-path.h"
 
 #include <fstream>
 #include <iostream>
@@ -359,8 +360,8 @@ BriteTopologyHelper::GenerateBriteTopology()
     // anymore
     if (generateSeedFile)
     {
-        remove("briteSeedFile.txt");
-        remove("last_seed_file");
+        SystemPath::RemoveFile("briteSeedFile.txt");
+        SystemPath::RemoveFile("last_seed_file");
     }
 }
 

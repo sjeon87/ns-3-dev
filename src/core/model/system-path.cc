@@ -339,6 +339,23 @@ MakeDirectories(std::string path)
     }
 }
 
+void
+RemoveDirectories(std::string path)
+{
+    NS_LOG_FUNCTION(path);
+
+    std::error_code ec;
+    if (std::filesystem::is_directory(path))
+    {
+        std::filesystem::remove_all(path, ec);
+    }
+
+    if (ec.value())
+    {
+        NS_ABORT_MSG("failed removing directory " << path);
+    }
+}
+
 bool
 Exists(const std::string path)
 {
@@ -386,6 +403,8 @@ Exists(const std::string path)
 std::string
 CreateValidSystemPath(const std::string path)
 {
+    NS_LOG_FUNCTION(path);
+
     // Windows and its file systems, e.g. NTFS and (ex)FAT(12|16|32),
     // do not like paths with empty spaces or special symbols.
     // Some of these symbols are allowed in test names, checked in TestCase::AddTestCase.
@@ -398,6 +417,39 @@ CreateValidSystemPath(const std::string path)
                        incompatible_characters,
                        "_");
     return valid_path;
+}
+
+std::uintmax_t
+GetFileSize(const std::string path)
+{
+    NS_LOG_FUNCTION(path);
+
+    if (!std::filesystem::exists(path))
+    {
+        NS_LOG_LOGIC("File does not exist: " << path << ". Returning size 0.");
+        return 0;
+    }
+
+    auto fileSize = std::filesystem::file_size(path);
+    NS_LOG_LOGIC("File size: " << fileSize);
+
+    return fileSize;
+}
+
+void
+RemoveFile(const std::string path)
+{
+    NS_LOG_FUNCTION(path);
+
+    if (!std::filesystem::exists(path))
+    {
+        NS_LOG_LOGIC("File does not exist: " << path);
+        return;
+    }
+
+    std::filesystem::remove(path);
+
+    NS_LOG_LOGIC("Removed file " << path);
 }
 
 } // namespace SystemPath
