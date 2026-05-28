@@ -1,0 +1,62 @@
+# Configuration file for the Sphinx documentation builder.
+#
+# This file only contains a selection of the most common options. For a full
+# list see the documentation:
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
+
+# -- Path setup --------------------------------------------------------------
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+#
+# import os
+# import sys
+# sys.path.insert(0, os.path.abspath('.'))
+
+
+# -- Project information -----------------------------------------------------
+
+project = "MANET"
+author = "NIST"
+
+# The full version, including alpha/beta/rc tags
+release = "1.0"
+
+
+# -- General configuration ---------------------------------------------------
+
+# Add any Sphinx extension module names here, as strings. They can be
+# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
+# ones.
+extensions = []
+
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+# This pattern also affects html_static_path and html_extra_path.
+exclude_patterns = []
+
+# Tell Sphinx to use 'index.rst' as the root, rather than
+# whatever other default
+# See: https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-root_doc
+master_doc = "index"
+
+# It seems some versions of Sphinx use this instead of `master-doc`
+root_doc = master_doc
+
+
+# -- Options for HTML output -------------------------------------------------
+
+#
+# Add any paths that contain custom themes here, relative to this directory.
+html_theme_path = ["../../../../doc"]
+
+# The name for this set of Sphinx documents.  If None, it defaults to
+# "<project> v<release> documentation".
+html_title = "MANET ns-3 module"
+
+# Grouping the document tree into LaTeX files. List of tuples
+# (source start file, target name, title, author, documentclass [howto/manual]).
+latex_documents = [
+    ("index", "manet-ns-3.tex", "ns-3 MANET module", "ns-3 project", "manual"),
+]

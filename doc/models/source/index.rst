@@ -46,6 +46,7 @@ from the ``doc/`` directory of each module.  Source file column width is 100 col
    internet-apps
    lr-wpan
    lte
+   manet
    mesh
    distributed
    mobility
