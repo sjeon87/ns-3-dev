@@ -17,10 +17,12 @@
 
 #include <cmath>
 #include <iostream>
+#include <numbers>
 #include <sstream>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("PointToPointDumbbellHelper");
 
@@ -230,8 +232,8 @@ PointToPointDumbbellHelper::BoundingBox(double ulx,
     }
 
     double xAdder = xDist / 3.0;
-    double thetaL = M_PI / (LeftCount() + 1.0);
-    double thetaR = M_PI / (RightCount() + 1.0);
+    double thetaL = PI / (LeftCount() + 1.0);
+    double thetaR = PI / (RightCount() + 1.0);
 
     // Place the left router
     Ptr<Node> lr = GetLeft();
@@ -256,7 +258,7 @@ PointToPointDumbbellHelper::BoundingBox(double ulx,
     loc->SetPosition(rrl);
 
     // Place the left leaf nodes
-    double theta = -M_PI_2 + thetaL;
+    double theta = -(PI / 2.0) + thetaL;
     for (uint32_t l = 0; l < LeftCount(); ++l)
     {
         // Make them in a circular pattern to make all line lengths the same
@@ -291,7 +293,7 @@ PointToPointDumbbellHelper::BoundingBox(double ulx,
         theta += thetaL;
     }
     // Place the right nodes
-    theta = -M_PI_2 + thetaR;
+    theta = -(PI / 2.0) + thetaR;
     for (uint32_t r = 0; r < RightCount(); ++r)
     {
         // Special case when theta = 0, to be sure we get a straight line

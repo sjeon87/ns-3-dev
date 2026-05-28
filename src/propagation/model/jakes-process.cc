@@ -16,8 +16,11 @@
 #include "ns3/simulator.h"
 #include "ns3/uinteger.h"
 
+#include <numbers>
+
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("JakesProcess");
 
@@ -82,7 +85,7 @@ JakesProcess::SetNOscillators(unsigned int nOscillators)
 void
 JakesProcess::SetDopplerFrequencyHz(double dopplerFrequencyHz)
 {
-    m_omegaDopplerMax = 2 * dopplerFrequencyHz * M_PI;
+    m_omegaDopplerMax = 2 * dopplerFrequencyHz * PI;
 }
 
 void
@@ -99,7 +102,7 @@ JakesProcess::ConstructOscillators()
         /// 1. Rotation speed
         /// 1a. Initiate \f[ \alpha_n = \frac{2\pi n - \pi + \theta}{4M},  n=1,2, \ldots,M\f], n is
         /// oscillatorNumber, M is m_nOscillators
-        double alpha = (2.0 * M_PI * n - M_PI + theta) / (4.0 * m_nOscillators);
+        double alpha = (2.0 * PI * n - PI + theta) / (4.0 * m_nOscillators);
         /// 1b. Initiate rotation speed:
         double omega = m_omegaDopplerMax * std::cos(alpha);
         /// 2. Initiate complex amplitude:

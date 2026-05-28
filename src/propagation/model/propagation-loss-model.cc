@@ -20,9 +20,12 @@
 #include "ns3/string.h"
 
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
+constexpr auto PI2 = PI * PI;
 
 NS_LOG_COMPONENT_DEFINE("PropagationLossModel");
 
@@ -253,7 +256,7 @@ FriisPropagationLossModel::DoCalcRxPower(double txPowerDbm,
         return txPowerDbm - m_minLoss;
     }
     double numerator = m_lambda * m_lambda;
-    double denominator = 16 * M_PI * M_PI * distance * distance * m_systemLoss;
+    double denominator = 16 * PI2 * distance * distance * m_systemLoss;
     double lossDb = -10 * log10(numerator / denominator);
     NS_LOG_DEBUG("distance=" << distance << "m, loss=" << lossDb << "dB");
     return txPowerDbm - std::max(lossDb, m_minLoss);
@@ -403,13 +406,13 @@ TwoRayGroundPropagationLossModel::DoCalcRxPower(double txPowerDbm,
      *
      */
 
-    double dCross = (4 * M_PI * txAntHeight * rxAntHeight) / m_lambda;
+    double dCross = (4 * PI * txAntHeight * rxAntHeight) / m_lambda;
     double tmp = 0;
     if (distance <= dCross)
     {
         // We use Friis
         double numerator = m_lambda * m_lambda;
-        tmp = M_PI * distance;
+        tmp = PI * distance;
         double denominator = 16 * tmp * tmp * m_systemLoss;
         double pr = 10 * std::log10(numerator / denominator);
         NS_LOG_DEBUG("Receiver within crossover (" << dCross << "m) for Two_ray path; using Friis");

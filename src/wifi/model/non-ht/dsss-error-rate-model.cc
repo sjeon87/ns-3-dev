@@ -11,6 +11,7 @@
 #include "ns3/log.h"
 
 #include <cmath>
+#include <numbers>
 
 #ifdef HAVE_GSL
 #include <gsl/gsl_cdf.h>
@@ -21,6 +22,8 @@
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
+constexpr auto SQRT2 = std::numbers::sqrt2;
 
 NS_LOG_COMPONENT_DEFINE("DsssErrorRateModel");
 
@@ -35,8 +38,8 @@ double
 DsssErrorRateModel::DqpskFunction(double x)
 {
     NS_LOG_FUNCTION_NOARGS();
-    return ((M_SQRT2 + 1.0) / std::sqrt(8.0 * M_PI * M_SQRT2)) * (1.0 / std::sqrt(x)) *
-           std::exp(-(2.0 - M_SQRT2) * x);
+    return ((SQRT2 + 1.0) / std::sqrt(8.0 * PI * SQRT2)) * (1.0 / std::sqrt(x)) *
+           std::exp(-(2.0 - SQRT2) * x);
 }
 
 double
@@ -136,7 +139,7 @@ IntegralFunction(double x, void* params)
     double beta = ((FunctionParameters*)params)->beta;
     double n = ((FunctionParameters*)params)->n;
     double IntegralFunction = std::pow(2 * gsl_cdf_ugaussian_P(x + beta) - 1, n - 1) *
-                              std::exp(-x * x / 2.0) / std::sqrt(2.0 * M_PI);
+                              std::exp(-x * x / 2.0) / std::sqrt(2.0 * PI);
     return IntegralFunction;
 }
 

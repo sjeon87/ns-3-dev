@@ -19,6 +19,9 @@
 #include "ns3/simulator.h"
 
 #include <cmath>
+#include <numbers>
+
+constexpr auto PI = std::numbers::pi;
 
 namespace
 {
@@ -189,7 +192,7 @@ ComputeAtmosphericAbsorptionLoss(double freq, double elevAngle)
     if ((elevAngle < 10 && freq > 1e9) || freq >= 10e9)
     {
         int roundedFreq = round(freq / 10e8);
-        loss += atmosphericAbsorption[roundedFreq] / sin(elevAngle * (M_PI / 180));
+        loss += atmosphericAbsorption[roundedFreq] / sin(elevAngle * (PI / 180));
     }
 
     return loss;
@@ -258,7 +261,6 @@ constexpr double M_C = 3.0e8; //!< propagation velocity in free space
 
 namespace ns3
 {
-
 NS_LOG_COMPONENT_DEFINE("ThreeGppPropagationLossModel");
 
 NS_OBJECT_ENSURE_REGISTERED(ThreeGppPropagationLossModel);
@@ -1102,7 +1104,7 @@ ThreeGppRmaPropagationLossModel::GetShadowingCorrelationDistance(
 double
 ThreeGppRmaPropagationLossModel::Pl1(double frequency, double distance3D, double h, double /* w */)
 {
-    double loss = 20.0 * log10(40.0 * M_PI * distance3D * frequency / 1e9 / 3.0) +
+    double loss = 20.0 * log10(40.0 * PI * distance3D * frequency / 1e9 / 3.0) +
                   std::min(0.03 * pow(h, 1.72), 10.0) * log10(distance3D) -
                   std::min(0.044 * pow(h, 1.72), 14.77) + 0.002 * log10(h) * distance3D;
     return loss;
@@ -1111,7 +1113,7 @@ ThreeGppRmaPropagationLossModel::Pl1(double frequency, double distance3D, double
 double
 ThreeGppRmaPropagationLossModel::GetBpDistance(double frequency, double hA, double hB)
 {
-    double distanceBp = 2.0 * M_PI * hA * hB * frequency / M_C;
+    double distanceBp = 2.0 * PI * hA * hB * frequency / M_C;
     return distanceBp;
 }
 

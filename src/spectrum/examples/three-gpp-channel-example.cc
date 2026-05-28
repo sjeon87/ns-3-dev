@@ -37,10 +37,12 @@
 #include "ns3/uniform-planar-array.h"
 
 #include <fstream>
+#include <numbers>
 
 NS_LOG_COMPONENT_DEFINE("ThreeGppChannelExample");
 
 using namespace ns3;
+constexpr auto PI = std::numbers::pi;
 
 static Ptr<ThreeGppPropagationLossModel>
     m_propagationLossModel; //!< the PropagationLossModel object
@@ -143,7 +145,7 @@ DoBeamforming(Ptr<MobilityModel> txMob,
     for (uint64_t ind = 0; ind < totNoArrayElements; ind++)
     {
         Vector loc = thisAntenna->GetElementLocation(ind);
-        double phase = sign * 2 * M_PI *
+        double phase = sign * 2 * PI *
                        (sinVAngleRadian * cosHAngleRadian * loc.x +
                         sinVAngleRadian * sinHAngleRadian * loc.y + cosVAngleRadian * loc.z);
         antennaWeights[ind] = exp(std::complex<double>(0, phase)) * power;

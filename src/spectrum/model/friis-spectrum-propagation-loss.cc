@@ -12,10 +12,12 @@
 
 #include "ns3/mobility-model.h"
 
-#include <cmath> // for M_PI
+#include <cmath> // for PI
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_OBJECT_ENSURE_REGISTERED(FriisSpectrumPropagationLossModel);
 
@@ -73,7 +75,7 @@ FriisSpectrumPropagationLossModel::CalculateLoss(double f, double d) const
     }
 
     NS_ASSERT(f > 0);
-    double loss_sqrt = (4 * M_PI * f * d) / 3e8;
+    double loss_sqrt = (4 * PI * f * d) / 3e8;
     double loss = loss_sqrt * loss_sqrt;
 
     if (loss < 1)

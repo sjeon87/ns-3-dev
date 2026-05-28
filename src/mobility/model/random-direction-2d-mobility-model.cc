@@ -14,9 +14,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("RandomDirection2dMobilityModel");
 
@@ -75,7 +77,7 @@ RandomDirection2dMobilityModel::DoInitialize()
 void
 RandomDirection2dMobilityModel::DoInitializePrivate()
 {
-    double direction = m_direction->GetValue(0, 2 * M_PI);
+    double direction = m_direction->GetValue(0, 2 * PI);
     SetDirectionAndSpeed(direction);
 }
 
@@ -118,29 +120,29 @@ RandomDirection2dMobilityModel::ResetDirectionAndSpeed()
     switch (m_bounds.GetClosestSideOrCorner(position))
     {
     case Rectangle::RIGHTSIDE:
-        direction = m_direction->GetValue(M_PI_2, M_PI + M_PI_2);
+        direction = m_direction->GetValue((PI / 2.0), PI + (PI / 2.0));
         break;
     case Rectangle::LEFTSIDE:
-        direction = m_direction->GetValue(-M_PI_2, M_PI - M_PI_2);
+        direction = m_direction->GetValue(-(PI / 2.0), PI - (PI / 2.0));
         break;
     case Rectangle::TOPSIDE:
-        direction = m_direction->GetValue(M_PI, 2 * M_PI);
+        direction = m_direction->GetValue(PI, 2 * PI);
         break;
     case Rectangle::BOTTOMSIDE:
-        direction = m_direction->GetValue(0, M_PI);
+        direction = m_direction->GetValue(0, PI);
         break;
     case Rectangle::TOPRIGHTCORNER:
-        direction = m_direction->GetValue(M_PI, M_PI + M_PI_2);
+        direction = m_direction->GetValue(PI, PI + (PI / 2.0));
         break;
     case Rectangle::TOPLEFTCORNER:
-        direction = m_direction->GetValue(M_PI + M_PI_2, 2 * M_PI);
+        direction = m_direction->GetValue(PI + (PI / 2.0), 2 * PI);
         break;
     case Rectangle::BOTTOMRIGHTCORNER:
-        direction = m_direction->GetValue(0, M_PI_2);
-        direction += M_PI / 2;
+        direction = m_direction->GetValue(0, (PI / 2.0));
+        direction += PI / 2;
         break;
     case Rectangle::BOTTOMLEFTCORNER:
-        direction = m_direction->GetValue(M_PI_2, M_PI);
+        direction = m_direction->GetValue((PI / 2.0), PI);
         break;
     }
     SetDirectionAndSpeed(direction);

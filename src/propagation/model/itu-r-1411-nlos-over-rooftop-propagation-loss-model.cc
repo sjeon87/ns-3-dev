@@ -15,9 +15,11 @@
 #include "ns3/mobility-model.h"
 
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("ItuR1411NlosOverRooftopPropagationLossModel");
 
@@ -187,8 +189,8 @@ ItuR1411NlosOverRooftopPropagationLossModel::GetLoss(Ptr<MobilityModel> a,
         }
         else
         {
-            Qm = m_buildingSeparation / (2 * M_PI * distance) * std::sqrt(m_lambda / rho) *
-                 (1 / theta - (1 / (2 * M_PI + theta)));
+            Qm = m_buildingSeparation / (2 * PI * distance) * std::sqrt(m_lambda / rho) *
+                 (1 / theta - (1 / (2 * PI + theta)));
         }
         Lmsd = -10 * std::log10(Qm * Qm);
     }

@@ -21,6 +21,7 @@
 #include "ns3/log.h"
 
 #include <cmath>
+#include <numbers>
 
 /**
  * @file
@@ -35,6 +36,8 @@ constexpr double C = 299792458.0; ///< speed of light in vacuum, in m/s
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
+
 NS_LOG_COMPONENT_DEFINE("CircularApertureAntennaModel");
 
 NS_OBJECT_ENSURE_REGISTERED(CircularApertureAntennaModel);
@@ -139,13 +142,13 @@ CircularApertureAntennaModel::GetGainDb(Angles a)
     // to the cartesian coordinates of the provided spherical coordinates, and the spherical
     // coordinates (r = 1, azimuth = 0, elevation = PI/2)
     double theta1 = a.GetInclination();
-    double theta2 = M_PI_2; // reference direction
+    double theta2 = (PI / 2.0); // reference direction
 
     // Convert to ISO range: the input azimuth angle phi is in [-pi,pi],
     // while the ISO convention for spherical to cartesian coordinates
     // assumes phi in [0,2*pi].
-    double phi1 = M_PI + a.GetAzimuth();
-    double phi2 = M_PI; // reference direction
+    double phi1 = PI + a.GetAzimuth();
+    double phi2 = PI; // reference direction
 
     // Convert the spherical coordinates of the boresight and the incoming ray
     // to Cartesian coordinates
@@ -161,7 +164,7 @@ CircularApertureAntennaModel::GetGainDb(Angles a)
         gain = m_maxGain;
     }
     // return value of std::arccos is in [0, PI] deg
-    else if (theta >= M_PI_2)
+    else if (theta >= (PI / 2.0))
     {
         // This is an approximation. 3GPP TR 38.811 does not provide indications
         // on the antenna field pattern outside its PI degrees FOV.
@@ -170,7 +173,7 @@ CircularApertureAntennaModel::GetGainDb(Angles a)
     else // 0 < theta < |PI/2|
     {
         // 3GPP TR 38.811 v15.4.0, Section 6.4.1
-        double k = (2 * M_PI * m_operatingFrequencyHz) / C;
+        double k = (2 * PI * m_operatingFrequencyHz) / C;
         double kasintheta = k * m_apertureRadiusMeter * sin(theta);
 // If needed, fall back to Boost cyl_bessel_j
 #ifdef NEED_AND_HAVE_BOOST_BESSEL_FUNC

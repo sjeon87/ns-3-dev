@@ -14,8 +14,11 @@
 #include "ns3/pointer.h"
 #include "ns3/uinteger.h"
 
+#include <numbers>
+
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 uint32_t PhasedArrayModel::m_idCounter = 0;
 SymmetricAdjacencyMatrix<bool> PhasedArrayModel::m_outOfDateAntennaPairChannel;
@@ -111,7 +114,7 @@ PhasedArrayModel::GetSteeringVector(Angles a) const
     for (size_t i = 0; i < GetNumElems(); i++)
     {
         Vector loc = GetElementLocation(i);
-        double phase = -2 * M_PI *
+        double phase = -2 * PI *
                        (sin(a.GetInclination()) * cos(a.GetAzimuth()) * loc.x +
                         sin(a.GetInclination()) * sin(a.GetAzimuth()) * loc.y +
                         cos(a.GetInclination()) * loc.z);

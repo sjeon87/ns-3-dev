@@ -20,8 +20,11 @@
 #include "ns3/simulator.h"
 #include "ns3/string.h"
 
+#include <numbers>
+
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("ThreeGppSpectrumPropagationLossModel");
 
@@ -216,7 +219,7 @@ ThreeGppSpectrumPropagationLossModel::CalcBeamformingGain(
     // NOTE the update of Doppler is simplified by only taking the center angle of
     // each cluster in to consideration.
     const double slotTime = Simulator::Now().GetSeconds();
-    const double factor = 2 * M_PI * slotTime * GetFrequency() / 3e8;
+    const double factor = 2 * PI * slotTime * GetFrequency() / 3e8;
     PhasedArrayModel::ComplexVector doppler(numCluster);
 
     // Make sure that all the structures that are passed to this function
@@ -389,7 +392,7 @@ ThreeGppSpectrumPropagationLossModel::GenSpectrumChannelMatrix(
             const double fsb = sbit->fc; // center frequency of the sub-band
             for (std::size_t cIndex = 0; cIndex < numCluster; cIndex++)
             {
-                const double delay = -2 * M_PI * fsb * channelParams->m_delay[cIndex];
+                const double delay = -2 * PI * fsb * channelParams->m_delay[cIndex];
                 channelParams->m_cachedDelaySincos(i, cIndex) =
                     std::complex(cos(delay), sin(delay));
             }

@@ -15,9 +15,11 @@
 #include "ns3/mobility-model.h"
 
 #include <cmath>
+#include <numbers>
 
 namespace ns3
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("ItuR1411LosPropagationLossModel");
 
@@ -59,7 +61,7 @@ ItuR1411LosPropagationLossModel::GetLoss(Ptr<MobilityModel> a, Ptr<MobilityModel
     NS_ASSERT_MSG(a->GetPosition().z > 0 && b->GetPosition().z > 0,
                   "nodes' height must be greater than 0");
     double Lbp = std::fabs(20 * std::log10((m_lambda * m_lambda) /
-                                           (8 * M_PI * a->GetPosition().z * b->GetPosition().z)));
+                                           (8 * PI * a->GetPosition().z * b->GetPosition().z)));
     double Rbp = (4 * a->GetPosition().z * b->GetPosition().z) / m_lambda;
     NS_LOG_LOGIC(this << " Lbp " << Lbp << " Rbp " << Rbp << " lambda " << m_lambda);
     if (dist <= Rbp)

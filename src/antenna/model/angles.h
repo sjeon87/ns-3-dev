@@ -65,7 +65,7 @@ double WrapTo360(double a);
 double WrapTo180(double a);
 
 /**
- * @brief Wrap angle in [0, 2*M_PI)
+ * @brief Wrap angle in [0, 2*&pi)
  *
  * @param a the angle in radians
  * @return the wrapped angle in radians
@@ -73,7 +73,7 @@ double WrapTo180(double a);
 double WrapTo2Pi(double a);
 
 /**
- * @brief Wrap angle in [-M_PI, M_PI)
+ * @brief Wrap angle in [-&pi, &pi)
  *
  * @param a the angle in radians
  * @return the wrapped angle in radians
@@ -88,7 +88,7 @@ double WrapToPi(double a);
  * This notation corresponds to the standard spherical coordinates, with azimuth
  * measured counterclockwise in the x-y plane off the x-axis, and
  * inclination measured off the z-axis.
- * Azimuth is consistently normalized to be in [-M_PI, M_PI).
+ * Azimuth is consistently normalized to be in [-&pi, &pi).
  *
  *          ^
  *        z |
@@ -108,8 +108,8 @@ class Angles
   public:
     /**
      * This constructor allows to specify azimuth and inclination.
-     * Inclination must be in [0, M_PI], while azimuth is
-     * automatically normalized in [-M_PI, M_PI)
+     * Inclination must be in [0, &pi], while azimuth is
+     * automatically normalized in [-&pi, &pi)
      *
      * @param azimuth the azimuth angle in radians
      * @param inclination the inclination angle in radians
@@ -147,7 +147,7 @@ class Angles
     /**
      * Setter for inclination angle
      *
-     * @param inclination angle in radians. Must be in [0, M_PI]
+     * @param inclination angle in radians. Must be in [0, &pi]
      */
     void SetInclination(double inclination);
 
@@ -192,20 +192,20 @@ class Angles
     Angles();
 
     /**
-     * Normalize the angle azimuth angle range between in [-M_PI, M_PI)
+     * Normalize the angle azimuth angle range between in [-&pi, &pi)
      * while checking if the angle is valid, i.e., finite and within
      * the bounds.
      *
      * Note: while an arbitrary value for the azimuth angle is valid
-     * and can be wrapped in [-M_PI, M_PI), an inclination angle outside
-     * the [0, M_PI] range can be ambiguous and is thus not valid.
+     * and can be wrapped in [-&pi, &pi), an inclination angle outside
+     * the [0, &pi] range can be ambiguous and is thus not valid.
      */
     void NormalizeAngles();
 
     /**
      * Check if Angle is valid or not
      * Warns the user if the Angle is undefined (non-finite azimuth or inclination),
-     * throws an assert if the inclination angle is invalid (not in [0, M_PI])
+     * throws an assert if the inclination angle is invalid (not in [0, &pi])
      */
     void CheckIfValid() const;
 

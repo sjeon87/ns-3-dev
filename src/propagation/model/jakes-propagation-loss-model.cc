@@ -11,8 +11,12 @@
 #include "ns3/double.h"
 #include "ns3/log.h"
 
+#include <numbers>
+
 namespace ns3
+
 {
+constexpr auto PI = std::numbers::pi;
 
 NS_LOG_COMPONENT_DEFINE("Jakes");
 
@@ -21,8 +25,8 @@ NS_OBJECT_ENSURE_REGISTERED(JakesPropagationLossModel);
 JakesPropagationLossModel::JakesPropagationLossModel()
 {
     m_uniformVariable = CreateObject<UniformRandomVariable>();
-    m_uniformVariable->SetAttribute("Min", DoubleValue(-1.0 * M_PI));
-    m_uniformVariable->SetAttribute("Max", DoubleValue(M_PI));
+    m_uniformVariable->SetAttribute("Min", DoubleValue(-1.0 * PI));
+    m_uniformVariable->SetAttribute("Max", DoubleValue(PI));
 }
 
 JakesPropagationLossModel::~JakesPropagationLossModel()

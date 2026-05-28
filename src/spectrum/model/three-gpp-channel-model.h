@@ -122,12 +122,12 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
 
     /**
      * Wrap an (azimuth, inclination) angle pair in a valid range.
-     * Specifically, inclination must be in [0, M_PI] and azimuth in [0, 2*M_PI).
+     * Specifically, inclination must be in [0, PI] and azimuth in [0, 2*PI).
      * If the inclination angle is outside its range, the azimuth angle is
-     * rotated by M_PI.
+     * rotated by PI.
      * This method aims specifically at solving the problem of generating angles at
      * the boundaries of the angle domain, specifically, generating angle distributions
-     * close to inclinationRad=0 and inclinationRad=M_PI.
+     * close to inclinationRad=0 and inclinationRad=PI.
      *
      * @param azimuthRad the azimuth angle in radians
      * @param inclinationRad the inclination angle in radians
