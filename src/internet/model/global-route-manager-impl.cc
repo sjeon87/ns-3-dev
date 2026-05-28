@@ -133,8 +133,8 @@ SPFVertex<T>::~SPFVertex()
         (*piter)->m_children.remove(this);
         uint32_t newCount = (*piter)->m_children.size();
 
-        NS_ASSERT_MSG(orgCount > newCount,
-                      "Unable to find the current vertex from its parents --- impossible!");
+        NS_ABORT_MSG_UNLESS(orgCount > newCount,
+                            "Unable to find the current vertex from its parents --- impossible!");
     }
 
     // delete children
