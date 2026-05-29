@@ -12,6 +12,7 @@
 #include "nhdp-client.h"
 
 #include "nhdp-hello-tag.h"
+#include "time-tlv.h"
 
 #include "ns3/boolean.h"
 #include "ns3/double.h"
@@ -224,7 +225,7 @@ void
 NhdpClient::DoInitialize()
 {
     NS_LOG_FUNCTION(this);
-    m_rng->SetAttribute("Max", DoubleValue(DEFAULT_HP_MAX_JITTER.GetSeconds()));
+    m_rng->SetAttribute("Max", DoubleValue(m_hpMaxJitter.GetSeconds()));
     if (!m_recvSocket)
     {
         m_recvSocket = Socket::CreateSocket(GetNode(), UdpSocketFactory::GetTypeId());
@@ -367,23 +368,8 @@ NhdpClient::HandleLinkFailure(Ipv4Address neighborIpv4Addr)
         m_lostNeighborChangeTrace(Action::ADDED, lostNeighborTuple, lostNeighborTuple);
     }
     // Section 13.2 processing
-    // If any 1-hop neighbors transitioned from symmetric to lost or heard, remove their 2-hop
-    // neighbors
-    for (auto itTuple = m_twoHopInfoBase.begin(); itTuple != m_twoHopInfoBase.end();)
-    {
-        auto key = itTuple->first;
-        if (key.first == neighborIpv4Addr)
-        {
-            m_twoHopChangeTrace(Action::REMOVED, itTuple->second, itTuple->second);
-            NS_LOG_INFO("Removing TwoHopTuple to " << itTuple->second.m_twoHopAddr << " via "
-                                                   << neighborIpv4Addr);
-            itTuple = m_twoHopInfoBase.erase(itTuple);
-        }
-        else
-        {
-            ++itTuple;
-        }
-    }
+    // The link to this neighbor is no longer symmetric, so remove its 2-Hop Tuples
+    RemoveTwoHopTuples(neighborIpv4Addr);
     // Modify the neighbor tuple to be not symmetric
     auto itNeigh2 = m_neighborInfoBase.find(neighborIpv4Addr);
     auto& neighborTuple = itNeigh2->second;
@@ -478,13 +464,38 @@ NhdpClient::HandlePbbMessage(Ptr<PbbMessage> msg, std::optional<double> quality)
                 << msg->TlvSize() << " address blocks: " << msg->AddressBlockSize()
                 << " hops: " << msg->HasHopLimit() << " seq: " << msg->HasSequenceNumber());
 
-    // Process message TLVs; these are attributes that pertain to the overall message
-    // INTERVAL_TIME and VALIDITY_TIME are message TLVs
-
-    // OLSRv2 will add the MPR_WILLING TLV here
-
-    // For now, assume all routers have the same interval and validity time; therefore,
-    // no need yet to include these TLVs
+    // Process message TLVs; these are attributes that pertain to the overall message.
+    // INTERVAL_TIME and VALIDITY_TIME are message TLVs (RFC 5497).  OLSRv2 will add
+    // the MPR_WILLING TLV here.
+    //
+    Time validityTime;
+    uint32_t validityCount = 0;
+    uint32_t intervalCount = 0;
+    for (auto it = msg->TlvBegin(); it != msg->TlvEnd(); ++it)
+    {
+        auto tlv = *it;
+        if (tlv->GetType() == MSG_TLV_VALIDITY_TIME)
+        {
+            NS_ASSERT_MSG(tlv->GetValue().GetSize() == 1,
+                          "VALIDITY_TIME TLV must carry a single time-code octet");
+            validityTime = DecodeTimeCode(tlv->GetValue().Begin().ReadU8());
+            validityCount++;
+        }
+        else if (tlv->GetType() == MSG_TLV_INTERVAL_TIME)
+        {
+            intervalCount++;
+        }
+    }
+    // RFC 6130, Sec. 12.1: a HELLO MUST contain exactly one VALIDITY_TIME Message TLV;
+    // a HELLO with zero, or with more than one, is invalid.  RFC 5497, Sec. 7.1 likewise
+    // forbids more than one INTERVAL_TIME TLV.
+    NS_ASSERT_MSG(validityCount != 0,
+                  "HELLO is missing the mandatory VALIDITY_TIME Message TLV (RFC 6130 Sec. 12.1)");
+    NS_ASSERT_MSG(validityCount == 1,
+                  "HELLO has more than one VALIDITY_TIME Message TLV (RFC 6130 Sec. 12.1)");
+    NS_ASSERT_MSG(intervalCount <= 1,
+                  "HELLO has more than one INTERVAL_TIME Message TLV (RFC 6130 Sec. 12.1)");
+    NS_LOG_DEBUG("HELLO validity time " << validityTime.As(Time::S));
 
     // Process address blocks
     // OLSRv2 will add the MPR, LINK_METRIC, and NBR_ADDR_TYPE address blocks
@@ -500,12 +511,12 @@ NhdpClient::HandlePbbMessage(Ptr<PbbMessage> msg, std::optional<double> quality)
                                           << +addressTlv->GetType());
         if (addressTlv->GetType() == ADDR_TLV_LOCAL_IF)
         {
-            neighborIpv4Addr = HandleLocalAddressBlock(addressBlock, quality);
+            neighborIpv4Addr = HandleLocalAddressBlock(addressBlock, validityTime, quality);
         }
         else if (addressTlv->GetType() == ADDR_TLV_LINK_STATUS)
         {
             linkStatusAddressBlockFound = true;
-            HandleLinkStatusAddressBlock(addressBlock, neighborIpv4Addr, quality);
+            HandleLinkStatusAddressBlock(addressBlock, neighborIpv4Addr, validityTime, quality);
         }
         else if (addressTlv->GetType() == ADDR_TLV_OTHER_NEIGHB)
         {
@@ -526,21 +537,6 @@ NhdpClient::HandlePbbMessage(Ptr<PbbMessage> msg, std::optional<double> quality)
 
     // Perform housekeeping (TODO: Move to HandleRecv()?)
 
-    // Update Lost Neighbor Set (RFC 6130 Sec. 12.4)
-    for (auto& itAddr : m_lostAddressList)
-    {
-        auto itNeigh = m_lostNeighborSet.find(itAddr);
-        if (itNeigh == m_lostNeighborSet.end())
-        {
-            NS_LOG_DEBUG("Inserting lost address " << itAddr << " into lost neighbor set");
-            LostNeighborTuple lostNeighborTuple;
-            lostNeighborTuple.m_neighborAddr = itAddr;
-            lostNeighborTuple.m_expirationTime = Simulator::Now() + m_nHoldTime;
-            m_lostNeighborSet.emplace(itAddr, lostNeighborTuple);
-            m_lostNeighborChangeTrace(Action::ADDED, lostNeighborTuple, lostNeighborTuple);
-        }
-    }
-    m_lostAddressList.clear();
     // Remove expired two hop entries
     for (auto it = m_twoHopInfoBase.begin(); it != m_twoHopInfoBase.end();)
     {
@@ -561,9 +557,10 @@ NhdpClient::HandlePbbMessage(Ptr<PbbMessage> msg, std::optional<double> quality)
 
 Ipv4Address
 NhdpClient::HandleLocalAddressBlock(Ptr<PbbAddressBlock> addressBlock,
+                                    Time validityTime,
                                     std::optional<double> quality)
 {
-    NS_LOG_FUNCTION(this << addressBlock << quality.has_value());
+    NS_LOG_FUNCTION(this << addressBlock << validityTime << quality.has_value());
     NS_ASSERT_MSG(addressBlock->TlvSize() == 1,
                   "Expected AddressBlock TLV size of 1, got " << addressBlock->TlvSize());
     auto addressTlv = addressBlock->TlvFront();
@@ -613,8 +610,9 @@ NhdpClient::HandleLocalAddressBlock(Ptr<PbbAddressBlock> addressBlock,
             linkTuple.m_pending = false;
         }
         // Next, apply steps from Section 12.5, step 4, substeps 3-4.  Substeps 1, 2, 5
-        // can be applied when the address blocks are checked.
-        linkTuple.m_heardTime = m_hHoldTime + Simulator::Now();
+        // can be applied when the address blocks are checked.  "validity time" is the
+        // sender-advertised value from the HELLO's VALIDITY_TIME TLV (RFC 6130 Sec. 12.2).
+        linkTuple.m_heardTime = validityTime + Simulator::Now();
         linkTuple.m_expirationTime = linkTuple.m_heardTime;
         NS_LOG_INFO("Added new LinkTuple to " << neighborIpv4Addr << " with quality "
                                               << linkTuple.m_quality);
@@ -634,7 +632,7 @@ NhdpClient::HandleLocalAddressBlock(Ptr<PbbAddressBlock> addressBlock,
         NS_LOG_DEBUG("Updating timers and quality for existing LinkTuple to " << neighborIpv4Addr);
         // Next, apply steps from Section 12.5, step 4, substeps 3-4.  Substeps 1, 2, 3, 5
         // can be applied when the address blocks are checked.
-        itLink->second.m_heardTime = m_hHoldTime + Simulator::Now();
+        itLink->second.m_heardTime = validityTime + Simulator::Now();
         if (itLink->second.m_pending)
         {
             itLink->second.m_expirationTime = itLink->second.m_heardTime;
@@ -646,9 +644,11 @@ NhdpClient::HandleLocalAddressBlock(Ptr<PbbAddressBlock> addressBlock,
 void
 NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
                                          Ipv4Address neighborIpv4Addr,
+                                         Time validityTime,
                                          std::optional<double> quality)
 {
-    NS_LOG_FUNCTION(this << addressBlock << neighborIpv4Addr << quality.has_value());
+    NS_LOG_FUNCTION(this << addressBlock << neighborIpv4Addr << validityTime
+                         << quality.has_value());
     auto numAddresses = addressBlock->AddressSize();
     auto numTlvs = addressBlock->TlvSize();
     NS_ASSERT_MSG(numTlvs > 0, "Error, no address block TLVs");
@@ -701,7 +701,7 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
         auto addr = (*it);
         NS_ASSERT_MSG(addressTlvLinkStatus < 3,
                       "Value " << +addressTlvLinkStatus << " unsupported");
-        NS_ASSERT_MSG(Ipv4Address::IsMatchingType(addr), "Only supporting IPv6 for now");
+        NS_ASSERT_MSG(Ipv4Address::IsMatchingType(addr), "Only supporting IPv4 for now");
         auto ipv4Addr = Ipv4Address::ConvertFrom(addr);
         NS_LOG_DEBUG("Processing address " << ipv4Addr << " in address block");
         if (ipv4Addr != m_localIpv4Address)
@@ -782,10 +782,10 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
                 (addressTlvLinkStatus == ADDR_TLV_LINK_STATUS_HEARD) ? "HEARD" : "SYMMETRIC";
             NS_LOG_DEBUG("HELLO from neighbor " << neighborIpv4Addr << " with quality value "
                                                 << qualityValue << " listing me as " << valueStr);
-            // RFC 6130 Sec. 12.5, step 4, item 1.1
-            linkTuple.m_symTime = Simulator::Now() + m_hHoldTime;
+            // RFC 6130 Sec. 12.5, step 4, item 1.1 (validity time from VALIDITY_TIME TLV)
+            linkTuple.m_symTime = Simulator::Now() + validityTime;
             // RFC 6130 Sec. 12.5, step 4, item 3
-            linkTuple.m_heardTime = std::max(Simulator::Now() + m_hHoldTime, linkTuple.m_symTime);
+            linkTuple.m_heardTime = std::max(Simulator::Now() + validityTime, linkTuple.m_symTime);
             // RFC 6130 Sec. 12.5, step 4, item 4
             if (linkTuple.m_pending)
             {
@@ -796,9 +796,10 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
             }
             else
             {
-                // RFC 6130 Sec. 12.5, step 4, item 5
+                // RFC 6130 Sec. 12.5, step 4, item 5 (L_HOLD_TIME is the receiver's local
+                // parameter, not the sender's validity time)
                 linkTuple.m_expirationTime =
-                    std::max(linkTuple.m_expirationTime, linkTuple.m_heardTime + m_hHoldTime);
+                    std::max(linkTuple.m_expirationTime, linkTuple.m_heardTime + m_lHoldTime);
                 NS_LOG_INFO("Changing link sym time to " << linkTuple.m_symTime.As(Time::S));
                 m_linkChangeTrace(Action::CHANGED, oldLinkTuple, linkTuple);
             }
@@ -826,9 +827,24 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
                 m_neighborChangeTrace(Action::CHANGED, oldNeighborTuple, neighborTuple);
                 lostSymmetricNeighbor.push_back(neighborIpv4Addr);
             }
+            // RFC 6130 Sec. 12.5, step 4, item 1.2.1: L_SYM_time := EXPIRED
             linkTuple.m_symTime = EXPIRED;
-            linkTuple.m_heardTime = Simulator::Now() + m_hHoldTime;
-            linkTuple.m_expirationTime = Simulator::Now() + m_hHoldTime;
+            // RFC 6130 Sec. 12.5, step 4, item 3: L_HEARD_time := max(now + validity, L_SYM_time);
+            // L_SYM_time is now EXPIRED, so this is now + validity time.
+            linkTuple.m_heardTime = Simulator::Now() + validityTime;
+            // RFC 6130 Sec. 12.5, step 4, items 4/5: the link is now HEARD (we still heard this
+            // HELLO), so L_time is extended by the receiver's local L_HOLD_TIME (item 5) rather
+            // than left at L_HEARD_time.
+            if (linkTuple.m_pending)
+            {
+                linkTuple.m_expirationTime =
+                    std::max(linkTuple.m_expirationTime, linkTuple.m_heardTime);
+            }
+            else
+            {
+                linkTuple.m_expirationTime =
+                    std::max(linkTuple.m_expirationTime, linkTuple.m_heardTime + m_lHoldTime);
+            }
             m_linkChangeTrace(Action::CHANGED, oldLinkTuple, linkTuple);
         }
         break;
@@ -841,7 +857,7 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
         auto addr = (*it);
         NS_ASSERT_MSG(addressTlvLinkStatus < 3,
                       "Value " << +addressTlvLinkStatus << " unsupported");
-        NS_ASSERT_MSG(Ipv4Address::IsMatchingType(addr), "Only supporting IPv6 for now");
+        NS_ASSERT_MSG(Ipv4Address::IsMatchingType(addr), "Only supporting IPv4 for now");
         auto ipv4Addr = Ipv4Address::ConvertFrom(addr);
         NS_LOG_DEBUG("Processing address " << ipv4Addr << " in address block");
         if (ipv4Addr == m_localIpv4Address)
@@ -872,7 +888,8 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
             if (itTwoHop == m_twoHopInfoBase.end())
             {
                 TwoHopTuple twoHopTuple(neighborIpv4Addr, ipv4Addr);
-                twoHopTuple.m_expirationTime = Simulator::Now() + m_hHoldTime;
+                // RFC 6130 Sec. 12.6: N2_time := current time + validity time
+                twoHopTuple.m_expirationTime = Simulator::Now() + validityTime;
                 m_twoHopInfoBase.emplace(key, twoHopTuple);
                 m_twoHopChangeTrace(Action::ADDED, twoHopTuple, twoHopTuple);
                 NS_LOG_INFO("Creating new TwoHopTuple to " << ipv4Addr << " via "
@@ -881,7 +898,8 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
             else
             {
                 NS_LOG_DEBUG("Updating TwoHopTuple to " << ipv4Addr << " via " << neighborIpv4Addr);
-                itTwoHop->second.m_expirationTime = Simulator::Now() + m_hHoldTime;
+                // RFC 6130 Sec. 12.6: N2_time := current time + validity time
+                itTwoHop->second.m_expirationTime = Simulator::Now() + validityTime;
             }
         }
         if (removeIfFound)
@@ -897,25 +915,11 @@ NhdpClient::HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
         k++;
     }
     // If any 1-hop neighbors transitioned from symmetric to lost or heard, remove their 2-hop
-    // neighbors
+    // neighbors (RFC 6130, Sec. 13.2)
     NS_ASSERT_MSG(lostSymmetricNeighbor.size() < 2, "Check on max size of lostSymmetricNeighbor");
     for (const auto& it : lostSymmetricNeighbor)
     {
-        for (auto itTuple = m_twoHopInfoBase.begin(); itTuple != m_twoHopInfoBase.end();)
-        {
-            auto key = itTuple->first;
-            if (key.first == it)
-            {
-                m_twoHopChangeTrace(Action::REMOVED, itTuple->second, itTuple->second);
-                NS_LOG_INFO("Removing TwoHopTuple to " << itTuple->second.m_twoHopAddr << " via "
-                                                       << it);
-                itTuple = m_twoHopInfoBase.erase(itTuple);
-            }
-            else
-            {
-                ++itTuple;
-            }
-        }
+        RemoveTwoHopTuples(it);
     }
     m_helloRecvTrace(neighborIpv4Addr, links, quality);
 }
@@ -1077,8 +1081,24 @@ NhdpClient::SendHello(Ptr<Socket> socket)
     message->SetType(MESSAGE_TYPE_HELLO);
     pbb.MessagePushBack(message);
 
-    // Add Message TLVs here (VALIDITY_TIME and INTERVAL_TIME).  Other protocols
-    // (e.g., OLSRv2) will add message TLVs (e.g., MPR_WILLING).
+    // Add Message TLVs.  Other protocols (e.g., OLSRv2) will add message TLVs (e.g.,
+    // MPR_WILLING).
+    //
+    // RFC 6130 Sec. 11.1: a HELLO MUST include exactly one VALIDITY_TIME Message TLV (the
+    // advertised validity, i.e. H_HOLD_TIME), and a periodically generated HELLO SHOULD
+    // include exactly one INTERVAL_TIME Message TLV (the current HELLO_INTERVAL).  Both are
+    // single-value RFC 5497 Time TLVs carrying one time-code octet.
+    Ptr<PbbTlv> validityTlv = Create<PbbTlv>();
+    validityTlv->SetType(MSG_TLV_VALIDITY_TIME);
+    uint8_t validityCode = EncodeTimeCode(m_hHoldTime);
+    validityTlv->SetValue(&validityCode, 1);
+    message->TlvPushBack(validityTlv);
+
+    Ptr<PbbTlv> intervalTlv = Create<PbbTlv>();
+    intervalTlv->SetType(MSG_TLV_INTERVAL_TIME);
+    uint8_t intervalCode = EncodeTimeCode(m_helloInterval);
+    intervalTlv->SetValue(&intervalCode, 1);
+    message->TlvPushBack(intervalTlv);
 
     // Next, add Address Blocks.  Other protocols (e.g., OLSRv2) will add address
     // blocks here (e.g., LINK_METRIC, MPR, NBR_ADDR_TYPE).
@@ -1160,6 +1180,26 @@ NhdpClient::RemoveExpiredTwoHopNeighbors()
         {
             NS_LOG_INFO("Removing TwoHopTuple to " << it->second.m_twoHopAddr << " via "
                                                    << it->second.m_neighborAddrList[0]);
+            m_twoHopChangeTrace(Action::REMOVED, it->second, it->second);
+            it = m_twoHopInfoBase.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
+void
+NhdpClient::RemoveTwoHopTuples(Ipv4Address neighborAddr)
+{
+    NS_LOG_FUNCTION(this << neighborAddr);
+    for (auto it = m_twoHopInfoBase.begin(); it != m_twoHopInfoBase.end();)
+    {
+        if (it->first.first == neighborAddr)
+        {
+            NS_LOG_INFO("Removing TwoHopTuple to " << it->second.m_twoHopAddr << " via "
+                                                   << neighborAddr);
             m_twoHopChangeTrace(Action::REMOVED, it->second, it->second);
             it = m_twoHopInfoBase.erase(it);
         }
@@ -1263,6 +1303,8 @@ NhdpClient::UpdateLinkTuples()
                     NS_LOG_DEBUG("Setting neighbor " << itNeigh->first << " to not symmetric");
                     itNeigh->second.m_symmetric = false;
                     m_neighborChangeTrace(Action::CHANGED, oldNeighborTuple, itNeigh->second);
+                    // RFC 6130, Sec. 13.2: link is no longer symmetric, so remove its 2-Hop Tuples
+                    RemoveTwoHopTuples(itLink->first);
                 }
             }
         }
@@ -1272,6 +1314,9 @@ NhdpClient::UpdateLinkTuples()
     for (auto& it : neighborRemoveList)
     {
         m_linkInfoBase.erase(it);
+        // RFC 6130, Sec. 13.2: the link to this neighbor was removed (or is no longer
+        // symmetric), so remove any 2-Hop Tuples learned via it
+        RemoveTwoHopTuples(it);
         auto itNeigh = m_neighborInfoBase.find(it);
         if (itNeigh != m_neighborInfoBase.end())
         {

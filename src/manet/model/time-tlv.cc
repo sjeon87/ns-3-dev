@@ -55,7 +55,7 @@ EncodeTimeCode(Time t, double c)
         a = 7;
     }
 
-    uint8_t code = static_cast<uint8_t>(8 * b + static_cast<uint32_t>(a));
+    auto code = static_cast<uint8_t>(8 * b + static_cast<uint32_t>(a));
 
     // The forward computation above uses floating point and can round to an
     // adjacent time-code at a power-of-two boundary, or for time-values not

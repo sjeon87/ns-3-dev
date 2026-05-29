@@ -37,6 +37,10 @@ namespace manet
 /* PacketBB Message Types */
 const uint8_t MESSAGE_TYPE_HELLO = 0;
 
+/* PacketBB Message TLV Types (RFC 5497) */
+const uint8_t MSG_TLV_INTERVAL_TIME = 0;
+const uint8_t MSG_TLV_VALIDITY_TIME = 1;
+
 /* PacketBB Address Block Types */
 const uint8_t ADDR_TLV_LOCAL_IF = 2;
 const uint8_t ADDR_TLV_LINK_STATUS = 3;
@@ -259,9 +263,11 @@ class NhdpClient : public Application
 
     Ipv4Address HandlePbbMessage(Ptr<PbbMessage> msg, std::optional<double> quality);
     Ipv4Address HandleLocalAddressBlock(Ptr<PbbAddressBlock> addressBlock,
+                                        Time validityTime,
                                         std::optional<double> quality);
     void HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
                                       Ipv4Address neighborIpv4Addr,
+                                      Time validityTime,
                                       std::optional<double> quality);
 
     void ScheduleHello(Ptr<Socket> socket);
@@ -301,7 +307,6 @@ class NhdpClient : public Application
     std::map<Ipv4Address, LinkTuple> m_linkInfoBase;
     std::map<std::pair<Ipv4Address, Ipv4Address>, TwoHopTuple> m_twoHopInfoBase;
     std::map<Ipv4Address, LostNeighborTuple> m_lostNeighborSet;
-    std::vector<Ipv4Address> m_lostAddressList;
 
     /* Map used for bypass */
     std::map<Ipv4Address, Ptr<NhdpClient>> m_establishedPeers;
@@ -318,6 +323,16 @@ class NhdpClient : public Application
     bool m_bypassMode{false};
 
     void RemoveExpiredTwoHopNeighbors();
+
+    /**
+     * Remove all 2-Hop Tuples reached via a given 1-hop neighbor.
+     *
+     * Implements the RFC 6130, Sec. 13.2 cleanup performed when a link to the
+     * neighbor is removed or is no longer symmetric.
+     *
+     * @param neighborAddr The 1-hop neighbor address whose 2-Hop Tuples to remove
+     */
+    void RemoveTwoHopTuples(Ipv4Address neighborAddr);
 
     Callback<double, Ptr<Packet>> m_linkQualityCallback;
 
