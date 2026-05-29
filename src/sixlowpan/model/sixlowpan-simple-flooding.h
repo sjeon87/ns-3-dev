@@ -29,6 +29,8 @@ namespace ns3
  * so that the policy framework preserves the behavior of the previous
  * in-device flooding implementation when no policy is explicitly
  * selected by the user.
+ *
+ * For density-aware suppression behavior, use SixLowPanTrickleSuppression.
  */
 class SixLowPanSimpleFlooding : public SixLowPanMeshUnderRouting
 {
