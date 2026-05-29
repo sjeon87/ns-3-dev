@@ -97,6 +97,16 @@ Duplicate detection is common to all policies: each packet carries a BC0 sequenc
 The available forwarding policies are:
 
 * ``SixLowPanSimpleFlooding`` (default): every non-duplicate packet is re-broadcast after a uniform random jitter, set by its ``MeshUnderJitter`` attribute. This preserves the historical behavior, and existing simulations are unaffected.
+* ``SixLowPanTrickleSuppression``: applies the Trickle algorithm (:rfc:`6206`) to suppress redundant re-broadcasts, in the spirit of MPL (:rfc:`7731`).
+
+In the Trickle suppression strategy, a single Trickle timer governs how often the node transmits its pending forwards:
+
+* Packets accepted for forwarding join a pending set. The first packet starts the timer; later arrivals join the set without restarting it, so an earlier packet is never starved.
+* Overhearing a neighbour re-broadcast a packet the node has also seen is a *consistent event*: it increments the Trickle counter and, as consistency accumulates, grows the interval, so a well-covered neighbourhood transmits less often.
+* When the timer fires, the pending set is forwarded only if fewer than ``RedundancyConstant`` (k) copies were heard during the interval; otherwise the node stays silent.
+* The timer is reset only when the pending work is resolved: after a successful forward, or after a packet waits longer than ``MaxForwardingDelay`` without being sent (suppressed). Arrivals never reset the timer.
+
+The interval bounds are set with ``MinInterval`` (Imin) and ``Doublings`` (Imax = MinInterval times 2 to the power Doublings). Setting ``RedundancyConstant`` to zero disables suppression, reducing the behaviour to jittered flooding.
 
 Each device exposes its policy through the ``MeshUnderRouting`` attribute. The policy attributes can be reached, e.g., through ``Config::Set`` with a path like::
 
@@ -105,9 +115,9 @@ Each device exposes its policy through the ``MeshUnderRouting`` attribute. The p
 A policy is selected through the helper, optionally passing policy attributes::
 
     SixLowPanHelper sixlowpan;
-    sixlowpan.SetMeshUnderRouting("ns3::SixLowPanSimpleFlooding",
-                                  "MeshUnderJitter",
-                                  StringValue("ns3::UniformRandomVariable[Min=0.0|Max=5.0]"));
+    sixlowpan.SetMeshUnderRouting("ns3::SixLowPanTrickleSuppression",
+                                  "MinInterval", TimeValue(MilliSeconds(10)),
+                                  "RedundancyConstant", UintegerValue(1));
     sixlowpan.Install(devices);
 
 A new forwarding policy is created by subclassing ``SixLowPanMeshUnderRouting`` and implementing ``OnPacketForward()``, which decides if and when to invoke the supplied forward callback. The optional ``OnDuplicateReceived()`` hook is invoked for every duplicate reception and can be used to modify the decisions on if / when to forward the packet.
@@ -117,9 +127,11 @@ A new forwarding policy is created by subclassing ``SixLowPanMeshUnderRouting`` 
 
 The mesh-under forwarding could be further improved by providing the following:
 
+* Adaptive forwarding jitter (density-aware transmit timing),
 * Adaptive hop-limit calculation,
-* Adaptive forwarding jitter,
 * Use of direct (non mesh) transmission for packets directed to 1-hop neighbors.
+
+A more efficient flooding based on Multipoint Relays (MPRs), as used by OLSRv2, was considered and deliberately left out. Selecting MPRs requires every node to maintain an up-to-date view of its two-hop neighbourhood, which needs a background protocol such as NHDP (:rfc:`6130`) exchanging periodic control messages. In the low-datarate or high-mobility regimes typical of 6LoWPAN, that control overhead can cost more energy than the data traffic itself, and the topology may change faster than the updates can track it. It is therefore a known and understood option that was evaluated and discarded for this module.
 
 Route-over routing
 ~~~~~~~~~~~~~~~~~~
@@ -323,6 +335,10 @@ The mesh-under forwarding policies provide further attributes:
 
 * ``MeshCacheLength``: (unsigned 16 bits integer, default 10), the length of the cache for each source (``SixLowPanMeshUnderRouting``, common to all policies).
 * ``MeshUnderJitter``: (ns3::UniformRandomVariable[Min=0.0|Max=10.0]), the jitter in ms a node uses to forward mesh-under packets - used to prevent collisions (``SixLowPanSimpleFlooding``).
+* ``MinInterval``: (Time, default 10ms), the minimum Trickle interval Imin (``SixLowPanTrickleSuppression``).
+* ``Doublings``: (unsigned 8 bits integer, default 4), the number of interval doublings, Imax = Imin * 2^Doublings (``SixLowPanTrickleSuppression``).
+* ``RedundancyConstant``: (unsigned 16 bits integer, default 1), the Trickle redundancy constant k; zero disables suppression (``SixLowPanTrickleSuppression``).
+* ``MaxForwardingDelay``: (Time, default 500ms), pending packets older than this are dropped as suppressed (``SixLowPanTrickleSuppression``).
 
 The CompressionThreshold attribute is similar to Contiki's SICSLOWPAN_CONF_MIN_MAC_PAYLOAD
 option. If a compressed packet size is less than the threshold, the uncompressed version is
