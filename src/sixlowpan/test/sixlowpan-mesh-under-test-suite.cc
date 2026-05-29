@@ -13,12 +13,14 @@
 #include "ns3/mac16-address.h"
 #include "ns3/mac48-address.h"
 #include "ns3/node.h"
+#include "ns3/nstime.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 #include "ns3/sixlowpan-header.h"
 #include "ns3/sixlowpan-mesh-under-routing.h"
 #include "ns3/sixlowpan-net-device.h"
 #include "ns3/sixlowpan-simple-flooding.h"
+#include "ns3/sixlowpan-trickle-suppression.h"
 #include "ns3/test.h"
 #include "ns3/uinteger.h"
 
@@ -164,6 +166,227 @@ class SimpleFloodingForwardsTestCase : public TestCase
 
     Ptr<Packet> m_forwardedPacket; ///< Packet captured at the forward callback.
     int m_forwardCount{0};         ///< Number of times the forward callback was invoked.
+};
+
+/**
+ * @ingroup sixlowpan-tests
+ *
+ * @brief Verify Trickle forwards a pending packet when no duplicates are heard.
+ *
+ * With c staying below k, the timer fires once, forwards the packet, and
+ * then resets (stops), so exactly one forward is expected.
+ */
+class TrickleForwardsWhenQuietTestCase : public TestCase
+{
+  public:
+    TrickleForwardsWhenQuietTestCase()
+        : TestCase("Trickle forwards when no duplicates are heard")
+    {
+    }
+
+  private:
+    /**
+     * @brief Forward callback.
+     * @param packet The forwarded packet (unused).
+     */
+    void RecordForward(Ptr<Packet> packet [[maybe_unused]])
+    {
+        m_forwardCount++;
+    }
+
+    void DoRun() override
+    {
+        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
+        trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
+        trickle->AssignStreams(1);
+
+        Ptr<Packet> packet = Create<Packet>(64);
+        Mac16Address orig("00:01");
+
+        SixLowPanMeshUnderRouting::ForwardCallback cb =
+            MakeCallback(&TrickleForwardsWhenQuietTestCase::RecordForward, this);
+
+        trickle->OnPacketForward(packet, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
+
+        Simulator::Stop(MilliSeconds(500));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_EQ(m_forwardCount, 1, "Should forward once when c < k");
+    }
+
+    int m_forwardCount{0}; ///< Number of forward-callback invocations.
+};
+
+/**
+ * @ingroup sixlowpan-tests
+ *
+ * @brief Verify Trickle suppresses while neighbours keep covering the packet.
+ *
+ * A duplicate is heard every few milliseconds for the whole run, keeping
+ * c >= k at every interval, so the packet is never forwarded.
+ */
+class TrickleSuppressesWhileCoveredTestCase : public TestCase
+{
+  public:
+    TrickleSuppressesWhileCoveredTestCase()
+        : TestCase("Trickle suppresses while duplicates keep arriving")
+    {
+    }
+
+  private:
+    /**
+     * @brief Forward callback.
+     * @param packet The forwarded packet (unused).
+     */
+    void RecordForward(Ptr<Packet> packet [[maybe_unused]])
+    {
+        m_forwardCount++;
+    }
+
+    void DoRun() override
+    {
+        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
+        trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
+        trickle->SetAttribute("MaxForwardingDelay", TimeValue(MilliSeconds(1000)));
+        trickle->AssignStreams(1);
+
+        Ptr<Packet> packet = Create<Packet>(64);
+        Mac16Address orig("00:01");
+
+        SixLowPanMeshUnderRouting::ForwardCallback cb =
+            MakeCallback(&TrickleSuppressesWhileCoveredTestCase::RecordForward, this);
+
+        trickle->OnPacketForward(packet, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
+
+        // A neighbour rebroadcasts every 5 ms, keeping c >= k at every interval.
+        for (uint32_t ms = 3; ms <= 300; ms += 5)
+        {
+            Simulator::Schedule(MilliSeconds(ms),
+                                &SixLowPanTrickleSuppression::OnDuplicateReceived,
+                                trickle,
+                                Address(orig),
+                                uint8_t(1));
+        }
+
+        Simulator::Stop(MilliSeconds(400));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_EQ(m_forwardCount, 0, "Should suppress while c >= k throughout");
+    }
+
+    int m_forwardCount{0}; ///< Number of forward-callback invocations.
+};
+
+/**
+ * @ingroup sixlowpan-tests
+ *
+ * @brief Verify a zero redundancy constant disables suppression.
+ */
+class TrickleZeroRedundancyAlwaysForwardsTestCase : public TestCase
+{
+  public:
+    TrickleZeroRedundancyAlwaysForwardsTestCase()
+        : TestCase("Trickle with k = 0 always forwards")
+    {
+    }
+
+  private:
+    /**
+     * @brief Forward callback.
+     * @param packet The forwarded packet (unused).
+     */
+    void RecordForward(Ptr<Packet> packet [[maybe_unused]])
+    {
+        m_forwardCount++;
+    }
+
+    void DoRun() override
+    {
+        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
+        trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
+        trickle->AssignStreams(1);
+
+        Ptr<Packet> packet = Create<Packet>(64);
+        Mac16Address orig("00:01");
+
+        SixLowPanMeshUnderRouting::ForwardCallback cb =
+            MakeCallback(&TrickleZeroRedundancyAlwaysForwardsTestCase::RecordForward, this);
+
+        trickle->OnPacketForward(packet, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
+
+        // Even with duplicates, k = 0 means suppression is disabled.
+        Simulator::Schedule(MilliSeconds(1),
+                            &SixLowPanTrickleSuppression::OnDuplicateReceived,
+                            trickle,
+                            Address(orig),
+                            uint8_t(1));
+        Simulator::Schedule(MilliSeconds(2),
+                            &SixLowPanTrickleSuppression::OnDuplicateReceived,
+                            trickle,
+                            Address(orig),
+                            uint8_t(1));
+
+        Simulator::Stop(MilliSeconds(500));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_EQ(m_forwardCount, 1, "k = 0 should always forward");
+    }
+
+    int m_forwardCount{0}; ///< Number of forward-callback invocations.
+};
+
+/**
+ * @ingroup sixlowpan-tests
+ *
+ * @brief Verify all pending packets are flushed together when the timer fires.
+ */
+class TrickleFlushesAllPendingTestCase : public TestCase
+{
+  public:
+    TrickleFlushesAllPendingTestCase()
+        : TestCase("Trickle forwards every pending packet on a single fire")
+    {
+    }
+
+  private:
+    /**
+     * @brief Forward callback.
+     * @param packet The forwarded packet (unused).
+     */
+    void RecordForward(Ptr<Packet> packet [[maybe_unused]])
+    {
+        m_forwardCount++;
+    }
+
+    void DoRun() override
+    {
+        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
+        trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
+        trickle->AssignStreams(1);
+
+        Mac16Address orig("00:01");
+        SixLowPanMeshUnderRouting::ForwardCallback cb =
+            MakeCallback(&TrickleFlushesAllPendingTestCase::RecordForward, this);
+
+        // Two packets arrive before the timer fires; both should be flushed.
+        trickle->OnPacketForward(Create<Packet>(64), orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
+        trickle->OnPacketForward(Create<Packet>(64), orig, /*seqNo=*/2, /*hopsLeft=*/5, cb);
+
+        Simulator::Stop(MilliSeconds(500));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_EQ(m_forwardCount, 2, "Both pending packets should be forwarded");
+    }
+
+    int m_forwardCount{0}; ///< Number of forward-callback invocations.
 };
 
 /**
@@ -738,6 +961,10 @@ class SixLowPanMeshUnderTestSuite : public TestSuite
         AddTestCase(new DuplicateCacheFifoDropTestCase, Duration::QUICK);
         AddTestCase(new DuplicateCachePerOriginatorTestCase, Duration::QUICK);
         AddTestCase(new SimpleFloodingForwardsTestCase, Duration::QUICK);
+        AddTestCase(new TrickleForwardsWhenQuietTestCase, Duration::QUICK);
+        AddTestCase(new TrickleSuppressesWhileCoveredTestCase, Duration::QUICK);
+        AddTestCase(new TrickleZeroRedundancyAlwaysForwardsTestCase, Duration::QUICK);
+        AddTestCase(new TrickleFlushesAllPendingTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceForwardTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceDeliveryTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceHopLimitTestCase, Duration::QUICK);
