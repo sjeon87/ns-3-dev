@@ -36,15 +36,6 @@ Ipv4InterfaceAddress::Ipv4InterfaceAddress(Ipv4Address local, Ipv4Mask mask)
     m_mask = mask;
 }
 
-Ipv4InterfaceAddress::Ipv4InterfaceAddress(const Ipv4InterfaceAddress& o)
-    : m_local(o.m_local),
-      m_mask(o.m_mask),
-      m_scope(o.m_scope),
-      m_secondary(o.m_secondary)
-{
-    NS_LOG_FUNCTION(this << &o);
-}
-
 void
 Ipv4InterfaceAddress::SetLocal(Ipv4Address local)
 {

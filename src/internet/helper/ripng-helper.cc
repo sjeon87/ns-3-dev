@@ -23,13 +23,6 @@ RipNgHelper::RipNgHelper()
     m_factory.SetTypeId("ns3::RipNg");
 }
 
-RipNgHelper::RipNgHelper(const RipNgHelper& o)
-    : m_factory(o.m_factory)
-{
-    m_interfaceExclusions = o.m_interfaceExclusions;
-    m_interfaceMetrics = o.m_interfaceMetrics;
-}
-
 RipNgHelper::~RipNgHelper()
 {
     m_interfaceExclusions.clear();

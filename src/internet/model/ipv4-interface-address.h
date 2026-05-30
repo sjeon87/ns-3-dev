@@ -52,11 +52,6 @@ class Ipv4InterfaceAddress
      * @param mask the network mask
      */
     Ipv4InterfaceAddress(Ipv4Address local, Ipv4Mask mask);
-    /**
-     * Copy constructor
-     * @param o the object to copy
-     */
-    Ipv4InterfaceAddress(const Ipv4InterfaceAddress& o);
 
     /**
      * @brief Set local address

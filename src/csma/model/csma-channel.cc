@@ -329,12 +329,6 @@ CsmaDeviceRec::CsmaDeviceRec(Ptr<CsmaNetDevice> device)
     active = true;
 }
 
-CsmaDeviceRec::CsmaDeviceRec(const CsmaDeviceRec& deviceRec)
-{
-    devicePtr = deviceRec.devicePtr;
-    active = deviceRec.active;
-}
-
 bool
 CsmaDeviceRec::IsActive() const
 {

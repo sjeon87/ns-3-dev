@@ -21,13 +21,6 @@ RipHelper::RipHelper()
     m_factory.SetTypeId("ns3::Rip");
 }
 
-RipHelper::RipHelper(const RipHelper& o)
-    : m_factory(o.m_factory)
-{
-    m_interfaceExclusions = o.m_interfaceExclusions;
-    m_interfaceMetrics = o.m_interfaceMetrics;
-}
-
 RipHelper::~RipHelper()
 {
     m_interfaceExclusions.clear();

@@ -32,28 +32,6 @@ NixVector::~NixVector()
     NS_LOG_FUNCTION(this);
 }
 
-NixVector::NixVector(const NixVector& o)
-    : m_nixVector(o.m_nixVector),
-      m_used(o.m_used),
-      m_totalBitSize(o.m_totalBitSize),
-      m_epoch(o.m_epoch)
-{
-}
-
-NixVector&
-NixVector::operator=(const NixVector& o)
-{
-    if (this == &o)
-    {
-        return *this;
-    }
-    m_nixVector = o.m_nixVector;
-    m_used = o.m_used;
-    m_totalBitSize = o.m_totalBitSize;
-    m_epoch = o.m_epoch;
-    return *this;
-}
-
 Ptr<NixVector>
 NixVector::Copy() const
 {

@@ -60,18 +60,6 @@ class NixVector : public SimpleRefCount<NixVector>
      */
     Ptr<NixVector> Copy() const;
     /**
-     * @param o the NixVector to copy to a new NixVector
-     *          using a constructor
-     */
-    NixVector(const NixVector& o);
-    /**
-     * @return a reference to the assignee
-     *
-     * @param o the NixVector to copy to a new NixVector using the
-     *          equals operator
-     */
-    NixVector& operator=(const NixVector& o);
-    /**
      * @param newBits the neighbor-index to be added to the vector
      * @param numberOfBits the number of bits that newBits contains
      *

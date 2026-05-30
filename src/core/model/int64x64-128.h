@@ -181,28 +181,6 @@ class int64x64_t
         _v |= lo;
     }
 
-    /**
-     * Copy constructor.
-     *
-     * @param [in] o Value to copy.
-     */
-    inline int64x64_t(const int64x64_t& o)
-        : _v(o._v)
-    {
-    }
-
-    /**
-     * Assignment.
-     *
-     * @param [in] o Value to assign to this int64x64_t.
-     * @returns This int64x64_t.
-     */
-    inline int64x64_t& operator=(const int64x64_t& o)
-    {
-        _v = o._v;
-        return *this;
-    }
-
     /** Explicit bool conversion. */
     inline explicit operator bool() const
     {
