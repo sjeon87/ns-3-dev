@@ -12,7 +12,9 @@ build_lib(
     model/nhdp-client.h
     model/nhdp-hello-tag.h
     model/time-tlv.h
-  LIBRARIES_TO_LINK ${libinternet}
-                    ${libnetwork}
-                    ${libcore}
+  LIBRARIES_TO_LINK
+    ${libinternet}
+    ${libnetwork}
+    ${libcore}
+  TEST_SOURCES test/nhdp-test-suite.cc
 )
