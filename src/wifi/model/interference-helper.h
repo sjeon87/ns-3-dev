@@ -15,7 +15,11 @@
 
 #include "ns3/object.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <map>
+#include <utility>
+#include <vector>
 
 namespace ns3
 {
@@ -53,13 +57,13 @@ class Event : public SimpleRefCount<Event>
      *
      * @return the start time of the signal
      */
-    Time GetStartTime() const;
+    const Time& GetStartTime() const;
     /**
      * Return the end time of the signal.
      *
      * @return the end time of the signal
      */
-    Time GetEndTime() const;
+    const Time& GetEndTime() const;
     /**
      * Return the duration of the signal.
      *
@@ -395,21 +399,124 @@ class InterferenceHelper : public Object
     };
 
     /**
-     * typedef for a multimap of NiChange
+     * Sorted-by-time list of NI changes for a single band.
+     *
+     * Replaces what was previously a std::multimap<Time, NiChange>. heaptrack on
+     * wifi-primary-channels showed multimap node allocations from
+     * AddNiChangeEvent dominated the post-fix allocation profile (~8M calls).
+     * A sorted vector preserves the same logical structure -- elements are kept
+     * in non-decreasing time order, duplicate times are allowed -- but amortises
+     * allocations across vector growth, which collapses the per-insert
+     * allocation into a per-doubling allocation. The downside is that
+     * insert/erase shift the tail, which is acceptable because the steady-state
+     * size is small (a handful of in-flight events per band).
+     *
+     * The public API intentionally mirrors the subset of multimap used by
+     * InterferenceHelper: begin/end/cbegin/cend, size/empty/clear,
+     * lower_bound/upper_bound on Time keys, insert with hint (used when the
+     * caller has already located the position), erase by iterator and range.
      */
-    using NiChanges = std::multimap<Time, NiChange>;
+    class NiChanges
+    {
+      public:
+        using value_type = std::pair<Time, NiChange>;
+        using iterator = std::vector<value_type>::iterator;
+        using const_iterator = std::vector<value_type>::const_iterator;
+        using size_type = std::size_t;
+
+        iterator begin() { return m_data.begin(); }
+        iterator end() { return m_data.end(); }
+        const_iterator begin() const { return m_data.begin(); }
+        const_iterator end() const { return m_data.end(); }
+        const_iterator cbegin() const { return m_data.cbegin(); }
+        const_iterator cend() const { return m_data.cend(); }
+
+        size_type size() const { return m_data.size(); }
+        bool empty() const { return m_data.empty(); }
+        void clear() { m_data.clear(); }
+        void reserve(size_type n) { m_data.reserve(n); }
+
+        value_type& operator[](size_type i) { return m_data[i]; }
+        const value_type& operator[](size_type i) const { return m_data[i]; }
+
+        /// First entry with time strictly greater than @p t.
+        iterator upper_bound(const Time& t)
+        {
+            return std::upper_bound(m_data.begin(), m_data.end(), t, TimeLess{});
+        }
+        const_iterator upper_bound(const Time& t) const
+        {
+            return std::upper_bound(m_data.cbegin(), m_data.cend(), t, TimeLess{});
+        }
+
+        /// First entry with time >= @p t.
+        iterator lower_bound(const Time& t)
+        {
+            return std::lower_bound(m_data.begin(), m_data.end(), t, TimeLess{});
+        }
+        const_iterator lower_bound(const Time& t) const
+        {
+            return std::lower_bound(m_data.cbegin(), m_data.cend(), t, TimeLess{});
+        }
+
+        /// Insert at a caller-provided position (typically the result of
+        /// upper_bound(t)). May invalidate other iterators if the vector reallocates.
+        iterator insert(const_iterator hint, value_type value)
+        {
+            return m_data.insert(hint, std::move(value));
+        }
+
+        /// Multimap-style sorted insert: locate the position via upper_bound and
+        /// insert there, keeping the time ordering with later duplicates after
+        /// earlier ones.
+        iterator insert(const value_type& v)
+        {
+            return m_data.insert(upper_bound(v.first), v);
+        }
+
+        /// Multimap-style emplace: construct value_type in-place from @p args
+        /// then insert at the sorted position.
+        template <typename... Args>
+        iterator emplace(Args&&... args)
+        {
+            value_type v(std::forward<Args>(args)...);
+            return m_data.insert(upper_bound(v.first), std::move(v));
+        }
+
+        iterator erase(const_iterator first, const_iterator last)
+        {
+            return m_data.erase(first, last);
+        }
+        iterator erase(const_iterator pos) { return m_data.erase(pos); }
+
+      private:
+        struct TimeLess
+        {
+            bool operator()(const value_type& a, const Time& b) const { return a.first < b; }
+            bool operator()(const Time& a, const value_type& b) const { return a < b.first; }
+        };
+
+        std::vector<value_type> m_data; //!< storage, kept in non-decreasing time order
+    };
 
     /**
-     * Map of NiChanges per band
+     * Per-band interference state: the NI changes timeline together with the noise+interference
+     * power captured at the start of the last reception (used by the frame-capture logic).
+     * Co-locating these two pieces of state halves the number of map nodes (and the heavy
+     * WifiSpectrumBandInfo key copies) compared to maintaining two separate band-keyed maps.
      */
-    using NiChangesPerBand = std::map<WifiSpectrumBandInfo, NiChanges>;
+    struct BandState
+    {
+        NiChanges niChanges; //!< NI changes timeline for this band
+        Watt_u firstPower{0.0}; //!< noise+interference power at the start of the last RX
+    };
 
     /**
-     * Map of first power per band
+     * Map of per-band state, keyed by band info.
      */
-    using FirstPowerPerBand = std::map<WifiSpectrumBandInfo, Watt_u>;
+    using BandStateMap = std::map<WifiSpectrumBandInfo, BandState>;
 
-    NiChangesPerBand m_niChanges; //!< NI Changes for each band
+    BandStateMap m_bandStates; //!< Per-band interference state
 
   private:
     /**
@@ -450,7 +557,7 @@ class InterferenceHelper : public Object
      * @return noise and interference power
      */
     Watt_u CalculateNoiseInterferenceW(Ptr<Event> event,
-                                       NiChangesPerBand& nis,
+                                       NiChanges& ni,
                                        const WifiSpectrumBandInfo& band) const;
 
     /**
@@ -481,7 +588,7 @@ class InterferenceHelper : public Object
      */
     double CalculatePayloadPer(Ptr<const Event> event,
                                MHz_u channelWidth,
-                               NiChangesPerBand* nis,
+                               const NiChanges& ni,
                                const WifiSpectrumBandInfo& band,
                                uint16_t staId,
                                std::pair<Time, Time> window) const;
@@ -498,7 +605,7 @@ class InterferenceHelper : public Object
      * @return the error rate of the HT PHY header
      */
     double CalculatePhyHeaderPer(Ptr<const Event> event,
-                                 NiChangesPerBand* nis,
+                                 const NiChanges& ni,
                                  MHz_u channelWidth,
                                  const WifiSpectrumBandInfo& band,
                                  WifiPpduField header) const;
@@ -514,7 +621,7 @@ class InterferenceHelper : public Object
      * @return the success rate of the PHY header sections
      */
     double CalculatePhyHeaderSectionPsr(Ptr<const Event> event,
-                                        NiChangesPerBand* nis,
+                                        const NiChanges& ni,
                                         MHz_u channelWidth,
                                         const WifiSpectrumBandInfo& band,
                                         PhyHeaderSections phyHeaderSections) const;
@@ -522,24 +629,24 @@ class InterferenceHelper : public Object
     double m_noiseFigure;                 //!< noise figure (linear)
     Ptr<ErrorRateModel> m_errorRateModel; //!< error rate model
     uint8_t m_numRxAntennas;         //!< the number of RX antennas in the corresponding receiver
-    FirstPowerPerBand m_firstPowers; //!< first power of each band
 
     /**
      * Returns an iterator to the first NiChange that is later than moment
      *
      * @param moment time to check from
-     * @param niIt iterator of the band to check
+     * @param bandIt iterator of the band to check
      * @returns an iterator to the list of NiChanges
      */
-    NiChanges::iterator GetNextPosition(Time moment, NiChangesPerBand::iterator niIt) const;
+    NiChanges::iterator GetNextPosition(const Time& moment, BandStateMap::iterator bandIt) const;
     /**
      * Returns an iterator to the last NiChange that is before than moment
      *
      * @param moment time to check from
-     * @param niIt iterator of the band to check
+     * @param bandIt iterator of the band to check
      * @returns an iterator to the list of NiChanges
      */
-    NiChanges::iterator GetPreviousPosition(Time moment, NiChangesPerBand::iterator niIt) const;
+    NiChanges::iterator GetPreviousPosition(const Time& moment,
+                                            BandStateMap::iterator bandIt) const;
 
     /**
      * Add NiChange to the list at the appropriate position and
@@ -547,12 +654,12 @@ class InterferenceHelper : public Object
      *
      * @param moment time to check from
      * @param change the NiChange to add
-     * @param niIt iterator of the band to check
+     * @param bandIt iterator of the band to check
      * @returns the iterator of the new event
      */
-    NiChanges::iterator AddNiChangeEvent(Time moment,
+    NiChanges::iterator AddNiChangeEvent(const Time& moment,
                                          NiChange change,
-                                         NiChangesPerBand::iterator niIt);
+                                         BandStateMap::iterator bandIt);
 
     /**
      * Return whether another event is a MU-MIMO event that belongs to the same transmission and to
