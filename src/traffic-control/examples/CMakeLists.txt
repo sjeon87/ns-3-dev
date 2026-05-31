@@ -87,3 +87,26 @@ build_lib_example(
     ${libflow-monitor}
     ${libtraffic-control}
 )
+
+build_lib_example(
+  NAME cake-fig2-validation
+  SOURCE_FILES cake-fig2-validation.cc
+  LIBRARIES_TO_LINK
+    ${libapplications}
+    ${libcore}
+    ${libinternet}
+    ${libnetwork}
+    ${libpoint-to-point}
+    ${libtraffic-control}
+)
+
+build_lib_example(
+  NAME cake-fig3-validation
+  SOURCE_FILES cake-fig3-validation.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libinternet}
+    ${libapplications}
+    ${libflow-monitor}
+    ${libtraffic-control}
+)
