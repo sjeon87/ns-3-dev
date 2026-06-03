@@ -12,6 +12,8 @@
 
 #include "ns3/log.h"
 
+#include <sstream>
+
 namespace ns3
 {
 
@@ -176,6 +178,25 @@ ConvertToSocketAddress(const Address& address, uint16_t port)
         NS_FATAL_ERROR("This function should be called for an IPv4 or an IPv6 address");
     }
     return convertedAddress;
+}
+
+std::string
+FormatAddress(const Address& address)
+{
+    std::ostringstream oss;
+    if (Ipv4Address::IsMatchingType(address))
+    {
+        oss << Ipv4Address::ConvertFrom(address);
+    }
+    else if (Ipv6Address::IsMatchingType(address))
+    {
+        oss << Ipv6Address::ConvertFrom(address);
+    }
+    else
+    {
+        oss << address;
+    }
+    return oss.str();
 }
 
 } // namespace addressUtils
