@@ -17,6 +17,8 @@
 #include "ns3/address.h"
 #include "ns3/buffer.h"
 
+#include <string>
+
 namespace ns3
 {
 
@@ -122,6 +124,18 @@ bool IsMulticast(const Address& ad);
  * @return the corresponding socket address
  */
 Address ConvertToSocketAddress(const Address& address, uint16_t port);
+
+/**
+ * @brief Format a generic Address using its address-family-specific representation.
+ *
+ * The generic ns3::Address stream operator prints a raw type-tagged hex form, which is
+ * hard to read in logs.  This renders an IPv4 or IPv6 address in its usual notation
+ * (dotted-decimal or colon-hex) and falls back to the generic form for other types.
+ *
+ * @param address the address to format
+ * @return a human-readable string for the address
+ */
+std::string FormatAddress(const Address& address);
 
 }; // namespace addressUtils
 
