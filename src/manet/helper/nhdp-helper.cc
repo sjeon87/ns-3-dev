@@ -8,6 +8,7 @@
 
 #include "nhdp-helper.h"
 
+#include "ns3/address-utils.h"
 #include "ns3/callback.h"
 #include "ns3/log.h"
 #include "ns3/names.h"
@@ -15,6 +16,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <string>
 
 NS_LOG_COMPONENT_DEFINE("NhdpHelper");
 
@@ -256,7 +258,8 @@ NhdpHelper::LinkChangeTrace(Ptr<OutputStreamWrapper> stream,
     NS_LOG_FUNCTION_NOARGS();
     *stream->GetStream() << std::fixed << std::setprecision(9) << std::setw(13)
                          << Now().GetSeconds() << std::setw(3) << context << " Link" << std::setw(8)
-                         << action << std::setw(2) << newTuple.m_neighborAddrList[0]
+                         << action << std::setw(2)
+                         << addressUtils::FormatAddress(newTuple.m_neighborAddrList[0])
                          << std::setw(10) << newTuple.GetLinkStatus()
                          << " heard: " << std::setprecision(3) << std::setw(6)
                          << newTuple.m_heardTime.GetSeconds() << " sym: " << std::setw(6)
@@ -277,7 +280,8 @@ NhdpHelper::NeighborChangeTrace(Ptr<OutputStreamWrapper> stream,
     NS_LOG_FUNCTION_NOARGS();
     *stream->GetStream() << std::fixed << std::setprecision(9) << std::setw(13)
                          << Now().GetSeconds() << std::setw(3) << context << " Neighbor"
-                         << std::setw(8) << action << std::setw(2) << newTuple.m_neighborAddrList[0]
+                         << std::setw(8) << action << std::setw(2)
+                         << addressUtils::FormatAddress(newTuple.m_neighborAddrList[0])
                          << " sym: " << std::boolalpha << std::setw(5) << newTuple.m_symmetric
                          << std::endl;
 }
@@ -292,9 +296,10 @@ NhdpHelper::TwoHopChangeTrace(Ptr<OutputStreamWrapper> stream,
     NS_LOG_FUNCTION_NOARGS();
     *stream->GetStream() << std::fixed << std::setprecision(9) << std::setw(13)
                          << Now().GetSeconds() << std::setw(3) << context << " Neighbor"
-                         << std::setw(8) << action << std::setw(2) << newTuple.m_neighborAddrList[0]
-                         << "  2-Hop Neighbor: " << std::setw(2) << newTuple.m_twoHopAddr
-                         << std::endl;
+                         << std::setw(8) << action << std::setw(2)
+                         << addressUtils::FormatAddress(newTuple.m_neighborAddrList[0])
+                         << "  2-Hop Neighbor: " << std::setw(2)
+                         << addressUtils::FormatAddress(newTuple.m_twoHopAddr) << std::endl;
 }
 
 void
@@ -307,7 +312,8 @@ NhdpHelper::LostNeighborChangeTrace(Ptr<OutputStreamWrapper> stream,
     NS_LOG_FUNCTION_NOARGS();
     *stream->GetStream() << std::fixed << std::setprecision(9) << std::setw(13)
                          << Now().GetSeconds() << std::setw(3) << context << " Neighbor"
-                         << std::setw(8) << action << std::setw(2) << newTuple.m_neighborAddr
+                         << std::setw(8) << action << std::setw(2)
+                         << addressUtils::FormatAddress(newTuple.m_neighborAddr)
                          << " expiration: " << std::setw(2)
                          << newTuple.m_expirationTime.GetSeconds() << std::endl;
 }
@@ -315,12 +321,12 @@ NhdpHelper::LostNeighborChangeTrace(Ptr<OutputStreamWrapper> stream,
 void
 NhdpHelper::LinkFailureTrace(Ptr<OutputStreamWrapper> stream,
                              std::string context,
-                             const Ipv4Address& address)
+                             const Address& address)
 {
     NS_LOG_FUNCTION_NOARGS();
     *stream->GetStream() << std::fixed << std::setprecision(9) << std::setw(13)
                          << Now().GetSeconds() << std::setw(3) << context << " Neighbor"
-                         << std::setw(2) << address << std::endl;
+                         << std::setw(2) << addressUtils::FormatAddress(address) << std::endl;
 }
 
 } // namespace manet

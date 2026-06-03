@@ -212,11 +212,11 @@ class NhdpHelper
      *
      * @param stream output stream to write to
      * @param context trace context
-     * @param address The peer IPv4 address
+     * @param address The peer address
      */
     static void LinkFailureTrace(Ptr<OutputStreamWrapper> stream,
                                  std::string context,
-                                 const Ipv4Address& address);
+                                 const Address& address);
 
     ObjectFactory m_factory; ///< Factory used to create NhdpClient instances
 

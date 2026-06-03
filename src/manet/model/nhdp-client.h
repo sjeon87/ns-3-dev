@@ -14,6 +14,7 @@
 
 #include "nhdp-info-base.h"
 
+#include "ns3/address.h"
 #include "ns3/application.h"
 #include "ns3/event-id.h"
 #include "ns3/ipv4-address.h"
@@ -23,10 +24,13 @@
 #include "ns3/socket.h"
 #include "ns3/traced-callback.h"
 
+#include <list>
 #include <map>
 #include <optional>
 #include <queue>
 #include <set>
+#include <utility>
+#include <vector>
 
 namespace ns3
 {
@@ -61,6 +65,13 @@ template <class T>
 class TimeCompare
 {
   public:
+    /**
+     * Compare two tuples by their expiration time (later time = lower priority).
+     *
+     * @param a First tuple.
+     * @param b Second tuple.
+     * @return True if a expires after b.
+     */
     bool operator()(const Ptr<T>& a, const Ptr<T>& b)
     {
         return b->time < a->time;
@@ -88,6 +99,20 @@ enum class AddressTlvLinkStatus
 
 /**
  * @ingroup nhdp
+ * @brief Address family that a NHDP client operates over.
+ *
+ * RFC 6130 is address-family agnostic, but Sec. 12.1 implies that a router
+ * uses a single address length.  Each NhdpClient instance therefore operates
+ * over exactly one family; run two instances for dual-stack operation.
+ */
+enum class AddressMode
+{
+    IPV4,
+    IPV6
+};
+
+/**
+ * @ingroup nhdp
  * @brief A NHDP client
  */
 class NhdpClient : public Application
@@ -95,67 +120,140 @@ class NhdpClient : public Application
   public:
     NhdpClient();
 
+    /**
+     * Get the type ID.
+     * @return The object TypeId.
+     */
     static TypeId GetTypeId();
 
     /* Local Interface Base Methods */
-    /** Prevents interface from being used for transmitting HELLO messages */
+    /**
+     * Prevents an interface from being used for transmitting HELLO messages.
+     * @param ifaddr The interface index to exclude from MANET operation.
+     */
     void MarkIfaceNonManet(uint32_t ifaddr);
 
     /* End Information Bases */
 
-    /**
-     * @brief Adds a PacketBB message to be sent out with the next hello message.
-     * @param message a PacketBB message to include
+    /*
+     * Adds a PacketBB message to be sent out with the next hello message.
+     * void QueueMessage (Ptr<PbbMessage> message);
+     *
+     * Sets a callback for a particular message type.  On reception of a message
+     * of that type, the callback is called; multiple callbacks can be registered
+     * to one message type.
+     * void RegisterMessageCallback (uint8_t messageType, Callback<PbbMessage> cb);
      */
-    // void QueueMessage (Ptr<PbbMessage> message);
 
     /**
-     * @brief Sets a callback for a particular message type.
+     * @brief Sets a callback for a received NHDP packet for calculating link quality.
      *
-     * @param messageType the PbbMessage message type to listen for
-     * @param cb the callback to call when a message is received
+     * @param cb The callback to call when a packet is received.
      *
-     * On reception of a message of that type, the callback will be called.
-     * Multiple callbacks can be registered to one message type.
-     */
-    // void RegisterMessageCallback (uint8_t messageType, Callback<PbbMessage> cb);
-
-    /**
-     * @brief Sets a callback for a received NHDP packet for calculating link quality
-     *
-     * @param packet Pointer to the received packet
-     * @param cb the callback to call when a packet is received
-     *
-     * The packet is passed as a non-const object so that any PacketTag object can
-     * be removed if needed.
+     * The received packet is passed to the callback as a non-const object so that any
+     * PacketTag object can be removed if needed.
      */
     void RegisterLinkQualityCallback(Callback<double, Ptr<Packet>> cb);
 
     /**
      * A callback to receive indications that the lower layer link has failed.
      *
-     * @param neighborIpv4Addr The IP address associated with the failed link.
+     * @param neighborAddr The address associated with the failed link.
      */
-    void HandleLinkFailure(Ipv4Address neighborIpv4Addr);
+    void HandleLinkFailure(const Address& neighborAddr);
 
+    /**
+     * Receive a HELLO packet delivered directly in bypass mode (no socket).
+     * @param packet The received HELLO packet.
+     */
     void BypassRecv(Ptr<Packet> packet);
 
+    /**
+     * Socket receive callback for incoming HELLO packets.
+     * @param socket The socket with data available to read.
+     */
     void HandleRecv(Ptr<Socket> socket);
 
+    /**
+     * Trace sink invoked when a lower-layer direct link to a peer is established.
+     *
+     * @param srcL2Id The local layer-2 identifier.
+     * @param selfAddr The local address.
+     * @param peerL2Id The peer's layer-2 identifier.
+     * @param peerAddr The peer's address.
+     */
     void HandleDirectLinkEstablishedTrace(uint32_t srcL2Id,
-                                          Ipv4Address selfIpv4Addr,
+                                          Address selfAddr,
                                           uint32_t peerL2Id,
-                                          Ipv4Address peerIpv4Addr);
+                                          Address peerAddr);
 
+    /**
+     * Trace sink invoked when a lower-layer direct link to a peer is releasing.
+     *
+     * @param srcL2Id The local layer-2 identifier.
+     * @param selfAddr The local address.
+     * @param peerL2Id The peer's layer-2 identifier.
+     * @param peerAddr The peer's address.
+     */
     void HandleDirectLinkReleasingTrace(uint32_t srcL2Id,
-                                        Ipv4Address selfIpv4Addr,
+                                        Address selfAddr,
                                         uint32_t peerL2Id,
-                                        Ipv4Address peerIpv4Addr);
+                                        Address peerAddr);
 
-    const std::map<Ipv4Address, NeighborTuple>& GetNeighborInfoBase() const;
-    const std::map<Ipv4Address, LinkTuple>& GetLinkInfoBase() const;
-    const std::map<std::pair<Ipv4Address, Ipv4Address>, TwoHopTuple>& GetTwoHopInfoBase() const;
-    const std::map<Ipv4Address, LostNeighborTuple>& GetLostNeighborSet() const;
+    /**
+     * Get the Neighbor Set (RFC 6130 Sec. 8.1).
+     * @return The list of Neighbor Tuples.
+     */
+    const std::list<NeighborTuple>& GetNeighborInfoBase() const;
+    /**
+     * Get the Link Set (RFC 6130 Sec. 7.1).
+     * @return The list of Link Tuples.
+     */
+    const std::list<LinkTuple>& GetLinkInfoBase() const;
+    /**
+     * Get the 2-Hop Set (RFC 6130 Sec. 7.2).
+     * @return The list of 2-Hop Tuples.
+     */
+    const std::list<TwoHopTuple>& GetTwoHopInfoBase() const;
+    /**
+     * Get the Lost Neighbor Set (RFC 6130 Sec. 8.2).
+     * @return The list of Lost Neighbor Tuples.
+     */
+    const std::list<LostNeighborTuple>& GetLostNeighborSet() const;
+
+    /**
+     * Find the Neighbor Tuple whose N_neighbor_addr_list contains an address.
+     *
+     * @param addr The address to look up.
+     * @return Pointer to the matching Neighbor Tuple, or nullptr if none.
+     */
+    const NeighborTuple* FindNeighborTuple(const Address& addr) const;
+
+    /**
+     * Find the Link Tuple whose L_neighbor_iface_addr_list contains an address.
+     *
+     * @param addr The address to look up.
+     * @return Pointer to the matching Link Tuple, or nullptr if none.
+     */
+    const LinkTuple* FindLinkTuple(const Address& addr) const;
+
+    /**
+     * Find the Lost Neighbor Tuple for an address.
+     *
+     * @param addr The address to look up.
+     * @return Pointer to the matching Lost Neighbor Tuple, or nullptr if none.
+     */
+    const LostNeighborTuple* FindLostNeighbor(const Address& addr) const;
+
+    /**
+     * Find the 2-Hop Tuple reached via a 1-hop neighbor address.
+     *
+     * @param via A 1-hop neighbor interface address (matched by overlap).
+     * @param twoHopAddr The 2-hop neighbor address.
+     * @return Pointer to the matching 2-Hop Tuple, or nullptr if none.
+     */
+    const TwoHopTuple* FindTwoHopTuple(const Address& via, const Address& twoHopAddr) const;
+
     /**
      * TracedCallback signature for neighbor information base change event.
      *
@@ -206,38 +304,38 @@ class NhdpClient : public Application
     /**
      * TracedCallback signature for reported L2 link failure
      *
-     * @param [in] address The peer IPv4 address
+     * @param [in] address The peer address
      */
-    typedef void (*LinkFailureTracedCallback)(const Ipv4Address& address);
+    typedef void (*LinkFailureTracedCallback)(const Address& address);
 
     /**
      * TracedCallback signature for HELLO send trace
      *
-     * @param [in] addr The sending IPv4 address
+     * @param [in] addr The sending address
      * @param [in] links List of links advertised
      */
     typedef void (*HelloSendTracedCallback)(
-        Ipv4Address addr,
-        const std::vector<std::pair<Ipv4Address, AddressTlvLinkStatus>>& links);
+        Address addr,
+        const std::vector<std::pair<Address, AddressTlvLinkStatus>>& links);
 
     /**
      * TracedCallback signature for HELLO message send trace
      *
-     * @param [in] addr The sending IPv4 address
+     * @param [in] addr The sending address
      * @param [in] helloMsg The (modifiable) HELLO message
      */
-    typedef void (*HelloMessageSendTracedCallback)(Ipv4Address addr, Ptr<PbbMessage> helloMsg);
+    typedef void (*HelloMessageSendTracedCallback)(Address addr, Ptr<PbbMessage> helloMsg);
 
     /**
      * TracedCallback signature for HELLO recv trace
      *
-     * @param [in] addr The IPv4 address of the originator
+     * @param [in] addr The address of the originator
      * @param [in] links List of links advertised
      * @param [in] quality Link quality
      */
     typedef void (*HelloRecvTracedCallback)(
-        Ipv4Address addr,
-        const std::vector<std::pair<Ipv4Address, AddressTlvLinkStatus>>& links,
+        Address addr,
+        const std::vector<std::pair<Address, AddressTlvLinkStatus>>& links,
         std::optional<double> quality);
 
     /**
@@ -248,7 +346,7 @@ class NhdpClient : public Application
      * @param [in] quality Link quality if available
      */
     typedef void (*HelloMessageRecvTracedCallback)(Ptr<PbbMessage> helloMsg,
-                                                   Ipv4Address neighborAddr,
+                                                   Address neighborAddr,
                                                    std::optional<double> quality);
 
     int64_t AssignStreams(int64_t stream) override;
@@ -261,67 +359,186 @@ class NhdpClient : public Application
     void StartApplication() override;
     void StopApplication() override;
 
-    Ipv4Address HandlePbbMessage(Ptr<PbbMessage> msg, std::optional<double> quality);
-    Ipv4Address HandleLocalAddressBlock(Ptr<PbbAddressBlock> addressBlock,
-                                        Time validityTime,
-                                        std::optional<double> quality);
-    void HandleLinkStatusAddressBlock(Ptr<PbbAddressBlock> addressBlock,
-                                      Ipv4Address neighborIpv4Addr,
-                                      Time validityTime,
-                                      std::optional<double> quality);
+    /**
+     * Process a received HELLO message.
+     *
+     * @param msg The HELLO PbbMessage.
+     * @param quality Link quality if available.
+     * @param datagramSrc The source address of the IP datagram carrying the HELLO.
+     * @return A representative address of the originating neighbor.
+     */
+    Address HandlePbbMessage(Ptr<PbbMessage> msg,
+                             std::optional<double> quality,
+                             const Address& datagramSrc);
 
+    /**
+     * Collect the address lists from a HELLO message (RFC 6130, Sec. 12.2).
+     *
+     * @param msg The HELLO PbbMessage.
+     * @param datagramSrc The IP datagram source (default Sending Address List if empty).
+     * @param [out] sendingList The Sending Address List (LOCAL_IF THIS_IF addresses).
+     * @param [out] neighborList The Neighbor Address List (THIS_IF + OTHER_IF addresses).
+     * @param [out] linkStatus The (address, status) pairs from LINK_STATUS blocks.
+     */
+    void CollectAddressLists(Ptr<PbbMessage> msg,
+                             const Address& datagramSrc,
+                             std::vector<Address>& sendingList,
+                             std::vector<Address>& neighborList,
+                             std::vector<std::pair<Address, AddressTlvLinkStatus>>& linkStatus);
+
+    /**
+     * Update the Neighbor Set (RFC 6130, Sec. 12.3).
+     *
+     * @param neighborList The Neighbor Address List.
+     * @param [out] removedList The Removed Address List (appended to).
+     * @param [out] lostList The Lost Address List (appended to).
+     */
+    void UpdateNeighborSet(const std::vector<Address>& neighborList,
+                           std::vector<Address>& removedList,
+                           std::vector<Address>& lostList);
+
+    /**
+     * Update the Lost Neighbor Set from the Lost Address List (RFC 6130, Sec. 12.4).
+     *
+     * @param lostList The Lost Address List.
+     */
+    void UpdateLostNeighborSet(const std::vector<Address>& lostList);
+
+    /**
+     * Update the Link Set (RFC 6130, Sec. 12.5).
+     *
+     * @param sendingList The Sending Address List.
+     * @param linkStatus The (address, status) pairs from LINK_STATUS blocks.
+     * @param validityTime The HELLO validity time.
+     * @param quality Link quality if available.
+     * @param removedList The Removed Address List (consumed by Sec. 12.5 steps 1-2).
+     */
+    void UpdateLinkSet(const std::vector<Address>& sendingList,
+                       const std::vector<std::pair<Address, AddressTlvLinkStatus>>& linkStatus,
+                       Time validityTime,
+                       std::optional<double> quality,
+                       const std::vector<Address>& removedList);
+
+    /**
+     * Update the 2-Hop Set (RFC 6130, Sec. 12.6).
+     *
+     * @param sendingList The Sending Address List.
+     * @param linkStatus The (address, status) pairs from LINK_STATUS blocks.
+     * @param validityTime The HELLO validity time.
+     */
+    void UpdateTwoHopSet(const std::vector<Address>& sendingList,
+                         const std::vector<std::pair<Address, AddressTlvLinkStatus>>& linkStatus,
+                         Time validityTime);
+
+    /**
+     * Schedule the next HELLO transmission on a socket (with jitter).
+     * @param socket The socket to send the HELLO on.
+     */
     void ScheduleHello(Ptr<Socket> socket);
+    /**
+     * Build and transmit a HELLO message on a socket.
+     * @param socket The socket to send the HELLO on.
+     */
     void SendHello(Ptr<Socket> socket);
 
+    /**
+     * Refresh the Link Set timers and re-derive dependent neighbor state.
+     */
     void UpdateLinkTuples();
 
     // void CleanRemovedInterfaceAddressSet (void);
 
+    /**
+     * Build the LOCAL_IF address block (THIS_IF/OTHER_IF) for an outgoing HELLO.
+     * @param socket The socket the HELLO will be sent on.
+     * @return The constructed address block.
+     */
     Ptr<PbbAddressBlock> BuildLocalAddressBlock(Ptr<Socket> socket);
+    /**
+     * Build the LINK_STATUS address block for an outgoing HELLO.
+     * @param socket The socket the HELLO will be sent on.
+     * @return The constructed address block.
+     */
     Ptr<PbbAddressBlock> BuildLinkStatusAddressBlock(Ptr<Socket> socket);
 
-    /* Configuration paramters */
-    Ipv4Address m_address;
-    uint32_t m_port{0};
+    /* Address-list helpers (RFC 6130 overlap matching) */
 
-    Time m_helloInterval;
-    Time m_helloMinInterval;
-    Time m_refreshInterval;
+    /**
+     * Test whether an address is contained in a list of addresses.
+     * @param list The address list.
+     * @param addr The address.
+     * @return True if addr is in list.
+     */
+    static bool AddressInList(const std::vector<Address>& list, const Address& addr);
 
-    Time m_lHoldTime;
-    Time m_hHoldTime;
+    /**
+     * Test whether two address lists share at least one address.
+     * @param a First address list.
+     * @param b Second address list.
+     * @return True if the lists overlap.
+     */
+    static bool AddressListsOverlap(const std::vector<Address>& a, const std::vector<Address>& b);
 
-    double m_hystAccept{0};
-    double m_hystReject{0};
-    double m_initialQuality{0};
-    bool m_initialPending{false};
+    /** @copydoc FindNeighborTuple */
+    std::list<NeighborTuple>::iterator FindNeighborTupleIt(const Address& addr);
+    /** @copydoc FindLinkTuple */
+    std::list<LinkTuple>::iterator FindLinkTupleIt(const Address& addr);
+    /** @copydoc FindLostNeighbor */
+    std::list<LostNeighborTuple>::iterator FindLostNeighborIt(const Address& addr);
+    /** @copydoc FindTwoHopTuple */
+    std::list<TwoHopTuple>::iterator FindTwoHopTupleIt(const std::vector<Address>& via,
+                                                       const Address& twoHopAddr);
 
-    Time m_hpMaxJitter;
-    Time m_htMaxJitter;
+    /* Configuration parameters */
+    Ipv4Address m_address; //!< IPv4 multicast destination (used in IPv4 mode)
+    AddressMode m_addressMode{AddressMode::IPV4}; //!< Address family of this instance
+    uint32_t m_port{0};                           //!< UDP port used for HELLO exchange
 
-    Time m_nHoldTime;
-    Time m_iHoldTime;
+    Time m_helloInterval;    //!< HELLO_INTERVAL: nominal interval between HELLOs
+    Time m_helloMinInterval; //!< HELLO_MIN_INTERVAL: minimum interval between HELLOs
+    Time m_refreshInterval;  //!< REFRESH_INTERVAL: link refresh interval
+
+    Time m_lHoldTime; //!< L_HOLD_TIME: link tuple hold time
+    Time m_hHoldTime; //!< H_HOLD_TIME: advertised HELLO validity time
+
+    double m_hystAccept{0};       //!< HYST_ACCEPT: hysteresis acceptance threshold
+    double m_hystReject{0};       //!< HYST_REJECT: hysteresis rejection threshold
+    double m_initialQuality{0};   //!< INITIAL_QUALITY: link quality for a new link
+    bool m_initialPending{false}; //!< INITIAL_PENDING: whether a new link starts pending
+
+    Time m_hpMaxJitter; //!< HP_MAXJITTER: maximum jitter for periodic HELLOs
+    Time m_htMaxJitter; //!< HT_MAXJITTER: maximum jitter for triggered HELLOs
+
+    Time m_nHoldTime; //!< N_HOLD_TIME: lost neighbor hold time
+    Time m_iHoldTime; //!< I_HOLD_TIME: removed interface address hold time
 
     /* Information bases */
-    std::map<Ipv4Address, NeighborTuple> m_neighborInfoBase;
-    std::map<Ipv4Address, LinkTuple> m_linkInfoBase;
-    std::map<std::pair<Ipv4Address, Ipv4Address>, TwoHopTuple> m_twoHopInfoBase;
-    std::map<Ipv4Address, LostNeighborTuple> m_lostNeighborSet;
+    std::list<NeighborTuple> m_neighborInfoBase;    //!< Neighbor Set (RFC 6130 Sec. 8.1)
+    std::list<LinkTuple> m_linkInfoBase;            //!< Link Set (RFC 6130 Sec. 7.1)
+    std::list<TwoHopTuple> m_twoHopInfoBase;        //!< 2-Hop Set (RFC 6130 Sec. 7.2)
+    std::list<LostNeighborTuple> m_lostNeighborSet; //!< Lost Neighbor Set (RFC 6130 Sec. 8.2)
 
-    /* Map used for bypass */
-    std::map<Ipv4Address, Ptr<NhdpClient>> m_establishedPeers;
+    /// Map of peer address to peer client used to deliver HELLOs in bypass mode
+    std::map<Address, Ptr<NhdpClient>> m_establishedPeers;
 
     /* Other attributes */
-    bool m_running{false};
-    std::set<uint32_t> m_nonManetSet;
-    Ptr<UniformRandomVariable> m_rng;
-    std::map<Ptr<Socket>, Ipv4Address> m_socketAddresses;
-    Ptr<Socket> m_recvSocket; //!< Receiving socket
-    Ipv4Address m_localIpv4Address;
-    Ptr<PbbAddressBlock> m_localAddrBlock;
-    //!< Bypass transmission of messages
-    bool m_bypassMode{false};
+    bool m_running{false};                            //!< Whether the application is running
+    std::set<uint32_t> m_nonManetSet;                 //!< Non-MANET interface indices
+    Ptr<UniformRandomVariable> m_rng;                 //!< Random variable used for HELLO jitter
+    std::map<Ptr<Socket>, Address> m_socketAddresses; //!< Send socket to local address map
+    Ptr<Socket> m_recvSocket;                         //!< Receiving socket
+    /// Local interface addresses (Receiving / THIS_IF Address List, RFC 6130 Sec. 12.2).
+    /// In IPv4 mode this is a single address; in IPv6 mode it is the link-local plus the
+    /// routing Unique Local Address (RFC 4193).
+    std::vector<Address> m_localAddresses;
+    /// Source address of emitted IP datagrams (the link-local address in IPv6 mode).
+    Address m_datagramSource;
+    Ptr<PbbAddressBlock> m_localAddrBlock; //!< Cached LOCAL_IF address block for HELLOs
+    bool m_bypassMode{false};              //!< Whether HELLOs bypass sockets
 
+    /**
+     * Remove 2-Hop Tuples whose validity time has expired.
+     */
     void RemoveExpiredTwoHopNeighbors();
 
     /**
@@ -330,26 +547,37 @@ class NhdpClient : public Application
      * Implements the RFC 6130, Sec. 13.2 cleanup performed when a link to the
      * neighbor is removed or is no longer symmetric.
      *
-     * @param neighborAddr The 1-hop neighbor address whose 2-Hop Tuples to remove
+     * @param neighborAddrs The 1-hop neighbor interface addresses whose 2-Hop
+     *                       Tuples to remove (matched by overlap).
      */
-    void RemoveTwoHopTuples(Ipv4Address neighborAddr);
+    void RemoveTwoHopTuples(const std::vector<Address>& neighborAddrs);
 
-    Callback<double, Ptr<Packet>> m_linkQualityCallback;
+    Callback<double, Ptr<Packet>> m_linkQualityCallback; //!< Link-quality callback for HELLOs
 
+    /// Neighbor Set change trace
     TracedCallback<Action, const NeighborTuple&, const NeighborTuple&> m_neighborChangeTrace;
+    /// Link Set change trace
     TracedCallback<Action, const LinkTuple&, const LinkTuple&> m_linkChangeTrace;
+    /// 2-Hop Set change trace
     TracedCallback<Action, const TwoHopTuple&, const TwoHopTuple&> m_twoHopChangeTrace;
+    /// Lost Neighbor Set change trace
     TracedCallback<Action, const LostNeighborTuple&, const LostNeighborTuple&>
         m_lostNeighborChangeTrace;
-    TracedCallback<Ipv4Address, const std::vector<std::pair<Ipv4Address, AddressTlvLinkStatus>>&>
+    /// HELLO send trace (sending address and advertised links)
+    TracedCallback<Address, const std::vector<std::pair<Address, AddressTlvLinkStatus>>&>
         m_helloSendTrace;
-    TracedCallback<Ipv4Address,
-                   const std::vector<std::pair<Ipv4Address, AddressTlvLinkStatus>>&,
+    /// HELLO receive trace (originator address, advertised links, link quality)
+    TracedCallback<Address,
+                   const std::vector<std::pair<Address, AddressTlvLinkStatus>>&,
                    std::optional<double>>
         m_helloRecvTrace;
-    TracedCallback<Ipv4Address, Ptr<PbbMessage>> m_helloMessageSendTrace;
-    TracedCallback<Ptr<PbbMessage>, Ipv4Address, std::optional<double>> m_helloMessageRecvTrace;
-    TracedCallback<const Ipv4Address&> m_linkFailureTrace;
+    /// HELLO message send trace (sending address and HELLO message)
+    TracedCallback<Address, Ptr<PbbMessage>> m_helloMessageSendTrace;
+    /// HELLO message receive trace (HELLO message, neighbor address, link quality)
+    TracedCallback<Ptr<PbbMessage>, Address, std::optional<double>> m_helloMessageRecvTrace;
+    /// Link-failure trace (peer address)
+    TracedCallback<const Address&> m_linkFailureTrace;
+    /// Packet transmit trace
     TracedCallback<Ptr<const Packet>> m_txTrace;
 
     /*
