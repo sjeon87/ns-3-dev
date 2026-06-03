@@ -4,8 +4,11 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 #include "udp-echo-client.h"
+
 #include "seq-ts-echo-header.h"
+
 #include "ns3/address-utils.h"
+#include "ns3/boolean.h"
 #include "ns3/log.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
@@ -14,7 +17,6 @@
 #include "ns3/socket.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/uinteger.h"
-#include "ns3/boolean.h"
 
 namespace ns3
 {
@@ -320,7 +322,7 @@ UdpEchoClient::Send()
             p = Create<Packet>(m_size);
         }
     }
-    
+
     Address localAddress;
     m_socket->GetSockName(localAddress);
     m_txTrace(p);
@@ -368,7 +370,7 @@ UdpEchoClient::HandleRead(Ptr<Socket> socket)
                                    << Inet6SocketAddress::ConvertFrom(from).GetIpv6() << " port "
                                    << Inet6SocketAddress::ConvertFrom(from).GetPort());
         }
-        
+
         Address localAddress;
         socket->GetSockName(localAddress);
         m_rxTrace(packet);
@@ -378,7 +380,7 @@ UdpEchoClient::HandleRead(Ptr<Socket> socket)
         {
             SeqTsEchoHeader header;
             packet->RemoveHeader(header);
-            NS_LOG_DEBUG("Seq=" << header.GetSeq() << " TsValue=" << header.GetTsValue().As(Time::S) 
+            NS_LOG_DEBUG("Seq=" << header.GetSeq() << " TsValue=" << header.GetTsValue().As(Time::S)
                                 << " TsEchoReply=" << header.GetTsEchoReply().As(Time::S));
             header.SetTsValue(Simulator::Now() - header.GetTsEchoReply());
             m_rxTraceWithSeqTsEcho(packet, from, localAddress, header);

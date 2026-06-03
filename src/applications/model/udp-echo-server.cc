@@ -4,9 +4,11 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 #include "udp-echo-server.h"
+
 #include "seq-ts-echo-header.h"
 
 #include "ns3/address-utils.h"
+#include "ns3/boolean.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/ipv4-address.h"
@@ -19,7 +21,6 @@
 #include "ns3/socket.h"
 #include "ns3/udp-socket.h"
 #include "ns3/uinteger.h"
-#include "ns3/boolean.h"
 
 namespace ns3
 {
@@ -151,7 +152,7 @@ UdpEchoServer::HandleRead(Ptr<Socket> socket)
 
         packet->RemoveAllPacketTags();
         packet->RemoveAllByteTags();
-        
+
         if (m_enableSeqTsEchoHeader)
         {
             SeqTsEchoHeader header;

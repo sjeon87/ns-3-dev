@@ -79,8 +79,8 @@ BQL is essentially used to limit Netdevices queueing delay. It limits this queue
 restricting the queue size by a byte-based measure of the queue size.
 
 Here we assume the SegmentSize for TcpSocket is 1448 bytes. Datarate for the bottleneck link is 50Mbps
-with a bottleneck link delay of 5ms. 
-	
+with a bottleneck link delay of 5ms.
+
 1. If the queue size of DropTailQueue is three packets, BQL keeps the limit steady at 3004 bytes.
    With the P2P header, our packet size is 1502 bytes. With the BQL limit of 3004, our queue will
    store two packets in the queue. Thus the packets would have an extra two packet’s transmission delay

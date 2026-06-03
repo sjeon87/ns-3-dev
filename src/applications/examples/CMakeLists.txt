@@ -9,7 +9,7 @@ build_lib_example(
 )
 
 build_lib_example(
-<<<<<<< HEAD
+  HEAD
   NAME tgax-video-example
   SOURCE_FILES tgax-video-example.cc
   LIBRARIES_TO_LINK
