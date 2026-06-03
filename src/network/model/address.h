@@ -18,7 +18,9 @@
 #include <array>
 #include <compare>
 #include <ostream>
+#include <sstream>
 #include <stdint.h>
+#include <string>
 #include <unordered_map>
 
 namespace ns3
@@ -157,6 +159,63 @@ class Address
     static constexpr uint32_t MAX_SIZE{20};
 
     /**
+     * @brief Function pointer type for an address-type-specific printer.
+     *
+     * A printer renders an Address known to hold a specific registered type
+     * (e.g. an Ipv4Address) into a human-readable string.  A type may supply
+     * one when it registers itself (@see Register); operator<< then delegates
+     * to it instead of emitting the generic type-tagged hex form.
+     *
+     * A printer returns a std::string rather than writing to a stream so that
+     * operator<< performs a single insertion of the result.  This keeps
+     * std::setw and other field-formatting manipulators composable, which they
+     * would not be if a printer wrote multiple chunks directly to the stream.
+     *
+     * @param address the Address to render (compatible with the printer's type)
+     * @return the string representation of the address
+     */
+    using Printer = std::string (*)(const Address& address);
+
+    /**
+     * @brief Generic printer for a registered address type.
+     *
+     * Renders a generic Address (known to hold an instance of @p T) by
+     * converting it back to @p T and delegating to that type's Print method.
+     * A concrete address type registers it as its printer, e.g.
+     * @code
+     * Address::Register("IpAddress", 4, &Address::DefaultPrinter<Ipv4Address>);
+     * @endcode
+     *
+     * This shared template replaces what would otherwise be one near-identical
+     * stub per address type.  It can live here in the base even though Address
+     * has no compile-time knowledge of @p T: a template is only instantiated
+     * where it is used (the concrete type's translation unit), where @p T is a
+     * complete type.  A non-template base method could not do this, since the
+     * core must not depend on the concrete address types.
+     *
+     * Returns a std::string (rather than writing to a stream) so that
+     * operator<< inserts the result in a single operation, keeping std::setw
+     * and other field-formatting manipulators composable.  @see Printer
+     *
+     * @tparam T the concrete address type the Address holds; must provide a
+     *           static T::ConvertFrom(const Address&) and a
+     *           Print(std::ostream&) const method.
+     * @param address the Address to render (must hold an instance of @p T)
+     * @return the string representation produced by T::Print
+     */
+    template <typename T>
+        requires requires(const Address& a, std::ostream& os, const T& t) {
+            T::ConvertFrom(a);
+            t.Print(os);
+        }
+    static std::string DefaultPrinter(const Address& address)
+    {
+        std::ostringstream oss;
+        T::ConvertFrom(address).Print(oss);
+        return oss.str();
+    }
+
+    /**
      * Create an invalid address
      */
     Address() = default;
@@ -269,11 +328,17 @@ class Address
      * It is not allowed to have two different addresses with the same
      * kind and length.
      *
+     * An optional printer may be supplied so that streaming an Address of this
+     * type produces a type-specific representation (e.g. dotted-quad for IPv4)
+     * instead of the generic type-tagged hex form.  If none is supplied, the
+     * generic form is used.
+     *
      * @param kind address kind, such as "MacAddress"
      * @param length address length
+     * @param printer optional printer for this address type (@see Printer)
      * @return a new type id.
      */
-    static uint8_t Register(const std::string& kind, uint8_t length);
+    static uint8_t Register(const std::string& kind, uint8_t length, Printer printer = nullptr);
     /**
      * Get the number of bytes needed to serialize the underlying Address
      * Typically, this is GetLength () + 2
@@ -320,6 +385,15 @@ class Address
      * @return a reference to the stream
      */
     friend std::istream& operator>>(std::istream& is, Address& address);
+
+    /**
+     * Per-type address printers, indexed by type id (@see Register, Printer).
+     *
+     * A null entry means the type registered no printer and is rendered with
+     * the generic type-tagged hex form.  Sized to hold every possible type id
+     * (a uint8_t), so a lookup by m_type is a bounds-safe array index.
+     */
+    static std::array<Printer, 256> m_printerRegistry;
 
     uint8_t m_type{UNASSIGNED_TYPE};        //!< Type of the address
     uint8_t m_len{0};                       //!< Length of the address

@@ -358,7 +358,7 @@ uint8_t
 Ipv4Address::GetType()
 {
     NS_LOG_FUNCTION_NOARGS();
-    static uint8_t type = Address::Register("IpAddress", 4);
+    static uint8_t type = Address::Register("IpAddress", 4, &Address::DefaultPrinter<Ipv4Address>);
     return type;
 }
 

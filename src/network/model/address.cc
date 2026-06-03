@@ -23,6 +23,8 @@ NS_LOG_COMPONENT_DEFINE("Address");
 
 Address::KindTypeRegistry Address::m_typeRegistry;
 
+std::array<Address::Printer, 256> Address::m_printerRegistry{};
+
 Address::Address(uint8_t type, const uint8_t* buffer, uint8_t len)
     : m_type(type),
       m_len(len)
@@ -127,7 +129,7 @@ Address::IsMatchingType(uint8_t type) const
 }
 
 uint8_t
-Address::Register(const std::string& kind, uint8_t length)
+Address::Register(const std::string& kind, uint8_t length, Printer printer)
 {
     NS_LOG_FUNCTION(kind << length);
     static uint8_t lastRegisteredType = UNASSIGNED_TYPE;
@@ -135,6 +137,7 @@ Address::Register(const std::string& kind, uint8_t length)
                   "An address of the same kind and length is already registered.");
     lastRegisteredType++;
     m_typeRegistry[{kind, length}] = lastRegisteredType;
+    m_printerRegistry[lastRegisteredType] = printer;
     return lastRegisteredType;
 }
 
@@ -172,6 +175,14 @@ operator<<(std::ostream& os, const Address& address)
     if (address.m_type == 0)
     {
         os << "00-00:00";
+        return os;
+    }
+    // If this address type registered a printer, delegate to it.  The printer
+    // returns a string and we insert it once, so any pending field-width
+    // (std::setw) and justification apply to the whole rendered address.
+    if (auto printer = Address::m_printerRegistry[address.m_type])
+    {
+        os << printer(address);
         return os;
     }
     std::ios_base::fmtflags ff = os.flags();
