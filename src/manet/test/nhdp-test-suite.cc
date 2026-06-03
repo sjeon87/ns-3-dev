@@ -39,8 +39,20 @@
 //                            node's timers for the other derive from the peer's
 //                            advertised validity, while the L_HOLD_TIME term uses the
 //                            receiver's own local value (RFC 6130 Sec. 12.5).
+//   9. Ipv6SymmetricMultiAddress Two IPv6 nodes each advertise a link-local locator and a
+//                            routing ULA (RFC 4193); the peer is tracked as a
+//                            single Neighbor/Link Tuple carrying both addresses, a lookup by
+//                            either address resolves to that one Link Tuple (overlap), and
+//                            the link reaches SYMMETRIC over IPv6.
+//  10. Ipv6TwoHopFormation   IPv6 three-node chain; node 1 learns node 3 (at both of its
+//                            addresses) as a symmetric 2-hop neighbor via node 2.
+//  11. NeighborMerge         A neighbor advertised at address A, then B, then A+B causes the
+//                            two resulting Neighbor Tuples to be merged into one carrying both
+//                            addresses (RFC 6130 Sec. 12.3 step 4).  Synthetic HELLOs are
+//                            injected via BypassRecv.
 //
 
+#include "ns3/address.h"
 #include "ns3/application-container.h"
 #include "ns3/boolean.h"
 #include "ns3/config.h"
@@ -49,6 +61,11 @@
 #include "ns3/ipv4-address-helper.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/ipv4-interface-container.h"
+#include "ns3/ipv6-address-helper.h"
+#include "ns3/ipv6-address.h"
+#include "ns3/ipv6-interface-address.h"
+#include "ns3/ipv6-interface-container.h"
+#include "ns3/ipv6.h"
 #include "ns3/net-device-container.h"
 #include "ns3/nhdp-client.h"
 #include "ns3/nhdp-helper.h"
@@ -83,7 +100,7 @@ NS_LOG_COMPONENT_DEFINE("NhdpTestSuite");
  *
  * @brief Shared harness for NHDP behavioral unit tests.
  *
- * Builds a set of single-interface IPv4 nodes (addresses 7.0.0.<id>), each
+ * Builds a set of single-interface IPv4 nodes (addresses 7.0.0.1, 7.0.0.2, ...), each
  * running an NhdpClient in BypassMode, and provides helpers to wire directional
  * connectivity, drive link quality, and assert the resulting Information Bases.
  * Logical node ids run from 1 to the node count.
@@ -107,8 +124,39 @@ class NhdpTestCase : public TestCase
      */
     void CreateNodes(uint32_t count, Time helloInterval, Time holdTime);
 
-    Ptr<NhdpClient> Client(uint32_t id) const; //!< NhdpClient for logical node id
-    Ipv4Address Addr(uint32_t id) const;       //!< MANET address 7.0.0.<id>
+    /**
+     * Create count IPv6 nodes, each with an auto-configured link-local address plus a
+     * Unique Local Address (fd00::1, fd00::2, ...) and an NhdpClient in IPv6 BypassMode.  Models
+     * the scenario where neighbors are tracked at two addresses (the link-local locator and the
+     * routing ULA).  Only the top 8 bits (fd00::/8) follow the RFC 4193 ULA allocation; for
+     * trace simplicity a pseudo-randomly derived 40-bit Global ID (RFC 4193 Sec. 3.2.1) is
+     * not used.
+     *
+     * @param count Number of nodes to create.
+     * @param helloInterval HelloInterval attribute for each NhdpClient.
+     * @param holdTime HHoldTime (advertised validity) attribute for each NhdpClient.
+     */
+    void CreateNodesIpv6(uint32_t count, Time helloInterval, Time holdTime);
+
+    /**
+     * Get the NhdpClient for a logical node id.
+     * @param id The logical node id (1-based).
+     * @return The node's NhdpClient.
+     */
+    Ptr<NhdpClient> Client(uint32_t id) const;
+    /**
+     * Get the routing MANET address of a logical node id.
+     * @param id The logical node id (1-based).
+     * @return The node's routing MANET address.
+     */
+    Address Addr(uint32_t id) const;
+
+    /**
+     * Get the link-local address of an IPv6 node's MANET interface.
+     * @param id The node id.
+     * @return The link-local address, or an invalid Address if none.
+     */
+    Address LinkLocal6(uint32_t id) const;
 
     /**
      * Set up one-way connectivity so that the receiving node hears the transmitting node.
@@ -206,11 +254,27 @@ class NhdpTestCase : public TestCase
     void CheckLinkTimers(uint32_t id, uint32_t neighborId, Time heard, Time sym, Time expiration);
 
     /**
+     * Assert the number of addresses in node id's Neighbor Tuple to neighborId.
+     * @param id The observing node id.
+     * @param neighborId The neighbor node id.
+     * @param count The expected size of N_neighbor_addr_list.
+     */
+    void CheckNeighborAddrCount(uint32_t id, uint32_t neighborId, std::size_t count);
+    /**
+     * Assert that two addresses resolve to the same (single) Link Tuple at node id, i.e.
+     * a neighbor advertising both addresses is tracked as one link (RFC 6130 overlap).
+     * @param id The observing node id.
+     * @param a An address of the neighbor.
+     * @param b Another address of the same neighbor.
+     */
+    void CheckSameLink(uint32_t id, const Address& a, const Address& b);
+
+    /**
      * Report a link-layer failure on node id for its link to node neighborId.
      * @param id The node id experiencing the failure.
      * @param neighborId The neighbor node id whose link failed.
      */
-    void TriggerLinkFailure(uint32_t id, uint32_t neighborId);
+    void TriggerLinkFailure(uint32_t id, uint32_t neighborId) const;
     /**
      * Connect node id's LinkFailure trace so reported failures are recorded.
      * @param id The node id.
@@ -223,20 +287,61 @@ class NhdpTestCase : public TestCase
      */
     void CheckLinkFailureReported(uint32_t neighborId, bool reported);
 
+    /**
+     * Inject a synthetic HELLO (LOCAL_IF block only) directly into node id via its BypassRecv
+     * entry point, advertising the given addresses as THIS_IF.  Lets a test present a neighbor
+     * whose advertised address set varies between HELLOs, which the running clients cannot do.
+     * @param toId The receiving node id.
+     * @param thisIf The addresses to advertise as the neighbor's THIS_IF (Sending Address List).
+     * @param validity The advertised validity time.
+     * @param ipv6 True to build an IPv6 HELLO, false for IPv4.
+     */
+    void InjectLocalIfHello(uint32_t toId,
+                            std::vector<Address> thisIf,
+                            Time validity,
+                            bool ipv6) const;
+    /**
+     * Assert the number of Neighbor Tuples at node id.
+     * @param id The observing node id.
+     * @param count The expected Neighbor Set size.
+     */
+    void CheckNeighborSetSize(uint32_t id, std::size_t count);
+    /**
+     * Assert that two addresses resolve to a single merged Neighbor Tuple carrying both.
+     * @param id The observing node id.
+     * @param a One advertised neighbor address.
+     * @param b Another advertised neighbor address.
+     */
+    void CheckMergedNeighbor(uint32_t id, Address a, Address b);
+
   protected:
     void DoSetup() override;
     void DoTeardown() override;
 
   private:
-    uint32_t NodeId(uint32_t id) const;               //!< ns-3 NodeList id for logical node id
-    double QualityCallback(Ptr<Packet> packet) const; //!< Shared quality callback
-    void RecordLinkFailure(const Ipv4Address& addr);  //!< LinkFailure trace sink
+    /**
+     * Map a logical node id to its ns-3 NodeList id.
+     * @param id The logical node id (1-based).
+     * @return The corresponding ns-3 NodeList id.
+     */
+    uint32_t NodeId(uint32_t id) const;
+    /**
+     * Shared link-quality callback returning a fixed quality for received HELLOs.
+     * @param packet The received HELLO packet.
+     * @return The link quality to report.
+     */
+    double QualityCallback(Ptr<Packet> packet) const;
+    /**
+     * LinkFailure trace sink that records the failed peer address.
+     * @param addr The address of the peer whose link failed.
+     */
+    void RecordLinkFailure(const Address& addr);
 
     NodeContainer m_nodes;                  //!< The created nodes (index id-1)
     std::vector<Ptr<NhdpClient>> m_clients; //!< NhdpClient per node (index id-1)
-    std::vector<Ipv4Address> m_addrs;       //!< MANET address per node (index id-1)
+    std::vector<Address> m_addrs;           //!< Routing MANET address per node (index id-1)
     double m_quality{1.0};                  //!< Value returned by QualityCallback()
-    std::set<Ipv4Address> m_linkFailures;   //!< Addresses reported on the LinkFailure trace
+    std::set<Address> m_linkFailures;       //!< Addresses reported on the LinkFailure trace
     Time m_timerTolerance{MilliSeconds(1)}; //!< Tolerance for timer assertions
     uint32_t m_previousSeed{1};             //!< RngSeed before the test, restored on teardown
     uint64_t m_previousRun{1};              //!< RngRun before the test, restored on teardown
@@ -296,7 +401,56 @@ NhdpTestCase::CreateNodes(uint32_t count, Time helloInterval, Time holdTime)
         auto client = apps.Get(i)->GetObject<NhdpClient>();
         client->AssignStreams(100 + i);
         m_clients.push_back(client);
-        m_addrs.push_back(ifaces.GetAddress(i));
+        m_addrs.push_back(Address(ifaces.GetAddress(i)));
+    }
+    apps.Start(Seconds(0));
+}
+
+void
+NhdpTestCase::CreateNodesIpv6(uint32_t count, Time helloInterval, Time holdTime)
+{
+    NS_LOG_DEBUG("Creating " << count << " IPv6 NHDP nodes; helloInterval "
+                             << helloInterval.As(Time::S) << ", hHoldTime "
+                             << holdTime.As(Time::S));
+
+    // Use a fixed RNG seed and run for reproducibility (DoSetup() saved the previous
+    // values and DoTeardown() restores them).
+    Config::SetGlobal("RngSeed", UintegerValue(1));
+    Config::SetGlobal("RngRun", UintegerValue(1));
+
+    m_nodes.Create(count);
+
+    InternetStackHelper internet;
+    internet.Install(m_nodes);
+
+    SimpleNetDeviceHelper simpleNet;
+    NetDeviceContainer devices = simpleNet.Install(m_nodes);
+
+    // Assign a routing Unique Local Address (fd00::1, fd00::2, ...) to each node; the IPv6
+    // stack auto-configures a link-local address as well.  Only the top 8 bits (fd00::/8)
+    // follow the RFC 4193 ULA allocation; for trace simplicity these addresses do not use a
+    // pseudo-randomly derived 40-bit Global ID as RFC 4193 Sec. 3.2.1 would require.
+    Ipv6AddressHelper ipv6;
+    ipv6.SetBase(Ipv6Address("fd00::"), Ipv6Prefix(64));
+    Ipv6InterfaceContainer ifaces = ipv6.Assign(devices);
+
+    NhdpHelper nhdp;
+    nhdp.SetAttribute("BypassMode", BooleanValue(true));
+    nhdp.SetAttribute("AddressMode", EnumValue(AddressMode::IPV6));
+    nhdp.SetAttribute("HelloInterval", TimeValue(helloInterval));
+    nhdp.SetAttribute("RefreshInterval", TimeValue(helloInterval));
+    nhdp.SetAttribute("HHoldTime", TimeValue(holdTime));
+    nhdp.SetAttribute("HPMaxJitter", TimeValue(Seconds(0)));
+    ApplicationContainer apps = nhdp.Install(m_nodes);
+
+    for (uint32_t i = 0; i < count; i++)
+    {
+        auto client = apps.Get(i)->GetObject<NhdpClient>();
+        client->AssignStreams(100 + i);
+        m_clients.push_back(client);
+        // The routing address is the ULA at interface index 1, address index 1 (index 0 is the
+        // link-local).  GetAddress(i, 1) returns that ULA.
+        m_addrs.push_back(Address(ifaces.GetAddress(i, 1)));
     }
     apps.Start(Seconds(0));
 }
@@ -315,10 +469,29 @@ NhdpTestCase::Client(uint32_t id) const
     return m_clients.at(id - 1); // logical node ids run from 1
 }
 
-Ipv4Address
+Address
 NhdpTestCase::Addr(uint32_t id) const
 {
     return m_addrs.at(id - 1); // logical node ids run from 1
+}
+
+Address
+NhdpTestCase::LinkLocal6(uint32_t id) const
+{
+    Ptr<Ipv6> ipv6 = Client(id)->GetNode()->GetObject<Ipv6>();
+    NS_ASSERT(ipv6);
+    for (uint32_t i = 0; i < ipv6->GetNInterfaces(); i++)
+    {
+        for (uint32_t j = 0; j < ipv6->GetNAddresses(i); j++)
+        {
+            Ipv6InterfaceAddress ia = ipv6->GetAddress(i, j);
+            if (ia.GetScope() == Ipv6InterfaceAddress::LINKLOCAL)
+            {
+                return Address(ia.GetAddress());
+            }
+        }
+    }
+    return Address();
 }
 
 uint32_t
@@ -381,13 +554,12 @@ NhdpTestCase::CheckLinkStatus(uint32_t id, uint32_t neighborId, LinkStatus statu
 {
     NS_LOG_DEBUG("Checking node " << id << " link to " << neighborId << " has status " << status
                                   << " at " << Simulator::Now().As(Time::S));
-    const auto& base = Client(id)->GetLinkInfoBase();
-    auto it = base.find(Addr(neighborId));
-    NS_TEST_ASSERT_MSG_EQ((it != base.end()),
-                          true,
+    const LinkTuple* link = Client(id)->FindLinkTuple(Addr(neighborId));
+    NS_TEST_ASSERT_MSG_NE(link,
+                          nullptr,
                           "Node " << id << " missing Link Tuple to " << neighborId << " at "
                                   << Simulator::Now().As(Time::S));
-    NS_TEST_ASSERT_MSG_EQ(it->second.GetLinkStatus(),
+    NS_TEST_ASSERT_MSG_EQ(link->GetLinkStatus(),
                           status,
                           "Node " << id << " Link Tuple to " << neighborId << " wrong status at "
                                   << Simulator::Now().As(Time::S));
@@ -398,8 +570,7 @@ NhdpTestCase::CheckNoLink(uint32_t id, uint32_t neighborId)
 {
     NS_LOG_DEBUG("Checking node " << id << " has no link to " << neighborId << " at "
                                   << Simulator::Now().As(Time::S));
-    const auto& base = Client(id)->GetLinkInfoBase();
-    NS_TEST_ASSERT_MSG_EQ((base.find(Addr(neighborId)) == base.end()),
+    NS_TEST_ASSERT_MSG_EQ((Client(id)->FindLinkTuple(Addr(neighborId)) == nullptr),
                           true,
                           "Node " << id << " unexpectedly has a Link Tuple to " << neighborId
                                   << " at " << Simulator::Now().As(Time::S));
@@ -410,13 +581,12 @@ NhdpTestCase::CheckSymmetric(uint32_t id, uint32_t neighborId, bool symmetric)
 {
     NS_LOG_DEBUG("Checking node " << id << " neighbor " << neighborId << " symmetric=" << symmetric
                                   << " at " << Simulator::Now().As(Time::S));
-    const auto& base = Client(id)->GetNeighborInfoBase();
-    auto it = base.find(Addr(neighborId));
-    NS_TEST_ASSERT_MSG_EQ((it != base.end()),
-                          true,
+    const NeighborTuple* neighbor = Client(id)->FindNeighborTuple(Addr(neighborId));
+    NS_TEST_ASSERT_MSG_NE(neighbor,
+                          nullptr,
                           "Node " << id << " missing Neighbor Tuple to " << neighborId << " at "
                                   << Simulator::Now().As(Time::S));
-    NS_TEST_ASSERT_MSG_EQ(it->second.m_symmetric,
+    NS_TEST_ASSERT_MSG_EQ(neighbor->m_symmetric,
                           symmetric,
                           "Node " << id << " Neighbor Tuple to " << neighborId
                                   << " wrong symmetry at " << Simulator::Now().As(Time::S));
@@ -427,8 +597,7 @@ NhdpTestCase::CheckNoNeighbor(uint32_t id, uint32_t neighborId)
 {
     NS_LOG_DEBUG("Checking node " << id << " has no neighbor " << neighborId << " at "
                                   << Simulator::Now().As(Time::S));
-    const auto& base = Client(id)->GetNeighborInfoBase();
-    NS_TEST_ASSERT_MSG_EQ((base.find(Addr(neighborId)) == base.end()),
+    NS_TEST_ASSERT_MSG_EQ((Client(id)->FindNeighborTuple(Addr(neighborId)) == nullptr),
                           true,
                           "Node " << id << " unexpectedly has a Neighbor Tuple to " << neighborId
                                   << " at " << Simulator::Now().As(Time::S));
@@ -451,9 +620,8 @@ NhdpTestCase::CheckTwoHop(uint32_t id, uint32_t viaId, uint32_t twoHopId, bool p
     NS_LOG_DEBUG("Checking node " << id << " 2-hop to " << twoHopId << " via " << viaId
                                   << " present=" << present << " at "
                                   << Simulator::Now().As(Time::S));
-    const auto& base = Client(id)->GetTwoHopInfoBase();
-    auto key = std::make_pair(Addr(viaId), Addr(twoHopId));
-    NS_TEST_ASSERT_MSG_EQ((base.find(key) != base.end()),
+    bool found = Client(id)->FindTwoHopTuple(Addr(viaId), Addr(twoHopId)) != nullptr;
+    NS_TEST_ASSERT_MSG_EQ(found,
                           present,
                           "Node " << id << " 2-Hop Tuple to " << twoHopId << " via " << viaId
                                   << " presence mismatch at " << Simulator::Now().As(Time::S));
@@ -464,8 +632,8 @@ NhdpTestCase::CheckLostNeighbor(uint32_t id, uint32_t neighborId, bool present)
 {
     NS_LOG_DEBUG("Checking node " << id << " lost-neighbor " << neighborId << " present=" << present
                                   << " at " << Simulator::Now().As(Time::S));
-    const auto& base = Client(id)->GetLostNeighborSet();
-    NS_TEST_ASSERT_MSG_EQ((base.find(Addr(neighborId)) != base.end()),
+    bool found = Client(id)->FindLostNeighbor(Addr(neighborId)) != nullptr;
+    NS_TEST_ASSERT_MSG_EQ(found,
                           present,
                           "Node " << id << " lost-neighbor " << neighborId
                                   << " presence mismatch at " << Simulator::Now().As(Time::S));
@@ -480,28 +648,27 @@ NhdpTestCase::CheckLinkTimers(uint32_t id,
 {
     NS_LOG_DEBUG("Checking node " << id << " link timers to " << neighborId << " at "
                                   << Simulator::Now().As(Time::S));
-    const auto& base = Client(id)->GetLinkInfoBase();
-    auto it = base.find(Addr(neighborId));
-    NS_TEST_ASSERT_MSG_EQ((it != base.end()),
-                          true,
+    const LinkTuple* link = Client(id)->FindLinkTuple(Addr(neighborId));
+    NS_TEST_ASSERT_MSG_NE(link,
+                          nullptr,
                           "Node " << id << " missing Link Tuple to " << neighborId << " at "
                                   << Simulator::Now().As(Time::S));
-    NS_TEST_ASSERT_MSG_EQ_TOL(it->second.m_heardTime,
+    NS_TEST_ASSERT_MSG_EQ_TOL(link->m_heardTime,
                               heard,
                               m_timerTolerance,
                               "Node " << id << " L_HEARD_time to " << neighborId << " wrong");
-    NS_TEST_ASSERT_MSG_EQ_TOL(it->second.m_symTime,
+    NS_TEST_ASSERT_MSG_EQ_TOL(link->m_symTime,
                               sym,
                               m_timerTolerance,
                               "Node " << id << " L_SYM_time to " << neighborId << " wrong");
-    NS_TEST_ASSERT_MSG_EQ_TOL(it->second.m_expirationTime,
+    NS_TEST_ASSERT_MSG_EQ_TOL(link->m_expirationTime,
                               expiration,
                               m_timerTolerance,
                               "Node " << id << " L_time to " << neighborId << " wrong");
 }
 
 void
-NhdpTestCase::TriggerLinkFailure(uint32_t id, uint32_t neighborId)
+NhdpTestCase::TriggerLinkFailure(uint32_t id, uint32_t neighborId) const
 {
     NS_LOG_DEBUG("Reporting link failure on node " << id << " for neighbor " << neighborId);
     Client(id)->HandleLinkFailure(Addr(neighborId));
@@ -515,10 +682,40 @@ NhdpTestCase::ConnectLinkFailure(uint32_t id)
 }
 
 void
-NhdpTestCase::RecordLinkFailure(const Ipv4Address& addr)
+NhdpTestCase::RecordLinkFailure(const Address& addr)
 {
     NS_LOG_DEBUG("LinkFailure trace fired for " << addr);
     m_linkFailures.insert(addr);
+}
+
+void
+NhdpTestCase::CheckNeighborAddrCount(uint32_t id, uint32_t neighborId, std::size_t count)
+{
+    NS_LOG_DEBUG("Checking node " << id << " neighbor " << neighborId << " address count == "
+                                  << count << " at " << Simulator::Now().As(Time::S));
+    const NeighborTuple* neighbor = Client(id)->FindNeighborTuple(Addr(neighborId));
+    NS_TEST_ASSERT_MSG_NE(neighbor,
+                          nullptr,
+                          "Node " << id << " missing Neighbor Tuple to " << neighborId << " at "
+                                  << Simulator::Now().As(Time::S));
+    NS_TEST_ASSERT_MSG_EQ(neighbor->m_neighborAddrList.size(),
+                          count,
+                          "Node " << id << " Neighbor Tuple to " << neighborId
+                                  << " wrong address count at " << Simulator::Now().As(Time::S));
+}
+
+void
+NhdpTestCase::CheckSameLink(uint32_t id, const Address& a, const Address& b)
+{
+    NS_LOG_DEBUG("Checking node " << id << " resolves " << a << " and " << b
+                                  << " to the same Link Tuple at " << Simulator::Now().As(Time::S));
+    const LinkTuple* linkA = Client(id)->FindLinkTuple(a);
+    const LinkTuple* linkB = Client(id)->FindLinkTuple(b);
+    NS_TEST_ASSERT_MSG_NE(linkA, nullptr, "Node " << id << " missing Link Tuple for first address");
+    NS_TEST_ASSERT_MSG_EQ(linkA,
+                          linkB,
+                          "Node " << id << " addresses resolve to different Link Tuples at "
+                                  << Simulator::Now().As(Time::S));
 }
 
 void
@@ -530,6 +727,95 @@ NhdpTestCase::CheckLinkFailureReported(uint32_t neighborId, bool reported)
                           reported,
                           "Link failure to " << neighborId << " report mismatch at "
                                              << Simulator::Now().As(Time::S));
+}
+
+void
+NhdpTestCase::InjectLocalIfHello(uint32_t toId,
+                                 std::vector<Address> thisIf,
+                                 Time validity,
+                                 bool ipv6) const
+{
+    NS_LOG_DEBUG("Injecting synthetic HELLO into node " << toId << " advertising " << thisIf.size()
+                                                        << " THIS_IF address(es) at "
+                                                        << Simulator::Now().As(Time::S));
+    PbbPacket pbb;
+    Ptr<PbbMessage> msg;
+    if (ipv6)
+    {
+        msg = Create<PbbMessageIpv6>();
+    }
+    else
+    {
+        msg = Create<PbbMessageIpv4>();
+    }
+    msg->SetType(MESSAGE_TYPE_HELLO);
+    pbb.MessagePushBack(msg);
+
+    // Mandatory VALIDITY_TIME Message TLV (RFC 6130 Sec. 12.1).
+    Ptr<PbbTlv> validityTlv = Create<PbbTlv>();
+    validityTlv->SetType(MSG_TLV_VALIDITY_TIME);
+    uint8_t code = EncodeTimeCode(validity);
+    validityTlv->SetValue(&code, 1);
+    msg->TlvPushBack(validityTlv);
+
+    // LOCAL_IF address block listing the advertised addresses as THIS_IF.
+    Ptr<PbbAddressBlock> block;
+    if (ipv6)
+    {
+        block = Create<PbbAddressBlockIpv6>();
+    }
+    else
+    {
+        block = Create<PbbAddressBlockIpv4>();
+    }
+    for (const auto& addr : thisIf)
+    {
+        block->AddressPushBack(addr);
+        block->PrefixPushBack(ipv6 ? 128 : 32);
+    }
+    Ptr<PbbAddressTlv> addrTlv = Create<PbbAddressTlv>();
+    addrTlv->SetType(ADDR_TLV_LOCAL_IF);
+    addrTlv->SetValue(&ADDR_TLV_LOCAL_IF_THIS_IF, sizeof(ADDR_TLV_LOCAL_IF_THIS_IF));
+    addrTlv->SetIndexStart(0);
+    if (thisIf.size() > 1)
+    {
+        addrTlv->SetIndexStop(thisIf.size() - 1);
+    }
+    block->TlvPushBack(addrTlv);
+    msg->AddressBlockPushBack(block);
+
+    Ptr<Packet> packet = Create<Packet>();
+    packet->AddHeader(pbb);
+    Client(toId)->BypassRecv(packet);
+}
+
+void
+NhdpTestCase::CheckNeighborSetSize(uint32_t id, std::size_t count)
+{
+    NS_LOG_DEBUG("Checking node " << id << " Neighbor Set size == " << count << " at "
+                                  << Simulator::Now().As(Time::S));
+    NS_TEST_ASSERT_MSG_EQ(Client(id)->GetNeighborInfoBase().size(),
+                          count,
+                          "Node " << id << " wrong Neighbor Set size at "
+                                  << Simulator::Now().As(Time::S));
+}
+
+void
+NhdpTestCase::CheckMergedNeighbor(uint32_t id, Address a, Address b)
+{
+    NS_LOG_DEBUG("Checking node " << id << " merged neighbor at " << Simulator::Now().As(Time::S));
+    const NeighborTuple* ta = Client(id)->FindNeighborTuple(a);
+    const NeighborTuple* tb = Client(id)->FindNeighborTuple(b);
+    NS_TEST_ASSERT_MSG_NE(ta,
+                          nullptr,
+                          "Node " << id << " missing Neighbor Tuple for first address");
+    NS_TEST_ASSERT_MSG_EQ(ta,
+                          tb,
+                          "Node " << id << " addresses resolve to different Neighbor Tuples at "
+                                  << Simulator::Now().As(Time::S));
+    NS_TEST_ASSERT_MSG_EQ(ta->m_neighborAddrList.size(),
+                          static_cast<std::size_t>(2),
+                          "Node " << id << " merged Neighbor Tuple should carry both addresses");
 }
 
 /**
@@ -1124,6 +1410,184 @@ HeterogeneousValidityTestCase::DoRun()
 /**
  * @ingroup nhdp-tests
  *
+ * @brief Two IPv6 nodes track each other at two addresses (link-local + ULA).
+ *
+ * Models the scenario where each node advertises both its link-local locator and its
+ * routing Unique Local Address (RFC 4193) as THIS_IF.  Verifies that the peer is
+ * tracked as a single Neighbor/Link Tuple carrying both addresses (RFC 6130 multi-address
+ * handling), that a lookup by either address resolves to the same Link Tuple (overlap), and
+ * that the link reaches SYMMETRIC over IPv6.
+ */
+class Ipv6SymmetricMultiAddressTestCase : public NhdpTestCase
+{
+  public:
+    Ipv6SymmetricMultiAddressTestCase();
+
+  protected:
+    void DoRun() override;
+};
+
+Ipv6SymmetricMultiAddressTestCase::Ipv6SymmetricMultiAddressTestCase()
+    : NhdpTestCase("IPv6 two-node symmetric link with link-local plus ULA")
+{
+}
+
+void
+Ipv6SymmetricMultiAddressTestCase::DoRun()
+{
+    NS_LOG_DEBUG("Two IPv6 nodes: expect a single SYMMETRIC link carrying both peer addresses");
+
+    const Time helloInterval = Seconds(1);
+    const Time validity = Seconds(3); // advertised H_HOLD_TIME
+    CreateNodesIpv6(2, helloInterval, validity);
+    Link(1, 2);
+
+    // By t = 2 s each node hears itself listed and the link becomes SYMMETRIC.
+    Simulator::Schedule(Seconds(2.5),
+                        &NhdpTestCase::CheckLinkStatus,
+                        this,
+                        1,
+                        2,
+                        LinkStatus::SYMMETRIC);
+    Simulator::Schedule(Seconds(2.5), &NhdpTestCase::CheckSymmetric, this, 1, 2, true);
+    // The neighbor is tracked at both of its addresses (link-local + ULA).
+    Simulator::Schedule(Seconds(2.5), &NhdpTestCase::CheckNeighborAddrCount, this, 1, 2, 2);
+    // A lookup by the link-local or the ULA resolves to the same Link Tuple (overlap matching).
+    Simulator::Schedule(Seconds(2.6), [this]() { CheckSameLink(1, Addr(2), LinkLocal6(2)); });
+
+    Simulator::Stop(Seconds(3));
+    Simulator::Run();
+    Simulator::Destroy();
+}
+
+/**
+ * @ingroup nhdp-tests
+ *
+ * @brief IPv6 three-node chain 2-hop neighbor formation with two addresses per node.
+ *
+ * As TwoHopFormation but over IPv6: node 2 advertises node 3 (both its link-local and ULA)
+ * as a symmetric 1-hop neighbor, so node 1 learns node 3 as a symmetric 2-hop neighbor at
+ * both of node 3's addresses via node 2 (RFC 6130 Sec. 12.6 with list-valued addresses).
+ */
+class Ipv6TwoHopFormationTestCase : public NhdpTestCase
+{
+  public:
+    Ipv6TwoHopFormationTestCase();
+
+  protected:
+    void DoRun() override;
+};
+
+Ipv6TwoHopFormationTestCase::Ipv6TwoHopFormationTestCase()
+    : NhdpTestCase("IPv6 three-node chain 2-hop neighbor formation")
+{
+}
+
+void
+Ipv6TwoHopFormationTestCase::DoRun()
+{
+    NS_LOG_DEBUG("IPv6 chain 1-2-3: node 1 learns node 3 (two addresses) as a 2-hop via node 2");
+
+    const Time helloInterval = Seconds(1);
+    const Time validity = Seconds(3); // advertised H_HOLD_TIME
+    CreateNodesIpv6(3, helloInterval, validity);
+    Link(1, 2);
+    Link(2, 3);
+
+    Simulator::Schedule(Seconds(2.5),
+                        &NhdpTestCase::CheckLinkStatus,
+                        this,
+                        1,
+                        2,
+                        LinkStatus::SYMMETRIC);
+    Simulator::Schedule(Seconds(2.5), &NhdpTestCase::CheckNoLink, this, 1, 3);
+
+    // At t = 3 s node 2 advertises node 3 as SYMMETRIC at both of its addresses; node 1 creates
+    // a 2-Hop Tuple to each of node 3's addresses via node 2 (two tuples), and none to itself.
+    Simulator::Schedule(Seconds(3.5), &NhdpTestCase::CheckTwoHop, this, 1, 2, 3, true);
+    Simulator::Schedule(Seconds(3.5), &NhdpTestCase::CheckTwoHopCount, this, 1, 2);
+    Simulator::Schedule(Seconds(3.5), &NhdpTestCase::CheckTwoHop, this, 1, 2, 1, false);
+
+    Simulator::Stop(Seconds(5));
+    Simulator::Run();
+    Simulator::Destroy();
+}
+
+/**
+ * @ingroup nhdp-tests
+ *
+ * @brief A neighbor advertising overlapping address sets triggers a Neighbor Set merge.
+ *
+ * Exercises RFC 6130 Sec. 12.3 step 4: a peer first advertises address A alone, then address
+ * B alone (forming two separate Neighbor Tuples at the receiver), then both A and B together.
+ * The combined HELLO overlaps both Tuples, which must be merged into a single Neighbor Tuple
+ * carrying both addresses.  Synthetic HELLOs are injected via BypassRecv because a running
+ * NhdpClient always advertises its full local address set and so cannot itself drive this case.
+ */
+class NeighborMergeTestCase : public NhdpTestCase
+{
+  public:
+    NeighborMergeTestCase();
+
+  protected:
+    void DoRun() override;
+};
+
+NeighborMergeTestCase::NeighborMergeTestCase()
+    : NhdpTestCase("Neighbor Set merge on overlapping address sets (Sec. 12.3 step 4)")
+{
+}
+
+void
+NeighborMergeTestCase::DoRun()
+{
+    NS_LOG_DEBUG("Inject HELLOs advertising A, then B, then A+B; expect a single merged neighbor");
+
+    const Time helloInterval = Seconds(1);
+    // Long validity so the injected Link/Neighbor Tuples persist for the duration of the test.
+    const Time validity = Seconds(10);
+    CreateNodes(1, helloInterval, validity);
+    const Address a = Address(Ipv4Address("7.0.0.100"));
+    const Address b = Address(Ipv4Address("7.0.0.200"));
+
+    // The neighbor advertises only A, then only B: B does not overlap A's Neighbor Tuple, so
+    // node 1 ends up with two separate Neighbor Tuples.
+    Simulator::Schedule(Seconds(1.5),
+                        &NhdpTestCase::InjectLocalIfHello,
+                        this,
+                        1,
+                        std::vector<Address>{a},
+                        validity,
+                        false);
+    Simulator::Schedule(Seconds(2.5),
+                        &NhdpTestCase::InjectLocalIfHello,
+                        this,
+                        1,
+                        std::vector<Address>{b},
+                        validity,
+                        false);
+    Simulator::Schedule(Seconds(2.75), &NhdpTestCase::CheckNeighborSetSize, this, 1, 2);
+
+    // The neighbor then advertises both addresses; the HELLO overlaps both Neighbor Tuples,
+    // which are merged into one tuple carrying both A and B (RFC 6130 Sec. 12.3 step 4).
+    Simulator::Schedule(Seconds(3.5),
+                        &NhdpTestCase::InjectLocalIfHello,
+                        this,
+                        1,
+                        std::vector<Address>{a, b},
+                        validity,
+                        false);
+    Simulator::Schedule(Seconds(3.75), &NhdpTestCase::CheckNeighborSetSize, this, 1, 1);
+    Simulator::Schedule(Seconds(3.75), &NhdpTestCase::CheckMergedNeighbor, this, 1, a, b);
+
+    Simulator::Stop(Seconds(4));
+    Simulator::Run();
+    Simulator::Destroy();
+}
+
+/**
+ * @ingroup nhdp-tests
+ *
  * @brief Test suite for the nhdp module.
  */
 class NhdpTestSuite : public TestSuite
@@ -1143,6 +1607,9 @@ NhdpTestSuite::NhdpTestSuite()
     AddTestCase(new LinkQualityHysteresisTestCase(), TestCase::Duration::QUICK);
     AddTestCase(new LinkFailureTestCase(), TestCase::Duration::QUICK);
     AddTestCase(new HeterogeneousValidityTestCase(), TestCase::Duration::QUICK);
+    AddTestCase(new Ipv6SymmetricMultiAddressTestCase(), TestCase::Duration::QUICK);
+    AddTestCase(new Ipv6TwoHopFormationTestCase(), TestCase::Duration::QUICK);
+    AddTestCase(new NeighborMergeTestCase(), TestCase::Duration::QUICK);
 }
 
 /**
