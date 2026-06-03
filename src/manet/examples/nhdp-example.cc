@@ -24,11 +24,13 @@ int
 main(int argc, char* argv[])
 {
     bool verbose{true};
+    bool useIpv6{false};
     Time startTime{Seconds(1)};
     Time stopTime{Seconds(10)};
 
     CommandLine cmd;
     cmd.AddValue("verbose", "turn on log components", verbose);
+    cmd.AddValue("ipv6", "run NHDP over IPv6 (link-local plus a ULA) instead of IPv4", useIpv6);
     cmd.Parse(argc, argv);
 
     if (verbose)
@@ -61,12 +63,26 @@ main(int argc, char* argv[])
     InternetStackHelper internet;
     internet.Install(nodes);
 
-    Ipv4AddressHelper ipv4;
-    ipv4.SetBase("7.0.0.0", "255.255.255.255"); // Will assign 7.0.0.1 first
-    auto ipInterfaces = ipv4.Assign(devices);
+    NhdpHelper nhdpHelper;
+    if (useIpv6)
+    {
+        // Assign a routing Unique Local Address (RFC 4193) to each node; the stack
+        // auto-configures a link-local address as well, so NHDP advertises both.  Only the
+        // top 8 bits (fd00::/8) follow the RFC 4193 ULA allocation; a pseudo-randomly
+        // derived 40-bit Global ID (RFC 4193 Sec. 3.2.1) is not used, for simplicity.
+        Ipv6AddressHelper ipv6;
+        ipv6.SetBase(Ipv6Address("fd00::"), Ipv6Prefix(64));
+        auto ipInterfaces = ipv6.Assign(devices);
+        nhdpHelper.SetAttribute("AddressMode", EnumValue(manet::AddressMode::IPV6));
+    }
+    else
+    {
+        Ipv4AddressHelper ipv4;
+        ipv4.SetBase("7.0.0.0", "255.255.255.255"); // Will assign 7.0.0.1 first
+        auto ipInterfaces = ipv4.Assign(devices);
+    }
 
     NS_LOG_INFO("Installing applications...");
-    NhdpHelper nhdpHelper;
     ApplicationContainer apps = nhdpHelper.Install(nodes);
 
     /*
