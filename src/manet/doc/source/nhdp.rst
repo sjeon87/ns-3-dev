@@ -10,7 +10,7 @@ in Internet RFC 6130, is intended to support mobile ad hoc networks (MANETs)
 at the IP layer, by discovering one-hop and two-hop neighbor relationships.
 
 NHDP sends and receives HELLO messages.  Each node sends information in
-the HELLO about its interface and associated IPv4 address.
+the HELLO about its interface and associated address(es).
 Each node also informs its one-hop neighbors about those neighbors that
 it has heard, and whether the neighbor relationship is considered to
 be one-way (if a node has heard from a neighbor but doesn't see its
@@ -53,13 +53,29 @@ https://en.wikipedia.org/wiki/File:Olsr-overview.pdf on 2 March 2025.
 Scope and Limitations
 ---------------------
 
-The current |ns3| model supports single interface devices with a single
-IPv4 address on the (MANET) interface.
+The current |ns3| model supports single interface devices.  A node may have
+more than one address on its (single) MANET interface, and NHDP tracks
+neighbors as lists of addresses, as specified in RFC 6130 (Sec. 12.3).  The
+primary motivation is IPv6 operation: an IPv6 MANET node typically carries
+both a link-local address (used as the locator for on-link HELLO exchange)
+and a topology-independent routing address such as a Unique Local Address
+(ULA, RFC 4193); NHDP advertises and tracks both.
+
+Each ``NhdpClient`` instance operates over a single address family, selected
+by the ``AddressMode`` attribute (``Ipv4``, the default, or ``Ipv6``).  RFC 6130
+is address-family agnostic, but Sec. 12.1 implies that a router uses a single
+address length; run two instances on a node for simultaneous IPv4 and IPv6
+operation.  In IPv4 mode the multicast destination defaults to the RFC 5498
+``LL-MANET-Routers`` address ``224.0.0.109`` (configurable via the ``Address``
+attribute); in IPv6 mode the RFC 5498 IPv6 ``LL-MANET-Routers`` address
+``FF02::6D`` is used and HELLOs are sourced from the interface's link-local
+address.
+
 The following NHDP features are described in RFC 6130 but are not yet
 included in the |ns3| model:
 
-* IPv6 support
-* Support for multiple interfaces (including Interface Information Base) and multiple addresses per node
+* Support for multiple MANET interfaces (including the Interface Information Base)
+* ``OTHER_NEIGHB`` address blocks (advertising and processing third-party lost/symmetric neighbors)
 * More generalized support for carrying messages of other protocols as part of NHDP HELLOs
 * Heuristics to allow some HELLOs to be sent without full link information
 
