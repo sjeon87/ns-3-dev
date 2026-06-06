@@ -457,7 +457,13 @@ macro(process_options)
     endif()
   endif()
 
-  if(${NS3_NATIVE_OPTIMIZATIONS} AND ${GCC})
+  if(${NS3_NATIVE_OPTIMIZATIONS} AND (${GCC} OR ${CLANG}))
+    # -march=native / -mtune=native work for GCC, Clang on Linux/macOS, and
+    # ClangCL on Windows. ClangCL accepts the flag directly (it is a clang
+    # driver flag, not an MSVC /arch: flag) and enables AVX2/FMA/etc. just as it
+    # does on Linux. Previously only GCC was listed here, so ClangCL builds
+    # never got native CPU features, contributing to the large runtime gap
+    # between ClangCL and MinGW.
     add_compile_options(-march=native -mtune=native)
   endif()
 
@@ -1306,6 +1312,15 @@ macro(process_options)
       # correctly
       # https://github.com/ccache/ccache/issues/539#issuecomment-664198545
       add_definitions(-Xclang -fno-pch-timestamp)
+      if(MSVC)
+        # ClangCL validates that the preprocessor macros used to build the
+        # shared stdlib PCH match those of each translation unit that reuses it.
+        # They intentionally differ by the per-module <module>_EXPORTS define
+        # (added by CMake to every shared-library object). The PCH only contains
+        # standard-library headers, which do not depend on that macro, so the
+        # mismatch is harmless; silence the otherwise -Werror diagnostic.
+        add_compile_options(-Wno-clang-cl-pch)
+      endif()
     endif()
     if(${XCODE})
       # XCode is weird and messes up with the PCH, requiring this flag
