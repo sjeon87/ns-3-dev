@@ -28,6 +28,17 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 ### Changed behavior
 
+* (core) The `LogLevel` severity ordering has changed: `LOG_FUNCTION` is now the
+  least severe (most verbose) class, ordered below `LOG_DEBUG`, and the numeric
+  values of `LOG_LOGIC`, `LOG_DEBUG`, and `LOG_FUNCTION` (and the corresponding
+  `LOG_LEVEL_*` masks) have changed accordingly. As a result, inclusive levels
+  such as `LOG_LEVEL_LOGIC` and `LOG_LEVEL_DEBUG` no longer include
+  `LOG_FUNCTION` messages; function tracing is now only included at
+  `LOG_LEVEL_FUNCTION` (i.e., `level_function`) or `LOG_LEVEL_ALL`. Code that
+  relies on the named enumerators or `NS_LOG` tokens is unaffected, but any code
+  or scripts depending on the previous numeric values or on function traces
+  appearing at the `logic`/`debug` levels must be updated.
+
 ## Changes from ns-3.47 to ns-3.48
 
 ### New API
