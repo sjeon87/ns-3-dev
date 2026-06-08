@@ -38,6 +38,8 @@ been tested on Linux. As of this release, the latest known version to work with 
 
 ### Bugs fixed
 
+- (sixlowpan) fixed a deserialization error in mesh header.
+
 ## Release 3.48
 
 This release is available from:
