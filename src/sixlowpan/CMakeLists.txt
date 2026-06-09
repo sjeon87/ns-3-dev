@@ -44,10 +44,17 @@ build_lib(
     test/sixlowpan-iphc-stateful-test.cc
     test/sixlowpan-iphc-test.cc
     test/sixlowpan-mesh-under-test-suite.cc
+    test/sixlowpan-mesh-benchmark-test-suite.cc
     test/sixlowpan-nd-packet-test.cc
     test/sixlowpan-nd-reg-test.cc
     test/sixlowpan-nd-binding-table-test.cc
     test/sixlowpan-nd-rovr-test.cc
     test/sixlowpan-nd-test-utils.cc
     test/sixlowpan-traced-callback-typedef-test-suite.cc
+  TEST_LIBRARIES_TO_LINK
+    ${liblr-wpan}
+    ${libinternet-apps}
+    ${libmobility}
+    ${libpropagation}
+    ${libspectrum}
 )
