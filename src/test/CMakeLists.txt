@@ -70,6 +70,7 @@ if(traffic-control
    ns3-all-enabled-modules
 )
   set(traffic-control_sources
+      ns3tc/cake-queue-disc-test-suite.cc
       ns3tc/fq-cobalt-queue-disc-test-suite.cc
       ns3tc/fq-codel-queue-disc-test-suite.cc
       ns3tc/fq-pie-queue-disc-test-suite.cc
