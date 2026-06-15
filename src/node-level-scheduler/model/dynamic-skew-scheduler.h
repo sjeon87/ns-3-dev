@@ -9,7 +9,7 @@
 #ifndef DYNAMIC_SKEW_SCHEDULER_H
 #define DYNAMIC_SKEW_SCHEDULER_H
 
-#include "node-timing-graph.h"
+#include "epoch-table.h"
 
 #include "ns3/event-id.h"
 #include "ns3/event-impl.h"
@@ -38,8 +38,7 @@ struct EventLocalTimeCmp
 };
 
 /**
- * @brief A scheduler that implements scheduling based on
- * changing skews.
+ * @brief A scheduler that implements scheduling based on changing skews.
  */
 class DynamicSkewScheduler : public MapScheduler
 {
@@ -98,16 +97,16 @@ class DynamicSkewScheduler : public MapScheduler
     void ChangeSkew(uint32_t nodeId, double skew);
 
     /**
-     * @brief Get the underlying timing graph.
-     * @return A pointer to the NodeTimingGraph.
+     * @brief Get the underlying epoch table.
+     * @return A pointer to the EpochTable.
      */
-    Ptr<NodeTimingGraph> GetTimingGraph() const;
+    Ptr<EpochTable> GetEpochTable() const;
 
     /**
-     * @brief Static accessor to get the graph of the currently active scheduler.
-     * @return A pointer to the active NodeTimingGraph, or nullptr if not active.
+     * @brief Static accessor to get the table of the currently active scheduler.
+     * @return A pointer to the active EpochTable, or nullptr if not active.
      */
-    static Ptr<NodeTimingGraph> GetCurrentGraph();
+    static Ptr<EpochTable> GetCurrentEpochTable();
 
   private:
     /**
@@ -116,22 +115,16 @@ class DynamicSkewScheduler : public MapScheduler
     void StartCleanupTask();
 
     /**
-     * @brief Ensure the timing graph covers the target node time.
+     * @brief Ensure the epoch table covers the target node time.
      *
      * @param nodeId The node context.
      * @param targetNodeTime The local time that needs to be reached.
      */
-    void ExtendTimingGraph(uint32_t nodeId, Time targetNodeTime);
-
-    /**
-     * @brief Generate a new window of random skew intervals for a node.
-     * @param nodeId The node to generate intervals for.
-     */
-    void AppendWindow(uint32_t nodeId);
+    void ExtendEpochTable(uint32_t nodeId, Time targetNodeTime);
 
     /**
      * @brief Periodic cleanup event handler.
-     * * Prunes old intervals from the graph to manage memory usage.
+     * Prunes old epochs from the table to manage memory usage.
      */
     void Cleanup();
 
@@ -141,14 +134,14 @@ class DynamicSkewScheduler : public MapScheduler
      */
     void RebalanceNode(uint32_t context);
 
-    Ptr<NodeTimingGraph> m_nodeTimings; //!< The timing graph instance
-    bool m_initialized;                 //!< specific initialization flag
-    double m_maxSkew;                   //!< Maximum allowed clock skew
-    double m_minSkew;                   //!< Minimum allowed clock skew
-    Time m_windowSize;                  //!< Duration of the lookahead window
-    Time m_updatePeriod;                //!< How often the skew changes
-    EventId m_cleanupEvent;             //!< The ID of the next scheduled cleanup event
-    Ptr<UniformRandomVariable> m_uv;    //!< RNG for assigning node skew per interval
+    Ptr<EpochTable> m_epochTable;    //!< The epoch table instance
+    bool m_initialized;              //!< specific initialization flag
+    double m_maxSkew;                //!< Maximum allowed clock skew
+    double m_minSkew;                //!< Minimum allowed clock skew
+    Time m_windowSize;               //!< Duration of the lookahead window
+    Time m_updatePeriod;             //!< How often the skew changes
+    EventId m_cleanupEvent;          //!< The ID of the next scheduled cleanup event
+    Ptr<UniformRandomVariable> m_uv; //!< RNG for assigning node skew per epoch
 
     typedef std::priority_queue<Scheduler::Event, std::vector<Scheduler::Event>, EventLocalTimeCmp>
         EventQueue;

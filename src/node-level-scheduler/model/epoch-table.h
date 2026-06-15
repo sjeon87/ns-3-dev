@@ -6,8 +6,8 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#ifndef NODE_TIMING_GRAPH_H
-#define NODE_TIMING_GRAPH_H
+#ifndef EPOCH_TABLE_H
+#define EPOCH_TABLE_H
 
 #include "ns3/nstime.h"
 #include "ns3/object.h"
@@ -21,14 +21,16 @@ namespace ns3
 /**
  * @brief Maintain the mapping between Simulator Time and Node Time.
  */
-class NodeTimingGraph : public Object
+class EpochTable : public Object
 {
   public:
     /**
      * @brief Structure representing a period of constant clock skew.
      */
-    struct Interval
+    struct Epoch
     {
+        uint32_t nodeId;         //!< Node ID
+        uint32_t index;          //!< Index of epoch in epoch table by nodeID
         Time simulatorStartTime; //!< Start time in global simulator reference.
         Time simulatorEndTime;   //!< End time in global simulator reference.
         Time nodeStartTime;      //!< Start time in local node reference.
@@ -45,38 +47,56 @@ class NodeTimingGraph : public Object
     /**
      * @brief Constructor.
      */
-    NodeTimingGraph();
+    EpochTable();
 
     /**
      * @brief Destructor.
      */
-    ~NodeTimingGraph() override;
+    ~EpochTable() override;
 
     /**
-     * @brief Add a new timing interval for a specific node.
+     * @brief Add a new epoch for a specific node.
      * @param nodeId The ID of the node.
-     * @param interval The timing interval details.
+     * @param epoch The epoch details.
      */
-    void AddInterval(uint32_t nodeId, const Interval& interval);
+    void AddEpoch(uint32_t nodeId, const Epoch& epoch);
 
     /**
-     * @brief Truncates the active interval at the given simulator time,
-     * dropping any pre-calculated future intervals, and seeds a new interval.
-     *
+     * @brief Get the latest epoch for a given local time.
      * @param nodeId The ID of the node.
-     * @param simNow The current global simulator time.
-     * @param localNow The current local time on the node.
-     * @param newSkew The new skew rate.
-     * @param duration The duration for the new interval.
+     * @return The latest epoch for the local time.
      */
-    void TruncateAndAdd(uint32_t nodeId, Time simNow, Time localNow, double newSkew, Time duration);
+    const EpochTable::Epoch& LocalTimeBinarySearch(uint32_t nodeId, Time tLocal) const;
 
     /**
-     * @brief Check if timing information exists for a node.
+     * @brief Get the latest epoch for a given simulator time.
      * @param nodeId The ID of the node.
-     * @return True if the node is tracked, false otherwise.
+     * @return The latest epoch for the simulator time.
+     */
+    const EpochTable::Epoch& GlobalTimeBinarySearch(uint32_t nodeId, Time tSimulator) const;
+
+    /**
+     * @brief Check if a node has any epochs in the table.
+     * @param nodeId The ID of the node.
+     * @return True if the node exists in the table, false otherwise.
      */
     bool HasNode(uint32_t nodeId) const;
+
+    /**
+     * @brief Truncates the table at a specific time and inserts a new epoch.
+     * * @param nodeId The node context.
+     * @param simStart The simulator time to start the new epoch (and end the previous).
+     * @param simEnd The simulator time the new epoch ends.
+     * @param nodeStart The local time to start the new epoch.
+     * @param nodeEnd The local time the new epoch ends.
+     * @param skew The new clock skew.
+     */
+    void InsertEpoch(uint32_t nodeId,
+                     Time simStart,
+                     Time simEnd,
+                     Time nodeStart,
+                     Time nodeEnd,
+                     double skew);
 
     /**
      * @brief Convert local Node Time to global Simulator Time.
@@ -111,21 +131,26 @@ class NodeTimingGraph : public Object
     Time GetMaxSimulatorTime(uint32_t nodeId) const;
 
     /**
-     * @brief Remove old intervals that are no longer needed.
-     * Removes intervals where the SimulatorEndTime is older than the cutoff.
+     * @brief Remove old epochs that are no longer needed.
+     * Removes epochs where the SimulatorEndTime is older than the cutoff.
      *
      * @param cutoff The simulator time threshold for pruning.
      */
-    void PruneIntervals(Time cutoff);
+    void PruneEpochTable(Time cutoff);
+
+    /**
+     * @brief Adds epochs to the table to extend to the time given.
+     *
+     * @param nodeId the nodeId for whom to add epochs to.
+     * @param tExtend the time to extend the table to.
+     */
+    void ExtendEpochTable(uint32_t nodeId, Time tExtend);
 
   private:
-    std::map<uint32_t, std::vector<Interval>>
-        m_nodeIntervals; //!< Map of Node IDs to their list of timing intervals.
-    std::map<uint32_t, Time> m_lastSimEndTime;  //!< Last known simulator end time per node
-    std::map<uint32_t, Time> m_lastNodeEndTime; //!< Last known node end time per node
-    std::map<uint32_t, double> m_lastSkew;      //!< Last known skew per node
+    std::map<uint32_t, std::vector<Epoch>>
+        m_epochTable; //!< Map of Node IDs to their list of timing intervals.
 };
 
 } // namespace ns3
 
-#endif /* NODE_TIMING_GRAPH_H */
+#endif /* EPOCH_TABLE_H */

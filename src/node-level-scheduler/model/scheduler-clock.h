@@ -8,14 +8,14 @@
 #ifndef SCHEDULER_CLOCK_H
 #define SCHEDULER_CLOCK_H
 
+#include "epoch-table.h"
 #include "local-clock.h"
-#include "node-timing-graph.h"
 
 namespace ns3
 {
 
 /**
- * @brief A clock that reports time based on the NodeTimingGraph.
+ * @brief A clock that reports time based on the EpochTable.
  */
 class SchedulerClock : public LocalClock
 {
@@ -36,10 +36,10 @@ class SchedulerClock : public LocalClock
     void SetNodeId(uint32_t nodeId);
 
     /**
-     * @brief Set the NodeTimingGraph associated with this clock.
-     * @param graph the NodeTimingGraph to be set.
+     * @brief Set the EpochTable associated with this clock.
+     * @param epochTable the EpochTable to be set.
      */
-    void SetNodeTimingGraph(Ptr<NodeTimingGraph> graph);
+    void SetEpochTable(Ptr<EpochTable> epochTable);
 
     /**
      * @brief Returns the skewed local time.
@@ -49,7 +49,7 @@ class SchedulerClock : public LocalClock
 
   private:
     uint32_t m_nodeId;            //!< Node ID of the current clock
-    Ptr<NodeTimingGraph> m_graph; //!< Timing graph of all nodes
+    Ptr<EpochTable> m_epochTable; //!< Epoch table of all nodes
 };
 
 } // namespace ns3

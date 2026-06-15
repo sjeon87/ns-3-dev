@@ -8,7 +8,6 @@
 #include "scheduler-clock.h"
 
 #include "ns3/log.h"
-#include "ns3/scheduler.h"
 #include "ns3/simulator.h"
 
 namespace ns3
@@ -46,19 +45,19 @@ SchedulerClock::SetNodeId(uint32_t nodeId)
 }
 
 void
-SchedulerClock::SetNodeTimingGraph(Ptr<NodeTimingGraph> graph)
+SchedulerClock::SetEpochTable(Ptr<EpochTable> epochTable)
 {
-    NS_LOG_FUNCTION(this << graph);
-    m_graph = graph;
+    NS_LOG_FUNCTION(this << epochTable);
+    m_epochTable = epochTable;
 }
 
 Time
 SchedulerClock::Now()
 {
     NS_LOG_FUNCTION(this);
-    if (m_graph)
+    if (m_epochTable)
     {
-        return m_graph->GetNodeTimeFromSimulatorTime(m_nodeId, Simulator::Now());
+        return m_epochTable->GetNodeTimeFromSimulatorTime(m_nodeId, Simulator::Now());
     }
 
     return Simulator::Now();

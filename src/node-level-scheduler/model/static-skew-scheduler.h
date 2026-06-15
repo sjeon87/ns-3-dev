@@ -9,7 +9,7 @@
 #ifndef STATIC_SKEW_SCHEDULER_H
 #define STATIC_SKEW_SCHEDULER_H
 
-#include "node-timing-graph.h"
+#include "epoch-table.h"
 
 #include "ns3/event-id.h"
 #include "ns3/map-scheduler.h"
@@ -21,8 +21,7 @@ namespace ns3
 {
 
 /**
- * @brief A scheduler that implements scheduling based on
- * unchanging skews.
+ * @brief A scheduler that implements scheduling based on unchanging skews.
  */
 class StaticSkewScheduler : public MapScheduler
 {
@@ -44,8 +43,8 @@ class StaticSkewScheduler : public MapScheduler
     ~StaticSkewScheduler() override;
 
     /**
-     * @brief Assign a fixed random variable stream number to the random variables used by this
-     * model.
+     * @brief Assign a fixed random variable stream number to the random variables
+     * used by this model.
      * @param stream first stream index to use
      * @return the number of stream indices assigned by this model
      */
@@ -53,57 +52,49 @@ class StaticSkewScheduler : public MapScheduler
 
     /**
      * @brief Insert an event into the schedule.
-     *
      * @param ev The event to schedule.
      */
     void Insert(const Event& ev) override;
 
     /**
-     * @brief Get the underlying timing graph.
-     * @return A pointer to the NodeTimingGraph.
+     * @brief Get the underlying epoch table.
+     * @return A pointer to the EpochTable.
      */
-    Ptr<NodeTimingGraph> GetTimingGraph() const;
+    Ptr<EpochTable> GetEpochTable() const;
 
     /**
-     * @brief Static accessor to get the graph of the currently active scheduler.
-     * @return A pointer to the active NodeTimingGraph, or nullptr if not active.
+     * @brief Static accessor to get the epoch table of the currently active scheduler.
+     * @return A pointer to the active EpochTable, or nullptr if not active.
      */
-    static Ptr<NodeTimingGraph> GetCurrentGraph();
+    static Ptr<EpochTable> GetCurrentEpochTable();
 
   private:
+    /**
+     * @brief Extends the epoch table for a specific node up to the target local time.
+     * @param nodeId The context/node ID.
+     * @param targetNodeTime The local time we need the table to cover.
+     */
+    void ExtendEpochTable(uint32_t nodeId, Time targetNodeTime);
+
     /**
      * @brief Schedule the periodic cleanup task.
      */
     void StartCleanupTask();
 
     /**
-     * @brief Ensure the timing graph covers the target node time.
-     *
-     * @param nodeId The node context.
-     * @param targetNodeTime The local time that needs to be reached.
-     */
-    void ExtendTimingGraph(uint32_t nodeId, Time targetNodeTime);
-
-    /**
-     * @brief Generate a new window of random skew intervals for a node.
-     * @param nodeId The node to generate intervals for.
-     */
-    void AppendWindow(uint32_t nodeId);
-
-    /**
      * @brief Periodic cleanup event handler.
-     * * Prunes old intervals from the graph to manage memory usage.
+     * Prunes old epochs from the table to manage memory usage.
      */
     void Cleanup();
 
-    Ptr<NodeTimingGraph> m_nodeTimings; //!< The timing graph instance
-    bool m_initialized;                 //!< specific initialization flag
-    double m_maxSkew;                   //!< Maximum allowed clock skew
-    double m_minSkew;                   //!< Minimum allowed clock skew
-    Time m_windowSize;                  //!< Duration of the lookahead window
-    Time m_updatePeriod;                //!< How often the skew changes
-    EventId m_cleanupEvent;             //!< The ID of the next scheduled cleanup event
-    Ptr<UniformRandomVariable> m_uv;    //!< RNG for assigning node skew per interval
+    Ptr<EpochTable> m_epochTable;    //!< The epoch table instance
+    bool m_initialized;              //!< Specific initialization flag
+    double m_maxSkew;                //!< Maximum allowed clock skew
+    double m_minSkew;                //!< Minimum allowed clock skew
+    Time m_windowSize;               //!< Duration of the lookahead window
+    Time m_updatePeriod;             //!< How often the skew changes (upsilon)
+    EventId m_cleanupEvent;          //!< The ID of the next scheduled cleanup event
+    Ptr<UniformRandomVariable> m_uv; //!< RNG for assigning node skew per epoch
 };
 
 } // namespace ns3

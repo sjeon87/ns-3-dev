@@ -8,64 +8,65 @@
 
 #include "ns3/double.h"
 #include "ns3/dynamic-skew-scheduler.h"
+#include "ns3/epoch-table.h"
 #include "ns3/log.h"
-#include "ns3/node-timing-graph.h"
 #include "ns3/simulator.h"
 #include "ns3/test.h"
 
 namespace ns3
 {
 
-class NodeTimingGraphTestCase : public TestCase
+class EpochTableTestCase : public TestCase
 {
   public:
-    NodeTimingGraphTestCase();
+    EpochTableTestCase();
     void DoRun() override;
 };
 
-NodeTimingGraphTestCase::NodeTimingGraphTestCase()
-    : TestCase("NodeTimingGraphTest")
+EpochTableTestCase::EpochTableTestCase()
+    : TestCase("EpochTableTest")
 {
 }
 
 void
-NodeTimingGraphTestCase::DoRun()
+EpochTableTestCase::DoRun()
 {
-    Ptr<NodeTimingGraph> graph = CreateObject<NodeTimingGraph>();
+    Ptr<EpochTable> table = CreateObject<EpochTable>();
     uint32_t nodeId = 1;
 
-    NodeTimingGraph::Interval i1;
-    i1.simulatorStartTime = Seconds(0.0);
-    i1.simulatorEndTime = Seconds(10.0);
-    i1.nodeStartTime = Seconds(0.0);
-    i1.nodeEndTime = Seconds(20.0);
-    i1.skew = 2.0;
-    graph->AddInterval(nodeId, i1);
+    EpochTable::Epoch e1;
+    e1.simulatorStartTime = Seconds(0.0);
+    e1.simulatorEndTime = Seconds(10.0);
+    e1.nodeStartTime = Seconds(0.0);
+    e1.nodeEndTime = Seconds(20.0);
+    e1.skew = 2.0;
+    table->AddEpoch(nodeId, e1);
 
-    NS_TEST_ASSERT_MSG_EQ(graph->GetNodeTimeFromSimulatorTime(nodeId, Seconds(5.0)),
+    NS_TEST_ASSERT_MSG_EQ(table->GetNodeTimeFromSimulatorTime(nodeId, Seconds(5.0)),
                           Seconds(10.0),
                           "Sim 5.0s with 2.0x skew should be Node 10.0s");
-    NS_TEST_ASSERT_MSG_EQ(graph->GetSimulatorTimeFromNodeTime(nodeId, Seconds(10.0)),
+    NS_TEST_ASSERT_MSG_EQ(table->GetSimulatorTimeFromNodeTime(nodeId, Seconds(10.0)),
                           Seconds(5.0),
                           "Node 10.0s with 2.0x skew should be Sim 5.0s");
 
-    graph->TruncateAndAdd(nodeId, Seconds(5.0), Seconds(10.0), 0.5, Seconds(10.0));
-    NS_TEST_ASSERT_MSG_EQ(graph->GetNodeTimeFromSimulatorTime(nodeId, Seconds(9.0)),
+    table->InsertEpoch(nodeId, Seconds(5.0), Seconds(15.0), Seconds(10.0), Seconds(15.0), 0.5);
+
+    NS_TEST_ASSERT_MSG_EQ(table->GetNodeTimeFromSimulatorTime(nodeId, Seconds(9.0)),
                           Seconds(12.0),
                           "Sim 9.0s with 0.5x skew should be Node 12.0s");
-    NS_TEST_ASSERT_MSG_EQ(graph->GetSimulatorTimeFromNodeTime(nodeId, Seconds(14.0)),
+    NS_TEST_ASSERT_MSG_EQ(table->GetSimulatorTimeFromNodeTime(nodeId, Seconds(14.0)),
                           Seconds(13.0),
                           "Node 14.0s with 0.5x skew should be Sim 13.0s");
 
-    graph->TruncateAndAdd(nodeId, Seconds(15.0), Seconds(15.0), 0.0, Seconds(5.0));
-    NS_TEST_ASSERT_MSG_EQ(graph->GetNodeTimeFromSimulatorTime(nodeId, Seconds(18.0)),
+    table->InsertEpoch(nodeId, Seconds(15.0), Seconds(20.0), Seconds(15.0), Seconds(15.0), 0.0);
+
+    NS_TEST_ASSERT_MSG_EQ(table->GetNodeTimeFromSimulatorTime(nodeId, Seconds(18.0)),
                           Seconds(15.0),
                           "Node time should be frozen at 15.0s due to 0.0 skew");
 
-    graph->PruneIntervals(Seconds(10.0));
+    table->PruneEpochTable(Seconds(10.0));
 
-    // Shouldn't crash
-    graph->GetNodeTimeFromSimulatorTime(nodeId, Seconds(2.0));
+    table->GetNodeTimeFromSimulatorTime(nodeId, Seconds(2.0));
 }
 
 class DynamicSkewSchedulerExecutionTestCase : public TestCase
@@ -90,8 +91,8 @@ DynamicSkewSchedulerExecutionTestCase::EventTriggered(uint32_t context, Time exp
 {
     m_eventsFired++;
 
-    Ptr<NodeTimingGraph> graph = DynamicSkewScheduler::GetCurrentGraph();
-    Time localTimeAtFire = graph->GetNodeTimeFromSimulatorTime(context, Simulator::Now());
+    Ptr<EpochTable> table = DynamicSkewScheduler::GetCurrentEpochTable();
+    Time localTimeAtFire = table->GetNodeTimeFromSimulatorTime(context, Simulator::Now());
 
     NS_TEST_ASSERT_MSG_EQ_TOL(
         localTimeAtFire.GetSeconds(),
@@ -208,8 +209,8 @@ class DynamicSkewSchedulerTestSuite : public TestSuite
 DynamicSkewSchedulerTestSuite::DynamicSkewSchedulerTestSuite()
     : TestSuite("dynamic-skew-scheduler", Type::UNIT)
 {
-    AddTestCase(new NodeTimingGraphTestCase, TestCase::Duration::QUICK);
-    // AddTestCase(new DynamicSkewSchedulerExecutionTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new EpochTableTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new DynamicSkewSchedulerExecutionTestCase, TestCase::Duration::QUICK);
     AddTestCase(new DynamicSkewSchedulerCancelTestCase, TestCase::Duration::QUICK);
 }
 

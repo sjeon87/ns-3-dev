@@ -43,7 +43,7 @@ StaticSkewScheduler::GetTypeId()
                                           MakeTimeAccessor(&StaticSkewScheduler::m_windowSize),
                                           MakeTimeChecker())
                             .AddAttribute("UpdatePeriod",
-                                          "How frequently skew changes.",
+                                          "How frequently skew changes (upsilon).",
                                           TimeValue(Seconds(10.0)),
                                           MakeTimeAccessor(&StaticSkewScheduler::m_updatePeriod),
                                           MakeTimeChecker());
@@ -54,7 +54,7 @@ StaticSkewScheduler::StaticSkewScheduler()
     : m_initialized(false)
 {
     NS_LOG_FUNCTION(this);
-    m_nodeTimings = CreateObject<NodeTimingGraph>();
+    m_epochTable = CreateObject<EpochTable>();
     m_uv = CreateObject<UniformRandomVariable>();
     g_currentScheduler = this;
 }
@@ -63,7 +63,7 @@ StaticSkewScheduler::~StaticSkewScheduler()
 {
     NS_LOG_FUNCTION(this);
     Simulator::Cancel(m_cleanupEvent);
-    m_nodeTimings = nullptr;
+    m_epochTable = nullptr;
     if (g_currentScheduler == this)
     {
         g_currentScheduler = nullptr;
@@ -78,71 +78,63 @@ StaticSkewScheduler::AssignStreams(int64_t stream)
     return 1;
 }
 
-Ptr<NodeTimingGraph>
-StaticSkewScheduler::GetTimingGraph() const
+Ptr<EpochTable>
+StaticSkewScheduler::GetEpochTable() const
 {
-    return m_nodeTimings;
+    return m_epochTable;
 }
 
-Ptr<NodeTimingGraph>
-StaticSkewScheduler::GetCurrentGraph()
+Ptr<EpochTable>
+StaticSkewScheduler::GetCurrentEpochTable()
 {
     if (g_currentScheduler)
     {
-        return g_currentScheduler->GetTimingGraph();
+        return g_currentScheduler->GetEpochTable();
     }
     return nullptr;
 }
 
 void
-StaticSkewScheduler::AppendWindow(uint32_t nodeId)
+StaticSkewScheduler::ExtendEpochTable(uint32_t nodeId, Time targetNodeTime)
 {
-    if (m_updatePeriod.IsZero())
-    {
-        m_updatePeriod = Seconds(1.0);
-    }
-    auto numIntervals =
-        static_cast<uint32_t>(m_windowSize.GetSeconds() / m_updatePeriod.GetSeconds());
-    if (numIntervals == 0)
-    {
-        numIntervals = 1;
-    }
+    NS_LOG_FUNCTION(this << nodeId << targetNodeTime);
 
-    Time currentSimTime = m_nodeTimings->GetMaxSimulatorTime(nodeId);
-    Time currentNodeTime = m_nodeTimings->GetMaxNodeTime(nodeId);
+    Time nodeMax = Seconds(0);
+    Time simMax = Seconds(0);
 
-    if (currentSimTime.IsZero() && Simulator::Now() > Seconds(0))
+    if (m_epochTable->HasNode(nodeId))
     {
-        currentSimTime = Simulator::Now();
+        nodeMax = m_epochTable->GetMaxNodeTime(nodeId);
+        simMax = m_epochTable->GetMaxSimulatorTime(nodeId);
     }
 
-    for (uint32_t i = 0; i < numIntervals; ++i)
+    if (nodeMax >= targetNodeTime)
+    {
+        return;
+    }
+
+    while (nodeMax < targetNodeTime)
     {
         double skew = m_uv->GetValue(m_minSkew, m_maxSkew);
-        Time duration = m_updatePeriod;
 
-        NodeTimingGraph::Interval interval;
-        interval.simulatorStartTime = currentSimTime;
-        interval.simulatorEndTime = currentSimTime + duration;
-        interval.nodeStartTime = currentNodeTime;
-        interval.nodeEndTime = currentNodeTime + Seconds(duration.GetSeconds() * skew);
-        interval.skew = skew;
+        Time newSimStart = simMax;
+        Time newSimEnd = newSimStart + m_updatePeriod;
 
-        m_nodeTimings->AddInterval(nodeId, interval);
+        Time newNodeStart = nodeMax;
+        Time deltaNode = Time::FromDouble(m_updatePeriod.GetDouble() * skew, Time::NS);
+        Time newNodeEnd = newNodeStart + deltaNode;
 
-        currentSimTime = interval.simulatorEndTime;
-        currentNodeTime = interval.nodeEndTime;
-    }
-}
+        EpochTable::Epoch epoch;
+        epoch.simulatorStartTime = newSimStart;
+        epoch.simulatorEndTime = newSimEnd;
+        epoch.nodeStartTime = newNodeStart;
+        epoch.nodeEndTime = newNodeEnd;
+        epoch.skew = skew;
 
-void
-StaticSkewScheduler::ExtendTimingGraph(uint32_t nodeId, Time targetNodeTime)
-{
-    Time currentMaxNode = m_nodeTimings->GetMaxNodeTime(nodeId);
-    while (currentMaxNode <= targetNodeTime + NanoSeconds(1))
-    {
-        AppendWindow(nodeId);
-        currentMaxNode = m_nodeTimings->GetMaxNodeTime(nodeId);
+        m_epochTable->AddEpoch(nodeId, epoch);
+
+        simMax = newSimEnd;
+        nodeMax = newNodeEnd;
     }
 }
 
@@ -157,13 +149,15 @@ StaticSkewScheduler::Cleanup()
 {
     Time safeMargin = Seconds(1.0);
     Time cutoff = (Simulator::Now() > safeMargin) ? Simulator::Now() - safeMargin : Seconds(0);
-    m_nodeTimings->PruneIntervals(cutoff);
+    m_epochTable->PruneEpochTable(cutoff);
     m_cleanupEvent = Simulator::Schedule(m_windowSize, &StaticSkewScheduler::Cleanup, this);
 }
 
 void
 StaticSkewScheduler::Insert(const Event& ev)
 {
+    NS_LOG_FUNCTION(this << ev.key.m_ts << ev.key.m_context);
+
     if (!m_initialized)
     {
         m_initialized = true;
@@ -172,19 +166,13 @@ StaticSkewScheduler::Insert(const Event& ev)
 
     uint32_t context = ev.key.m_context;
 
-    if (context != 0xffffffff && m_nodeTimings)
+    if (context != 0xffffffff && m_epochTable)
     {
-        if (!m_nodeTimings->HasNode(context))
-        {
-            AppendWindow(context);
-        }
-
         Time requestedTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
-        Time nodeLocalTs = m_nodeTimings->GetNodeTimeFromSimulatorTime(context, requestedTs);
 
-        ExtendTimingGraph(context, nodeLocalTs);
+        ExtendEpochTable(context, requestedTs);
 
-        Time targetSimTime = m_nodeTimings->GetSimulatorTimeFromNodeTime(context, nodeLocalTs);
+        Time targetSimTime = m_epochTable->GetSimulatorTimeFromNodeTime(context, requestedTs);
 
         if (targetSimTime < Simulator::Now())
         {

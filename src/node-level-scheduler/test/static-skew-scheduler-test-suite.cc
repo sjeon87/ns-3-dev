@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Ishaan Lagwankar
+ * Copyright (c) 2026 Michigan State University
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
@@ -7,8 +7,8 @@
  */
 
 #include "ns3/double.h"
+#include "ns3/epoch-table.h"
 #include "ns3/log.h"
-#include "ns3/node-timing-graph.h"
 #include "ns3/nstime.h"
 #include "ns3/object-factory.h"
 #include "ns3/pointer.h"
@@ -21,10 +21,10 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("StaticSkewSchedulerTest");
 
-Ptr<NodeTimingGraph>
-GetCurrentTimingGraph()
+Ptr<EpochTable>
+GetCurrentEpochTable()
 {
-    return StaticSkewScheduler::GetCurrentGraph();
+    return StaticSkewScheduler::GetCurrentEpochTable();
 }
 
 static ObjectFactory
@@ -65,20 +65,17 @@ StaticSkewSchedulerAccuracyTestCase::~StaticSkewSchedulerAccuracyTestCase()
 }
 
 void
-StaticSkewSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time requestedSimTime)
+StaticSkewSchedulerAccuracyTestCase::EventHandler(uint32_t nodeId, Time scheduledLocalTime)
 {
     Time now = Simulator::Now();
 
     NS_TEST_ASSERT_MSG_GT_OR_EQ(now, m_lastSimTime, "Simulator time moved backwards!");
     m_lastSimTime = now;
 
-    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
-    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
-                          true,
-                          "Could not retrieve NodeTimingGraph from Scheduler");
+    Ptr<EpochTable> table = GetCurrentEpochTable();
+    NS_TEST_ASSERT_MSG_EQ(table != nullptr, true, "Could not retrieve EpochTable from Scheduler");
 
-    Time nodeLocalTime = graph->GetNodeTimeFromSimulatorTime(nodeId, requestedSimTime);
-    Time expectedSimTime = graph->GetSimulatorTimeFromNodeTime(nodeId, nodeLocalTime);
+    Time expectedSimTime = table->GetSimulatorTimeFromNodeTime(nodeId, scheduledLocalTime);
 
     double diffSeconds = std::abs((now - expectedSimTime).GetSeconds());
     NS_TEST_ASSERT_MSG_LT(diffSeconds,
@@ -127,7 +124,7 @@ class StaticSkewSchedulerFutureEventTestCase : public TestCase
 };
 
 StaticSkewSchedulerFutureEventTestCase::StaticSkewSchedulerFutureEventTestCase()
-    : TestCase("Verify far-future scheduling triggers graph extension and correct fire time"),
+    : TestCase("Verify far-future scheduling triggers table extension and correct fire time"),
       m_eventRan(false)
 {
 }
@@ -137,22 +134,19 @@ StaticSkewSchedulerFutureEventTestCase::~StaticSkewSchedulerFutureEventTestCase(
 }
 
 void
-StaticSkewSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId, Time requestedSimTime)
+StaticSkewSchedulerFutureEventTestCase::FarFutureHandler(uint32_t nodeId, Time scheduledLocalTime)
 {
     m_eventRan = true;
 
-    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
-    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
-                          true,
-                          "Could not retrieve NodeTimingGraph from Scheduler");
+    Ptr<EpochTable> table = GetCurrentEpochTable();
+    NS_TEST_ASSERT_MSG_EQ(table != nullptr, true, "Could not retrieve EpochTable from Scheduler");
 
-    NS_TEST_ASSERT_MSG_GT(graph->GetMaxNodeTime(nodeId),
+    NS_TEST_ASSERT_MSG_GT(table->GetMaxNodeTime(nodeId),
                           Seconds(4999),
-                          "Graph did not extend to cover the event time");
+                          "EpochTable did not extend to cover the event time");
 
     Time now = Simulator::Now();
-    Time nodeLocalTime = graph->GetNodeTimeFromSimulatorTime(nodeId, requestedSimTime);
-    Time expectedSim = graph->GetSimulatorTimeFromNodeTime(nodeId, nodeLocalTime);
+    Time expectedSim = table->GetSimulatorTimeFromNodeTime(nodeId, scheduledLocalTime);
 
     double diffSeconds = std::abs((now - expectedSim).GetSeconds());
     NS_TEST_ASSERT_MSG_LT(diffSeconds, 1e-9, "Far-future event fired at wrong simulator time");
@@ -258,18 +252,15 @@ StaticSkewSchedulerBoundaryTestCase::~StaticSkewSchedulerBoundaryTestCase()
 }
 
 void
-StaticSkewSchedulerBoundaryTestCase::BoundaryHandler(uint32_t nodeId, Time requestedSimTime)
+StaticSkewSchedulerBoundaryTestCase::BoundaryHandler(uint32_t nodeId, Time scheduledLocalTime)
 {
     ++m_eventCount;
 
-    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
-    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
-                          true,
-                          "Could not retrieve NodeTimingGraph from Scheduler");
+    Ptr<EpochTable> table = GetCurrentEpochTable();
+    NS_TEST_ASSERT_MSG_EQ(table != nullptr, true, "Could not retrieve EpochTable from Scheduler");
 
     Time now = Simulator::Now();
-    Time nodeLocalTime = graph->GetNodeTimeFromSimulatorTime(nodeId, requestedSimTime);
-    Time expectedSim = graph->GetSimulatorTimeFromNodeTime(nodeId, nodeLocalTime);
+    Time expectedSim = table->GetSimulatorTimeFromNodeTime(nodeId, scheduledLocalTime);
 
     double diffSeconds = std::abs((now - expectedSim).GetSeconds());
     NS_TEST_ASSERT_MSG_LT(diffSeconds,
@@ -329,18 +320,17 @@ StaticSkewSchedulerCleanupTestCase::~StaticSkewSchedulerCleanupTestCase()
 }
 
 void
-StaticSkewSchedulerCleanupTestCase::LateHandler(uint32_t nodeId, Time requestedSimTime)
+StaticSkewSchedulerCleanupTestCase::LateHandler(uint32_t nodeId, Time scheduledLocalTime)
 {
     ++m_eventCount;
 
-    Ptr<NodeTimingGraph> graph = GetCurrentTimingGraph();
-    NS_TEST_ASSERT_MSG_EQ(graph != nullptr,
-                          true,
-                          "Could not retrieve NodeTimingGraph from Scheduler");
+    Ptr<EpochTable> table = GetCurrentEpochTable();
+    NS_TEST_ASSERT_MSG_EQ(table != nullptr, true, "Could not retrieve EpochTable from Scheduler");
 
-    NS_TEST_ASSERT_MSG_GT_OR_EQ(Simulator::Now(),
-                                requestedSimTime,
-                                "Event fired before its requested time after pruning");
+    Time expectedSimTime = table->GetSimulatorTimeFromNodeTime(nodeId, scheduledLocalTime);
+    double diffSeconds = std::abs((Simulator::Now() - expectedSimTime).GetSeconds());
+
+    NS_TEST_ASSERT_MSG_LT(diffSeconds, 1e-9, "Event fired at wrong simulator time after pruning");
 }
 
 void
