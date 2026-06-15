@@ -13,13 +13,13 @@
 
 #include "ns3/event-id.h"
 #include "ns3/event-impl.h"
-#include "ns3/map-scheduler.h"
 #include "ns3/nstime.h"
 #include "ns3/ptr.h"
 #include "ns3/random-variable-stream.h"
+#include "ns3/scheduler.h"
 
-#include <map>
 #include <queue>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -27,20 +27,77 @@ namespace ns3
 {
 
 /**
- * @brief Comparator to prioritize earliest local node time.
+ * @brief Comparator to prioritize earliest local node time (for Q_LTS).
  */
 struct EventLocalTimeCmp
 {
     bool operator()(const Scheduler::Event& a, const Scheduler::Event& b) const
     {
-        return a.key.m_ts > b.key.m_ts;
+        if (a.key.m_ts != b.key.m_ts)
+        {
+            return a.key.m_ts > b.key.m_ts;
+        }
+        return a.key.m_uid > b.key.m_uid;
     }
 };
 
 /**
- * @brief A scheduler that implements scheduling based on changing skews.
+ * @brief Comparator to prioritize earliest simulator time (for Q_sim).
  */
-class DynamicSkewScheduler : public MapScheduler
+struct EventSimTimeCmp
+{
+    bool operator()(const Scheduler::Event& a, const Scheduler::Event& b) const
+    {
+        if (a.key.m_ts != b.key.m_ts)
+        {
+            return a.key.m_ts > b.key.m_ts;
+        }
+        return a.key.m_uid > b.key.m_uid;
+    }
+};
+
+/**
+ * @brief Custom indexed min-heap for O(log N) updates of projected events (Q_proj).
+ */
+class ProjectedQueue
+{
+  public:
+    ProjectedQueue() = default;
+    ~ProjectedQueue() = default;
+
+    /**
+     * @brief Updates the projected simulator time for a node's top local event in O(log N).
+     * @param nodeId The context ID of the node.
+     * @param ev The event with the newly calculated projected simulator time.
+     */
+    void Update(uint32_t nodeId, const Scheduler::Event& ev);
+
+    /**
+     * @brief Retrieves the event with the lowest projected simulator time.
+     * @return The top event.
+     */
+    Scheduler::Event Top() const;
+
+    /**
+     * @brief Checks if the projected queue is empty.
+     * @return true if empty.
+     */
+    bool IsEmpty() const;
+
+  private:
+    void BubbleUp(size_t idx);
+    void BubbleDown(size_t idx);
+    void Swap(size_t i, size_t j);
+
+    std::vector<Scheduler::Event> m_heapArray; //!< The 0-indexed underlying heap array
+    std::unordered_map<uint32_t, size_t>
+        m_indexMap; //!< Reverse-lookup map for O(1) index discovery
+};
+
+/**
+ * @brief A scheduler that implements O(log N) scheduling for continuous dynamic clock skews.
+ */
+class DynamicSkewScheduler : public Scheduler
 {
   public:
     /**
@@ -68,31 +125,39 @@ class DynamicSkewScheduler : public MapScheduler
     int64_t AssignStreams(int64_t stream);
 
     /**
-     * @brief Insert an event into the schedule.
-     *
+     * @brief Insert an event into the schedule. Routes to Q_sim or Q_LTS based on context.
      * @param ev The event to schedule.
      */
     void Insert(const Event& ev) override;
 
     /**
+     * @brief Checks if the scheduler has any pending events.
+     * @return true if there are no events left.
+     */
+    bool IsEmpty() const override;
+
+    /**
+     * @brief Peek at the next event without removing it.
+     * @return The next event.
+     */
+    Event PeekNext() const override;
+
+    /**
      * @brief Remove a specific event from the schedule.
-     *
      * @param ev The event to remove.
      */
     void Remove(const Event& ev) override;
 
     /**
-     * @brief Remove the next event from the schedule and return it.
-     *
+     * @brief Remove the next event from the schedule and return it. Compares Q_sim and Q_proj.
      * @return The next event.
      */
     Event RemoveNext() override;
 
     /**
-     * @brief Changes a node's instantaneous skew.
-     *
+     * @brief Truncates the active epoch and changes a node's instantaneous skew.
      * @param nodeId The node ID who's skew is changing.
-     * @param skew The updated skew
+     * @param skew The updated skew.
      */
     void ChangeSkew(uint32_t nodeId, double skew);
 
@@ -115,40 +180,38 @@ class DynamicSkewScheduler : public MapScheduler
     void StartCleanupTask();
 
     /**
-     * @brief Ensure the epoch table covers the target node time.
-     *
+     * @brief Ensure the epoch table covers the target node time (Algorithm 4).
      * @param nodeId The node context.
      * @param targetNodeTime The local time that needs to be reached.
      */
     void ExtendEpochTable(uint32_t nodeId, Time targetNodeTime);
 
     /**
-     * @brief Periodic cleanup event handler.
-     * Prunes old epochs from the table to manage memory usage.
+     * @brief Periodic cleanup event handler (PruneEpochsBefore).
      */
     void Cleanup();
-
-    /**
-     * @brief Promotes the top local event of a node into the global MapScheduler.
-     * @param context The node context ID.
-     */
-    void RebalanceNode(uint32_t context);
 
     Ptr<EpochTable> m_epochTable;    //!< The epoch table instance
     bool m_initialized;              //!< specific initialization flag
     double m_maxSkew;                //!< Maximum allowed clock skew
     double m_minSkew;                //!< Minimum allowed clock skew
     Time m_windowSize;               //!< Duration of the lookahead window
-    Time m_updatePeriod;             //!< How often the skew changes
+    Time m_updatePeriod;             //!< How often the skew changes (\upsilon)
     EventId m_cleanupEvent;          //!< The ID of the next scheduled cleanup event
     Ptr<UniformRandomVariable> m_uv; //!< RNG for assigning node skew per epoch
 
-    typedef std::priority_queue<Scheduler::Event, std::vector<Scheduler::Event>, EventLocalTimeCmp>
-        EventQueue;
+    std::priority_queue<Scheduler::Event, std::vector<Scheduler::Event>, EventSimTimeCmp>
+        m_globalQueue; //!< Q_sim: Holds global/physical simulator events
 
-    std::map<uint32_t, EventQueue> m_nodeQueues;         //!< Node ID to Local Event Heap
-    std::map<uint32_t, Scheduler::Event> m_activeEvents; //!< Node ID to Promoted global event
-    std::unordered_set<uint32_t> m_cancelled;            //!< Set of cancelled events
+    std::unordered_map<
+        uint32_t,
+        std::priority_queue<Scheduler::Event, std::vector<Scheduler::Event>, EventLocalTimeCmp>>
+        m_nodeQueues; //!< Q_LTS: Node ID to Local Event Heap
+
+    ProjectedQueue
+        m_projectedQueue; //!< Q_proj: Constant-size custom indexed min-heap for projected events
+
+    std::unordered_set<uint32_t> m_cancelled; //!< Set of cancelled events
 };
 
 } // namespace ns3

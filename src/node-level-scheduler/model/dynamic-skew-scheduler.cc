@@ -8,9 +8,12 @@
 
 #include "dynamic-skew-scheduler.h"
 
+#include "ns3/assert.h"
 #include "ns3/double.h"
 #include "ns3/log.h"
 #include "ns3/simulator.h"
+
+#include <limits>
 
 namespace ns3
 {
@@ -20,11 +23,118 @@ NS_OBJECT_ENSURE_REGISTERED(DynamicSkewScheduler);
 
 static DynamicSkewScheduler* g_currentScheduler = nullptr;
 
+void
+ProjectedQueue::Swap(size_t i, size_t j)
+{
+    std::swap(m_heapArray[i], m_heapArray[j]);
+    m_indexMap[m_heapArray[i].key.m_context] = i;
+    m_indexMap[m_heapArray[j].key.m_context] = j;
+}
+
+void
+ProjectedQueue::BubbleUp(size_t idx)
+{
+    while (idx > 0)
+    {
+        size_t parent = (idx - 1) / 2;
+        if (m_heapArray[idx].key.m_ts < m_heapArray[parent].key.m_ts)
+        {
+            Swap(idx, parent);
+            idx = parent;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+void
+ProjectedQueue::BubbleDown(size_t idx)
+{
+    size_t size = m_heapArray.size();
+    while (true)
+    {
+        size_t left = 2 * idx + 1;
+        size_t right = 2 * idx + 2;
+        size_t smallest = idx;
+
+        if (left < size && m_heapArray[left].key.m_ts < m_heapArray[smallest].key.m_ts)
+        {
+            smallest = left;
+        }
+        if (right < size && m_heapArray[right].key.m_ts < m_heapArray[smallest].key.m_ts)
+        {
+            smallest = right;
+        }
+
+        if (smallest != idx)
+        {
+            Swap(idx, smallest);
+            idx = smallest;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+void
+ProjectedQueue::Update(uint32_t nodeId, const Scheduler::Event& ev)
+{
+    auto it = m_indexMap.find(nodeId);
+    if (it == m_indexMap.end())
+    {
+        size_t idx = m_heapArray.size();
+        m_heapArray.push_back(ev);
+        m_indexMap[nodeId] = idx;
+        BubbleUp(idx);
+    }
+    else
+    {
+        size_t idx = it->second;
+        uint64_t oldTs = m_heapArray[idx].key.m_ts;
+        m_heapArray[idx] = ev;
+
+        if (ev.key.m_ts < oldTs)
+        {
+            BubbleUp(idx);
+        }
+        else if (ev.key.m_ts > oldTs)
+        {
+            BubbleDown(idx);
+        }
+    }
+}
+
+Scheduler::Event
+ProjectedQueue::Top() const
+{
+    if (m_heapArray.empty())
+    {
+        Scheduler::Event nullEv;
+        nullEv.key.m_ts = std::numeric_limits<uint64_t>::max();
+        return nullEv;
+    }
+    return m_heapArray[0];
+}
+
+bool
+ProjectedQueue::IsEmpty() const
+{
+    if (m_heapArray.empty())
+    {
+        return true;
+    }
+    return m_heapArray[0].key.m_ts == std::numeric_limits<uint64_t>::max();
+}
+
 TypeId
 DynamicSkewScheduler::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::DynamicSkewScheduler")
-                            .SetParent<MapScheduler>()
+                            .SetParent<Scheduler>()
                             .SetGroupName("Core")
                             .AddConstructor<DynamicSkewScheduler>()
                             .AddAttribute("MaximumSkew",
@@ -146,8 +256,23 @@ DynamicSkewScheduler::Cleanup()
 {
     Time safeMargin = Seconds(1.0);
     Time cutoff = (Simulator::Now() > safeMargin) ? Simulator::Now() - safeMargin : Seconds(0);
+
     m_epochTable->PruneEpochTable(cutoff);
-    m_cleanupEvent = Simulator::Schedule(m_windowSize, &DynamicSkewScheduler::Cleanup, this);
+
+    bool anyPending = false;
+    for (const auto& [nodeId, queue] : m_nodeQueues)
+    {
+        if (!queue.empty())
+        {
+            anyPending = true;
+            break;
+        }
+    }
+
+    if (anyPending)
+    {
+        m_cleanupEvent = Simulator::Schedule(m_windowSize, &DynamicSkewScheduler::Cleanup, this);
+    }
 }
 
 void
@@ -161,101 +286,121 @@ DynamicSkewScheduler::Insert(const Event& ev)
 
     uint32_t context = ev.key.m_context;
 
-    if (context != 0xffffffff && m_epochTable)
+    if (context == ns3::Simulator::NO_CONTEXT)
     {
+        m_globalQueue.push(ev);
+        return;
+    }
+
+    if (m_epochTable)
+    {
+        Time simNow = Simulator::Now();
+        Time scheduledGlobalTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
+
         if (!m_epochTable->HasNode(context))
         {
-            AppendWindow(context);
+            ExtendEpochTable(context, simNow + m_windowSize);
         }
 
-        Time requestedSimTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
-        Time nodeLocalTs = m_epochTable->GetNodeTimeFromSimulatorTime(context, requestedSimTs);
+        Time delay = scheduledGlobalTs - simNow;
+        Time localNow = m_epochTable->GetNodeTimeFromSimulatorTime(context, simNow);
+        Time nodeLocalTs = localNow + delay;
 
         ExtendEpochTable(context, nodeLocalTs);
 
         Event localEv = ev;
         localEv.key.m_ts = nodeLocalTs.GetTimeStep();
-        m_nodeQueues[context].push(localEv);
 
-        RebalanceNode(context);
+        auto& queue = m_nodeQueues[context];
+        bool wasEmpty = queue.empty();
+
+        uint32_t oldTopUid;
+        if (wasEmpty)
+        {
+            oldTopUid = 0;
+        }
+        else
+        {
+            oldTopUid = queue.top().key.m_uid;
+        }
+
+        queue.push(localEv);
+
+        if (wasEmpty || queue.top().key.m_uid != oldTopUid)
+        {
+            Event newTop = queue.top();
+            Time simTs = m_epochTable->GetSimulatorTimeFromNodeTime(
+                context,
+                Time::FromInteger(newTop.key.m_ts, Time::GetResolution()));
+
+            Time now = Simulator::Now();
+            if (simTs < now)
+            {
+                simTs = now;
+            }
+
+            newTop.key.m_ts = simTs.GetTimeStep();
+            m_projectedQueue.Update(context, newTop);
+        }
     }
-    else
+}
+
+Scheduler::Event
+DynamicSkewScheduler::PeekNext() const
+{
+    Event globalTop;
+    globalTop.key.m_ts = std::numeric_limits<uint64_t>::max();
+    if (!m_globalQueue.empty())
     {
-        MapScheduler::Insert(ev);
+        globalTop = m_globalQueue.top();
     }
+
+    Event projTop = m_projectedQueue.Top();
+
+    if (globalTop.key.m_ts <= projTop.key.m_ts)
+    {
+        return globalTop;
+    }
+    return projTop;
+}
+
+bool
+DynamicSkewScheduler::IsEmpty() const
+{
+    return m_globalQueue.empty() && m_projectedQueue.IsEmpty();
 }
 
 Scheduler::Event
 DynamicSkewScheduler::RemoveNext()
 {
-    Event globalEv = MapScheduler::RemoveNext();
-    uint32_t context = globalEv.key.m_context;
+    Event globalTop;
+    globalTop.key.m_ts = std::numeric_limits<uint64_t>::max();
 
-    if (context != 0xffffffff && m_epochTable)
+    while (!m_globalQueue.empty() && (m_globalQueue.top().impl->IsCancelled() ||
+                                      m_cancelled.count(m_globalQueue.top().key.m_uid)))
     {
-        auto& queue = m_nodeQueues[context];
-
-        while (!queue.empty() &&
-               (queue.top().impl->IsCancelled() || m_cancelled.count(queue.top().key.m_uid)))
-        {
-            m_cancelled.erase(queue.top().key.m_uid);
-            queue.pop();
-        }
-
-        if (!queue.empty() && queue.top().key.m_uid == globalEv.key.m_uid)
-        {
-            queue.pop();
-        }
-        else
-        {
-            NS_LOG_WARN("RemoveNext: local heap top UID does not match global event UID "
-                        << globalEv.key.m_uid << " for node " << context);
-        }
-
-        m_activeEvents.erase(context);
-
-        RebalanceNode(context);
-
-        return globalEv;
+        m_cancelled.erase(m_globalQueue.top().key.m_uid);
+        m_globalQueue.pop();
     }
 
-    return globalEv;
-}
-
-void
-DynamicSkewScheduler::Remove(const Event& ev)
-{
-    uint32_t context = ev.key.m_context;
-
-    if (context != 0xffffffff && m_epochTable)
+    if (!m_globalQueue.empty())
     {
-        Time requestedSimTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
-
-        if (!m_epochTable->HasNode(context))
-        {
-            ExtendEpochTable(context, Seconds(0) + m_windowSize);
-        }
-
-        Time nodeLocalTs = m_epochTable->GetNodeTimeFromSimulatorTime(context, requestedSimTs);
-
-        ExtendEpochTable(context, nodeLocalTs);
-
-        Event localEv = ev;
-        localEv.key.m_ts = nodeLocalTs.GetTimeStep();
-        m_nodeQueues[context].push(localEv);
-
-        RebalanceNode(context);
+        globalTop = m_globalQueue.top();
     }
-    else
+
+    Event projTop = m_projectedQueue.Top();
+
+    if (globalTop.key.m_ts < projTop.key.m_ts)
     {
-        MapScheduler::Remove(ev);
+        m_globalQueue.pop();
+        return globalTop;
     }
-}
 
-void
-DynamicSkewScheduler::RebalanceNode(uint32_t context)
-{
+    uint32_t context = projTop.key.m_context;
     auto& queue = m_nodeQueues[context];
+
+    Event localTarget = queue.top();
+    queue.pop();
 
     while (!queue.empty() &&
            (queue.top().impl->IsCancelled() || m_cancelled.count(queue.top().key.m_uid)))
@@ -264,45 +409,36 @@ DynamicSkewScheduler::RebalanceNode(uint32_t context)
         queue.pop();
     }
 
-    if (queue.empty())
+    if (!queue.empty())
     {
-        auto it = m_activeEvents.find(context);
-        if (it != m_activeEvents.end())
+        Event newTop = queue.top();
+        Time simTs = m_epochTable->GetSimulatorTimeFromNodeTime(
+            context,
+            Time::FromInteger(newTop.key.m_ts, Time::GetResolution()));
+        Time now = Simulator::Now();
+        if (simTs < now)
         {
-            MapScheduler::Remove(it->second);
-            m_activeEvents.erase(context);
+            simTs = now;
         }
-        return;
-    }
-
-    Event topLocalEv = queue.top();
-    Time localTime = Time::FromInteger(topLocalEv.key.m_ts, Time::GetResolution());
-    Time simTime = m_epochTable->GetSimulatorTimeFromNodeTime(context, localTime);
-
-    if (simTime < Simulator::Now())
-    {
-        simTime = Simulator::Now();
-    }
-
-    Event globalEv = topLocalEv;
-    globalEv.key.m_ts = simTime.GetTimeStep();
-
-    auto it = m_activeEvents.find(context);
-    if (it != m_activeEvents.end())
-    {
-        if (it->second.key.m_uid == globalEv.key.m_uid && it->second.key.m_ts == globalEv.key.m_ts)
-        {
-            return;
-        }
-        MapScheduler::Remove(it->second);
-        MapScheduler::Insert(globalEv);
-        m_activeEvents[context] = globalEv;
+        newTop.key.m_ts = simTs.GetTimeStep();
+        m_projectedQueue.Update(context, newTop);
     }
     else
     {
-        MapScheduler::Insert(globalEv);
-        m_activeEvents[context] = globalEv;
+        Event nullEv;
+        nullEv.key.m_ts = std::numeric_limits<uint64_t>::max();
+        nullEv.key.m_context = context;
+        m_projectedQueue.Update(context, nullEv);
     }
+
+    localTarget.key.m_ts = projTop.key.m_ts;
+    return localTarget;
+}
+
+void
+DynamicSkewScheduler::Remove(const Event& ev)
+{
+    m_cancelled.insert(ev.key.m_uid);
 }
 
 void
@@ -321,16 +457,41 @@ DynamicSkewScheduler::ChangeSkew(uint32_t nodeId, double skew)
     }
 
     Time simNow = Simulator::Now();
-    Time localNow = m_epochTable->GetNodeTimeFromSimulatorTime(nodeId, simNow);
+    Time localNow;
+
+    if (m_epochTable->HasNode(nodeId))
+    {
+        localNow = m_epochTable->GetNodeTimeFromSimulatorTime(nodeId, simNow);
+    }
+    else
+    {
+        localNow = simNow;
+    }
 
     Time newSimEnd = simNow + m_updatePeriod;
-    Time newNodeEnd = localNow + Time::FromDouble(m_updatePeriod.GetDouble() * skew, Time::NS);
+
+    auto scaledSteps = static_cast<int64_t>(m_updatePeriod.GetTimeStep() * skew);
+    Time newNodeEnd = localNow + Time::FromInteger(scaledSteps, Time::GetResolution());
 
     m_epochTable->InsertEpoch(nodeId, simNow, newSimEnd, localNow, newNodeEnd, skew);
 
     ExtendEpochTable(nodeId, localNow + m_windowSize);
 
-    RebalanceNode(nodeId);
+    auto& queue = m_nodeQueues[nodeId];
+    if (!queue.empty())
+    {
+        Event top = queue.top();
+        Time newSimTs = m_epochTable->GetSimulatorTimeFromNodeTime(
+            nodeId,
+            Time::FromInteger(top.key.m_ts, Time::GetResolution()));
+        Time now = Simulator::Now();
+        if (newSimTs < now)
+        {
+            newSimTs = now;
+        }
+        top.key.m_ts = newSimTs.GetTimeStep();
+        m_projectedQueue.Update(nodeId, top);
+    }
 }
 
 } // namespace ns3

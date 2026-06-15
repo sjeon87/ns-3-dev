@@ -138,14 +138,6 @@ class EpochTable : public Object
      */
     void PruneEpochTable(Time cutoff);
 
-    /**
-     * @brief Adds epochs to the table to extend to the time given.
-     *
-     * @param nodeId the nodeId for whom to add epochs to.
-     * @param tExtend the time to extend the table to.
-     */
-    void ExtendEpochTable(uint32_t nodeId, Time tExtend);
-
   private:
     std::map<uint32_t, std::vector<Epoch>>
         m_epochTable; //!< Map of Node IDs to their list of timing intervals.

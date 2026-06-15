@@ -104,8 +104,10 @@ EpochTable::LocalTimeBinarySearch(uint32_t nodeId, Time tLocal) const
             lo = mid + 1;
         }
     }
-
-    NS_ASSERT_MSG(floorIdx >= 0, "EpochTable: No epoch found for local time " << tLocal);
+    if (floorIdx < 0)
+    {
+        return epochs.front();
+    }
     return epochs[static_cast<uint32_t>(floorIdx)];
 }
 
@@ -145,7 +147,10 @@ EpochTable::GlobalTimeBinarySearch(uint32_t nodeId, Time tSimulator) const
         }
     }
 
-    NS_ASSERT_MSG(floorIdx >= 0, "EpochTable: No epoch found for simulator time " << tSimulator);
+    if (floorIdx < 0)
+    {
+        return epochs.front();
+    }
     return epochs[static_cast<uint32_t>(floorIdx)];
 }
 
@@ -175,10 +180,16 @@ EpochTable::InsertEpoch(uint32_t nodeId,
 
         if (splitIdx != -1)
         {
-            epochs[splitIdx].simulatorEndTime = simStart;
-            epochs[splitIdx].nodeEndTime = nodeStart;
-
-            epochs.erase(epochs.begin() + splitIdx + 1, epochs.end());
+            if (epochs[splitIdx].simulatorStartTime == simStart)
+            {
+                epochs.erase(epochs.begin() + splitIdx, epochs.end());
+            }
+            else
+            {
+                epochs[splitIdx].simulatorEndTime = simStart;
+                epochs[splitIdx].nodeEndTime = nodeStart;
+                epochs.erase(epochs.begin() + splitIdx + 1, epochs.end());
+            }
         }
     }
 
@@ -205,14 +216,14 @@ EpochTable::GetSimulatorTimeFromNodeTime(uint32_t nodeId, Time nodeTime) const
 {
     NS_LOG_FUNCTION(this << nodeId << nodeTime);
 
-    if (!HasNode(nodeId))
+    if (!HasNode(nodeId) || m_epochTable.at(nodeId).empty())
     {
         return nodeTime;
     }
 
     const Epoch& J = LocalTimeBinarySearch(nodeId, nodeTime);
-    Time delta = nodeTime - J.nodeStartTime;
-    return J.simulatorStartTime + Time::FromDouble(delta.GetDouble() / J.skew, Time::NS);
+    double deltaNs = (nodeTime - J.nodeStartTime).GetDouble();
+    return J.simulatorStartTime + Time::FromDouble(deltaNs / J.skew, Time::NS);
 }
 
 Time
@@ -220,14 +231,14 @@ EpochTable::GetNodeTimeFromSimulatorTime(uint32_t nodeId, Time simulatorTime) co
 {
     NS_LOG_FUNCTION(this << nodeId << simulatorTime);
 
-    if (!HasNode(nodeId))
+    if (!HasNode(nodeId) || m_epochTable.at(nodeId).empty())
     {
         return simulatorTime;
     }
 
     const Epoch& J = GlobalTimeBinarySearch(nodeId, simulatorTime);
-    Time delta = simulatorTime - J.simulatorStartTime;
-    return J.nodeStartTime + Time::FromDouble(delta.GetDouble() * J.skew, Time::NS);
+    double deltaNs = (simulatorTime - J.simulatorStartTime).GetDouble();
+    return J.nodeStartTime + Time::FromDouble(deltaNs * J.skew, Time::NS);
 }
 
 Time

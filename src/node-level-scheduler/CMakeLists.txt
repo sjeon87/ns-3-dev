@@ -3,6 +3,7 @@ set(source_files
     model/local-clock.cc
     model/scheduler-clock.cc
     model/static-skew-scheduler.cc
+    model/dynamic-skew-scheduler.cc
     helper/local-clock-helper.cc
 )
 
@@ -11,6 +12,7 @@ set(header_files
     model/local-clock.h
     model/scheduler-clock.h
     model/static-skew-scheduler.h
+    model/dynamic-skew-scheduler.h
     helper/local-clock-helper.h
 )
 
@@ -23,4 +25,5 @@ build_lib(
   TEST_SOURCES
     test/epoch-table-test-suite.cc
     test/static-skew-scheduler-test-suite.cc
+    test/dynamic-skew-scheduler-test-suite.cc
 )

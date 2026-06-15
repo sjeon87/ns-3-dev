@@ -58,15 +58,20 @@ EpochTableTestCase::DoRun()
                           Seconds(13.0),
                           "Node 14.0s with 0.5x skew should be Sim 13.0s");
 
-    table->InsertEpoch(nodeId, Seconds(15.0), Seconds(20.0), Seconds(15.0), Seconds(15.0), 0.0);
+    table->InsertEpoch(nodeId, Seconds(15.0), Seconds(20.0), Seconds(15.0), Seconds(35.0), 4.0);
 
     NS_TEST_ASSERT_MSG_EQ(table->GetNodeTimeFromSimulatorTime(nodeId, Seconds(18.0)),
-                          Seconds(15.0),
-                          "Node time should be frozen at 15.0s due to 0.0 skew");
+                          Seconds(27.0),
+                          "Sim 18.0s with 4.0x skew should be Node 27.0s");
+    NS_TEST_ASSERT_MSG_EQ(table->GetSimulatorTimeFromNodeTime(nodeId, Seconds(27.0)),
+                          Seconds(18.0),
+                          "Node 27.0s with 4.0x skew should be Sim 18.0s");
 
     table->PruneEpochTable(Seconds(10.0));
 
-    table->GetNodeTimeFromSimulatorTime(nodeId, Seconds(2.0));
+    NS_TEST_ASSERT_MSG_EQ(table->GetNodeTimeFromSimulatorTime(nodeId, Seconds(12.0)),
+                          Seconds(13.5),
+                          "Table should correctly map unpruned epochs after cleanup");
 }
 
 class DynamicSkewSchedulerExecutionTestCase : public TestCase
