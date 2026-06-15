@@ -81,9 +81,21 @@ contain substantial amounts of tool-generated content*. Our policy on
 labelling is intended to facilitate reviews, and not to track which parts of
 |ns3| are generated. Contributors should note tool usage in their merge request
 description, commit message, or wherever authorship is normally indicated for
-the work. For instance, use a commit message trailer like ``Assisted-by: (name
-and version of code assistant)``. This transparency helps the community develop
+the work. For instance, use a commit message trailer like ``(AI-assisted)``,
+with details such as name and version of code assistant at the bottom of
+the message body. This transparency helps the community develop
 best practices and understand the role of these new tools.
+
+We are actively developing an agentic-review tool to aid in reviewing
+merge requests. These are based on LLM-analysis of years of reviews by key
+project contributors, and should help you get ahead of many of the common
+review comments.  The tool operates as a prompt and set of inputs to your
+own agent/LLM workflow; see <link to be added> for detailed instructions.
+If you do use this tool, please include a merge request comment
+showing the full output; this will speed further human review, by highlighting
+what common issues have already been addressed, highlight what aspects might
+need more review thought, and help us gauge how this approach can be made
+more useful.
 
 This policy includes, but is not limited to, the following kinds of
 contributions:
@@ -143,6 +155,11 @@ of contributors and sustaining the project. We want the |ns3| project to be
 welcoming and open to aspiring engineers who are willing to invest
 time and effort to learn and grow, because growing our contributor base and
 recruiting new maintainers helps sustain the project over the long term.
+
+Our aim with the creation of the ns-3 agentic code review tool is two-fold:
+help contributors over the first hurdle of review by calling out the most common
+gaps, and provide support to reviewers in automating those basic checks.
+
 
 Handling Violations
 *******************
