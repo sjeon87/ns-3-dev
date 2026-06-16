@@ -53,7 +53,7 @@ Before applying the rubric, the agent should gather context:
 - the full diff or issue text;
 - the affected module(s), and the maintainer(s) of those modules
   (see <https://www.nsnam.org/about/governance/maintainers/>);
-- the submission's labels (especially `good first issue` and `extractive`);
+- the submission's labels (especially `good first issue`);
 - any linked issues, prior MRs, or related discussion;
 - whether the submission builds and whether tests pass, if the agent can
   determine this locally.
@@ -84,8 +84,7 @@ Before applying the rubric, the agent should gather context:
 - Does the submission read as an **extractive contribution** — i.e., apparently
   unreviewed LLM output that shifts the burden of design and review onto
   maintainers? If so, flag it for the maintainer's judgment (this is the
-  maintainer's call, not the agent's), and suggest whether the `extractive`
-  label may apply.
+  maintainer's call, not the agent's).
 - Reference: `doc/contributing/source/ai-policy.rst`.
 
 ### C3. Scope and value
@@ -195,7 +194,7 @@ Determine what kind of item this is, and whether it is even a bug:
 ### M6. Code style and hygiene
 
 - Does the code conform to `.clang-format` and the coding style guide
-  (`check-style-clang-format.py` clean)?
+  (`check-style-clang-format.py` and `doc/contributing/source/coding-style.rst`)?
 - Are logging severity levels and `NS_LOG_FUNCTION` usage appropriate
   (`doc/manual/source/logging-asserts.rst`)?
 - **Commit hygiene:** present-tense imperative messages, module prefixes,
@@ -237,7 +236,7 @@ End every review with a single overall recommendation.
   work.
 - **Out of scope** — not appropriate for mainline as proposed.
 - **Possibly extractive** — may not comply with the AI policy; flag for
-  maintainer judgment (do not apply the `extractive` label automatically).
+  maintainer judgment.
 
 **Work Items:**
 
@@ -254,20 +253,59 @@ The review should recommend which labels to affix — but, per the guardrails,
 the agent **proposes** labels for the maintainer to apply; it does not apply
 them itself.
 
-- Propose labels **only from the project's existing label set.** The agent
-  should enumerate the labels currently defined on the ns-3-dev project rather
-  than invent new ones; if a useful label does not exist, suggest creating it as
-  an open question for the maintainer.
+- Propose labels **only from the project's existing label set** (see the
+  "ns-3-dev label set" reference below); do not invent new ones. If a useful
+  label does not exist, suggest creating it as an open question for the
+  maintainer.
 - Labels typically span a few axes — for example a *type* (bug, feature,
   documentation, refactoring), an affected *module/component*, a *status*
   (e.g., needs more information, needs review), and policy labels
-  (`good first issue`, `extractive`).
+  (`good first issue`).
 - Map the review outcome to labels where there is a natural correspondence —
   e.g., a *Cannot reproduce* / *Needs more information* recommendation suggests
   a "needs more information" label; a *Possibly extractive* recommendation
-  suggests flagging `extractive` for maintainer judgment (never auto-applied).
+  suggests flagging `extractive` for maintainer judgment.
 - Never propose `good first issue` for an item the agent has reviewed or drafted
   against; that label marks work reserved for humans.
+
+## ns-3-dev label set (reference)
+
+This is the set of labels defined on the ns-3-dev project as of 2026-06-16.
+GitLab does not expose this list to the agent automatically, so it is captured
+here as a convenience; **treat it as a snapshot and verify against the project's
+current labels when possible.** Propose only labels from this set.
+
+Several labels are *scoped*: GitLab renders them as `key::value`, and only one
+value per scope applies to an item at a time.
+
+- **`bug::` (severity)** — `critical` (compilation failure, no workaround),
+  `high-priority` (compilation failure with a known workaround),
+  `medium-priority` (wrong behaviour leading to incorrect results),
+  `low-priority`.
+- **`feature::` (priority)** — `high_priority` (most needed).
+- **`status::`** — `unconfirmed` (not yet confirmed by a maintainer),
+  `confirmed` (confirmed by a maintainer), `needinfo` (reporter must provide
+  more information), `needsreview` (maintainers must review and suggest next
+  steps, or approve/merge), `needsupdate` (submitter must update the patch per
+  review comments or rebase), `patchpending` (an MR to fix the issue is under
+  review), `patchwanted` (maintainers are requesting a patch), `blocked`
+  (blocked by another issue), `reopened` (previously closed, now reopened).
+- **`resolution::`** — `answered`, `fixed` (issue/MR has been fixed), `merged`
+  (MR was merged), `duplicate` (duplicate issue/MR), `moved` (superseded by
+  another), `wontfix` (maintainers decided not to fix or merge), `worksforme`
+  (cannot reproduce or no longer relevant), `lack of interest`.
+- **`module::` (affected component)** — antenna, aodv, applications, bridge,
+  brite, buildings, click, config-store, core, csma, dsr, energy, fd-net-device,
+  flow-monitor, internet, internet-apps, internet:tcp, lr-wpan, lte, mesh,
+  mobility, mpi, netanim, network, new-module, nix-vector-routing, olsr,
+  openflow, point-to-point, point-to-point-layout, propagation, sixlowpan,
+  spectrum, stats, tap-bridge, topology-read, traffic-control, uan, visualizer,
+  wave, wifi, wimax, zigbee.
+- **Other (unscoped)** — `incident`, `build system`, `coding style`,
+  `documentation`, `don't merge` (MRs not intended to be merged), `examples`,
+  `feature request`, `Gitlab CI`, `good first issue`, `gsoc`, `infrastructure`
+  (GitLab infrastructure), `performance`, `portability`, `project ideas`,
+  `python bindings`, `tests`, `third-party`, `utils`.
 
 ---
 
@@ -275,7 +313,7 @@ them itself.
 
 The agent should produce a draft review in this structure. This draft is itself
 the review the maintainer will read, edit, and — once satisfied — post publicly
-as a Claude-assisted review on the MR or Work Item. Because the review is the
+as an AI-assisted review on the MR or Work Item. Because the review is the
 artifact that gets posted to the thread, do **not** add a separate "suggested
 reply to the contributor" section; write the findings and recommendation so they
 can be read directly by the contributor. (The "Suggested labels" and "Open
@@ -294,7 +332,7 @@ transparent about its origin and currency.
 **Type:** Merge Request | Work Item
 **Reviewed by:** <agent/model identity, e.g., Claude (model name)>  **Date:** <YYYY-MM-DD>
 **Module(s):** <affected modules>  **Maintainer(s):** <names>
-**Labels of note:** <e.g., good first issue, extractive>
+**Labels of note:** <e.g., good first issue>
 
 ## Summary
 <2-4 sentences: what this is and the headline assessment.>
@@ -306,6 +344,7 @@ transparent about its origin and currency.
 - Build & tests verified locally: <yes/no + result>
 
 ## Findings
+<one numbered item per finding, each using the format below>
 1. [Blocker|Major|Minor|Nit|Question] <file:line> — <finding and why; suggested fix>
 2. ...
 
@@ -313,7 +352,7 @@ transparent about its origin and currency.
 <one item from the taxonomy, with a one-paragraph rationale>
 
 ## Suggested labels (for maintainer to apply)
-<labels from the project's existing set, with a word on why each>
+<labels from the project's existing set, with a short justification for each one>
 
 ## Open questions for the maintainer
 - <items the agent could not verify>
@@ -324,8 +363,6 @@ transparent about its origin and currency.
 - Post, comment, label, approve, merge, or close anything in GitLab or any other
   project space without explicit per-action human approval.
 - Draft a fix or a leading review for a `good first issue`.
-- Apply the `extractive` label or accuse a contributor; surface the concern for
-  the maintainer to judge.
 - Present unverified claims as fact; mark them as open questions instead.
 - Use any GitLab Ultimate / built-in AI automation in a mode that would publish
   output without a human reviewing it first.
@@ -333,6 +370,10 @@ transparent about its origin and currency.
 ---
 
 ## Appendix: existing GitLab tooling that may assist this triage
+
+This section is **not** intended to be used by agents as part of the triage
+process; it is merely some notes for maintainers, and will probably be removed
+in a future revision of this document.
 
 GitLab markets its AI features under the **GitLab Duo** umbrella, several of
 which require the Ultimate tier and/or a Duo add-on. The features below were
@@ -357,8 +398,7 @@ Features that read/summarize (lower risk; output is consumed by a human):
 - **Suggested Reviewers** — an Ultimate (ML-based, not necessarily LLM) feature
   that proposes reviewers; can corroborate maintainer routing.
 
-Features that author or can publish content (higher risk under the AI policy —
-must keep a human in the loop):
+Features that generate, or can publish, content (higher risk under the AI policy — must keep a human in the loop):
 
 - **GitLab Duo Code Review** — Duo can be added as a reviewer (e.g., via a
   `@GitLabDuo`/`/duo` quick action) and post review comments. Because this can
@@ -369,7 +409,7 @@ must keep a human in the loop):
   *review* but relevant if a contributor used them (disclosure under C2).
 
 Recommendation: of the above, the **read/summarize** features are the natural
-fit for assisting a first-pass triage, since their output feeds a human draft.
+fit for assisting a first-pass triage, since their outputs are read by maintainers.
 Any feature capable of posting to GitLab must be configured so that a maintainer
 reviews and approves the output before it reaches the contributor.
 
