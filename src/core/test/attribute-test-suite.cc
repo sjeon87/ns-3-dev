@@ -572,6 +572,31 @@ NS_OBJECT_ENSURE_REGISTERED(AttributeObjectTest);
 /**
  * @ingroup attribute-tests
  *
+ * Class used to check recursive attribute lookups (Issue #147).
+ */
+class DerivedAttributeObjectTest : public AttributeObjectTest
+{
+  public:
+    /**
+     * @brief Get the type ID.
+     * @return The object TypeId.
+     */
+    static TypeId GetTypeId()
+    {
+        static TypeId tid = TypeId("ns3::DerivedAttributeObjectTest")
+                                .SetParent<AttributeObjectTest>()
+                                .AddConstructor<DerivedAttributeObjectTest>();
+        return tid;
+    }
+
+    DerivedAttributeObjectTest() = default;
+};
+
+NS_OBJECT_ENSURE_REGISTERED(DerivedAttributeObjectTest);
+
+/**
+ * @ingroup attribute-tests
+ *
  * @brief Test case template used for generic Attribute Value types -- used to make
  * sure that Attributes work as expected.
  */
@@ -737,6 +762,24 @@ AttributeTestCase<BooleanValue>::DoRun()
         ok,
         true,
         "Attribute not set properly by SetAttributeFailSafe() (getter/setter) via StringValue");
+
+    //
+    // Test recursive Config::SetDefault (Issue #147)
+    // We attempt to set an attribute defined in the Parent class using the Child's TypeId name.
+    //
+    bool recursiveOk = Config::SetDefaultFailSafe("ns3::DerivedAttributeObjectTest::TestBoolName",
+                                                  StringValue("true"));
+    NS_TEST_ASSERT_MSG_EQ(recursiveOk,
+                          true,
+                          "Recursive Config::SetDefaultFailSafe failed to find parent attribute");
+
+    auto pDerived = CreateObject<DerivedAttributeObjectTest>();
+    NS_TEST_ASSERT_MSG_NE(pDerived,
+                          nullptr,
+                          "Unable to CreateObject for DerivedAttributeObjectTest");
+
+    ok = CheckGetCodePaths(pDerived, "TestBoolName", "true", BooleanValue(true));
+    NS_TEST_ASSERT_MSG_EQ(ok, true, "Attribute not set properly by recursive default value");
 }
 
 template <>
