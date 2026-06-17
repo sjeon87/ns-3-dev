@@ -200,6 +200,8 @@ Fnv1aTestCase::~Fnv1aTestCase()
 void
 Fnv1aTestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Fnv1a>());
     hash32Reference = 0xa3fc0d6d; // Fnv1a(key)
     Check("FNV1a", hasher.clear().GetHash32(key));
@@ -236,12 +238,65 @@ Murmur3TestCase::~Murmur3TestCase()
 void
 Murmur3TestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Murmur3>());
     hash32Reference = 0x463d70e2; // Murmur3(key)
     Check("murmur3", hasher.clear().GetHash32(key));
 
     hash64Reference = 0xa750412079d53e04ULL;
     Check("murmur3", hasher.clear().GetHash64(key));
+}
+
+/**
+ * @ingroup hash-tests
+ * Test Murmur3_x64 hash on fixed string
+ */
+class Murmur3_x64TestCase : public HashTestCase
+{
+  public:
+    /** Constructor. */
+    Murmur3_x64TestCase();
+    /** Destructor. */
+    ~Murmur3_x64TestCase() override;
+
+  private:
+    void DoRun() override;
+};
+
+Murmur3_x64TestCase::Murmur3_x64TestCase()
+    : HashTestCase("Murmur3_x64: ")
+{
+}
+
+Murmur3_x64TestCase::~Murmur3_x64TestCase()
+{
+}
+
+void
+Murmur3_x64TestCase::DoRun()
+{
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
+    Hasher hasher = Hasher(Create<Hash::Function::Murmur3_x64>());
+
+    // Absolute 64-bit reference value.
+    // Produced by MurmurHash3_x64_128 with both 64-bit state words
+    // initialised from seed 0x8BADF00D, key "The quick brown fox jumped
+    // over the lazy dogs." (46 bytes). This is the lower 64-bit word (h1).
+    hash64Reference = 0x747f810de80bc4c8ULL;
+    Check("murmur3_x64", hasher.clear().GetHash64(key));
+
+    // GetHash32 must equal the lower 32 bits of GetHash64.
+    hash32Reference = static_cast<uint32_t>(hash64Reference);
+    Check("murmur3_x64", hasher.clear().GetHash32(key));
+
+    // x64 variant is expected to produce a different result than x86 for the same input.
+    uint64_t h64_x86 = Hasher(Create<Hash::Function::Murmur3>()).clear().GetHash64(key);
+    NS_TEST_EXPECT_MSG_NE(hasher.clear().GetHash64(key),
+                          h64_x86,
+                          "Murmur3_x64 and Murmur3 produced the same 64-bit hash");
+    std::cout << GetName() << "x64 != x86: ok" << std::endl;
 }
 
 /**
@@ -325,6 +380,8 @@ Hash32FunctionPtrTestCase::~Hash32FunctionPtrTestCase()
 void
 Hash32FunctionPtrTestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Hash32>(&gnu_sum32));
     hash32Reference = 0x41264126; // Hash32FunctionPtr(key)
     Check("gnu_sum32", hasher.clear().GetHash32(key));
@@ -358,6 +415,8 @@ Hash64FunctionPtrTestCase::~Hash64FunctionPtrTestCase()
 void
 Hash64FunctionPtrTestCase::DoRun()
 {
+    std::cout << GetName() << "checking with key: \"" << key << "\"" << std::endl;
+
     Hasher hasher = Hasher(Create<Hash::Function::Hash64>(&gnu_sum64));
     hash64Reference = 0x4126412641264126ULL; // Hash64FunctionPtr(key)
     Check("gnu_sum64", hasher.clear().GetHash64(key));
@@ -426,6 +485,7 @@ IncrementalTestCase::DoRun()
     DoHash("default", Hasher());
     DoHash("murmur3", Hasher(Create<Hash::Function::Murmur3>()));
     DoHash("FNV1a", Hasher(Create<Hash::Function::Fnv1a>()));
+    DoHash("murmur3_x64", Hasher(Create<Hash::Function::Murmur3_x64>()));
 }
 
 /**
@@ -444,6 +504,7 @@ HashTestSuite::HashTestSuite()
 {
     AddTestCase(new DefaultHashTestCase);
     AddTestCase(new Murmur3TestCase);
+    AddTestCase(new Murmur3_x64TestCase);
     AddTestCase(new Fnv1aTestCase);
     AddTestCase(new IncrementalTestCase);
     AddTestCase(new Hash32FunctionPtrTestCase);
