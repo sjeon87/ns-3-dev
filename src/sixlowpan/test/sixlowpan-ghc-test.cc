@@ -34,12 +34,12 @@
 using namespace ns3;
 
 // ============================================================================
-//  Test 1: GHC Engine Unit Test - Compress/Decompress round-trip
+//  Test 1: GHC engine (compress/decompress)
 // ============================================================================
 
 /**
  * @ingroup sixlowpan-tests
- * @brief GHC Engine Compress/Decompress round-trip test.
+ * @brief GHC engine in-memory compress/decompress test.
  *
  * Tests that the GHC engine can compress data and decompress it
  * back to the original, verifying the LZ77 bytecode pipeline.
@@ -52,17 +52,17 @@ class SixlowpanGhcEngineTest : public TestCase
 };
 
 SixlowpanGhcEngineTest::SixlowpanGhcEngineTest()
-    : TestCase("GHC Engine compress-decompress round-trip")
+    : TestCase("GHC engine compress then decompress (in-memory)")
 {
 }
 
 void
 SixlowpanGhcEngineTest::DoRun()
 {
-    Ipv6Address srcAddr("2001:db8::1");
-    Ipv6Address dstAddr("2001:db8::2");
+    Ipv6Address srcAddr("2001:1::1");
+    Ipv6Address dstAddr("2001:1::2");
 
-    // Test 1: Data with lots of zeros (should compress well via zero-insert)
+    // Subtest 1: Data with lots of zeros (should compress well via zero-insert)
     {
         auto input = std::to_array<uint8_t>({0x3a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                              0x80, 0x00, 0x12, 0x34, 0x00, 0x01, 0x00, 0x01,
@@ -79,8 +79,8 @@ SixlowpanGhcEngineTest::DoRun()
                                                         compBufLen,
                                                         false);
 
-        // Should produce some compressed output (or 0 if no benefit)
-        if (compLen > 0)
+        NS_TEST_ASSERT_MSG_GT(compLen, 0u, "Subtest 1: compressor produced no output");
+        NS_TEST_ASSERT_MSG_EQ(compLen, 12u, "Subtest 1: exact compressed size");
         {
             NS_TEST_ASSERT_MSG_LT(compLen, inputLen, "Compressed size should be less than input");
 
@@ -101,7 +101,7 @@ SixlowpanGhcEngineTest::DoRun()
         }
     }
 
-    // Test 2: Data that matches the static dictionary
+    // Subtest 2: Data that matches the static dictionary
     {
         // Include bytes from static dictionary: 0x16, 0xfe, 0xfd, 0x17...
         auto input = std::to_array<uint8_t>({0x16,
@@ -132,7 +132,8 @@ SixlowpanGhcEngineTest::DoRun()
                                                         compBufLen,
                                                         false);
 
-        if (compLen > 0)
+        NS_TEST_ASSERT_MSG_GT(compLen, 0u, "Subtest 2: compressor produced no output");
+        NS_TEST_ASSERT_MSG_EQ(compLen, 2u, "Subtest 2: exact compressed size");
         {
             std::array<uint8_t, 1280> decompressed{};
             const auto decompBufLen = static_cast<uint32_t>(decompressed.size());
@@ -153,7 +154,7 @@ SixlowpanGhcEngineTest::DoRun()
         }
     }
 
-    // Test 3: Data with address-derived dictionary match
+    // Subtest 3: Data with address-derived dictionary match
     {
         // Use bytes that match the source IPv6 address (first 16 bytes of dictionary)
         std::array<uint8_t, 16> srcBuf{};
@@ -170,7 +171,8 @@ SixlowpanGhcEngineTest::DoRun()
                                                         compBufLen,
                                                         false);
 
-        if (compLen > 0)
+        NS_TEST_ASSERT_MSG_GT(compLen, 0u, "Subtest 3: compressor produced no output");
+        NS_TEST_ASSERT_MSG_EQ(compLen, 2u, "Subtest 3: exact compressed size");
         {
             NS_TEST_ASSERT_MSG_LT(compLen, srcBufLen, "Address data should compress significantly");
 
@@ -193,9 +195,24 @@ SixlowpanGhcEngineTest::DoRun()
         }
     }
 
-    // Test 4: Stop Code handling for extension headers
+    // Subtest 4: Stop code handling for extension headers (compressible input)
     {
-        auto input = std::to_array<uint8_t>({0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
+        auto input = std::to_array<uint8_t>({0x80,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00,
+                                             0x00});
         const auto inputLen = static_cast<uint32_t>(input.size());
 
         std::array<uint8_t, 256> compressed{};
@@ -208,7 +225,8 @@ SixlowpanGhcEngineTest::DoRun()
                                                         compBufLen,
                                                         true);
 
-        if (compLen > 0)
+        NS_TEST_ASSERT_MSG_GT(compLen, 0u, "Subtest 4: compressor produced no output");
+        NS_TEST_ASSERT_MSG_EQ(compLen, 4u, "Subtest 4: exact compressed size");
         {
             std::array<uint8_t, 1280> decompressed{};
             const auto decompBufLen = static_cast<uint32_t>(decompressed.size());
@@ -227,7 +245,7 @@ SixlowpanGhcEngineTest::DoRun()
         }
     }
 
-    // Test 5: Bytecode classification
+    // Subtest 5: Bytecode classification
     {
         NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0x00),
                               (int)GhcBytecodeType::LITERAL,
@@ -260,12 +278,12 @@ SixlowpanGhcEngineTest::DoRun()
 }
 
 // ============================================================================
-//  Test 2: GHC NHC Header Serialization Test
+//  Test 2: GHC NHC header (serialize/deserialize)
 // ============================================================================
 
 /**
  * @ingroup sixlowpan-tests
- * @brief GHC NHC Header serialization/deserialization test.
+ * @brief GHC NHC header serialize/deserialize test.
  */
 class SixlowpanGhcHeaderTest : public TestCase
 {
@@ -275,7 +293,7 @@ class SixlowpanGhcHeaderTest : public TestCase
 };
 
 SixlowpanGhcHeaderTest::SixlowpanGhcHeaderTest()
-    : TestCase("GHC NHC Header serialize-deserialize round-trip")
+    : TestCase("GHC NHC header serialize then deserialize (in-memory)")
 {
 }
 
@@ -613,7 +631,7 @@ SixlowpanGhcUdpImplTest::DoRun()
  *      byte-for-byte. The test only asserts that MyComp is non-empty and
  *      fits in the output buffer.
  *
- *   2. Decompress(MyComp) -> MyUncomp. The round-trip must recover
+ *   2. Decompress(MyComp) -> MyUncomp. Decompression must recover
  *      RefUncomp byte-for-byte: this is the primary correctness check for
  *      codec consistency and is strict.
  *
@@ -689,9 +707,9 @@ SixlowpanGhcAppendixATest::RunVector(const Vector& v)
     std::vector<uint8_t> myComp(myCompBuf.begin(), myCompBuf.begin() + myCompLen);
 
     // --- Step 2: Decompress MyComp into MyUncomp; must equal RefUncomp ------
-    // This round-trip is the primary correctness check. The codec must
-    // recover the original payload byte-for-byte regardless of whether
-    // MyComp matches RefComp exactly.
+    // This compress/decompress recovery is the primary correctness check. The
+    // codec must recover the original payload byte-for-byte regardless of
+    // whether MyComp matches RefComp exactly.
     std::array<uint8_t, 512> myUncompBuf{};
     const auto myUncompBufLen = static_cast<uint32_t>(myUncompBuf.size());
     uint32_t myUncompLen = SixLowPanGhcEngine::Decompress(srcAddr,
@@ -703,7 +721,7 @@ SixlowpanGhcAppendixATest::RunVector(const Vector& v)
     std::vector<uint8_t> myUncomp(myUncompBuf.begin(), myUncompBuf.begin() + myUncompLen);
     NS_TEST_EXPECT_MSG_EQ((myUncomp == v.payload),
                           true,
-                          tag + ": round-trip must recover original payload");
+                          tag + ": decompression must recover original payload");
 
     // --- Step 3: Decompress RefComp; must equal RefUncomp --------------------
     // Independent interop check: our decompressor must handle the RFC-

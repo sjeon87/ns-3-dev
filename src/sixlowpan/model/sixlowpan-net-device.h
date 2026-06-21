@@ -84,7 +84,7 @@ class SixLowPanNetDevice : public NetDevice
     {
         HC1,  //!< HC1 (RFC4944)
         IPHC, //!< IPHC (RFC6282)
-        GHC,  //!< GHC (RFC7400) on top of IPHC
+        GHC,  //!< GHC (RFC7400)
     };
 
     /**

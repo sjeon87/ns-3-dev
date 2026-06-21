@@ -7,9 +7,7 @@
  *
  * 6LoWPAN-GHC: Generic Header Compression - RFC 7400
  *
- * Provenance: Original implementation written from scratch by the author,
- * following RFC 7400 (Bormann, November 2014) as the sole normative reference.
- * No code was borrowed from any prior third-party implementation.
+ * Source: original implementation following RFC 7400 (Bormann, November 2014).
  */
 
 #include "sixlowpan-ghc.h"
@@ -25,27 +23,6 @@ namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("SixLowPanGhc");
-
-// ============================================================================
-//  Static Dictionary (RFC 7400 Section 3.1)
-// ============================================================================
-
-const uint8_t SixLowPanGhcEngine::STATIC_DICTIONARY[16] = {0x16,
-                                                           0xfe,
-                                                           0xfd,
-                                                           0x17,
-                                                           0xfe,
-                                                           0xfd,
-                                                           0x00,
-                                                           0x01,
-                                                           0x00,
-                                                           0x00,
-                                                           0x00,
-                                                           0x00,
-                                                           0x00,
-                                                           0x01,
-                                                           0x00,
-                                                           0x00};
 
 // ============================================================================
 //  GHC Compression/Decompression Engine
@@ -66,8 +43,24 @@ SixLowPanGhcEngine::InitDictionary(uint8_t* dict,
     dstAddr.GetBytes(dstBuf);
     std::memcpy(dict + 16, dstBuf, 16);
 
-    // Bytes 32-47: Static dictionary
-    std::memcpy(dict + 32, STATIC_DICTIONARY, 16);
+    // Bytes 32-47: static dictionary (RFC 7400 Section 3.1)
+    static constexpr uint8_t staticDict[16] = {0x16,
+                                               0xfe,
+                                               0xfd,
+                                               0x17,
+                                               0xfe,
+                                               0xfd,
+                                               0x00,
+                                               0x01,
+                                               0x00,
+                                               0x00,
+                                               0x00,
+                                               0x00,
+                                               0x00,
+                                               0x01,
+                                               0x00,
+                                               0x00};
+    std::memcpy(dict + 32, staticDict, sizeof(staticDict));
 }
 
 GhcBytecodeType
@@ -294,19 +287,18 @@ SixLowPanGhcEngine::FindLongestMatch(const uint8_t* buffer,
     matchOffset = 0;
     matchLength = 0;
 
-    // Maximum copy length with extended args: na_max(8) + nnn_max(7) + 2 = 17
-    // But we can have multiple extended args: each adds up to 8.
-    // Practical limit: keep it reasonable for encoding cost vs benefit.
-    // Without extended args: max copyLen = 7 + 2 = 9, max offset = 7 + 9 = 16
-    // With one extended arg: max copyLen = 8+7+2 = 17, max offset = 120+8+17 = 145
+    // Simple exhaustive (brute-force) LZ77 search: for every backward distance
+    // we compare against the input and keep the longest match. GHC operates on
+    // tiny sub-MTU packets, so the O(window * matchLen) cost is negligible and
+    // no hash chains or suffix structures are needed.
 
-    // Maximum window to search backward
-    // With extended args: sa can be at most 15*8 = 120 per byte, plus kkk=7, plus n
-    // Practical: search back up to 256 bytes (covers dictionary and recent output)
-    uint32_t maxSearchBack = std::min(bufLen, (uint32_t)256);
+    // Maximum copy length with extended args: na_max(8) + nnn_max(7) + 2 = 17.
+    // Maximum window to search backward: 256 bytes covers the dictionary and
+    // recent output.
+    uint32_t maxSearchBack = std::min<uint32_t>(bufLen, 256);
 
-    // Maximum match length we'll encode (keep encoding overhead reasonable)
-    uint32_t maxMatchLen = std::min(inputRemaining, (uint32_t)17);
+    // Maximum match length we'll encode (keep encoding overhead reasonable).
+    uint32_t maxMatchLen = std::min<uint32_t>(inputRemaining, 17);
 
     for (uint32_t back = 2; back <= maxSearchBack; back++)
     {
@@ -401,8 +393,8 @@ SixLowPanGhcEngine::EmitBackref(uint8_t* output,
     while (remainingSa > 0 || remainingNa > 0)
     {
         extArgBytes++;
-        uint32_t sChunk = std::min(remainingSa, (uint32_t)(15 * 8));
-        uint32_t nChunk = std::min(remainingNa, (uint32_t)8);
+        uint32_t sChunk = std::min<uint32_t>(remainingSa, 15 * 8);
+        uint32_t nChunk = std::min<uint32_t>(remainingNa, 8);
         remainingSa -= std::min(sChunk, remainingSa);
         remainingNa -= std::min(nChunk, remainingNa);
     }
@@ -421,7 +413,7 @@ SixLowPanGhcEngine::EmitBackref(uint8_t* output,
     {
         // Extended arg: 101[n][ssss]
         //   adds ssss*8 to sa, n*8 to na
-        uint32_t ssss = std::min(remainingSa / 8, (uint32_t)15);
+        uint32_t ssss = std::min<uint32_t>(remainingSa / 8, 15);
         uint32_t nBit = (remainingNa >= 8) ? 1 : 0;
 
         uint8_t extByte = 0xA0 | (nBit << 4) | (ssss & 0x0F);
@@ -473,7 +465,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
     auto flushLiterals = [&]() -> bool {
         while (!literalBuf.empty())
         {
-            uint32_t chunk = std::min((uint32_t)literalBuf.size(), (uint32_t)95);
+            uint32_t chunk = std::min<uint32_t>(literalBuf.size(), 95);
 
             // Need 1 byte (count) + chunk bytes (data)
             if (outPos + 1 + chunk > outputMaxLen)
@@ -558,7 +550,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
             // Emit zero insertion instructions
             while (zeros >= 2)
             {
-                uint32_t emit = std::min(zeros, (uint32_t)17); // Max per instruction
+                uint32_t emit = std::min<uint32_t>(zeros, 17); // Max per instruction
                 if (outPos + 1 > outputMaxLen)
                 {
                     return 0;
@@ -776,7 +768,7 @@ SixLowPanGhcExtension::SetBlob(const uint8_t* blob, uint32_t size)
 uint32_t
 SixLowPanGhcExtension::CopyBlob(uint8_t* blob, uint32_t size) const
 {
-    uint32_t copyLen = std::min((uint32_t)m_blobLength, size);
+    uint32_t copyLen = std::min<uint32_t>(m_blobLength, size);
     std::memcpy(blob, m_blob, copyLen);
     return copyLen;
 }
@@ -1116,7 +1108,7 @@ SixLowPanGhcIcmpv6::SetBlob(const uint8_t* blob, uint32_t size)
 uint32_t
 SixLowPanGhcIcmpv6::CopyBlob(uint8_t* blob, uint32_t size) const
 {
-    uint32_t copyLen = std::min((uint32_t)m_blobLength, size);
+    uint32_t copyLen = std::min<uint32_t>(m_blobLength, size);
     std::memcpy(blob, m_blob, copyLen);
     return copyLen;
 }

@@ -8,11 +8,7 @@
  * 6LoWPAN-GHC: Generic Header Compression for IPv6 over
  * Low-Power Wireless Personal Area Networks (6LoWPANs) - RFC 7400
  *
- * Provenance: This is an original implementation written from scratch
- * by the author, following RFC 7400 (Bormann, November 2014) as the sole
- * normative specification. No code was borrowed or ported from any prior
- * third-party implementation. The existing RFC 6282 IPHC/NHC code paths
- * in SixLowPanNetDevice were used as a stylistic reference only.
+ * Source: original implementation following RFC 7400 (Bormann, November 2014).
  */
 
 #ifndef SIXLOWPAN_GHC_H
@@ -86,21 +82,6 @@ class SixLowPanGhcEngine
      * @brief Maximum decompressed output size (IPv6 minimum MTU).
      */
     static constexpr uint32_t MAX_OUTPUT_SIZE = 1280;
-
-    /**
-     * @brief Maximum backreference amplification ratio.
-     *
-     * Bounded at 17x per RFC 7400 security considerations.
-     */
-    static constexpr uint32_t MAX_AMPLIFICATION = 17;
-
-    /**
-     * @brief The 16-byte static portion of the GHC dictionary.
-     *
-     * These bytes capture common protocol constants found in
-     * DTLS records, RPL messages, and other IoT protocols.
-     */
-    static const uint8_t STATIC_DICTIONARY[16];
 
     /**
      * @brief Decompress a GHC-compressed byte stream.

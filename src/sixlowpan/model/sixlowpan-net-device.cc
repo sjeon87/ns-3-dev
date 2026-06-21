@@ -510,8 +510,6 @@ SixLowPanNetDevice::ReceiveFromDevice(Ptr<NetDevice> incomingPort,
         isPktDecompressed = true;
         break;
     case SixLowPanDispatch::LOWPAN_IPHC:
-        // GHC mode also uses IPHC framing (GHC NHC dispatches embed inside IPHC),
-        // so accept IPHC frames when compressionType is either IPHC or GHC.
         if (m_compressionType == HC1)
         {
             m_dropTrace(DROP_DISALLOWED_COMPRESSION, copyPkt, this, GetIfIndex());
@@ -761,11 +759,8 @@ SixLowPanNetDevice::DoSend(Ptr<Packet> packet,
 
     protocolNumber = iana::ieee802numbers::LoWPAN;
 
-    if (m_compressionType != HC1)
+    if (m_compressionType == IPHC || m_compressionType == GHC)
     {
-        // IPHC or GHC: both use the IPHC framing path. CompressLowPanIphc
-        // dispatches to GHC encoders for UDP/ICMPv6/extension headers when
-        // m_compressionType == GHC.
         NS_LOG_LOGIC("Compressing packet using IPHC");
         origHdrSize += CompressLowPanIphc(packet, m_netDevice->GetAddress(), destination);
     }
@@ -3338,7 +3333,7 @@ SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
         eid = SixLowPanGhcExtension::EID_MOBILITY_H;
         break;
     default:
-        NS_LOG_WARN("GHC: Unknown extension header type " << int(headerType));
+        NS_LOG_LOGIC("GHC: Unknown extension header type " << int(headerType));
         return 0;
     }
 
@@ -3352,12 +3347,12 @@ SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
     {
         Ipv6ExtensionHopByHopHeader extHeader;
         packet->PeekHeader(extHeader);
-        if (extHeader.GetLength() >= 0xff)
+        rawLen = (extHeader.GetLength() + 1) * 8;
+        if (rawLen > sizeof(rawHeader))
         {
-            NS_LOG_WARN("GHC: Extension header too large");
+            NS_LOG_DEBUG("GHC: extension header too large to encode; left uncompressed");
             return 0;
         }
-        rawLen = (extHeader.GetLength() + 1) * 8;
         size = packet->RemoveHeader(extHeader);
         // Serialize the extension header to get its raw bytes
         Buffer buf;
@@ -3370,6 +3365,11 @@ SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
         Ipv6ExtensionRoutingHeader extHeader;
         packet->PeekHeader(extHeader);
         rawLen = (extHeader.GetLength() + 1) * 8;
+        if (rawLen > sizeof(rawHeader))
+        {
+            NS_LOG_DEBUG("GHC: extension header too large to encode; left uncompressed");
+            return 0;
+        }
         size = packet->RemoveHeader(extHeader);
         Buffer buf;
         buf.AddAtStart(rawLen);
@@ -3392,11 +3392,22 @@ SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
         Ipv6ExtensionDestinationHeader extHeader;
         packet->PeekHeader(extHeader);
         rawLen = (extHeader.GetLength() + 1) * 8;
+        if (rawLen > sizeof(rawHeader))
+        {
+            NS_LOG_DEBUG("GHC: extension header too large to encode; left uncompressed");
+            return 0;
+        }
         size = packet->RemoveHeader(extHeader);
         Buffer buf;
         buf.AddAtStart(rawLen);
         extHeader.Serialize(buf.Begin());
         buf.Begin().Read(rawHeader, rawLen);
+    }
+    else if (headerType == Ipv6Header::IPV6_EXT_MOBILITY)
+    {
+        // \todo: IPv6 Mobility Header is not supported in ns-3
+        NS_ABORT_MSG("IPv6 Mobility Header is not supported in ns-3 yet");
+        return 0;
     }
     else
     {
@@ -3547,8 +3558,9 @@ SixLowPanNetDevice::DecompressLowPanGhcNhc(Ptr<Packet> packet,
         actualHeaderType = Ipv6Header::IPV6_EXT_DESTINATION;
         break;
     case SixLowPanGhcExtension::EID_MOBILITY_H:
-        actualHeaderType = Ipv6Header::IPV6_EXT_MOBILITY;
-        break;
+        // \todo: IPv6 Mobility Header is not supported in ns-3
+        NS_ABORT_MSG("IPv6 Mobility Header is not supported in ns-3 yet");
+        return std::make_pair(0, true);
     default:
         NS_LOG_WARN("GHC: Unknown EID " << int(encoding.GetEid()));
         return std::make_pair(0, true);
@@ -3866,8 +3878,7 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
         headerLen = GhcIcmpHdrSize<Icmpv6ParameterError>(decompressed, decompressedLen);
         break;
     default:
-        NS_LOG_WARN("GHC: unhandled ICMPv6 type " << int(icmpType)
-                                                  << " - falling back to raw bytes");
+        NS_LOG_ERROR("GHC: unhandled ICMPv6 type " << int(icmpType) << " - emitting raw bytes");
         packet->AddAtEnd(Create<Packet>(decompressed, decompressedLen));
         return;
     }
