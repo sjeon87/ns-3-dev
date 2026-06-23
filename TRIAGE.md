@@ -210,14 +210,16 @@ Determine what kind of item this is, and whether it is even a bug:
 
 ## Severity classification for findings
 
-Use these labels on individual findings so maintainers can prioritize:
+Use these labels on individual findings so maintainers can prioritize. Whether a
+given finding actually blocks merge is the **maintainer's** judgment, not the
+agent's — so there is no separate "Blocker" label; most `Major` findings will
+typically be treated as merge-blocking.
 
-- **Blocker** — must be resolved before merge (e.g., license incompatibility,
-  build break, failing tests, correctness defect).
-- **Major** — significant concern (e.g., missing tests for new behavior,
-  unaddressed API break, no documentation for a new feature).
-- **Minor** — should be addressed but not merge-blocking (e.g., style, naming,
-  incomplete Doxygen).
+- **Major** — significant concern (e.g., license incompatibility, build break,
+  failing tests, correctness defect, missing tests for new behavior, unaddressed
+  API break, no documentation for a new feature).
+- **Minor** — should be addressed but generally not merge-blocking (e.g., style,
+  naming, strictly compliant but thin Doxygen).
 - **Nit** — optional polish.
 - **Question** — needs clarification from the contributor or maintainer; the
   agent could not determine the answer.
@@ -326,12 +328,34 @@ produced the review (e.g., "Claude (model name)") — and include the **calendar
 date** (`YYYY-MM-DD`) on which the review was drafted, so the posted review is
 transparent about its origin and currency.
 
+Two formatting conventions:
+
+- **Header classification block.** Put each classification field
+  (`Type`, `Reviewed by`, `Date`, `Module(s)`, `Maintainer(s)`, `Labels of
+  note`) on its **own line** — do not pack two fields onto one line. So that the
+  lines stay visually separate in renderers that collapse soft line breaks, end
+  each field except the last with a trailing backslash (`\`).
+- **Findings: severity-grouped, slug-keyed, never numbered.** Group findings
+  under severity sub-headings (`### Major`, `### Minor`, `### Nit`,
+  `### Question`; omit any that are empty). Give every finding a short, stable
+  **slug** — a lowercase kebab-case noun phrase, roughly two to five words, that
+  names the *defect* (not the fix) and is unique within the review — followed by
+  the relevant `file:line`. **Reference findings elsewhere (Summary,
+  Recommendation, other findings) by slug, never by position.** A slug carries
+  its own meaning, so a cross-reference stays readable on its own, and — unlike a
+  number — it does not break when findings are reordered, added, or removed. Keep
+  severity in the *heading*, not the slug: downgrading or upgrading a finding is
+  then a one-line move of its bullet from one group to another, with no reference
+  to fix anywhere and no renumbering cascade.
+
 ```markdown
 # Draft review: <MR/issue title> (<#number>)
 
-**Type:** Merge Request | Work Item
-**Reviewed by:** <agent/model identity, e.g., Claude (model name)>  **Date:** <YYYY-MM-DD>
-**Module(s):** <affected modules>  **Maintainer(s):** <names>
+**Type:** Merge Request | Work Item \
+**Reviewed by:** <agent/model identity, e.g., Claude (model name)> \
+**Date:** <YYYY-MM-DD> \
+**Module(s):** <affected modules> \
+**Maintainer(s):** <names> \
 **Labels of note:** <e.g., good first issue>
 
 ## Summary
@@ -344,9 +368,19 @@ transparent about its origin and currency.
 - Build & tests verified locally: <yes/no + result>
 
 ## Findings
-<one numbered item per finding, each using the format below>
-1. [Blocker|Major|Minor|Nit|Question] <file:line> — <finding and why; suggested fix>
-2. ...
+<group under severity sub-headings; omit empty groups; reference by slug, not position>
+
+### Major
+- **`slug-name`** — <file:line>: <finding and why; suggested fix>
+
+### Minor
+- **`slug-name`** — <file:line>: <finding and why; suggested fix>
+
+### Nit
+- **`slug-name`** — <file:line>: <finding and why; suggested fix>
+
+### Question
+- **`slug-name`** — <file:line>: <what needs clarification>
 
 ## Recommendation
 <one item from the taxonomy, with a one-paragraph rationale>
