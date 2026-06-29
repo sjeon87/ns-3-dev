@@ -156,8 +156,6 @@ StaticSkewScheduler::Cleanup()
 void
 StaticSkewScheduler::Insert(const Event& ev)
 {
-    NS_LOG_FUNCTION(this << ev.key.m_ts << ev.key.m_context);
-
     if (!m_initialized)
     {
         m_initialized = true;
@@ -169,14 +167,20 @@ StaticSkewScheduler::Insert(const Event& ev)
     if (context != 0xffffffff && m_epochTable)
     {
         Time requestedTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
+        Time now = Simulator::Now();
 
-        ExtendEpochTable(context, requestedTs);
+        Time delay = requestedTs - now;
 
-        Time targetSimTime = m_epochTable->GetSimulatorTimeFromNodeTime(context, requestedTs);
+        Time currentLocalTime = m_epochTable->GetNodeTimeFromSimulatorTime(context, now);
 
-        if (targetSimTime < Simulator::Now())
+        Time targetLocalTime = currentLocalTime + delay;
+
+        ExtendEpochTable(context, targetLocalTime);
+        Time targetSimTime = m_epochTable->GetSimulatorTimeFromNodeTime(context, targetLocalTime);
+
+        if (targetSimTime < now)
         {
-            targetSimTime = Simulator::Now();
+            targetSimTime = now;
         }
 
         Event adjustedEv = ev;

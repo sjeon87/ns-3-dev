@@ -1,0 +1,175 @@
+/*
+ * Copyright (c) 2026 Michigan State University
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * Author: Ishaan Lagwankar <lagwanka@msu.edu>
+ */
+
+#include "ns3/core-module.h"
+#include "ns3/static-skew-scheduler.h"
+
+#include <cmath>
+#include <numeric>
+#include <utility>
+#include <vector>
+
+using namespace ns3;
+
+Time g_ts, g_ti, g_tc, g_ccaWakeupInterval;
+bool g_isChannelActive = false;
+
+bool g_inBlackout = false;
+Time g_blackoutStart = Seconds(0);
+Time g_prevBlackoutStart = Seconds(0);
+std::vector<double> g_observedDurations;
+std::vector<double> g_observedIntervals;
+
+std::vector<std::pair<double, int>> g_timeline;
+
+void SenderTxStart();
+void SenderTxEnd();
+void ReceiverCCA1(uint32_t context);
+void ReceiverCCA2(uint32_t context);
+
+void
+SenderTxStart()
+{
+    g_isChannelActive = true;
+    Simulator::Schedule(g_ts, &SenderTxEnd);
+}
+
+void
+SenderTxEnd()
+{
+    g_isChannelActive = false;
+    Simulator::Schedule(g_ti, &SenderTxStart);
+}
+
+void
+ReceiverCCA2(uint32_t context)
+{
+    Time now = Simulator::Now();
+    if (g_isChannelActive)
+    {
+        if (g_inBlackout)
+        {
+            g_inBlackout = false;
+            g_observedDurations.push_back((now - g_blackoutStart).GetSeconds());
+        }
+        g_timeline.emplace_back(now.GetSeconds(), 1);
+    }
+    else
+    {
+        if (!g_inBlackout)
+        {
+            g_inBlackout = true;
+            g_blackoutStart = now;
+            if (g_prevBlackoutStart.GetSeconds() > 0)
+            {
+                g_observedIntervals.push_back((g_blackoutStart - g_prevBlackoutStart).GetSeconds());
+            }
+            g_prevBlackoutStart = g_blackoutStart;
+        }
+        g_timeline.emplace_back(now.GetSeconds(), 0);
+    }
+
+    Simulator::ScheduleWithContext(context, g_ccaWakeupInterval - g_tc, &ReceiverCCA1, context);
+}
+
+void
+ReceiverCCA1(uint32_t context)
+{
+    Time now = Simulator::Now();
+    if (g_isChannelActive)
+    {
+        if (g_inBlackout)
+        {
+            g_inBlackout = false;
+            g_observedDurations.push_back((now - g_blackoutStart).GetSeconds());
+        }
+        g_timeline.emplace_back(now.GetSeconds(), 1);
+        Simulator::ScheduleWithContext(context, g_ccaWakeupInterval, &ReceiverCCA1, context);
+    }
+    else
+    {
+        Simulator::ScheduleWithContext(context, g_tc, &ReceiverCCA2, context);
+    }
+}
+
+int
+main(int argc, char* argv[])
+{
+    uint32_t ts_us = 2082;
+    uint32_t ti_us = 1367;
+    uint32_t tc_us = 612;
+    double skew = 1.0005;
+    double simTime = 50.0;
+
+    CommandLine cmd(__FILE__);
+    cmd.AddValue("ts", "Transmission duration in microseconds", ts_us);
+    cmd.AddValue("ti", "Inter-packet gap in microseconds", ti_us);
+    cmd.AddValue("tc", "Time between CCAs in microseconds", tc_us);
+    cmd.AddValue("skew", "Clock skew multiplier (e.g., 1.0005)", skew);
+    cmd.AddValue("simTime", "Simulation time in seconds", simTime);
+    cmd.Parse(argc, argv);
+
+    LogComponentDisableAll(LOG_LEVEL_ALL);
+
+    g_ts = MicroSeconds(ts_us);
+    g_ti = MicroSeconds(ti_us);
+    g_tc = MicroSeconds(tc_us);
+
+    Time totalCycleTime = g_ts + g_ti;
+    g_ccaWakeupInterval = totalCycleTime * 50;
+
+    ObjectFactory factory;
+    factory.SetTypeId("ns3::StaticSkewScheduler");
+    factory.Set("MinimumSkew", DoubleValue(skew));
+    factory.Set("MaximumSkew", DoubleValue(skew));
+    Simulator::SetScheduler(factory);
+
+    uint32_t receiverNode = 1;
+
+    Simulator::Schedule(Seconds(0.0), &SenderTxStart);
+    Simulator::ScheduleWithContext(receiverNode, MicroSeconds(1000), &ReceiverCCA1, receiverNode);
+
+    Simulator::Stop(Seconds(simTime));
+    Simulator::Run();
+    Simulator::Destroy();
+
+    double delta_f = std::abs(skew - 1.0);
+    double theo_dur = 0.0;
+    double theo_rep = 0.0;
+
+    if (delta_f > 0.0 && g_ti > g_tc)
+    {
+        theo_dur = (g_ti.GetSeconds() - g_tc.GetSeconds()) / delta_f;
+        theo_rep = (g_ts.GetSeconds() + g_tc.GetSeconds()) / delta_f;
+    }
+
+    double sim_dur = 0.0;
+    double sim_rep = 0.0;
+    if (!g_observedDurations.empty())
+    {
+        sim_dur = std::accumulate(g_observedDurations.begin(), g_observedDurations.end(), 0.0) /
+                  g_observedDurations.size();
+    }
+    if (!g_observedIntervals.empty())
+    {
+        sim_rep = std::accumulate(g_observedIntervals.begin(), g_observedIntervals.end(), 0.0) /
+                  g_observedIntervals.size();
+    }
+
+    std::cout << "Params: ts=" << ts_us << "us, ti=" << ti_us << "us, tc=" << tc_us
+              << "us, skew=" << skew << " | Theo: Dur=" << theo_dur << "s, Rep=" << theo_rep << "s"
+              << " | Sim: Dur=" << sim_dur << "s, Rep=" << sim_rep << "s" << std::endl;
+
+    std::cout << "---TIMELINE---" << std::endl;
+    for (const auto& event : g_timeline)
+    {
+        std::cout << event.first << "," << event.second << std::endl;
+    }
+
+    return 0;
+}
