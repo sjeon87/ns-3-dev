@@ -14,6 +14,9 @@
 namespace ns3
 {
 
+/**
+ * @brief Verifies AddEpoch updates the node's max simulator/node times.
+ */
 class EpochTableAddEpochTestCase : public TestCase
 {
   public:
@@ -64,6 +67,9 @@ EpochTableAddEpochTestCase::DoRun()
                           "MaxNodeTime should be 25.0s after second epoch");
 }
 
+/**
+ * @brief Verifies InsertEpoch truncates the active epoch and inserts a new one.
+ */
 class EpochTableInsertEpochTestCase : public TestCase
 {
   public:
@@ -133,6 +139,9 @@ EpochTableInsertEpochTestCase::DoRun()
                           "Max node time should reflect the end of the newly inserted epoch");
 }
 
+/**
+ * @brief Verifies sim/node time conversion across epochs, including unknown nodes.
+ */
 class EpochTableTimeConversionTestCase : public TestCase
 {
   public:
@@ -189,6 +198,9 @@ EpochTableTimeConversionTestCase::DoRun()
                           "Unknown node should return node time unchanged");
 }
 
+/**
+ * @brief Verifies LocalTimeBinarySearch and GlobalTimeBinarySearch locate the right epoch.
+ */
 class EpochTableBinarySearchTestCase : public TestCase
 {
   public:
@@ -253,6 +265,9 @@ EpochTableBinarySearchTestCase::DoRun()
                           "Global search: t=20.0s should land in third epoch (inclusive start)");
 }
 
+/**
+ * @brief Verifies PruneEpochTable removes old epochs while keeping later ones resolvable.
+ */
 class EpochTablePruneTestCase : public TestCase
 {
   public:
@@ -306,6 +321,9 @@ EpochTablePruneTestCase::DoRun()
                           "Post-prune: max simulator time should still be 30.0s");
 }
 
+/**
+ * @brief Verifies HasNode reflects whether a node has any epochs.
+ */
 class EpochTableHasNodeTestCase : public TestCase
 {
   public:
@@ -337,6 +355,9 @@ EpochTableHasNodeTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ(et->HasNode(2), false, "Node 2 should not exist");
 }
 
+/**
+ * @brief Test suite for the EpochTable class.
+ */
 class EpochTableTestSuite : public TestSuite
 {
   public:
@@ -354,6 +375,6 @@ EpochTableTestSuite::EpochTableTestSuite()
     AddTestCase(new EpochTablePruneTestCase, TestCase::Duration::QUICK);
 }
 
-static EpochTableTestSuite g_epochTableTestSuite;
+static EpochTableTestSuite g_epochTableTestSuite; //!< Static variable for test initialization
 
 } // namespace ns3

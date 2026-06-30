@@ -42,6 +42,9 @@ MakeSchedulerFactory(double windowSecs = 100.0,
     return f;
 }
 
+/**
+ * @brief Verifies node events fire at the simulator time translated from their local time.
+ */
 class StaticSkewSchedulerAccuracyTestCase : public TestCase
 {
   public:
@@ -50,9 +53,15 @@ class StaticSkewSchedulerAccuracyTestCase : public TestCase
 
   private:
     void DoRun() override;
+
+    /**
+     * @brief Check the firing event's simulator time matches the epoch table translation.
+     * @param nodeId The node context the event fired on.
+     * @param requestedSimTime The local node time the event was scheduled for.
+     */
     void EventHandler(uint32_t nodeId, Time requestedSimTime);
 
-    Time m_lastSimTime;
+    Time m_lastSimTime; //!< Simulator time of the last fired event, to check monotonicity
 };
 
 StaticSkewSchedulerAccuracyTestCase::StaticSkewSchedulerAccuracyTestCase()
@@ -110,6 +119,9 @@ StaticSkewSchedulerAccuracyTestCase::DoRun()
     Simulator::Destroy();
 }
 
+/**
+ * @brief Verifies scheduling a far-future event extends the epoch table and fires correctly.
+ */
 class StaticSkewSchedulerFutureEventTestCase : public TestCase
 {
   public:
@@ -118,9 +130,15 @@ class StaticSkewSchedulerFutureEventTestCase : public TestCase
 
   private:
     void DoRun() override;
+
+    /**
+     * @brief Check the epoch table was extended and the event fired at the right sim time.
+     * @param nodeId The node context the event fired on.
+     * @param requestedSimTime The local node time the event was scheduled for.
+     */
     void FarFutureHandler(uint32_t nodeId, Time requestedSimTime);
 
-    bool m_eventRan;
+    bool m_eventRan; //!< True once the far-future event has fired
 };
 
 StaticSkewSchedulerFutureEventTestCase::StaticSkewSchedulerFutureEventTestCase()
@@ -175,6 +193,9 @@ StaticSkewSchedulerFutureEventTestCase::DoRun()
     Simulator::Destroy();
 }
 
+/**
+ * @brief Verifies context-less events bypass skew translation and fire on time.
+ */
 class StaticSkewSchedulerInternalEventTestCase : public TestCase
 {
   public:
@@ -183,9 +204,14 @@ class StaticSkewSchedulerInternalEventTestCase : public TestCase
 
   private:
     void DoRun() override;
+
+    /**
+     * @brief Check the context-less event fired at the expected simulator time.
+     * @param expectedTime The simulator time the event should fire at.
+     */
     void InternalHandler(Time expectedTime);
 
-    bool m_eventRan;
+    bool m_eventRan; //!< True once the internal event has fired
 };
 
 StaticSkewSchedulerInternalEventTestCase::StaticSkewSchedulerInternalEventTestCase()
@@ -228,6 +254,9 @@ StaticSkewSchedulerInternalEventTestCase::DoRun()
     Simulator::Destroy();
 }
 
+/**
+ * @brief Verifies correct translation for events scheduled on update-interval boundaries.
+ */
 class StaticSkewSchedulerBoundaryTestCase : public TestCase
 {
   public:
@@ -236,9 +265,15 @@ class StaticSkewSchedulerBoundaryTestCase : public TestCase
 
   private:
     void DoRun() override;
+
+    /**
+     * @brief Check the boundary event fired at the simulator time translated from its local time.
+     * @param nodeId The node context the event fired on.
+     * @param requestedSimTime The local node time the event was scheduled for.
+     */
     void BoundaryHandler(uint32_t nodeId, Time requestedSimTime);
 
-    uint32_t m_eventCount;
+    uint32_t m_eventCount; //!< Number of boundary events that have fired
 };
 
 StaticSkewSchedulerBoundaryTestCase::StaticSkewSchedulerBoundaryTestCase()
@@ -296,6 +331,9 @@ StaticSkewSchedulerBoundaryTestCase::DoRun()
     Simulator::Destroy();
 }
 
+/**
+ * @brief Verifies epoch table cleanup/pruning does not corrupt pending node events.
+ */
 class StaticSkewSchedulerCleanupTestCase : public TestCase
 {
   public:
@@ -304,9 +342,15 @@ class StaticSkewSchedulerCleanupTestCase : public TestCase
 
   private:
     void DoRun() override;
+
+    /**
+     * @brief Check a late event still fires at the correct simulator time after pruning.
+     * @param nodeId The node context the event fired on.
+     * @param requestedSimTime The local node time the event was scheduled for.
+     */
     void LateHandler(uint32_t nodeId, Time requestedSimTime);
 
-    uint32_t m_eventCount;
+    uint32_t m_eventCount; //!< Number of late events that have fired
 };
 
 StaticSkewSchedulerCleanupTestCase::StaticSkewSchedulerCleanupTestCase()
@@ -362,6 +406,9 @@ StaticSkewSchedulerCleanupTestCase::DoRun()
     Simulator::Destroy();
 }
 
+/**
+ * @brief Stress test with many nodes and frequent events, checking simulator-time monotonicity.
+ */
 class StaticSkewSchedulerStressTestCase : public TestCase
 {
   public:
@@ -370,10 +417,15 @@ class StaticSkewSchedulerStressTestCase : public TestCase
 
   private:
     void DoRun() override;
+
+    /**
+     * @brief Count the fired event and check simulator time has not gone backwards.
+     * @param nodeId The node context the event fired on.
+     */
     void StressHandler(uint32_t nodeId);
 
-    uint32_t m_eventCount;
-    std::map<uint32_t, Time> m_lastFireTime;
+    uint32_t m_eventCount;                    //!< Number of stress events that have fired
+    std::map<uint32_t, Time> m_lastFireTime;  //!< Last simulator fire time, keyed by context
 };
 
 StaticSkewSchedulerStressTestCase::StaticSkewSchedulerStressTestCase()
@@ -437,6 +489,9 @@ StaticSkewSchedulerStressTestCase::DoRun()
     Simulator::Destroy();
 }
 
+/**
+ * @brief Test suite for the StaticSkewScheduler class.
+ */
 class StaticSkewSchedulerTestSuite : public TestSuite
 {
   public:

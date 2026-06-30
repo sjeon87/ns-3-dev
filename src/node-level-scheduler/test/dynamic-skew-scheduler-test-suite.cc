@@ -16,6 +16,9 @@
 namespace ns3
 {
 
+/**
+ * @brief Verifies EpochTable time conversion across inserted and pruned epochs.
+ */
 class EpochTableTestCase : public TestCase
 {
   public:
@@ -74,6 +77,9 @@ EpochTableTestCase::DoRun()
                           "Table should correctly map unpruned epochs after cleanup");
 }
 
+/**
+ * @brief Verifies node events execute and round-trip to the correct local time.
+ */
 class DynamicSkewSchedulerExecutionTestCase : public TestCase
 {
   public:
@@ -81,8 +87,14 @@ class DynamicSkewSchedulerExecutionTestCase : public TestCase
     void DoRun() override;
 
   private:
+    /**
+     * @brief Check the firing event's local time matches expectations.
+     * @param context The node context the event fired on.
+     * @param expectedLocalTime The expected local node time at fire.
+     */
     void EventTriggered(uint32_t context, Time expectedLocalTime);
-    uint32_t m_eventsFired;
+
+    uint32_t m_eventsFired; //!< Number of events that have fired
 };
 
 DynamicSkewSchedulerExecutionTestCase::DynamicSkewSchedulerExecutionTestCase()
@@ -135,6 +147,9 @@ DynamicSkewSchedulerExecutionTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ(m_eventsFired, 2, "Not all scheduled events fired");
 }
 
+/**
+ * @brief Verifies a cancelled node event does not fire while later events still do.
+ */
 class DynamicSkewSchedulerCancelTestCase : public TestCase
 {
   public:
@@ -142,13 +157,24 @@ class DynamicSkewSchedulerCancelTestCase : public TestCase
     void DoRun() override;
 
   private:
+    /**
+     * @brief Mark that the event which should have been cancelled fired.
+     */
     void ShouldNotFire();
+
+    /**
+     * @brief Mark that the valid event fired.
+     */
     void ShouldFire();
+
+    /**
+     * @brief Schedule the cancel-target and follow-up node events.
+     */
     void ScheduleNodeEvents();
 
-    bool m_badEventFired;
-    bool m_goodEventFired;
-    EventId m_badEvent;
+    bool m_badEventFired;  //!< True if the cancelled event incorrectly fired
+    bool m_goodEventFired; //!< True once the valid event has fired
+    EventId m_badEvent;    //!< The event expected to be cancelled
 };
 
 DynamicSkewSchedulerCancelTestCase::DynamicSkewSchedulerCancelTestCase()
@@ -205,6 +231,90 @@ DynamicSkewSchedulerCancelTestCase::DoRun()
                           "Valid event failed to execute after cancellation occurred.");
 }
 
+/**
+ * @brief Verifies ChangeCurrentSkew updates the epoch table for a node.
+ */
+class DynamicSkewSchedulerChangeSkewTestCase : public TestCase
+{
+  public:
+    DynamicSkewSchedulerChangeSkewTestCase();
+    void DoRun() override;
+
+  private:
+    /**
+     * @brief Change node 1's skew and check the epoch table reflects it.
+     */
+    void TriggerSkewChange();
+
+    /**
+     * @brief Record that the follow-up node event fired.
+     */
+    void FollowUpEvent();
+
+    bool m_followUpFired; //!< True once the follow-up node event has fired
+};
+
+DynamicSkewSchedulerChangeSkewTestCase::DynamicSkewSchedulerChangeSkewTestCase()
+    : TestCase("ChangeSkewCase"),
+      m_followUpFired(false)
+{
+}
+
+void
+DynamicSkewSchedulerChangeSkewTestCase::TriggerSkewChange()
+{
+    DynamicSkewScheduler::ChangeCurrentSkew(1, 2.0);
+
+    Ptr<EpochTable> table = DynamicSkewScheduler::GetCurrentEpochTable();
+    NS_TEST_ASSERT_MSG_NE(table, nullptr, "EpochTable should be accessible after ChangeCurrentSkew");
+    NS_TEST_ASSERT_MSG_EQ(table->HasNode(1),
+                          true,
+                          "Node 1 should have epochs after ChangeCurrentSkew");
+
+    const EpochTable::Epoch& ep = table->GlobalTimeBinarySearch(1, Seconds(0.0));
+    NS_TEST_ASSERT_MSG_EQ_TOL(ep.skew, 2.0, 1e-9, "Epoch at sim t=0 should carry skew=2.0");
+
+    Time localAt5s = table->GetNodeTimeFromSimulatorTime(1, Seconds(5.0));
+    NS_TEST_ASSERT_MSG_EQ_TOL(localAt5s.GetSeconds(),
+                              10.0,
+                              1e-9,
+                              "GetNodeTimeFromSimulatorTime should return 10s at sim 5s with skew=2.0");
+
+    Simulator::ScheduleWithContext(1,
+                                   Seconds(1.0),
+                                   &DynamicSkewSchedulerChangeSkewTestCase::FollowUpEvent,
+                                   this);
+}
+
+void
+DynamicSkewSchedulerChangeSkewTestCase::FollowUpEvent()
+{
+    m_followUpFired = true;
+}
+
+void
+DynamicSkewSchedulerChangeSkewTestCase::DoRun()
+{
+    ObjectFactory factory;
+    factory.SetTypeId("ns3::DynamicSkewScheduler");
+    factory.Set("MinimumSkew", DoubleValue(2.0));
+    factory.Set("MaximumSkew", DoubleValue(2.0));
+    factory.Set("UpdatePeriod", TimeValue(Seconds(10.0)));
+    Simulator::SetScheduler(factory);
+
+    Simulator::Schedule(Seconds(0.0),
+                        &DynamicSkewSchedulerChangeSkewTestCase::TriggerSkewChange,
+                        this);
+
+    Simulator::Run();
+    Simulator::Destroy();
+
+    NS_TEST_ASSERT_MSG_EQ(m_followUpFired, true, "Follow-up node event never fired");
+}
+
+/**
+ * @brief Test suite for the EpochTable and DynamicSkewScheduler.
+ */
 class DynamicSkewSchedulerTestSuite : public TestSuite
 {
   public:
@@ -217,8 +327,9 @@ DynamicSkewSchedulerTestSuite::DynamicSkewSchedulerTestSuite()
     AddTestCase(new EpochTableTestCase, TestCase::Duration::QUICK);
     AddTestCase(new DynamicSkewSchedulerExecutionTestCase, TestCase::Duration::QUICK);
     AddTestCase(new DynamicSkewSchedulerCancelTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new DynamicSkewSchedulerChangeSkewTestCase, TestCase::Duration::QUICK);
 }
 
-static DynamicSkewSchedulerTestSuite g_dynamicSkewSchedulerTestSuite;
+static DynamicSkewSchedulerTestSuite g_dynamicSkewSchedulerTestSuite; //!< Static variable for test initialization
 
 } // namespace ns3

@@ -18,7 +18,7 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("StaticSkewScheduler");
 NS_OBJECT_ENSURE_REGISTERED(StaticSkewScheduler);
 
-static StaticSkewScheduler* g_currentScheduler = nullptr;
+static StaticSkewScheduler* g_currentScheduler = nullptr; //!< The currently active scheduler instance
 
 TypeId
 StaticSkewScheduler::GetTypeId()

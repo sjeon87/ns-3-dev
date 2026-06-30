@@ -31,6 +31,12 @@ namespace ns3
  */
 struct EventLocalTimeCmp
 {
+    /**
+     * @brief Compare two events by local node time.
+     * @param a The first event.
+     * @param b The second event.
+     * @return true if a should sort after b.
+     */
     bool operator()(const Scheduler::Event& a, const Scheduler::Event& b) const
     {
         if (a.key.m_ts != b.key.m_ts)
@@ -46,6 +52,12 @@ struct EventLocalTimeCmp
  */
 struct EventSimTimeCmp
 {
+    /**
+     * @brief Compare two events by simulator time.
+     * @param a The first event.
+     * @param b The second event.
+     * @return true if a should sort after b.
+     */
     bool operator()(const Scheduler::Event& a, const Scheduler::Event& b) const
     {
         if (a.key.m_ts != b.key.m_ts)
@@ -85,8 +97,23 @@ class ProjectedQueue
     bool IsEmpty() const;
 
   private:
+    /**
+     * @brief Restore heap order by moving the element at idx up.
+     * @param idx Index of the element to bubble up.
+     */
     void BubbleUp(size_t idx);
+
+    /**
+     * @brief Restore heap order by moving the element at idx down.
+     * @param idx Index of the element to bubble down.
+     */
     void BubbleDown(size_t idx);
+
+    /**
+     * @brief Swap two heap entries and update their index map entries.
+     * @param i Index of the first entry.
+     * @param j Index of the second entry.
+     */
     void Swap(size_t i, size_t j);
 
     std::vector<Scheduler::Event> m_heapArray; //!< The 0-indexed underlying heap array
@@ -173,6 +200,14 @@ class DynamicSkewScheduler : public Scheduler
      */
     static Ptr<EpochTable> GetCurrentEpochTable();
 
+    /**
+     * @brief Static accessor to change the skew of a node on the currently active scheduler.
+     *
+     * @param nodeId The node whose skew is being changed.
+     * @param skew The new skew value to apply.
+     */
+    static void ChangeCurrentSkew(uint32_t nodeId, double skew);
+
   private:
     /**
      * @brief Schedule the periodic cleanup task.
@@ -196,7 +231,7 @@ class DynamicSkewScheduler : public Scheduler
     double m_maxSkew;                //!< Maximum allowed clock skew
     double m_minSkew;                //!< Minimum allowed clock skew
     Time m_windowSize;               //!< Duration of the lookahead window
-    Time m_updatePeriod;             //!< How often the skew changes (\upsilon)
+    Time m_updatePeriod;             //!< How often the skew changes (upsilon)
     EventId m_cleanupEvent;          //!< The ID of the next scheduled cleanup event
     Ptr<UniformRandomVariable> m_uv; //!< RNG for assigning node skew per epoch
 

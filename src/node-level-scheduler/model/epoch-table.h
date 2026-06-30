@@ -64,6 +64,7 @@ class EpochTable : public Object
     /**
      * @brief Get the latest epoch for a given local time.
      * @param nodeId The ID of the node.
+     * @param tLocal The local node time to search for.
      * @return The latest epoch for the local time.
      */
     const EpochTable::Epoch& LocalTimeBinarySearch(uint32_t nodeId, Time tLocal) const;
@@ -71,6 +72,7 @@ class EpochTable : public Object
     /**
      * @brief Get the latest epoch for a given simulator time.
      * @param nodeId The ID of the node.
+     * @param tSimulator The simulator time to search for.
      * @return The latest epoch for the simulator time.
      */
     const EpochTable::Epoch& GlobalTimeBinarySearch(uint32_t nodeId, Time tSimulator) const;

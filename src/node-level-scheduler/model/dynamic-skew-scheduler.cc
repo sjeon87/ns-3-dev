@@ -21,7 +21,7 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("DynamicSkewScheduler");
 NS_OBJECT_ENSURE_REGISTERED(DynamicSkewScheduler);
 
-static DynamicSkewScheduler* g_currentScheduler = nullptr;
+static DynamicSkewScheduler* g_currentScheduler = nullptr; //!< The currently active scheduler instance
 
 void
 ProjectedQueue::Swap(size_t i, size_t j)
@@ -202,6 +202,19 @@ DynamicSkewScheduler::GetCurrentEpochTable()
         return g_currentScheduler->GetEpochTable();
     }
     return nullptr;
+}
+
+void
+DynamicSkewScheduler::ChangeCurrentSkew(uint32_t nodeId, double skew)
+{
+    if (g_currentScheduler)
+    {
+        g_currentScheduler->ChangeSkew(nodeId, skew);
+    }
+    else
+    {
+        NS_LOG_WARN("ChangeCurrentSkew: no DynamicSkewScheduler is currently active.");
+    }
 }
 
 void
