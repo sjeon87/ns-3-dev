@@ -115,6 +115,7 @@ set(header_files
     utils/flow-id-tag.h
     utils/generic-phy.h
     utils/header-serialization-test.h
+    utils/iana-internet-protocol-numbers.h
     utils/iana-link-type-numbers.h
     utils/iana-ieee802-numbers.h
     utils/iana-ppp-numbers.h
