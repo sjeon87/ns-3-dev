@@ -21,7 +21,8 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("DynamicSkewScheduler");
 NS_OBJECT_ENSURE_REGISTERED(DynamicSkewScheduler);
 
-static DynamicSkewScheduler* g_currentScheduler = nullptr; //!< The currently active scheduler instance
+static DynamicSkewScheduler* g_currentScheduler =
+    nullptr; //!< The currently active scheduler instance
 
 void
 ProjectedQueue::Swap(size_t i, size_t j)

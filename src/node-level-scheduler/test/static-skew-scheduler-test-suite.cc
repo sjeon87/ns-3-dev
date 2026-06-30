@@ -424,8 +424,8 @@ class StaticSkewSchedulerStressTestCase : public TestCase
      */
     void StressHandler(uint32_t nodeId);
 
-    uint32_t m_eventCount;                    //!< Number of stress events that have fired
-    std::map<uint32_t, Time> m_lastFireTime;  //!< Last simulator fire time, keyed by context
+    uint32_t m_eventCount;                   //!< Number of stress events that have fired
+    std::map<uint32_t, Time> m_lastFireTime; //!< Last simulator fire time, keyed by context
 };
 
 StaticSkewSchedulerStressTestCase::StaticSkewSchedulerStressTestCase()

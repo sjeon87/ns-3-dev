@@ -266,7 +266,9 @@ DynamicSkewSchedulerChangeSkewTestCase::TriggerSkewChange()
     DynamicSkewScheduler::ChangeCurrentSkew(1, 2.0);
 
     Ptr<EpochTable> table = DynamicSkewScheduler::GetCurrentEpochTable();
-    NS_TEST_ASSERT_MSG_NE(table, nullptr, "EpochTable should be accessible after ChangeCurrentSkew");
+    NS_TEST_ASSERT_MSG_NE(table,
+                          nullptr,
+                          "EpochTable should be accessible after ChangeCurrentSkew");
     NS_TEST_ASSERT_MSG_EQ(table->HasNode(1),
                           true,
                           "Node 1 should have epochs after ChangeCurrentSkew");
@@ -275,10 +277,11 @@ DynamicSkewSchedulerChangeSkewTestCase::TriggerSkewChange()
     NS_TEST_ASSERT_MSG_EQ_TOL(ep.skew, 2.0, 1e-9, "Epoch at sim t=0 should carry skew=2.0");
 
     Time localAt5s = table->GetNodeTimeFromSimulatorTime(1, Seconds(5.0));
-    NS_TEST_ASSERT_MSG_EQ_TOL(localAt5s.GetSeconds(),
-                              10.0,
-                              1e-9,
-                              "GetNodeTimeFromSimulatorTime should return 10s at sim 5s with skew=2.0");
+    NS_TEST_ASSERT_MSG_EQ_TOL(
+        localAt5s.GetSeconds(),
+        10.0,
+        1e-9,
+        "GetNodeTimeFromSimulatorTime should return 10s at sim 5s with skew=2.0");
 
     Simulator::ScheduleWithContext(1,
                                    Seconds(1.0),
@@ -330,6 +333,7 @@ DynamicSkewSchedulerTestSuite::DynamicSkewSchedulerTestSuite()
     AddTestCase(new DynamicSkewSchedulerChangeSkewTestCase, TestCase::Duration::QUICK);
 }
 
-static DynamicSkewSchedulerTestSuite g_dynamicSkewSchedulerTestSuite; //!< Static variable for test initialization
+static DynamicSkewSchedulerTestSuite
+    g_dynamicSkewSchedulerTestSuite; //!< Static variable for test initialization
 
 } // namespace ns3
