@@ -113,15 +113,9 @@ main(int argc, char* argv[])
     CommandLine cmd(__FILE__);
     cmd.AddValue("simTime", "Total simulation time, in seconds", simTime);
     cmd.AddValue("pollInterval", "NTP poll interval, in seconds", pollIntervalS);
-    cmd.AddValue("driftPpmClient1",
-                 "Client 1's initial oscillator skew, in ppm",
-                 driftPpmClient1);
-    cmd.AddValue("driftPpmClient2",
-                 "Client 2's initial oscillator skew, in ppm",
-                 driftPpmClient2);
-    cmd.AddValue("driftPpmClient3",
-                 "Client 3's initial oscillator skew, in ppm",
-                 driftPpmClient3);
+    cmd.AddValue("driftPpmClient1", "Client 1's initial oscillator skew, in ppm", driftPpmClient1);
+    cmd.AddValue("driftPpmClient2", "Client 2's initial oscillator skew, in ppm", driftPpmClient2);
+    cmd.AddValue("driftPpmClient3", "Client 3's initial oscillator skew, in ppm", driftPpmClient3);
     cmd.AddValue("skewJitterPpm",
                  "Half-width of the random oscillator skew jitter reasserted between NTP "
                  "corrections, in ppm (0 to disable)",

@@ -60,11 +60,11 @@ class NtpClient : public Application
      */
     void HandleRead(Ptr<Socket> socket);
 
-    Ptr<Socket> m_socket;      //!< The client's UDP socket
-    Address m_peer;            //!< The server's address
-    Time m_pollInterval;       //!< How often to poll the server
-    EventId m_pollEvent;       //!< The next scheduled poll
-    Ptr<LocalClock> m_clock;   //!< This node's local clock
+    Ptr<Socket> m_socket;    //!< The client's UDP socket
+    Address m_peer;          //!< The server's address
+    Time m_pollInterval;     //!< How often to poll the server
+    EventId m_pollEvent;     //!< The next scheduled poll
+    Ptr<LocalClock> m_clock; //!< This node's local clock
 };
 
 } // namespace ns3

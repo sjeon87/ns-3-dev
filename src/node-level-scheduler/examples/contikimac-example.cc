@@ -49,7 +49,7 @@ std::vector<std::pair<double, int>> g_timeline;
 struct Message
 {
     double cycleStart; //!< Simulation time the wake cycle's CCA1 fired, in seconds
-    bool hit;           //!< Whether CCA1 or its CCA2 followup sensed the channel as busy
+    bool hit;          //!< Whether CCA1 or its CCA2 followup sensed the channel as busy
 };
 
 std::vector<Message> g_messages;
