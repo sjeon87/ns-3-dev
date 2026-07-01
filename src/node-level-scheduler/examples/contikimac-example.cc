@@ -7,12 +7,28 @@
  */
 
 #include "ns3/core-module.h"
+#include "ns3/mac48-address.h"
+#include "ns3/node-container.h"
+#include "ns3/node.h"
+#include "ns3/packet.h"
+#include "ns3/simple-channel.h"
+#include "ns3/simple-net-device.h"
 #include "ns3/static-skew-scheduler.h"
 
 #include <cmath>
 #include <numeric>
 #include <utility>
 #include <vector>
+
+/**
+ * @file
+ * @ingroup node-level-scheduler
+ *
+ * This example demonstrates ContikiMAC-style radio duty cycling over a real sender/receiver
+ * node pair connected by a SimpleNetDevice/SimpleChannel: the sender periodically transmits a
+ * real packet for a fixed burst duration, and the receiver performs periodic clear-channel
+ * assessments (CCAs) using its own (possibly skewed) local clock.
+ */
 
 using namespace ns3;
 
@@ -27,15 +43,43 @@ std::vector<double> g_observedIntervals;
 
 std::vector<std::pair<double, int>> g_timeline;
 
+/**
+ * @brief One receiver wake cycle and whether either of its CCAs sensed the channel as busy.
+ */
+struct Message
+{
+    double cycleStart; //!< Simulation time the wake cycle's CCA1 fired, in seconds
+    bool hit;           //!< Whether CCA1 or its CCA2 followup sensed the channel as busy
+};
+
+std::vector<Message> g_messages;
+
+Ptr<SimpleNetDevice> g_senderDevice;
+Ptr<SimpleNetDevice> g_receiverDevice;
+
 void SenderTxStart();
 void SenderTxEnd();
 void ReceiverCCA1(uint32_t context);
 void ReceiverCCA2(uint32_t context);
 
+/**
+ * @brief No-op receive handler
+ * @return true (packet accepted)
+ */
+bool
+ReceiverReceive(Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address&)
+{
+    return true;
+}
+
 void
 SenderTxStart()
 {
     g_isChannelActive = true;
+
+    Ptr<Packet> packet = Create<Packet>(64);
+    g_senderDevice->Send(packet, g_receiverDevice->GetAddress(), 0x0001);
+
     Simulator::Schedule(g_ts, &SenderTxEnd);
 }
 
@@ -58,6 +102,7 @@ ReceiverCCA2(uint32_t context)
             g_observedDurations.push_back((now - g_blackoutStart).GetSeconds());
         }
         g_timeline.emplace_back(now.GetSeconds(), 1);
+        g_messages.back().hit = true;
     }
     else
     {
@@ -81,6 +126,8 @@ void
 ReceiverCCA1(uint32_t context)
 {
     Time now = Simulator::Now();
+    g_messages.push_back({now.GetSeconds(), false});
+
     if (g_isChannelActive)
     {
         if (g_inBlackout)
@@ -89,6 +136,7 @@ ReceiverCCA1(uint32_t context)
             g_observedDurations.push_back((now - g_blackoutStart).GetSeconds());
         }
         g_timeline.emplace_back(now.GetSeconds(), 1);
+        g_messages.back().hit = true;
         Simulator::ScheduleWithContext(context, g_ccaWakeupInterval, &ReceiverCCA1, context);
     }
     else
@@ -110,7 +158,7 @@ main(int argc, char* argv[])
     cmd.AddValue("ts", "Transmission duration in microseconds", ts_us);
     cmd.AddValue("ti", "Inter-packet gap in microseconds", ti_us);
     cmd.AddValue("tc", "Time between CCAs in microseconds", tc_us);
-    cmd.AddValue("skew", "Clock skew multiplier (e.g., 1.0005)", skew);
+    cmd.AddValue("skew", "Clock skew multiplier", skew);
     cmd.AddValue("simTime", "Simulation time in seconds", simTime);
     cmd.Parse(argc, argv);
 
@@ -129,10 +177,33 @@ main(int argc, char* argv[])
     factory.Set("MaximumSkew", DoubleValue(skew));
     Simulator::SetScheduler(factory);
 
-    uint32_t receiverNode = 1;
+    NodeContainer nodes;
+    nodes.Create(2);
+    Ptr<Node> senderNode = nodes.Get(0);
+    Ptr<Node> receiverNode = nodes.Get(1);
+
+    Ptr<SimpleChannel> channel = CreateObject<SimpleChannel>();
+
+    g_senderDevice = CreateObject<SimpleNetDevice>();
+    g_senderDevice->SetAddress(Mac48Address::Allocate());
+    senderNode->AddDevice(g_senderDevice);
+    g_senderDevice->SetNode(senderNode);
+    g_senderDevice->SetChannel(channel);
+
+    g_receiverDevice = CreateObject<SimpleNetDevice>();
+    g_receiverDevice->SetAddress(Mac48Address::Allocate());
+    receiverNode->AddDevice(g_receiverDevice);
+    g_receiverDevice->SetNode(receiverNode);
+    g_receiverDevice->SetChannel(channel);
+    g_receiverDevice->SetReceiveCallback(MakeCallback(&ReceiverReceive));
+
+    uint32_t receiverContext = receiverNode->GetId();
 
     Simulator::Schedule(Seconds(0.0), &SenderTxStart);
-    Simulator::ScheduleWithContext(receiverNode, MicroSeconds(1000), &ReceiverCCA1, receiverNode);
+    Simulator::ScheduleWithContext(receiverContext,
+                                   MicroSeconds(1000),
+                                   &ReceiverCCA1,
+                                   receiverContext);
 
     Simulator::Stop(Seconds(simTime));
     Simulator::Run();
@@ -165,10 +236,17 @@ main(int argc, char* argv[])
               << "us, skew=" << skew << " | Theo: Dur=" << theo_dur << "s, Rep=" << theo_rep << "s"
               << " | Sim: Dur=" << sim_dur << "s, Rep=" << sim_rep << "s" << std::endl;
 
-    std::cout << "---TIMELINE---" << std::endl;
+    std::cout << "TIMELINE:" << std::endl;
     for (const auto& event : g_timeline)
     {
         std::cout << event.first << "," << event.second << std::endl;
+    }
+
+    std::cout << "MESSAGES:" << std::endl;
+    for (std::size_t i = 0; i < g_messages.size(); ++i)
+    {
+        std::cout << i << "," << g_messages[i].cycleStart << "," << (g_messages[i].hit ? 1 : 0)
+                  << std::endl;
     }
 
     return 0;
