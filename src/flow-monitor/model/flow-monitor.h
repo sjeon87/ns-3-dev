@@ -129,6 +129,42 @@ class FlowMonitor : public Object
         /// comment in attribute packetsDropped.
         std::vector<uint64_t> bytesDropped;   // bytesDropped[reasonCode] => number of dropped bytes
         Histogram flowInterruptionsHistogram; //!< histogram of durations of flow interruptions
+
+        // --- Derived stats methods ---
+
+        /// @brief Get the mean end-to-end delay per received packet.
+        /// @return Mean delay as a Time value, or zero if no packets were received.
+        Time GetMeanDelay() const;
+
+        /// @brief Get the mean jitter per received packet.
+        /// Jitter samples count is rxPackets - 1 (one sample per packet after the first).
+        /// @return Mean jitter as a Time value, or zero if fewer than 2 packets were received.
+        Time GetMeanJitter() const;
+
+        /// @brief Get the receive throughput in bits per second.
+        /// @param duration The time interval over which to compute throughput.
+        /// @return Throughput in bps, or 0.0 if duration is non-positive.
+        double GetRxThroughput(Time duration) const;
+
+        /// @brief Get the receive throughput in bits per second, inferring
+        /// duration from the flow's own timing data (timeLastRxPacket - timeFirstTxPacket).
+        /// @return Throughput in bps, or 0.0 if the inferred duration is non-positive.
+        double GetRxThroughput() const;
+
+        /// @brief Get the transmit offered load in bits per second.
+        /// @param duration The time interval over which to compute offered load.
+        /// @return Offered load in bps, or 0.0 if duration is non-positive.
+        double GetTxOfferedLoad(Time duration) const;
+
+        /// @brief Get the transmit offered load in bits per second, inferring
+        /// duration from the flow's own timing data (timeLastTxPacket - timeFirstTxPacket).
+        /// @return Offered load in bps, or 0.0 if the inferred duration is non-positive.
+        double GetTxOfferedLoad() const;
+
+        /// @brief Get the packet loss ratio.
+        /// Defined as 1.0 - (rxPackets / txPackets).
+        /// @return Packet loss ratio in [0.0, 1.0], or 0.0 if no packets were transmitted.
+        double GetPacketLossRatio() const;
     };
 
     // --- basic methods ---
@@ -238,6 +274,12 @@ class FlowMonitor : public Object
     /// accounted for.
     /// @returns the flows statistics
     const FlowStatsContainer& GetFlowStats() const;
+
+    /// Retrieve the statistics for a single flow by its FlowId.
+    /// @param flowId the flow identifier
+    /// @returns const reference to the FlowStats for the given flow
+    /// @throws Fatal error if the flow ID is not found
+    const FlowStats& GetFlowStats(FlowId flowId) const;
 
     /// Get a list of all FlowProbe's associated with this FlowMonitor
     /// @returns a list of all the probes

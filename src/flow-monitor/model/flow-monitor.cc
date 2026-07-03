@@ -557,4 +557,89 @@ FlowMonitor::ResetAllStats()
     }
 }
 
+// --- FlowStats stats methods ---
+
+Time
+FlowMonitor::FlowStats::GetMeanDelay() const
+{
+    if (rxPackets == 0)
+    {
+        return Seconds(0);
+    }
+    return delaySum / rxPackets;
+}
+
+Time
+FlowMonitor::FlowStats::GetMeanJitter() const
+{
+    if (rxPackets < 2)
+    {
+        return Seconds(0);
+    }
+    return jitterSum / (rxPackets - 1);
+}
+
+double
+FlowMonitor::FlowStats::GetRxThroughput(Time duration) const
+{
+    double durationSeconds = duration.GetSeconds();
+    if (durationSeconds <= 0.0)
+    {
+        return 0.0;
+    }
+    return rxBytes * 8.0 / durationSeconds;
+}
+
+double
+FlowMonitor::FlowStats::GetRxThroughput() const
+{
+    if (rxPackets == 0)
+    {
+        return 0.0;
+    }
+    Time duration = timeLastRxPacket - timeFirstTxPacket;
+    return GetRxThroughput(duration);
+}
+
+double
+FlowMonitor::FlowStats::GetTxOfferedLoad(Time duration) const
+{
+    double durationSeconds = duration.GetSeconds();
+    if (durationSeconds <= 0.0)
+    {
+        return 0.0;
+    }
+    return txBytes * 8.0 / durationSeconds;
+}
+
+double
+FlowMonitor::FlowStats::GetTxOfferedLoad() const
+{
+    if (txPackets == 0)
+    {
+        return 0.0;
+    }
+    Time duration = timeLastTxPacket - timeFirstTxPacket;
+    return GetTxOfferedLoad(duration);
+}
+
+double
+FlowMonitor::FlowStats::GetPacketLossRatio() const
+{
+    if (txPackets == 0)
+    {
+        return 0.0;
+    }
+    return 1.0 - (static_cast<double>(rxPackets) / static_cast<double>(txPackets));
+}
+
+const FlowMonitor::FlowStats&
+FlowMonitor::GetFlowStats(FlowId flowId) const
+{
+    auto it = m_flowStats.find(flowId);
+    NS_ABORT_MSG_IF(it == m_flowStats.end(),
+                    "FlowMonitor::GetFlowStats(): Flow ID " << flowId << " not found");
+    return it->second;
+}
+
 } // namespace ns3
