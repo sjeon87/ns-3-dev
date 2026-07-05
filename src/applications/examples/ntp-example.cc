@@ -6,15 +6,14 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
-#include "ntp-client.h"
-#include "ntp-server.h"
-
 #include "ns3/core-module.h"
 #include "ns3/dynamic-skew-scheduler.h"
 #include "ns3/internet-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/local-clock-helper.h"
 #include "ns3/network-module.h"
+#include "ns3/ntp-client.h"
+#include "ns3/ntp-server.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/scheduler-clock.h"
 
@@ -23,7 +22,7 @@
 
 /**
  * @file
- * @ingroup node-level-scheduler
+ * @ingroup applications
  *
  * This example demonstrates a simplified NTP (Network Time Protocol) client/server exchange
  * using a star topology: one server node and three client nodes, each connected to the server

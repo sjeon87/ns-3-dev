@@ -9,8 +9,8 @@
 #ifndef EPOCH_TABLE_H
 #define EPOCH_TABLE_H
 
-#include "ns3/nstime.h"
-#include "ns3/object.h"
+#include "nstime.h"
+#include "object.h"
 
 #include <map>
 #include <vector>

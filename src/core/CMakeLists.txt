@@ -132,6 +132,10 @@ set(source_files
     model/heap-scheduler.cc
     model/calendar-scheduler.cc
     model/priority-queue-scheduler.cc
+    model/epoch-table.cc
+    model/static-skew-scheduler.cc
+    model/dynamic-skew-scheduler.cc
+    model/bounded-skew-scheduler.cc
     model/event-impl.cc
     model/simulator.cc
     model/simulator-impl.cc
@@ -209,6 +213,7 @@ set(header_files
     model/boolean.h
     model/breakpoint.h
     model/build-profile.h
+    model/bounded-skew-scheduler.h
     model/calendar-scheduler.h
     model/callback.h
     model/command-line.h
@@ -219,7 +224,9 @@ set(header_files
     model/deprecated.h
     model/des-metrics.h
     model/double.h
+    model/dynamic-skew-scheduler.h
     model/enum.h
+    model/epoch-table.h
     model/event-id.h
     model/event-impl.h
     model/fatal-error.h
@@ -267,6 +274,7 @@ set(header_files
     model/simulator-impl.h
     model/simulator.h
     model/singleton.h
+    model/static-skew-scheduler.h
     model/string.h
     model/synchronizer.h
     model/system-path.h
@@ -302,11 +310,14 @@ set(test_sources
     ${gsl_test_sources}
     test/attribute-container-test-suite.cc
     test/attribute-test-suite.cc
+    test/bounded-skew-scheduler-test-suite.cc
     test/build-profile-test-suite.cc
     test/callback-test-suite.cc
     test/command-line-test-suite.cc
     test/config-test-suite.cc
+    test/dynamic-skew-scheduler-test-suite.cc
     test/environment-variable-test-suite.cc
+    test/epoch-table-test-suite.cc
     test/event-garbage-collector-test-suite.cc
     test/global-value-test-suite.cc
     test/hash-test-suite.cc
@@ -322,6 +333,7 @@ set(test_sources
     test/sample-test-suite.cc
     test/simulator-test-suite.cc
     test/splitstring-test-suite.cc
+    test/static-skew-scheduler-test-suite.cc
     test/system-path-test-suite.cc
     test/threaded-test-suite.cc
     test/time-test-suite.cc

@@ -8,10 +8,10 @@
 
 #include "dynamic-skew-scheduler.h"
 
-#include "ns3/assert.h"
-#include "ns3/double.h"
-#include "ns3/log.h"
-#include "ns3/simulator.h"
+#include "assert.h"
+#include "double.h"
+#include "log.h"
+#include "simulator.h"
 
 #include <limits>
 

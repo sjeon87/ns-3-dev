@@ -30,12 +30,12 @@ NtpClient::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::NtpClient")
                             .SetParent<Application>()
-                            .SetGroupName("NodeLevelScheduler")
+                            .SetGroupName("Applications")
                             .AddConstructor<NtpClient>();
     return tid;
 }
 
-static constexpr double MIN_SLEW_RATE = 0.01;
+static constexpr double MIN_SLEW_RATE = 0.01; //!< Floor on the computed clock slew rate
 
 NtpClient::NtpClient()
 {

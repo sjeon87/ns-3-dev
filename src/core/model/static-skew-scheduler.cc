@@ -8,9 +8,9 @@
 
 #include "static-skew-scheduler.h"
 
-#include "ns3/double.h"
-#include "ns3/log.h"
-#include "ns3/simulator.h"
+#include "double.h"
+#include "log.h"
+#include "simulator.h"
 
 namespace ns3
 {

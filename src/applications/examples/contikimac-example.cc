@@ -22,26 +22,30 @@
 
 /**
  * @file
- * @ingroup node-level-scheduler
+ * @ingroup applications
  *
  * This example demonstrates ContikiMAC-style radio duty cycling over a real sender/receiver
- * node pair connected by a SimpleNetDevice/SimpleChannel: the sender periodically transmits a
+ * node pair connected by a SimpleNetDevice: the sender periodically transmits a
  * real packet for a fixed burst duration, and the receiver performs periodic clear-channel
  * assessments (CCAs) using its own (possibly skewed) local clock.
  */
 
 using namespace ns3;
 
-Time g_ts, g_ti, g_tc, g_ccaWakeupInterval;
-bool g_isChannelActive = false;
+Time g_ts;                      //!< Transmission duration
+Time g_ti;                      //!< Inter-packet gap between sender retransmissions
+Time g_tc;                      //!< Time between the receiver's two CCAs in a wake cycle
+Time g_ccaWakeupInterval;       //!< Time between successive receiver wake cycles
+bool g_isChannelActive = false; //!< Whether the sender is currently transmitting
 
-bool g_inBlackout = false;
-Time g_blackoutStart = Seconds(0);
-Time g_prevBlackoutStart = Seconds(0);
-std::vector<double> g_observedDurations;
-std::vector<double> g_observedIntervals;
+bool g_inBlackout = false;               //!< Whether the receiver is currently in a blackout
+Time g_blackoutStart = Seconds(0);       //!< Simulation time the current blackout started
+Time g_prevBlackoutStart = Seconds(0);   //!< Simulation time the previous blackout started
+std::vector<double> g_observedDurations; //!< Observed blackout durations, in seconds
+std::vector<double> g_observedIntervals; //!< Observed intervals between blackouts, in seconds
 
-std::vector<std::pair<double, int>> g_timeline;
+std::vector<std::pair<double, int>>
+    g_timeline; //!< (time, channel-busy) samples for the whole run, for plotting
 
 /**
  * @brief One receiver wake cycle and whether either of its CCAs sensed the channel as busy.
@@ -52,14 +56,31 @@ struct Message
     bool hit;          //!< Whether CCA1 or its CCA2 followup sensed the channel as busy
 };
 
-std::vector<Message> g_messages;
+std::vector<Message> g_messages; //!< One entry per receiver wake cycle so far
 
-Ptr<SimpleNetDevice> g_senderDevice;
-Ptr<SimpleNetDevice> g_receiverDevice;
+Ptr<SimpleNetDevice> g_senderDevice;   //!< The sender's net device
+Ptr<SimpleNetDevice> g_receiverDevice; //!< The receiver's net device
 
+/**
+ * @brief Start a sender transmission burst and schedule its end.
+ */
 void SenderTxStart();
+
+/**
+ * @brief End the current transmission burst and schedule the next one.
+ */
 void SenderTxEnd();
+
+/**
+ * @brief Perform the receiver's first CCA of a wake cycle.
+ * @param context the receiver node's context ID.
+ */
 void ReceiverCCA1(uint32_t context);
+
+/**
+ * @brief Perform the receiver's second (follow-up) CCA, after CCA1 sensed a busy channel.
+ * @param context the receiver node's context ID.
+ */
 void ReceiverCCA2(uint32_t context);
 
 /**

@@ -10,13 +10,12 @@
 #define DYNAMIC_SKEW_SCHEDULER_H
 
 #include "epoch-table.h"
-
-#include "ns3/event-id.h"
-#include "ns3/event-impl.h"
-#include "ns3/nstime.h"
-#include "ns3/ptr.h"
-#include "ns3/random-variable-stream.h"
-#include "ns3/scheduler.h"
+#include "event-id.h"
+#include "event-impl.h"
+#include "nstime.h"
+#include "ptr.h"
+#include "random-variable-stream.h"
+#include "scheduler.h"
 
 #include <queue>
 #include <unordered_map>
@@ -208,32 +207,37 @@ class DynamicSkewScheduler : public Scheduler
      */
     static void ChangeCurrentSkew(uint32_t nodeId, double skew);
 
-  private:
+  protected:
     /**
      * @brief Schedule the periodic cleanup task.
+     * Virtual so derived schedulers can customize the cleanup cadence or side effects.
      */
-    void StartCleanupTask();
+    virtual void StartCleanupTask();
 
     /**
      * @brief Ensure the epoch table covers the target node time (Algorithm 4).
+     * Virtual so derived schedulers can constrain how epochs are generated.
      * @param nodeId The node context.
      * @param targetNodeTime The local time that needs to be reached.
      */
-    void ExtendEpochTable(uint32_t nodeId, Time targetNodeTime);
+    virtual void ExtendEpochTable(uint32_t nodeId, Time targetNodeTime);
 
     /**
      * @brief Periodic cleanup event handler (PruneEpochsBefore).
+     * Virtual so derived schedulers can extend or replace the pruning behavior.
      */
-    void Cleanup();
+    virtual void Cleanup();
 
     Ptr<EpochTable> m_epochTable;    //!< The epoch table instance
-    bool m_initialized;              //!< specific initialization flag
     double m_maxSkew;                //!< Maximum allowed clock skew
     double m_minSkew;                //!< Minimum allowed clock skew
     Time m_windowSize;               //!< Duration of the lookahead window
     Time m_updatePeriod;             //!< How often the skew changes (upsilon)
     EventId m_cleanupEvent;          //!< The ID of the next scheduled cleanup event
     Ptr<UniformRandomVariable> m_uv; //!< RNG for assigning node skew per epoch
+
+  private:
+    bool m_initialized; //!< specific initialization flag
 
     std::priority_queue<Scheduler::Event, std::vector<Scheduler::Event>, EventSimTimeCmp>
         m_globalQueue; //!< Q_sim: Holds global/physical simulator events

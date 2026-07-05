@@ -9,8 +9,9 @@
 #ifndef LOCAL_CLOCK_HELPER_H
 #define LOCAL_CLOCK_HELPER_H
 
+#include "node-container.h"
+
 #include "ns3/local-clock.h"
-#include "ns3/node-container.h"
 #include "ns3/node.h"
 #include "ns3/object-factory.h"
 

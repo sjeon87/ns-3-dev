@@ -8,8 +8,8 @@
 
 #include "epoch-table.h"
 
-#include "ns3/log.h"
-#include "ns3/ptr.h"
+#include "log.h"
+#include "ptr.h"
 
 namespace ns3
 {

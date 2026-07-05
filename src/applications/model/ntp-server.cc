@@ -26,7 +26,7 @@ NtpServer::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::NtpServer")
                             .SetParent<Application>()
-                            .SetGroupName("NodeLevelScheduler")
+                            .SetGroupName("Applications")
                             .AddConstructor<NtpServer>();
     return tid;
 }

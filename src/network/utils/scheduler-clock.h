@@ -8,8 +8,9 @@
 #ifndef SCHEDULER_CLOCK_H
 #define SCHEDULER_CLOCK_H
 
-#include "epoch-table.h"
 #include "local-clock.h"
+
+#include "ns3/epoch-table.h"
 
 namespace ns3
 {

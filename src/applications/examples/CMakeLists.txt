@@ -1,4 +1,22 @@
 build_lib_example(
+  NAME contikimac-example
+  SOURCE_FILES contikimac-example.cc
+  LIBRARIES_TO_LINK ${libcore}
+                    ${libnetwork}
+)
+
+build_lib_example(
+  NAME ntp-example
+  SOURCE_FILES ntp-example.cc
+  LIBRARIES_TO_LINK
+    ${libcore}
+    ${libnetwork}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
   NAME three-gpp-http-example
   SOURCE_FILES three-gpp-http-example.cc
   LIBRARIES_TO_LINK
