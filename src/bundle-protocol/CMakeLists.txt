@@ -47,6 +47,7 @@ build_lib(
   TEST_SOURCES
     test/test-bundle-header.cc
     test/test-bundle.cc
+    test/test-bundle-fragmentation.cc
     test/test-sdnv.cc
     test/test-bundle-storage-engine.cc
     test/test-bundle-agent.cc

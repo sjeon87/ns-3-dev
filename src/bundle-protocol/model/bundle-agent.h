@@ -25,6 +25,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace ns3
@@ -206,8 +207,40 @@ class BundleAgent : public Object
      */
     void OnTxResult(uint32_t handle, bool success);
 
+    /**
+     * @brief Identifies the logical bundle (and thus fragment set) a fragment belongs to. Fragments of the same original
+     * bundle share their source EID, creation timestamp, and
+     * sequence number.
+     */
+    using FragmentKey = std::tuple<std::string, int64_t, uint32_t>;
+
+    /**
+     * @brief Tracks the partial state of a fragmented bundle awaiting reassembly.
+     */
+    struct FragmentAssembly
+    {
+        uint32_t totalLength = 0;                 //!< Total application data unit length
+        std::map<uint32_t, Ptr<Packet>> pieces;   //!< Received payload chunks, keyed by offset
+        Ptr<PrimaryBlock> templatePrimary;        //!< Primary block used to build the reassembled bundle
+        EventId expiryEvent;                      //!< Event that drops the buffer once expired
+    };
+
+    /**
+     * @brief Buffer an incoming fragment and attempt to reassemble its bundle.
+     * @param fragment the received fragment bundle (IS_FRG must be set)
+     * @return the reassembled bundle if all fragments have been received, nullptr otherwise
+     */
+    Ptr<Bundle> TryReassembleFragment(Ptr<Bundle> fragment);
+
+    /**
+     * @brief Drop an incomplete fragment reassembly buffer whose lifetime has expired.
+     * @param key the fragment set's identifying key
+     */
+    void ExpireFragmentBuffer(FragmentKey key);
+
     std::string m_localEID;                         //!< Local EID of process
     uint32_t m_seqNumber = 0;                       //!< Sequence number of messages sent
+    uint32_t m_fragmentationMtu = 0;                //!< Max payload bytes per fragment (0 = disabled)
     Ptr<BundleStorageEngine> m_bundleStorageEngine; //!< Storage engine for node
     std::map<std::string, Ptr<BundleCla>> m_clas;   //!< Map of CLAs with destination EIDs
     std::map<uint32_t, EventId> m_expiryEvents;     //!< Expiry event tracker
@@ -215,6 +248,7 @@ class BundleAgent : public Object
     Ptr<BaseRoutingEngine> m_contactGraph;          //!< Routing oracle
     EventId m_backlogCheckEvent;                    //!< Event to periodically check backlog
     std::set<uint32_t> m_inTransit;                 //!< Set of bundle handles currently in transit
+    std::map<FragmentKey, FragmentAssembly> m_fragmentBuffers; //!< Pending fragment reassembly state
 };
 
 } // namespace ns3

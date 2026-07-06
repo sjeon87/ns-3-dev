@@ -17,6 +17,8 @@
 
 #include "ns3/log.h"
 
+#include <algorithm>
+
 namespace ns3
 {
 
@@ -197,6 +199,55 @@ Bundle::IsAdminRecord() const
     Ptr<PrimaryBlock> primary = GetPrimaryBlock();
     NS_ASSERT_MSG(primary, "Bundle has no primary block");
     return (primary->GetHeader().GetProcFlags() & (1 << ADMIN_RECORD)) != 0;
+}
+
+std::vector<Ptr<Bundle>>
+Bundle::Fragment(Ptr<Bundle> original, uint32_t maxPayloadSize)
+{
+    NS_LOG_FUNCTION(original << maxPayloadSize);
+    NS_ASSERT_MSG(maxPayloadSize > 0, "maxPayloadSize must be positive");
+
+    std::vector<Ptr<Bundle>> fragments;
+
+    Ptr<PrimaryBlock> origPrimary = original->GetPrimaryBlock();
+    Ptr<PayloadBlock> origPayload = original->GetPayloadBlock();
+    NS_ASSERT_MSG(origPrimary && origPayload,
+                  "Cannot fragment a bundle without primary and payload blocks");
+
+    const PrimaryBlockHeader& origHeader = origPrimary->GetHeader();
+    Ptr<Packet> fullPayload = origPayload->GetPayload();
+    uint32_t totalLength = fullPayload ? fullPayload->GetSize() : 0;
+
+    bool alreadyFragment = (origHeader.GetProcFlags() & (1 << IS_FRG)) != 0;
+    uint32_t baseOffset = alreadyFragment ? origHeader.GetFragmentOffset() : 0;
+    uint32_t totalAppDataLength = alreadyFragment ? origHeader.GetTotalAppDataLength() : totalLength;
+
+    for (uint32_t offset = 0; offset < totalLength; offset += maxPayloadSize)
+    {
+        uint32_t chunkSize = std::min(maxPayloadSize, totalLength - offset);
+        Ptr<Packet> chunk = fullPayload->CreateFragment(offset, chunkSize);
+
+        PrimaryBlockHeader fragHeader = origHeader;
+        fragHeader.SetProcFlags(origHeader.GetProcFlags() | (1 << IS_FRG));
+        fragHeader.SetFragmentOffset(baseOffset + offset);
+        fragHeader.SetTotalAppDataLength(totalAppDataLength);
+
+        Ptr<PrimaryBlock> fragPrimary = CreateObject<PrimaryBlock>();
+        fragPrimary->GetHeader() = fragHeader;
+
+        PayloadBlockHeader fragPayloadHeader = origPayload->GetHeader();
+
+        Ptr<PayloadBlock> fragPayload = CreateObject<PayloadBlock>();
+        fragPayload->GetHeader() = fragPayloadHeader;
+        fragPayload->SetPayload(chunk);
+
+        Ptr<Bundle> fragmentBundle = CreateObject<Bundle>();
+        fragmentBundle->AddBlock(fragPrimary);
+        fragmentBundle->AddBlock(fragPayload);
+        fragments.push_back(fragmentBundle);
+    }
+
+    return fragments;
 }
 
 } // namespace ns3

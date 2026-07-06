@@ -69,7 +69,8 @@ PrimaryBlockHeader::GetSerializedSize() const
     uint32_t size = 0;
 
     bool hasCrc = (m_crcType != 0);
-    uint32_t arrayLen = hasCrc ? 9 : 8;
+    bool isFragment = (m_procFlags & (1 << IS_FRG)) != 0;
+    uint32_t arrayLen = 8 + (hasCrc ? 1 : 0) + (isFragment ? 2 : 0);
 
     size += Cbor::GetArraySize(arrayLen);
     size += Cbor::GetUintSize(m_version);
@@ -84,6 +85,12 @@ PrimaryBlockHeader::GetSerializedSize() const
     size += Cbor::GetUintSize(m_creationTime.GetMilliSeconds());
     size += Cbor::GetUintSize(m_seq);
     size += Cbor::GetUintSize(m_lifetime.GetMilliSeconds());
+
+    if (isFragment)
+    {
+        size += Cbor::GetUintSize(m_fragmentOffset);
+        size += Cbor::GetUintSize(m_totalAppDataLength);
+    }
 
     if (hasCrc)
     {
@@ -107,7 +114,8 @@ PrimaryBlockHeader::Serialize(Buffer::Iterator start) const
     Buffer::Iterator i = start;
 
     bool hasCrc = (m_crcType != 0);
-    uint32_t arrayLen = hasCrc ? 9 : 8;
+    bool isFragment = (m_procFlags & (1 << IS_FRG)) != 0;
+    uint32_t arrayLen = 8 + (hasCrc ? 1 : 0) + (isFragment ? 2 : 0);
 
     Cbor::WriteArray(i, arrayLen);
     Cbor::WriteUint(i, m_version);
@@ -122,6 +130,12 @@ PrimaryBlockHeader::Serialize(Buffer::Iterator start) const
     Cbor::WriteUint(i, m_creationTime.GetMilliSeconds());
     Cbor::WriteUint(i, m_seq);
     Cbor::WriteUint(i, m_lifetime.GetMilliSeconds());
+
+    if (isFragment)
+    {
+        Cbor::WriteUint(i, m_fragmentOffset);
+        Cbor::WriteUint(i, m_totalAppDataLength);
+    }
 
     if (hasCrc)
     {
@@ -157,6 +171,17 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     m_creationTime = MilliSeconds(Cbor::ReadUint(i));
     m_seq = Cbor::ReadUint(i);
     m_lifetime = MilliSeconds(Cbor::ReadUint(i));
+
+    if (m_procFlags & (1 << IS_FRG))
+    {
+        m_fragmentOffset = Cbor::ReadUint(i);
+        m_totalAppDataLength = Cbor::ReadUint(i);
+    }
+    else
+    {
+        m_fragmentOffset = 0;
+        m_totalAppDataLength = 0;
+    }
 
     if (m_crcType != 0)
     {

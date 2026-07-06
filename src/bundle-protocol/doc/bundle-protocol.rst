@@ -24,7 +24,7 @@ The BP class suite consists of five main components:
 
 A ``Bundle`` comprises an ordered sequence of ``BundleBlock`` instances, beginning with a ``PrimaryBlock`` followed by one or more ``PayloadBlock`` instances, conforming to :rfc:`9171`. The Primary Block header carries routing metadata: destination EID, source EID, report-to EID, creation timestamp, and bundle processing control flags. The entire Bundle is CBOR-encoded as an indefinite-length array [CBOR2013]_.
 
-``BundleBlock`` is implemented as an abstract base class with concrete subclasses for the Primary Block and Payload Block, each with a corresponding header encoded per :rfc:`9171`. Payloads are represented as ``ns3::Packet`` objects, serialized and deserialized at the convergence layer boundary. Extension blocks and fragmentation are left as future work.
+``BundleBlock`` is implemented as an abstract base class with concrete subclasses for the Primary Block and Payload Block, each with a corresponding header encoded per :rfc:`9171`. Payloads are represented as ``ns3::Packet`` objects, serialized and deserialized at the convergence layer boundary. Extension blocks are left as future work.
 
 **StorageEngine**
 
@@ -63,7 +63,13 @@ Each algorithm tracks link volume as the link data rate multiplied by the contac
 
 **Agent**
 
-The ``BundleAgent`` is the central controller for all bundle processing. It implements the following operations from :rfc:`9171`: administrative record generation, bundle transmission, dispatching, forwarding, expiration, reception, local delivery, and deletion. Fragmentation, ADU reassembly, and cancellation are left as future work.
+The ``BundleAgent`` is the central controller for all bundle processing. It implements the following operations from :rfc:`9171`: administrative record generation, bundle transmission, dispatching, forwarding, expiration, reception, local delivery, deletion, fragmentation, and ADU reassembly. Cancellation is left as future work.
+
+**Fragmentation and reassembly**
+
+Bundle fragmentation (:rfc:`9171`, Section 5.9) is triggered by the ``FragmentationMtu`` attribute on ``BundleAgent`` (default 0, disabled). If a payload passed to ``TransmitBundle`` exceeds ``FragmentationMtu`` bytes and the ``NO_FRAGMENT`` processing flag is not set, the agent splits it via ``Bundle::Fragment`` into multiple fragment bundles, each an independent, fully routable ``Bundle`` with the ``IS_FRG`` processing flag set and the fragment offset and total application data unit (ADU) length populated on its Primary Block. Each fragment is stored, scheduled for expiry, and forwarded exactly as a whole bundle would be; intermediate nodes require no special handling, since a fragment is just an ordinary bundle.
+
+On reception, a fragment destined for the local node is buffered by the ``BundleAgent`` in a reassembly map keyed by the subject bundle's source EID, creation timestamp, and sequence number -- the same identity used for administrative reporting. Once all bytes of the ADU have been received (no gaps between offsets), the agent reconstructs a single non-fragment ``Bundle`` and delivers it through the normal local-delivery path. Incomplete reassembly buffers are dropped once the fragment's lifetime elapses, mirroring whole-bundle expiry. This fragmentation trigger is a static, payload-size threshold rather than a live check against per-contact channel capacity; see Scope and Limitations.
 
 The send path proceeds as follows:
 
@@ -194,6 +200,14 @@ Tests the ``BundleStorageEngine`` API:
 - Confirms ``GetHandlesForDestination`` returns the correct set of handles for a known EID and an empty vector for an unknown EID.
 - Verifies that ``DeleteBundle`` decrements the size and removes the entry, and returns a non-zero error code for an invalid handle.
 
+**bundle-fragmentation** (``test/test-bundle-fragmentation.cc``)
+
+Tests bundle fragmentation and reassembly:
+
+- ``Bundle::Fragment`` splits a payload into the expected number of fragments, each carrying the ``IS_FRG`` flag, a correct fragment offset, and the total ADU length; concatenating fragment payloads in order reproduces the original payload.
+- ``BundleAgent`` end-to-end: a sender with ``FragmentationMtu`` set below the payload size fragments a bundle into the expected number of packets sent to a mock CLA; a receiver fed those fragments out of order and with gaps does not deliver until the set is complete, then delivers exactly once with the correctly reassembled payload.
+- The ``NO_FRAGMENT`` processing flag suppresses fragmentation, even when the payload exceeds ``FragmentationMtu``.
+
 **bundle-agent** (``test/bundle-agent-test.cc``)
 
 Tests the ``BundleAgent`` routing and store-and-forward logic using mock CLA and routing engine stubs:
@@ -225,7 +239,7 @@ Scope and Limitations
 
 The following features of :rfc:`9171` are not yet implemented:
 
-- **Bundle fragmentation and ADU reassembly** — bundles larger than the available channel capacity during a contact window are dropped rather than partially delivered and reassembled. Users must size bundles relative to the expected contact capacity in their topology.
+- **Capacity-aware fragmentation** — fragmentation is triggered by a static ``FragmentationMtu`` attribute rather than the actual available channel capacity during a contact window. Users must size ``FragmentationMtu`` relative to the expected contact capacity in their topology; en-route (as opposed to source-node) fragmentation is not performed.
 - **Extension blocks** — hop-count limiting and bundle age expiry as defined in the standard are not enforced.
 - **CRC validation** — corrupted blocks are not detected at the BP layer; corruption surfaces only at the application.
 - **Cancellation and per-bundle-ID deletion** — bundle lifecycle management is limited to expiry-timer-based removal.
@@ -239,7 +253,7 @@ The module assumes perfect clock synchronization across all nodes. Real deployme
 Future Work
 +++++++++++
 
-- Bundle fragmentation and ADU reassembly per :rfc:`9171`.
+- Capacity-aware, en-route fragmentation driven by live per-contact channel capacity.
 - Extension block support (hop count, bundle age, previous node).
 - CRC validation and bundle flag processing on reception.
 - Per-bundle-ID deletion and cancellation requests.

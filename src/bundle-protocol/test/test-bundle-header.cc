@@ -150,6 +150,91 @@ BundleHeaderTestCase::DoRun()
  * @ingroup dtn-test
  * @ingroup tests
  *
+ * @brief Unit tests for the PrimaryBlockHeader's fragment fields (RFC 9171, Section 5.9)
+ */
+class PrimaryBlockFragmentHeaderTestCase : public TestCase
+{
+  public:
+    PrimaryBlockFragmentHeaderTestCase();
+    ~PrimaryBlockFragmentHeaderTestCase() override;
+    void DoRun() override;
+};
+
+PrimaryBlockFragmentHeaderTestCase::PrimaryBlockFragmentHeaderTestCase()
+    : TestCase("PrimaryBlockHeader Fragment Field Serialization")
+{
+}
+
+PrimaryBlockFragmentHeaderTestCase::~PrimaryBlockFragmentHeaderTestCase()
+{
+}
+
+void
+PrimaryBlockFragmentHeaderTestCase::DoRun()
+{
+    PrimaryBlockHeader frag;
+    frag.SetVersion(7);
+    frag.SetProcFlags(1 << PBB_PROC_FLAGS::IS_FRG);
+    frag.SetCrcType(1);
+    frag.SetCreationTime(Seconds(10));
+    frag.SetLifetime(Seconds(3600));
+    frag.SetSequenceNumber(7);
+    frag.SetDestinationEID("dtn:node1");
+    frag.SetSourceEID("dtn:node0");
+    frag.SetReportToEID("dtn:none");
+    frag.SetFragmentOffset(512);
+    frag.SetTotalAppDataLength(2048);
+
+    Ptr<Packet> p1 = Create<Packet>();
+    p1->AddHeader(frag);
+
+    PrimaryBlockHeader frag2;
+    uint32_t bytes1 = p1->RemoveHeader(frag2);
+
+    NS_TEST_ASSERT_MSG_EQ(bytes1,
+                          frag.GetSerializedSize(),
+                          "Fragment PrimaryBlockHeader serialized size mismatch");
+    NS_TEST_ASSERT_MSG_EQ(frag2.GetFragmentOffset(), 512, "Fragment offset mismatch");
+    NS_TEST_ASSERT_MSG_EQ(frag2.GetTotalAppDataLength(), 2048, "Total ADU length mismatch");
+    NS_TEST_ASSERT_MSG_EQ(frag2.GetProcFlags() & (1 << PBB_PROC_FLAGS::IS_FRG),
+                          static_cast<uint32_t>(1 << PBB_PROC_FLAGS::IS_FRG),
+                          "IS_FRG flag not preserved");
+
+    PrimaryBlockHeader nonFrag;
+    nonFrag.SetVersion(7);
+    nonFrag.SetProcFlags(0);
+    nonFrag.SetCrcType(1);
+    nonFrag.SetCreationTime(Seconds(10));
+    nonFrag.SetLifetime(Seconds(3600));
+    nonFrag.SetSequenceNumber(7);
+    nonFrag.SetDestinationEID("dtn:node1");
+    nonFrag.SetSourceEID("dtn:node0");
+    nonFrag.SetReportToEID("dtn:none");
+    nonFrag.SetFragmentOffset(999); // ignore this
+    nonFrag.SetTotalAppDataLength(999);
+
+    Ptr<Packet> p2 = Create<Packet>();
+    p2->AddHeader(nonFrag);
+
+    PrimaryBlockHeader nonFrag2;
+    uint32_t bytes2 = p2->RemoveHeader(nonFrag2);
+
+    NS_TEST_ASSERT_MSG_EQ(bytes2,
+                          nonFrag.GetSerializedSize(),
+                          "Non-fragment PrimaryBlockHeader serialized size mismatch");
+    NS_TEST_ASSERT_MSG_EQ(nonFrag2.GetFragmentOffset(),
+                          0,
+                          "Fragment offset must be zero when IS_FRG is unset");
+    NS_TEST_ASSERT_MSG_EQ(nonFrag2.GetTotalAppDataLength(),
+                          0,
+                          "Total ADU length must be zero when IS_FRG is unset");
+    NS_TEST_ASSERT_MSG_LT(bytes2, bytes1, "Non-fragment header should be smaller on the wire");
+}
+
+/**
+ * @ingroup dtn-test
+ * @ingroup tests
+ *
  * @brief Bundle Header Test Suite
  */
 class BundleHeaderTestSuite : public TestSuite
@@ -159,6 +244,7 @@ class BundleHeaderTestSuite : public TestSuite
         : TestSuite("bundle-header", Type::UNIT)
     {
         AddTestCase(new BundleHeaderTestCase(), TestCase::Duration::QUICK);
+        AddTestCase(new PrimaryBlockFragmentHeaderTestCase(), TestCase::Duration::QUICK);
     }
 };
 

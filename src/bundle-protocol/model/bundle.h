@@ -141,6 +141,15 @@ class Bundle : public Object
      */
     bool IsAdminRecord() const;
 
+    /**
+     * @brief Split a bundle's application data unit into fragment bundles.
+     *
+     * @param original the bundle to fragment
+     * @param maxPayloadSize the maximum payload size, in bytes, carried by each fragment
+     * @return an ordered vector of fragment bundles covering the whole application data unit
+     */
+    static std::vector<Ptr<Bundle>> Fragment(Ptr<Bundle> original, uint32_t maxPayloadSize);
+
   private:
     std::vector<Ptr<BundleBlock>> m_blocks; //!< Ordered sequence of blocks comprising the bundle
 };

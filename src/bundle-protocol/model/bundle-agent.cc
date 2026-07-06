@@ -62,6 +62,12 @@ BundleAgent::GetTypeId()
                           UintegerValue(0),
                           MakeUintegerAccessor(&BundleAgent::SetStorageLimitFromAttribute,
                                                &BundleAgent::GetStorageEngineSize),
+                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("FragmentationMtu",
+                          "Maximum payload size in bytes per bundle fragment (0 = fragmentation "
+                          "disabled)",
+                          UintegerValue(0),
+                          MakeUintegerAccessor(&BundleAgent::m_fragmentationMtu),
                           MakeUintegerChecker<uint32_t>());
     return tid;
 }
@@ -222,27 +228,52 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
         return 0;
     }
 
-    uint32_t handle = m_bundleStorageEngine->StoreBundle(bundle);
-    if (handle == 0)
-    {
-        NS_LOG_WARN("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
-                                   << "s: TransmitBundle: storage full, dropping bundle to "
-                                   << destinationEID);
-        return 0;
-    }
+    bool shouldFragment = m_fragmentationMtu > 0 && size > m_fragmentationMtu &&
+                          !(procFlags & (1 << NO_FRAGMENT));
 
-    EventId expiryEvent = Simulator::Schedule(ttl, &BundleAgent::ExpireBundle, this, handle);
-    m_expiryEvents[handle] = expiryEvent;
-
-    uint32_t result = ForwardBundle(handle);
-    if (result != 0)
+    std::vector<Ptr<Bundle>> bundlesToSend;
+    if (shouldFragment)
     {
+        bundlesToSend = Bundle::Fragment(bundle, m_fragmentationMtu);
         NS_LOG_INFO("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
-                                   << "s: TransmitBundle: no CLA available yet, bundle " << handle
-                                   << " held in storage for " << destinationEID);
-        return handle;
+                                   << "s: TransmitBundle: fragmented bundle to "
+                                   << destinationEID << " into " << bundlesToSend.size()
+                                   << " fragments");
     }
-    return 0;
+    else
+    {
+        bundlesToSend.push_back(bundle);
+    }
+
+    uint32_t firstHandle = 0;
+    for (const auto& toSend : bundlesToSend)
+    {
+        uint32_t handle = m_bundleStorageEngine->StoreBundle(toSend);
+        if (handle == 0)
+        {
+            NS_LOG_WARN("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
+                                       << "s: TransmitBundle: storage full, dropping bundle to "
+                                       << destinationEID);
+            continue;
+        }
+
+        EventId expiryEvent = Simulator::Schedule(ttl, &BundleAgent::ExpireBundle, this, handle);
+        m_expiryEvents[handle] = expiryEvent;
+
+        if (firstHandle == 0)
+        {
+            firstHandle = handle;
+        }
+
+        if (ForwardBundle(handle) != 0)
+        {
+            NS_LOG_INFO("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
+                                       << "s: TransmitBundle: no CLA available yet, bundle "
+                                       << handle << " held in storage for " << destinationEID);
+        }
+    }
+
+    return firstHandle;
 }
 
 uint32_t
@@ -318,6 +349,20 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
 
     if (IsLocalDestination(destination))
     {
+        uint32_t procFlags = bundle->GetPrimaryBlock()->GetHeader().GetProcFlags();
+        if (procFlags & (1 << IS_FRG))
+        {
+            Ptr<Bundle> reassembled = TryReassembleFragment(bundle);
+            if (!reassembled)
+            {
+                NS_LOG_INFO("[BP:Agent - "
+                            << m_localEID << "] t=" << Simulator::Now().GetSeconds()
+                            << "s: RecvBundle: buffered fragment, awaiting remainder");
+                return 0;
+            }
+            bundle = reassembled;
+        }
+
         NS_LOG_INFO("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
                                    << "s: RecvBundle: delivering bundle locally");
 
@@ -413,6 +458,103 @@ BundleAgent::ExpireBundle(uint32_t handle)
     m_expiryEvents.erase(handle);
     m_bundleStorageEngine->DeleteBundle(handle);
     return 0;
+}
+
+Ptr<Bundle>
+BundleAgent::TryReassembleFragment(Ptr<Bundle> fragment)
+{
+    NS_LOG_FUNCTION(this << fragment);
+
+    Ptr<PrimaryBlock> primary = fragment->GetPrimaryBlock();
+    const PrimaryBlockHeader& header = primary->GetHeader();
+    FragmentKey key(header.GetSourceEID(), header.GetCreationTime().GetTimeStep(),
+                    header.GetSequenceNumber());
+
+    auto it = m_fragmentBuffers.find(key);
+    if (it == m_fragmentBuffers.end())
+    {
+        Time remaining = fragment->GetExpiry() - Simulator::Now();
+        if (remaining <= Time(0))
+        {
+            NS_LOG_INFO("[BP:Agent - "
+                        << m_localEID << "] t=" << Simulator::Now().GetSeconds()
+                        << "s: TryReassembleFragment: fragment already expired, dropping");
+            return nullptr;
+        }
+
+        FragmentAssembly assembly;
+        assembly.totalLength = header.GetTotalAppDataLength();
+        assembly.templatePrimary = primary;
+        assembly.expiryEvent =
+            Simulator::Schedule(remaining, &BundleAgent::ExpireFragmentBuffer, this, key);
+        it = m_fragmentBuffers.emplace(key, std::move(assembly)).first;
+    }
+
+    FragmentAssembly& assembly = it->second;
+    Ptr<PayloadBlock> payloadBlock = fragment->GetPayloadBlock();
+    assembly.pieces[header.GetFragmentOffset()] = payloadBlock->GetPayload();
+
+    uint32_t covered = 0;
+    for (const auto& piece : assembly.pieces)
+    {
+        if (piece.first != covered)
+        {
+            return nullptr;
+        }
+        covered += piece.second->GetSize();
+    }
+
+    if (covered < assembly.totalLength)
+    {
+        return nullptr;
+    }
+
+    Ptr<Packet> fullPayload = Create<Packet>();
+    for (const auto& piece : assembly.pieces)
+    {
+        fullPayload->AddAtEnd(piece.second);
+    }
+
+    PrimaryBlockHeader finalHeader = assembly.templatePrimary->GetHeader();
+    finalHeader.SetProcFlags(finalHeader.GetProcFlags() & ~(1 << IS_FRG));
+    finalHeader.SetFragmentOffset(0);
+    finalHeader.SetTotalAppDataLength(0);
+
+    Ptr<PrimaryBlock> finalPrimary = CreateObject<PrimaryBlock>();
+    finalPrimary->GetHeader() = finalHeader;
+
+    PayloadBlockHeader finalPayloadHeader;
+    finalPayloadHeader.SetBlockType(1);
+    finalPayloadHeader.SetBlockNumber(1);
+    finalPayloadHeader.SetCrcType(0);
+    finalPayloadHeader.SetBlockLength(fullPayload->GetSize());
+
+    Ptr<PayloadBlock> finalPayloadBlock = CreateObject<PayloadBlock>();
+    finalPayloadBlock->GetHeader() = finalPayloadHeader;
+    finalPayloadBlock->SetPayload(fullPayload);
+
+    Ptr<Bundle> reassembled = CreateObject<Bundle>();
+    reassembled->AddBlock(finalPrimary);
+    reassembled->AddBlock(finalPayloadBlock);
+
+    assembly.expiryEvent.Cancel();
+    m_fragmentBuffers.erase(it);
+
+    return reassembled;
+}
+
+void
+BundleAgent::ExpireFragmentBuffer(FragmentKey key)
+{
+    NS_LOG_FUNCTION(this);
+
+    auto it = m_fragmentBuffers.find(key);
+    if (it != m_fragmentBuffers.end())
+    {
+        NS_LOG_INFO("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
+                                   << "s: ExpireFragmentBuffer: dropping incomplete fragment set");
+        m_fragmentBuffers.erase(it);
+    }
 }
 
 Ptr<Bundle>
