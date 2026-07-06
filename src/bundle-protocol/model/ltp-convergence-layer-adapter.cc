@@ -409,7 +409,7 @@ void
 SessionStateRecord::SetRpStartSerialNumber(uint64_t serialNum)
 {
     NS_LOG_FUNCTION(this << serialNum);
-    if (m_firstCpSerialNumber == 0)
+    if (m_firstRpSerialNumber == 0)
     {
         m_firstRpSerialNumber = serialNum;
     }
@@ -516,7 +516,7 @@ SessionStateRecord::GetClaimsLowerBound(uint32_t serialNum)
     auto it = m_rcvSegments.find(serialNum);
     if (it != m_rcvSegments.end())
     {
-        lower = it->second.high_bound;
+        lower = it->second.low_bound;
     }
     return lower;
 }
@@ -925,9 +925,8 @@ ReceiverSessionStateRecord::StoreGreenDataSegment(Ptr<Packet> p)
     packet->RemoveHeader(header);
     contentHeader.SetSegmentType(header.GetSegmentType());
     packet->RemoveHeader(contentHeader);
-    std::pair<uint32_t, Ptr<Packet>> entry;
-    entry = std::make_pair(contentHeader.GetOffset(), p);
-    m_rxRedBuffer.insert(entry);
+    m_rxRedBuffer.insert(std::make_pair(contentHeader.GetOffset(), p->Copy()));
+    m_rxGreendBuffer.push(p->Copy());
 }
 
 Ptr<Packet>
@@ -1072,6 +1071,12 @@ LtpBundleCla::LtpBundleCla()
 LtpBundleCla::~LtpBundleCla()
 {
     NS_LOG_FUNCTION(this);
+    if (m_rcvSocket)
+    {
+        m_rcvSocket->Close();
+        m_rcvSocket->SetRecvCallback(MakeNullCallback<void, Ptr<Socket>>());
+        m_rcvSocket = nullptr;
+    }
 }
 
 void

@@ -21,6 +21,7 @@
 #include "ns3/node.h"
 #include "ns3/socket.h"
 
+#include <map>
 #include <queue>
 #include <utility>
 #include <vector>
@@ -115,10 +116,30 @@ class TcpBundleCla : public BundleCla
      */
     void HandleRead(Ptr<Socket> socket);
 
+    /**
+     * @brief Prepend a 4-byte length prefix to a serialized bundle before handing it to a TCP
+     * socket.
+     *
+     * @param packet The serialized bundle to frame.
+     * @return The framed packet, ready to hand to Socket::Send().
+     */
+    static Ptr<Packet> FrameBundle(Ptr<Packet> packet);
+
+    /**
+     * @brief Pull as many complete, length-prefixed bundles as are available out of a socket's
+     * accumulated receive buffer.
+     * @param buffer The accumulated (possibly partial) byte stream received so far for a socket;
+     * complete messages are removed from the front as they are extracted.
+     * @return The complete framed bundles extracted, in arrival order (possibly empty).
+     */
+    static std::vector<Ptr<Packet>> ExtractFramedBundles(Ptr<Packet> buffer);
+
     Ptr<Socket> m_listenSocket; //!< Socket to listen for incoming connections
     Ptr<Socket> m_sendSocket;   //!< Socket to initiate outgoing connection
     std::vector<Ptr<Socket>>
         m_acceptedSockets; //!< List to track and keep alive incoming connection sockets
+    std::map<Ptr<Socket>, Ptr<Packet>>
+        m_rxBuffers; //!< Per-socket accumulated byte stream awaiting full-message framing
 
     Address m_remoteAddress; //!< The destination address we are attempting to connect to
     bool m_connected; //!< Flag indicating if the outgoing TCP connection is fully established

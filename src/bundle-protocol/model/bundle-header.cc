@@ -183,13 +183,14 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
         m_totalAppDataLength = 0;
     }
 
+    m_receivedCrc = 0;
     if (m_crcType != 0)
     {
         uint8_t crcHeader = i.ReadU8();
         uint8_t crcLen = crcHeader & 0x1F;
         for (uint8_t b = 0; b < crcLen; ++b)
         {
-            i.ReadU8();
+            m_receivedCrc = (m_receivedCrc << 8) | i.ReadU8();
         }
     }
 
@@ -328,6 +329,12 @@ PrimaryBlockHeader::GetTotalAppDataLength() const
     return m_totalAppDataLength;
 }
 
+uint32_t
+PrimaryBlockHeader::GetReceivedCrc() const
+{
+    return m_receivedCrc;
+}
+
 PayloadBlockHeader::PayloadBlockHeader()
 {
     NS_LOG_FUNCTION(this);
@@ -430,13 +437,14 @@ PayloadBlockHeader::Deserialize(Buffer::Iterator start)
     m_crcType = Cbor::ReadUint(i);
     m_blockLength = Cbor::ReadByteStringHeader(i);
 
+    m_receivedCrc = 0;
     if (arraySize == 6)
     {
         uint8_t crcHeader = i.ReadU8();
         uint8_t crcLen = crcHeader & 0x1F;
         for (uint8_t b = 0; b < crcLen; ++b)
         {
-            i.ReadU8();
+            m_receivedCrc = (m_receivedCrc << 8) | i.ReadU8();
         }
     }
 
@@ -501,6 +509,12 @@ uint32_t
 PayloadBlockHeader::GetBlockLength() const
 {
     return m_blockLength;
+}
+
+uint32_t
+PayloadBlockHeader::GetReceivedCrc() const
+{
+    return m_receivedCrc;
 }
 
 BundleStatusReport::BundleStatusReport()

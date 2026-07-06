@@ -83,6 +83,7 @@ BundleStorageEngine::StoreBundle(Ptr<Bundle> bundle)
 
     uint32_t handle = m_nextHandle++;
     m_bundleMap[handle] = bundle;
+    m_bundleSizes[handle] = bundleSize;
     m_currentSize += bundleSize;
 
     NS_LOG_DEBUG("Stored bundle with handle " << handle << " size=" << bundleSize
@@ -116,18 +117,12 @@ BundleStorageEngine::DeleteBundle(uint32_t handle)
         return 1;
     }
 
-    uint32_t bundleSize = it->second->GetTotalSize();
+    uint32_t bundleSize = m_bundleSizes.at(handle);
     m_bundleMap.erase(it);
+    m_bundleSizes.erase(handle);
 
-    if (bundleSize > m_currentSize)
-    {
-        NS_LOG_WARN("DeleteBundle: size accounting inconsistency, resetting to 0");
-        m_currentSize = 0;
-    }
-    else
-    {
-        m_currentSize -= bundleSize;
-    }
+    NS_ASSERT_MSG(bundleSize <= m_currentSize, "DeleteBundle: size accounting inconsistency");
+    m_currentSize -= bundleSize;
 
     NS_LOG_DEBUG("Deleted bundle handle=" << handle << " freed=" << bundleSize
                                           << " totalUsed=" << m_currentSize);

@@ -116,6 +116,7 @@ class BundleStorageEngine : public Object
     uint32_t m_totalSize = 0;                    //!< Total size of the engine
     uint32_t m_nextHandle = 1;                   //!< Next available handle
     std::map<uint32_t, Ptr<Bundle>> m_bundleMap; //!< Map of all the bundles to handles
+    std::map<uint32_t, uint32_t> m_bundleSizes;  //!< Size against m_currentSize per handle
 };
 
 } // namespace ns3

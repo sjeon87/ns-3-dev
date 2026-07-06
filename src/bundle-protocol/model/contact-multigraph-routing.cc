@@ -216,6 +216,7 @@ ContactMultigraphRouting::ReserveVolume(const std::string& fromEID,
                                      : 0;
             uint32_t reserved = std::min(bytes, available);
             contact.usedVolume += reserved;
+            m_isDirty = true;
             return;
         }
     }

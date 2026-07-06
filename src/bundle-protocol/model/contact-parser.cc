@@ -61,8 +61,13 @@ ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> con
             std::string endStr;
             std::string fromUri;
             std::string toUri;
-            double valueDouble;
-            iss >> startStr >> endStr >> fromUri >> toUri >> valueDouble;
+            double valueDouble = 0.0;
+
+            if (!(iss >> startStr >> endStr >> fromUri >> toUri >> valueDouble))
+            {
+                NS_LOG_WARN("Skipping malformed contact-plan line: " << line);
+                continue;
+            }
 
             if (!startStr.empty() && startStr[0] == '+')
             {
@@ -73,11 +78,23 @@ ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> con
                 endStr.erase(0, 1);
             }
 
-            double startSeconds = std::stod(startStr);
-            double endSeconds = std::stod(endStr);
-
-            if (startSeconds == endSeconds)
+            double startSeconds;
+            double endSeconds;
+            try
             {
+                startSeconds = std::stod(startStr);
+                endSeconds = std::stod(endStr);
+            }
+            catch (const std::exception&)
+            {
+                NS_LOG_WARN("Skipping contact-plan line with unparseable start/end time: " << line);
+                continue;
+            }
+
+            if (startSeconds >= endSeconds)
+            {
+                NS_LOG_WARN("Skipping contact-plan line with non-positive-duration window "
+                            << "(start=" << startSeconds << " end=" << endSeconds << "): " << line);
                 continue;
             }
 

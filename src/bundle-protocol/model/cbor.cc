@@ -269,4 +269,26 @@ Cbor::ComputeCrc16(uint8_t* data, uint32_t length)
     return crc ^ 0xFFFF;
 }
 
+uint32_t
+Cbor::ComputeCrc32(uint8_t* data, uint32_t length)
+{
+    uint32_t crc = 0xFFFFFFFF;
+    for (uint32_t i = 0; i < length; i++)
+    {
+        crc ^= static_cast<uint32_t>(data[i]);
+        for (int bit = 0; bit < 8; bit++)
+        {
+            if (crc & 0x00000001)
+            {
+                crc = (crc >> 1) ^ 0x82F63B78;
+            }
+            else
+            {
+                crc >>= 1;
+            }
+        }
+    }
+    return crc ^ 0xFFFFFFFF;
+}
+
 } // namespace ns3

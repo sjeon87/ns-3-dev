@@ -220,7 +220,8 @@ Bundle::Fragment(Ptr<Bundle> original, uint32_t maxPayloadSize)
 
     bool alreadyFragment = (origHeader.GetProcFlags() & (1 << IS_FRG)) != 0;
     uint32_t baseOffset = alreadyFragment ? origHeader.GetFragmentOffset() : 0;
-    uint32_t totalAppDataLength = alreadyFragment ? origHeader.GetTotalAppDataLength() : totalLength;
+    uint32_t totalAppDataLength =
+        alreadyFragment ? origHeader.GetTotalAppDataLength() : totalLength;
 
     for (uint32_t offset = 0; offset < totalLength; offset += maxPayloadSize)
     {

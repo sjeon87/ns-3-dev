@@ -81,10 +81,12 @@ UdpBundleCla::Send(Ptr<Packet> packet, uint32_t bundleHandle)
     }
 
     int bytesSent = m_socket->SendTo(packet, 0, m_remoteAddress);
+    bool success = bytesSent >= 0 && static_cast<uint32_t>(bytesSent) == packet->GetSize();
 
-    if (bytesSent < 0)
+    if (!success)
     {
-        NS_LOG_WARN("Socket SendTo failed.");
+        NS_LOG_WARN("Socket SendTo failed or sent a truncated packet (bytesSent=" << bytesSent
+                                                                                  << ").");
     }
     else
     {
@@ -93,7 +95,7 @@ UdpBundleCla::Send(Ptr<Packet> packet, uint32_t bundleHandle)
 
     if (!m_txResultCb.IsNull() && bundleHandle != 0)
     {
-        m_txResultCb(bundleHandle, true);
+        m_txResultCb(bundleHandle, success);
     }
 }
 

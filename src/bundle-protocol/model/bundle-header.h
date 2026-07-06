@@ -205,6 +205,13 @@ class PrimaryBlockHeader : public Header
      */
     uint32_t GetTotalAppDataLength() const;
 
+    /**
+     * @brief Get the CRC value read off the wire during the last Deserialize() call.
+     *
+     * @return the CRC value as received
+     */
+    uint32_t GetReceivedCrc() const;
+
   private:
     uint8_t m_version = 7;             //!< Bundle Protocol version (7 for RFC 9171)
     uint32_t m_procFlags = 0;          //!< Bundle processing control flags
@@ -217,6 +224,7 @@ class PrimaryBlockHeader : public Header
     Time m_lifetime;                   //!< Bundle Lifetime (formerly TTL in BPv6)
     uint32_t m_fragmentOffset = 0;     //!< Fragment offset (if fragmented)
     uint32_t m_totalAppDataLength = 0; //!< Total application data length
+    uint32_t m_receivedCrc = 0;        //!< CRC value read off the wire by Deserialize()
 };
 
 /**
@@ -328,6 +336,12 @@ class PayloadBlockHeader : public Header
      */
     uint32_t GetBlockLength() const;
 
+    /**
+     * @brief Get the CRC value read off the wire during the last Deserialize() call.
+     * @return the CRC value as received
+     */
+    uint32_t GetReceivedCrc() const;
+
   private:
     uint8_t m_blockType = 1;             //!< Block type identifier (Payload = 1)
     uint32_t m_blockNumber = 1;          //!< Unique block number
@@ -335,6 +349,7 @@ class PayloadBlockHeader : public Header
     uint8_t m_crcType = 0;               //!< CRC Type
     uint32_t m_blockLength = 0;          //!< Length of the block data
     uint8_t m_deserializedArraySize = 0; //!< Number of elements in the deserialized CBOR array
+    uint32_t m_receivedCrc = 0;          //!< CRC value read off the wire by Deserialize()
 };
 
 /**

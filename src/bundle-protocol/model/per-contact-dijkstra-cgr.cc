@@ -214,6 +214,7 @@ PerContactDijkstraCGR::ReserveVolume(const std::string& fromEID,
 
             uint32_t reserved = std::min(bytes, available);
             contact.usedVolume += reserved;
+            m_isDirty = true;
             return;
         }
     }

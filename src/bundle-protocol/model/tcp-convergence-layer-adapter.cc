@@ -109,12 +109,13 @@ TcpBundleCla::ConnectionSucceeded(Ptr<Socket> socket)
         auto pair = m_sendQueue.front();
         m_sendQueue.pop();
 
-        int bytes = m_sendSocket->Send(pair.first);
+        Ptr<Packet> framed = FrameBundle(pair.first);
+        int bytes = m_sendSocket->Send(framed);
         NS_LOG_DEBUG("Flushed queued packet of size " << bytes << " bytes");
 
         if (!m_txResultCb.IsNull() && pair.second != 0)
         {
-            m_txResultCb(pair.second, bytes > 0);
+            m_txResultCb(pair.second, bytes == static_cast<int>(framed->GetSize()));
         }
     }
 }
@@ -143,16 +144,59 @@ TcpBundleCla::Send(Ptr<Packet> packet, uint32_t bundleHandle)
 {
     if (m_connected)
     {
-        int bytesSent = m_sendSocket->Send(packet);
+        Ptr<Packet> framed = FrameBundle(packet);
+        int bytesSent = m_sendSocket->Send(framed);
         if (!m_txResultCb.IsNull() && bundleHandle != 0)
         {
-            m_txResultCb(bundleHandle, bytesSent > 0);
+            m_txResultCb(bundleHandle, bytesSent == static_cast<int>(framed->GetSize()));
         }
     }
     else
     {
         m_sendQueue.emplace(packet, bundleHandle);
     }
+}
+
+Ptr<Packet>
+TcpBundleCla::FrameBundle(Ptr<Packet> packet)
+{
+    uint32_t length = packet->GetSize();
+    uint8_t lengthPrefix[4] = {
+        static_cast<uint8_t>((length >> 24) & 0xFF),
+        static_cast<uint8_t>((length >> 16) & 0xFF),
+        static_cast<uint8_t>((length >> 8) & 0xFF),
+        static_cast<uint8_t>(length & 0xFF),
+    };
+
+    Ptr<Packet> framed = Create<Packet>(lengthPrefix, 4);
+    framed->AddAtEnd(packet);
+    return framed;
+}
+
+std::vector<Ptr<Packet>>
+TcpBundleCla::ExtractFramedBundles(Ptr<Packet> buffer)
+{
+    std::vector<Ptr<Packet>> bundles;
+
+    while (buffer->GetSize() >= 4)
+    {
+        uint8_t lengthPrefix[4];
+        buffer->CopyData(lengthPrefix, 4);
+        uint32_t length = (static_cast<uint32_t>(lengthPrefix[0]) << 24) |
+                          (static_cast<uint32_t>(lengthPrefix[1]) << 16) |
+                          (static_cast<uint32_t>(lengthPrefix[2]) << 8) |
+                          static_cast<uint32_t>(lengthPrefix[3]);
+
+        if (buffer->GetSize() < 4 + length)
+        {
+            break; // Rest of this message hasn't arrived yet
+        }
+
+        bundles.push_back(buffer->CreateFragment(4, length));
+        buffer->RemoveAtStart(4 + length);
+    }
+
+    return bundles;
 }
 
 bool
@@ -179,6 +223,12 @@ TcpBundleCla::HandleRead(Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION(this << socket);
 
+    Ptr<Packet>& buffer = m_rxBuffers[socket];
+    if (!buffer)
+    {
+        buffer = Create<Packet>();
+    }
+
     Ptr<Packet> packet;
     Address from;
 
@@ -190,9 +240,13 @@ TcpBundleCla::HandleRead(Ptr<Socket> socket)
         }
 
         NS_LOG_DEBUG("Received TCP packet of size " << packet->GetSize() << " from " << from);
+        buffer->AddAtEnd(packet);
+    }
 
+    for (const auto& bundlePacket : ExtractFramedBundles(buffer))
+    {
         Ptr<Bundle> bundle = CreateObject<Bundle>();
-        bundle->Deserialize(packet);
+        bundle->Deserialize(bundlePacket);
         ForwardUp(bundle);
     }
 }

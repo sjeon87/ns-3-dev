@@ -228,8 +228,8 @@ class BundleAgentFragmentationTestCase : public TestCase
     void LocalReceiveCallback(Ptr<Bundle> bundle);
 
   private:
-    uint32_t m_receivedCount;    ///< Number of bundles delivered to the receive callback
-    Ptr<Packet> m_lastPayload;  ///< Payload of the most recently delivered bundle
+    uint32_t m_receivedCount;  ///< Number of bundles delivered to the receive callback
+    Ptr<Packet> m_lastPayload; ///< Payload of the most recently delivered bundle
 };
 
 BundleAgentFragmentationTestCase::BundleAgentFragmentationTestCase()
@@ -320,11 +320,11 @@ BundleAgentFragmentationTestCase::DoRun()
     guardedSender->RegisterCla("dtn:nodeD", cla2);
 
     guardedSender->TransmitBundle("dtn:nodeD",
-                                   "dtn:none",
-                                   data,
-                                   payloadSize,
-                                   Seconds(3600),
-                                   1 << PBB_PROC_FLAGS::NO_FRAGMENT);
+                                  "dtn:none",
+                                  data,
+                                  payloadSize,
+                                  Seconds(3600),
+                                  1 << PBB_PROC_FLAGS::NO_FRAGMENT);
 
     NS_TEST_ASSERT_MSG_EQ(cla2->GetPackets().size(),
                           1,

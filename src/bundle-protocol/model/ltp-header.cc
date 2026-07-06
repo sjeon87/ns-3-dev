@@ -315,7 +315,7 @@ void
 SessionId::SetSessionNumber(uint64_t value)
 {
     NS_LOG_FUNCTION(this << " " << value);
-    if ((value > MIN_SESSION_NUMBER) && (value < MAX_SESSION_NUMBER))
+    if ((value >= MIN_SESSION_NUMBER) && (value <= MAX_SESSION_NUMBER))
     {
         m_sessionNumber = value;
     }

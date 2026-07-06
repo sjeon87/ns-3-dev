@@ -115,6 +115,14 @@ class Cbor
      * @return The 16-bit checksum value of the data stream.
      */
     static uint16_t ComputeCrc16(uint8_t* data, uint32_t length);
+
+    /**
+     * Computes the CRC-32C checksum for a given data stream.
+     * @param data Pointer to the array of bytes to check.
+     * @param length Number of bytes in the data stream.
+     * @return The 32-bit checksum value of the data stream.
+     */
+    static uint32_t ComputeCrc32(uint8_t* data, uint32_t length);
 };
 
 } // namespace ns3

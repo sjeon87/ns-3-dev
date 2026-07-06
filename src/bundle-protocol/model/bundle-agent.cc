@@ -228,17 +228,16 @@ BundleAgent::TransmitBundle(const std::string& destinationEID,
         return 0;
     }
 
-    bool shouldFragment = m_fragmentationMtu > 0 && size > m_fragmentationMtu &&
-                          !(procFlags & (1 << NO_FRAGMENT));
+    bool shouldFragment =
+        m_fragmentationMtu > 0 && size > m_fragmentationMtu && !(procFlags & (1 << NO_FRAGMENT));
 
     std::vector<Ptr<Bundle>> bundlesToSend;
     if (shouldFragment)
     {
         bundlesToSend = Bundle::Fragment(bundle, m_fragmentationMtu);
         NS_LOG_INFO("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
-                                   << "s: TransmitBundle: fragmented bundle to "
-                                   << destinationEID << " into " << bundlesToSend.size()
-                                   << " fragments");
+                                   << "s: TransmitBundle: fragmented bundle to " << destinationEID
+                                   << " into " << bundlesToSend.size() << " fragments");
     }
     else
     {
@@ -467,7 +466,8 @@ BundleAgent::TryReassembleFragment(Ptr<Bundle> fragment)
 
     Ptr<PrimaryBlock> primary = fragment->GetPrimaryBlock();
     const PrimaryBlockHeader& header = primary->GetHeader();
-    FragmentKey key(header.GetSourceEID(), header.GetCreationTime().GetTimeStep(),
+    FragmentKey key(header.GetSourceEID(),
+                    header.GetCreationTime().GetTimeStep(),
                     header.GetSequenceNumber());
 
     auto it = m_fragmentBuffers.find(key);
