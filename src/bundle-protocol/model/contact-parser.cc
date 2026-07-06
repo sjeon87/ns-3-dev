@@ -87,7 +87,7 @@ ContactParser::ParseFile(const std::string& filename, Ptr<BaseRoutingEngine> con
             }
             catch (const std::exception&)
             {
-                NS_LOG_WARN("Skipping contact-plan line with unparseable start/end time: " << line);
+                NS_LOG_WARN("Skipping contact-plan line with unparsable start/end time: " << line);
                 continue;
             }
 
