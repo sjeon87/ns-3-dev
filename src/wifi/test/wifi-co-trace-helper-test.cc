@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 
+#include "ns3/attribute-container.h"
 #include "ns3/boolean.h"
 #include "ns3/double.h"
 #include "ns3/eht-configuration.h"
@@ -418,6 +419,11 @@ SendOnePacketTestCase::DoSetup()
                                  StringValue("OfdmRate24Mbps"));
 
     mac.SetType("ns3::AdhocWifiMac");
+    // single frame exchange per channel access, so that no CF-End (TXOP truncation) frame
+    // adds TX time to the analytically computed per-state durations checked by this test
+    mac.SetEdca(AC_BE,
+                "TxopLimits",
+                AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0)}));
     m_devices = wifi.Install(phy, mac, m_nodes);
 
     MobilityHelper mobility;
@@ -572,6 +578,11 @@ MLOTestCase::DoSetup()
                                  StringValue("OfdmRate24Mbps"));
 
     mac.SetType("ns3::ApWifiMac", "Ssid", SsidValue(ssid));
+    // single frame exchange per channel access on both links (TIDs 0 and 3 both map to
+    // AC_BE), so that no CF-End frame adds TX time to the analytically computed durations
+    mac.SetEdca(AC_BE,
+                "TxopLimits",
+                AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0), MicroSeconds(0)}));
     m_devices.Add(wifi.Install(phy, mac, ap));
     mac.SetType("ns3::StaWifiMac", "Ssid", SsidValue(ssid), "ActiveProbing", BooleanValue(false));
     m_devices.Add(wifi.Install(phy, mac, sta));

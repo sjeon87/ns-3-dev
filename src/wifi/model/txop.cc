@@ -69,7 +69,7 @@ Txop::GetTypeId()
                 "MinCws",
                 "The minimum values of the contention window for all the links (sorted in "
                 "increasing order of link ID). An empty vector is ignored and the default value "
-                "as per Table 9-155 of the IEEE 802.11-2020 standard will be used. Note that, if "
+                "as per Table 9-194 of the IEEE Std 802.11-2024 will be used. Note that, if "
                 "this is a non-AP STA, these values could be overridden by values advertised by "
                 "the AP through EDCA Parameter Set elements.",
                 AttributeContainerValue<UintegerValue>(),
@@ -79,7 +79,7 @@ Txop::GetTypeId()
                 "MaxCws",
                 "The maximum values of the contention window for all the links (sorted in "
                 "increasing order of link ID). An empty vector is ignored and the default value "
-                "as per Table 9-155 of the IEEE 802.11-2020 standard will be used. Note that, if "
+                "as per Table 9-194 of the IEEE Std 802.11-2024 will be used. Note that, if "
                 "this is a non-AP STA, these values could be overridden by values advertised by "
                 "the AP through EDCA Parameter Set elements.",
                 AttributeContainerValue<UintegerValue>(),
@@ -89,7 +89,7 @@ Txop::GetTypeId()
                 "Aifsns",
                 "The values of AIFSN for all the links (sorted in increasing order "
                 "of link ID). An empty vector is ignored and the default value as per "
-                "Table 9-155 of the IEEE 802.11-2020 standard will be used. Note that, if "
+                "Table 9-194 of the IEEE Std 802.11-2024 will be used. Note that, if "
                 "this is a non-AP STA, these values could be overridden by values advertised by "
                 "the AP through EDCA Parameter Set elements.",
                 AttributeContainerValue<UintegerValue>(),
@@ -99,7 +99,7 @@ Txop::GetTypeId()
                 "TxopLimits",
                 "The values of TXOP limit for all the links (sorted in increasing order "
                 "of link ID). An empty vector is ignored and the default value as per "
-                "Table 9-155 of the IEEE 802.11-2020 standard will be used. Note that, if "
+                "Table 9-194 of the IEEE Std 802.11-2024 will be used. Note that, if "
                 "this is a non-AP STA, these values could be overridden by values advertised by "
                 "the AP through EDCA Parameter Set elements.",
                 AttributeContainerValue<TimeValue>(),

@@ -7,6 +7,7 @@
  *          Scott Carpenter <scarpenter44@windstream.net>
  */
 
+#include "ns3/attribute-container.h"
 #include "ns3/config.h"
 #include "ns3/constant-obss-pd-algorithm.h"
 #include "ns3/double.h"
@@ -861,6 +862,11 @@ TestInterBssConstantObssPdAlgo::RunOne()
 
     WifiMacHelper mac;
     Ssid ssid = Ssid("ns-3-ssid");
+    // single frame exchange per channel access, so that transmissions occur at the scripted
+    // times at which the expected TX power (OBSS PD power restriction) is checked
+    mac.SetEdca(AC_BE,
+                "TxopLimits",
+                AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0)}));
     mac.SetType("ns3::StaWifiMac", "Ssid", SsidValue(ssid));
     m_staDevices = wifi.Install(phy, mac, wifiStaNodes);
 

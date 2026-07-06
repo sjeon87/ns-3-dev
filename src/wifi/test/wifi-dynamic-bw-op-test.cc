@@ -6,6 +6,7 @@
  * Author: Stefano Avallone <stavallo@unina.it>
  */
 
+#include "ns3/attribute-container.h"
 #include "ns3/channel-access-manager.h"
 #include "ns3/config.h"
 #include "ns3/mobility-helper.h"
@@ -210,6 +211,15 @@ WifiUseAvailBwTest::DoRun()
 
     WifiMacHelper staMac;
     staMac.SetType("ns3::StaWifiMac", "Ssid", SsidValue(Ssid("dynamic-bw-op-ssid")));
+
+    // single frame exchange per channel access, so that the transmitted PSDUs follow the
+    // scripted sequence of frames checked by this test
+    apMac.SetEdca(AC_BE,
+                  "TxopLimits",
+                  AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0)}));
+    staMac.SetEdca(AC_BE,
+                   "TxopLimits",
+                   AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0)}));
 
     // BSS 0
     phy.Set("ChannelSettings", StringValue(m_channelStr.at(0)));

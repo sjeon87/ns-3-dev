@@ -197,7 +197,6 @@ Some implementation choices that are not imposed by the standard are listed belo
 The following open issues are classified as unfixed bugs in the ns-3 tracker, and users should
 be aware of them:
 
-* The default TXOP limits do not conform to the standard (e.g., 2.528 ms for AC_BE is not default); see `Issue 289 <https://gitlab.com/nsnam/ns-3-dev/-/issues/289>_` and `Merge Request 1976 <https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/1976>_`.
 * CCA issues with use of ED and PD thresholds have been reported; see `Issue 1247 <https://gitlab.com/nsnam/ns-3-dev/-/issues/1247>_` and `Issue 1056 <https://gitlab.com/nsnam/ns-3-dev/-/issues/1056>_` and `Issue 900 <https://gitlab.com/nsnam/ns-3-dev/-/issues/900>_`.
 * Use of MLO possibly causes the WifiPhy::MonitorSniffRx trace to miss some packets; see `Issue 1179 <https://gitlab.com/nsnam/ns-3-dev/-/issues/1179>_`.
 * MinstrelHt rate control has reported bugs; see `Issue 886 <https://gitlab.com/nsnam/ns-3-dev/-/issues/886>_` and `Issue 51 <https://gitlab.com/nsnam/ns-3-dev/-/issues/51>_` and `Merge Request 2344 <https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2344>_`.

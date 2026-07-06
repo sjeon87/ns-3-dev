@@ -6,6 +6,7 @@
  * Author: Sébastien Deronne <sebastien.deronne@gmail.com>
  */
 
+#include "ns3/attribute-container.h"
 #include "ns3/boolean.h"
 #include "ns3/command-line.h"
 #include "ns3/config.h"
@@ -112,6 +113,12 @@ main(int argc, char* argv[])
                                  "ControlMode",
                                  StringValue("HtMcs0"));
     WifiMacHelper mac;
+    // use an AC_BE TXOP limit of 0 (single frame exchange per channel access) on all four
+    // networks, so that the comparison among aggregation setups is not affected by multiple
+    // frame exchanges within a TXOP
+    mac.SetEdca(AC_BE,
+                "TxopLimits",
+                AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0)}));
 
     NetDeviceContainer staDeviceA;
     NetDeviceContainer staDeviceB;

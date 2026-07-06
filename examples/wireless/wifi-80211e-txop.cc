@@ -37,7 +37,8 @@
 //  AP A   STA A      AP B   STA B     AP C   STA C      AP D   STA D
 //
 // The configuration is the following on the 4 networks:
-// - STA A sends AC_BE traffic to AP A with default AC_BE TXOP value of 0 (1 MSDU);
+// - STA A sends AC_BE traffic to AP A with AC_BE TXOP limit of 0 (single frame exchange
+//   per channel access);
 // - STA B sends AC_BE traffic to AP B with non-default AC_BE TXOP of 4096 us;
 // - STA C sends AC_VI traffic to AP C with default AC_VI TXOP of 4096 us;
 // - STA D sends AC_VI traffic to AP D with non-default AC_VI TXOP value of 0 (1 MSDU);
@@ -46,10 +47,10 @@
 // mechanism and can choose the payload size and the simulation duration. Example: ./ns3 run
 // "wifi-80211e-txop --distance=10 --simulationTime=20s --payloadSize=1000"
 //
-// The output prints the throughput measured for the 4 cases/networks described above. When TXOP is
-// enabled, results show increased throughput since the channel is granted for a longer duration.
-// TXOP is enabled by default for AC_VI and AC_VO, so that they can use the channel for a longer
-// duration than AC_BE and AC_BK.
+// The output prints the throughput measured for the 4 cases/networks described above. When a
+// non-zero TXOP limit is used, results show increased throughput since the channel is granted for
+// a longer duration. All four Access Categories have non-zero default TXOP limits, as per Table
+// 9-194 of IEEE Std 802.11-2024; this example contrasts explicitly configured TXOP limit values.
 
 using namespace ns3;
 
@@ -142,6 +143,17 @@ main(int argc, char* argv[])
                 BooleanValue(false));
     apDeviceA = wifi.Install(phy, mac, wifiApNodes.Get(0));
 
+    // Modify EDCA configuration (TXOP limit) for AC_BE: a TXOP limit of 0 means a single
+    // frame exchange per channel access
+    Ptr<NetDevice> dev = wifiApNodes.Get(0)->GetDevice(0);
+    Ptr<WifiNetDevice> wifi_dev = DynamicCast<WifiNetDevice>(dev);
+    Ptr<WifiMac> wifi_mac = wifi_dev->GetMac();
+    PointerValue ptr;
+    Ptr<QosTxop> edca;
+    wifi_mac->GetAttribute("BE_Txop", ptr);
+    edca = ptr.Get<QosTxop>();
+    edca->SetTxopLimit(MicroSeconds(0));
+
     // Network B
     ssid = Ssid("network-B");
     phy.Set("ChannelSettings", StringValue("{40, 20, BAND_5GHZ, 0}"));
@@ -159,11 +171,9 @@ main(int argc, char* argv[])
     apDeviceB = wifi.Install(phy, mac, wifiApNodes.Get(1));
 
     // Modify EDCA configuration (TXOP limit) for AC_BE
-    Ptr<NetDevice> dev = wifiApNodes.Get(1)->GetDevice(0);
-    Ptr<WifiNetDevice> wifi_dev = DynamicCast<WifiNetDevice>(dev);
-    Ptr<WifiMac> wifi_mac = wifi_dev->GetMac();
-    PointerValue ptr;
-    Ptr<QosTxop> edca;
+    dev = wifiApNodes.Get(1)->GetDevice(0);
+    wifi_dev = DynamicCast<WifiNetDevice>(dev);
+    wifi_mac = wifi_dev->GetMac();
     wifi_mac->GetAttribute("BE_Txop", ptr);
     edca = ptr.Get<QosTxop>();
     edca->SetTxopLimit(txopLimit);
@@ -378,7 +388,7 @@ main(int argc, char* argv[])
     Simulator::Destroy();
 
     auto throughput = totalPacketsThroughA * payloadSize * 8 / simulationTime.GetMicroSeconds();
-    std::cout << "AC_BE with default TXOP limit (0ms): " << '\n'
+    std::cout << "AC_BE with TXOP limit of 0 (single frame exchange per access): " << '\n'
               << "  Throughput = " << throughput << " Mbit/s" << '\n';
     if (verifyResults && (throughput < 28 || throughput > 29))
     {

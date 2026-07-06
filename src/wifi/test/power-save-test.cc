@@ -717,6 +717,14 @@ WifiPowerSaveModeTest::DoSetup()
     m_staMacs.push_back(
         DynamicCast<StaWifiMac>(DynamicCast<WifiNetDevice>(staDev.Get(1))->GetMac()));
 
+    // this test checks a scripted sequence of transmitted frames (Beacons, PS-Polls, QoS
+    // data); use a BE TXOP limit of 0 (single frame exchange per channel access) so that
+    // TXOP bursting and CF-End frames do not alter the sequence
+    for (const auto& mac : std::list<Ptr<WifiMac>>{m_apMac, m_staMacs[0], m_staMacs[1]})
+    {
+        mac->GetQosTxop(AC_BE)->SetTxopLimits(std::vector<Time>(mac->GetNLinks(), MicroSeconds(0)));
+    }
+
     // define the jitter for the initial Beacon frames on the two links, so that Beacon frames
     // on the two links are spaced enough, as expected by the checks in this test
     auto beaconJitter = CreateObject<DeterministicRandomVariable>();
@@ -2766,6 +2774,14 @@ WifiPsModeAttributesTest::DoSetup()
         DynamicCast<WifiNetDevice>(wifiStaNodes.Get(DUT_INDEX)->GetDevice(0))->GetMac());
     m_staMacs[STA_INDEX] = DynamicCast<StaWifiMac>(
         DynamicCast<WifiNetDevice>(wifiStaNodes.Get(STA_INDEX)->GetDevice(0))->GetMac());
+
+    // this test checks a scripted sequence of transmitted frames; use a BE TXOP limit of 0
+    // (single frame exchange per channel access) so that TXOP bursting does not alter the
+    // sequence
+    for (const auto& mac : std::list<Ptr<WifiMac>>{m_apMac, m_staMacs[0], m_staMacs[1]})
+    {
+        mac->GetQosTxop(AC_BE)->SetTxopLimits(std::vector<Time>(mac->GetNLinks(), MicroSeconds(0)));
+    }
 
     // define the jitter for the initial Beacon frames on the two links, so that Beacon frames are
     // sent on the two links at different moments and the other non-AP STA starts association before

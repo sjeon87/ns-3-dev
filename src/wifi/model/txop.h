@@ -453,7 +453,7 @@ class Txop : public Object
      * DCF/EDCA access parameters for all the links provided by users via this class' attributes
      * or the corresponding setter methods. For each access parameter, values are sorted in
      * increasing order of link ID. If user provides access parameters, they are used by WifiMac
-     * instead of the default values specified by Table 9-155 of 802.11-2020.
+     * instead of the default values specified by Table 9-194 of IEEE Std 802.11-2024.
      */
     struct UserDefinedAccessParams
     {
