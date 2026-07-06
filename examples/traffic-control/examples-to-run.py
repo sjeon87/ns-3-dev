@@ -11,6 +11,7 @@ cpp_examples = [
     ("red-vs-nlred", "True", "True"),
     ("red-vs-fengadaptive", "True", "True"),
     ("queue-discs-benchmark --simDuration=10", "True", "True"),
+    ("dualpi2-example --stopTime=2s", "True", "True"),
 ]
 
 # A list of Python examples to run in order to ensure that they remain
