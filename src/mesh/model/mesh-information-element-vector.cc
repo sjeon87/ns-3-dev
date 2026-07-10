@@ -18,7 +18,6 @@
 #include "ns3/ie-dot11s-id.h"
 #include "ns3/ie-dot11s-metric-report.h"
 #include "ns3/ie-dot11s-peer-management.h"
-#include "ns3/ie-dot11s-peering-protocol.h"
 #include "ns3/ie-dot11s-perr.h"
 #include "ns3/ie-dot11s-prep.h"
 #include "ns3/ie-dot11s-preq.h"
@@ -133,9 +132,6 @@ MeshInformationElementVector::DeserializeSingleIe(Buffer::Iterator start)
         break;
     case IE_PERR:
         newElement = Create<dot11s::IePerr>();
-        break;
-    case IE11S_MESH_PEERING_PROTOCOL_VERSION:
-        newElement = Create<dot11s::IePeeringProtocol>();
         break;
     default:
         NS_FATAL_ERROR("Information element " << +id << " is not implemented");

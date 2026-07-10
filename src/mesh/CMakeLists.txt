@@ -16,7 +16,6 @@ build_lib(
     model/dot11s/ie-dot11s-id.cc
     model/dot11s/ie-dot11s-metric-report.cc
     model/dot11s/ie-dot11s-peer-management.cc
-    model/dot11s/ie-dot11s-peering-protocol.cc
     model/dot11s/ie-dot11s-perr.cc
     model/dot11s/ie-dot11s-prep.cc
     model/dot11s/ie-dot11s-preq.cc
@@ -47,7 +46,6 @@ build_lib(
     model/dot11s/ie-dot11s-id.h
     model/dot11s/ie-dot11s-metric-report.h
     model/dot11s/ie-dot11s-peer-management.h
-    model/dot11s/ie-dot11s-peering-protocol.h
     model/dot11s/ie-dot11s-perr.h
     model/dot11s/ie-dot11s-prep.h
     model/dot11s/ie-dot11s-preq.h

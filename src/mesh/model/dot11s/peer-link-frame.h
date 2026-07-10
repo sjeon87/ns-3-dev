@@ -11,7 +11,6 @@
 #include "dot11s-mac-header.h"
 #include "ie-dot11s-configuration.h"
 #include "ie-dot11s-id.h"
-#include "ie-dot11s-peering-protocol.h"
 
 #include "ns3/header.h"
 #include "ns3/supported-rates.h"
@@ -45,7 +44,6 @@ class PeerLinkOpenStart : public Header
     /// @brief fields:
     struct PlinkOpenStartFields
     {
-        IePeeringProtocol protocol; ///< Peering protocol version - 3 octets
         uint16_t capability;        ///< open and confirm
         SupportedRates rates;       ///< open and confirm
         std::optional<ExtendedSupportedRatesIE> extendedRates; ///< open and confirm
@@ -115,7 +113,6 @@ class PeerLinkCloseStart : public Header
     /// @brief fields:
     struct PlinkCloseStartFields
     {
-        IePeeringProtocol protocol; ///< Peering protocol version - 3 octets
         IeMeshId meshId;            ///< open and close
     };
 
@@ -179,7 +176,6 @@ class PeerLinkConfirmStart : public Header
     /// @brief fields:
     struct PlinkConfirmStartFields
     {
-        IePeeringProtocol protocol; ///< Peering protocol version - 3 octets
         uint16_t capability;        ///< open and confirm
         uint16_t aid;               ///< confirm only
         SupportedRates rates;       ///< open and confirm
