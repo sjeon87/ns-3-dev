@@ -155,10 +155,19 @@ TapFdNetDeviceHelper::InstallPriv(Ptr<Node> node) const
     if (!m_modeTap)
     {
         // macOS utun delivers raw IP with a 4-byte address-family prefix
-        device->SetEncapsulationMode(FdNetDevice::UTUN);
+        device->SetEncapsulationMode(FdNetDevice::L3);
     }
     else if (m_modePi)
     {
+        device->SetEncapsulationMode(FdNetDevice::DIXPI);
+    }
+#elif defined(__linux__)
+    if (!m_modeTap)
+    {
+        // Linux TUN delivers raw IP with no prefix
+        device->SetEncapsulationMode(FdNetDevice::L3);
+    }
+    else if (m_modePi) {
         device->SetEncapsulationMode(FdNetDevice::DIXPI);
     }
 #else

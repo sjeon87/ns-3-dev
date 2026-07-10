@@ -399,7 +399,7 @@ FdNetDeviceUtunReceiveTest::DoRun()
     Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
 
     device->SetAddress(Mac48Address("AA:BB:CC:DD:EE:FF"));
-    device->SetEncapsulationMode(FdNetDevice::UTUN);
+    device->SetEncapsulationMode(FdNetDevice::L3);
     device->SetFileDescriptor(fds[0]);
     node->AddDevice(device);
     device->SetReceiveCallback(MakeCallback(&FdNetDeviceUtunReceiveTest::DoReceive, this));
@@ -602,7 +602,7 @@ FdNetDeviceMacOsUtunProbeTest::DoRun()
     Ptr<Node> node = CreateObject<Node>();
     Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
     device->SetAddress(Mac48Address("AA:BB:CC:DD:EE:02"));
-    device->SetEncapsulationMode(FdNetDevice::UTUN);
+    device->SetEncapsulationMode(FdNetDevice::L3);
     device->SetFileDescriptor(fd);
     node->AddDevice(device);
     device->Start(Seconds(0.0));

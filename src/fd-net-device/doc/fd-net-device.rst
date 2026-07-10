@@ -677,7 +677,7 @@ The test suite (``src/fd-net-device/test/fd-net-device-test.cc``) contains:
   4-byte PI header prepended to the frame; verifies that FdNetDevice in
   ``DIXPI`` mode strips the PI header correctly.
 * **FdNetDeviceUtunReceiveTest** — injects a 4-byte ``AF_INET`` prefix plus a
-  minimal 20-byte IPv4 header and verifies that FdNetDevice in ``UTUN`` mode
+  minimal 20-byte IPv4 header and verifies that FdNetDevice in ``L3`` mode
   strips the prefix and delivers the raw IP datagram.
 * **FdNetDeviceLinuxTunProbeTest** (Linux only) — attempts to open
   ``/dev/net/tun`` and configure a ``IFF_TUN | IFF_NO_PI`` interface.  The

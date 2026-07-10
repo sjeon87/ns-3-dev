@@ -23,6 +23,7 @@
 #include "ns3/string.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/uinteger.h"
+#include <cstdint>
 
 #ifdef _WIN32
 #include <io.h>
@@ -110,7 +111,7 @@ FdNetDevice::GetTypeId()
                           "The link-layer encapsulation type to use.",
                           EnumValue(DIX),
                           MakeEnumAccessor<EncapsulationMode>(&FdNetDevice::m_encapMode),
-                          MakeEnumChecker(DIX, "Dix", LLC, "Llc", DIXPI, "DixPi", UTUN, "Utun"))
+                          MakeEnumChecker(DIX, "Dix", LLC, "Llc", DIXPI, "DixPi", L3, "L3"))
             .AddAttribute("RxQueueSize",
                           "Maximum size of the read queue.  "
                           "This value limits number of packets that have been read "
@@ -469,13 +470,15 @@ FdNetDevice::ForwardUp()
     bool isBroadcast = false;
     bool isMulticast = false;
 
-    //
-    // UTUN mode: macOS utun sends raw IP with a 4-byte address-family prefix.
-    // Strip it, determine the Ethernet protocol type, and deliver directly
-    // without attempting to parse an Ethernet header.
-    //
-    if (m_encapMode == UTUN)
+
+    if (m_encapMode == L3)
     {
+        #if defined(__APPLE__)
+        //
+        // UTUN mode: macOS utun sends raw IP with a 4-byte address-family prefix.
+        // Strip it, determine the Ethernet protocol type, and deliver directly
+        // without attempting to parse an Ethernet header.
+        //
         if (packet->GetSize() < 4)
         {
             m_phyRxDropTrace(originalPacket);
@@ -490,7 +493,6 @@ FdNetDevice::ForwardUp()
         uint32_t af = (static_cast<uint32_t>(afBuf[0]) << 24) |
                       (static_cast<uint32_t>(afBuf[1]) << 16) |
                       (static_cast<uint32_t>(afBuf[2]) << 8) | static_cast<uint32_t>(afBuf[3]);
-
         if (af == 2) // AF_INET
         {
             protocol = 0x0800;
@@ -499,6 +501,22 @@ FdNetDevice::ForwardUp()
         {
             protocol = 0x86DD;
         }
+        #else
+        // Raw IP mode on other platforms
+        // Peek IP header for version nibble
+
+        uint8_t af;
+        packet->CopyData(&af, 1);
+        af >>= 4;
+        if (af == 4) // AF_INET
+        {
+            protocol = 0x0800;
+        }
+        else if (af == 6) // AF_INET6
+        {
+            protocol = 0x86DD;
+        }
+        #endif
         else
         {
             m_phyRxDropTrace(originalPacket);
@@ -509,7 +527,7 @@ FdNetDevice::ForwardUp()
         destination = m_address;
         source = Mac48Address("00:00:00:00:00:00");
 
-        NS_LOG_LOGIC("UTUN pkt af=" << af << " proto=" << std::hex << protocol);
+        NS_LOG_LOGIC("L3 pkt af=" << af << " proto=" << std::hex << protocol);
 
         m_promiscSnifferTrace(originalPacket);
         if (!m_promiscRxCallback.IsNull())
@@ -645,7 +663,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
     // UTUN mode: macOS utun expects raw IP with a 4-byte address-family prefix.
     // Skip Ethernet header construction entirely.
     //
-    if (m_encapMode == UTUN)
+    if (m_encapMode == L3)
     {
         NS_ASSERT_MSG(packet->GetSize() <= m_mtu,
                       "FdNetDevice::SendFrom(): Packet too big " << packet->GetSize());
@@ -654,8 +672,8 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
         m_promiscSnifferTrace(packet);
         m_snifferTrace(packet);
 
-        NS_LOG_LOGIC("UTUN calling write, proto=" << std::hex << protocolNumber);
-
+        NS_LOG_LOGIC("L3 calling write, proto=" << std::hex << protocolNumber);
+        #if defined(__APPLE__)
         // 4-byte AF header in network byte order, followed by raw IP
         uint32_t af;
         if (protocolNumber == 0x0800)
@@ -696,6 +714,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
             return false;
         }
         return true;
+
     }
 
     Mac48Address destination = Mac48Address::ConvertFrom(dest);

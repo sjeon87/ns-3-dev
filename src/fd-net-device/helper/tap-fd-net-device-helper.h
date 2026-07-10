@@ -57,7 +57,7 @@ class TapFdNetDeviceHelper : public FdNetDeviceHelper
      * opens the same adapter in point-to-point mode.
      *
      * The FdNetDevice encapsulation mode is set automatically: DIX for TAP,
-     * UTUN for macOS TUN, and DIX for Windows TUN.
+     * L3 for macOS and Linux TUN, and DIX for Windows TUN.
      *
      * @param modeTap true for TAP (default), false for TUN.
      */
