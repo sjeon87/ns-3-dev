@@ -154,8 +154,11 @@ TapFdNetDeviceHelper::InstallPriv(Ptr<Node> node) const
 #if defined(__APPLE__)
     if (!m_modeTap)
     {
-        // macOS utun delivers raw IP with a 4-byte address-family prefix
+        // macOS utun delivers raw IP with a 4-byte address-family prefix.
+        // TUN is point-to-point and SendFrom() ignores the destination
+        // address in L3 mode, so no ARP resolution is ever needed.
         device->SetEncapsulationMode(FdNetDevice::L3);
+        device->SetNeedsArp(false);
     }
     else if (m_modePi)
     {
@@ -164,8 +167,11 @@ TapFdNetDeviceHelper::InstallPriv(Ptr<Node> node) const
 #elif defined(__linux__)
     if (!m_modeTap)
     {
-        // Linux TUN delivers raw IP with no prefix
+        // Linux TUN delivers raw IP with no prefix. TUN is point-to-point
+        // and SendFrom() ignores the destination address in L3/L3PI mode,
+        // so no ARP resolution is ever needed.
         device->SetEncapsulationMode(!m_modePi ? FdNetDevice::L3 : FdNetDevice::L3PI);
+        device->SetNeedsArp(false);
     }
     else if (m_modePi)
     {

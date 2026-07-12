@@ -290,6 +290,18 @@ identify which physical device should be used to open the raw socket.
   Ptr<NetDevice> device = devices.Get(0);
   device->SetAttribute("Address", Mac48AddressValue(Mac48Address::Allocate()));
 
+If the bound interface is a NOARP device that still reports a normal
+Ethernet hardware type (e.g. a ``netkit`` or ``ipvlan`` interface in
+``l3``/``l3s`` mode), this MAC spoofing default is skipped. Such devices
+disallow ARP and force every neighbour to resolve to their own (often
+all-zero) hardware address, so a spoofed address would never match
+incoming replies. In this case the helper instead sets the device's
+``Address`` to the interface's real hardware address and disables ARP
+resolution on the ``FdNetDevice`` (packets are sent with a broadcast
+destination address instead), logging a warning when this happens. Call
+``SetAddress`` and ``SetNeedsArp`` yourself after ``Install`` if you need
+different behavior.
+
 
 TapFdNetDeviceHelper
 ####################

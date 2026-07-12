@@ -185,6 +185,7 @@ FdNetDevice::FdNetDevice()
       m_fd(-1),
       m_fdReader(nullptr),
       m_isBroadcast(true),
+      m_needsArp(true),
       m_isMulticast(false),
       m_startEvent(),
       m_stopEvent()
@@ -1012,6 +1013,12 @@ FdNetDevice::SetIsMulticast(bool multicast)
     m_isMulticast = multicast;
 }
 
+void
+FdNetDevice::SetNeedsArp(bool needsArp)
+{
+    m_needsArp = needsArp;
+}
+
 Address
 FdNetDevice::GetMulticast(Ipv4Address multicastGroup) const
 {
@@ -1056,7 +1063,7 @@ FdNetDevice::SetNode(Ptr<Node> node)
 bool
 FdNetDevice::NeedsArp() const
 {
-    return true;
+    return m_needsArp;
 }
 
 void

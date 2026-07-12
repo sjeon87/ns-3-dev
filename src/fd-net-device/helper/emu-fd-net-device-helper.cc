@@ -141,6 +141,21 @@ EmuFdNetDeviceHelper::SetFileDescriptor(Ptr<FdNetDevice> device) const
         NS_FATAL_ERROR("EmuFdNetDeviceHelper::SetFileDescriptor (): Can't get interface flags");
     }
 
+    if (hwaddr_ifr.ifr_hwaddr.sa_family != ARPHRD_NONE && (ifr.ifr_flags & IFF_NOARP))
+    {
+        // Devices such as netkit and ipvlan in L3 mode report a normal
+        // ARPHRD_ETHER hardware type but disallow ARP and force every
+        // neighbour to resolve to their own (possibly zero) hardware
+        // address. Spoofing a fresh MAC would never match, so mirror the
+        // interface's real address instead.
+        Mac48Address addr;
+        addr.CopyFrom((const uint8_t*)hwaddr_ifr.ifr_hwaddr.sa_data);
+        NS_LOG_WARN("Interface " << m_deviceName << " is NOARP, using its hardware address " << addr
+                                 << " instead of a spoofed one and disabling ARP");
+        device->SetAddress(addr);
+        device->SetNeedsArp(false);
+    }
+
     if (m_hostQdiscBypass)
     {
 #ifdef PACKET_QDISC_BYPASS

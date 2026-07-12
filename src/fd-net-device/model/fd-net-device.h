@@ -196,6 +196,15 @@ class FdNetDevice : public NetDevice
     virtual void SetIsMulticast(bool multicast);
 
     /**
+     * Set if the NetDevice needs ARP to resolve destination addresses.
+     * Devices bound to a NOARP host interface (e.g. netkit or ipvlan in L3
+     * mode) should set this to false, since the peer will never answer ARP
+     * requests.
+     * @param needsArp true if the NetDevice needs ARP
+     */
+    virtual void SetNeedsArp(bool needsArp);
+
+    /**
      * Write packet data to device.
      * @param buffer The data.
      * @param length The data length.
@@ -350,6 +359,12 @@ class FdNetDevice : public NetDevice
      * broadcast.
      */
     bool m_isBroadcast;
+
+    /**
+     * Flag indicating whether or not this device needs ARP to resolve
+     * destination addresses.
+     */
+    bool m_needsArp;
 
     /**
      * Flag indicating whether or not the underlying net device supports
