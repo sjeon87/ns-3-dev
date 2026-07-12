@@ -91,19 +91,19 @@ class FdNetDevice : public NetDevice
                     Flags [2 bytes]
                     Proto [2 bytes]
                     Raw protocol(IP, IPv6, etc) frame. */
-        L3,     /**< Raw IP packets. When used on macOS
-                        with utun interfaces, prefixed with
-                        a 4-byte address-family prefix.
-                        The Darwin kernel prepends
-                        AF_INET (2) or AF_INET6 (30) in network byte order
-                        before each packet.
-                     */
-        L3PI,   /**< Raw IP packets for Linux, if flag
-                     IFF_NO_PI is not set on the TUN device,
-                     IP packets will have an extra header:
-                     Flags [2 bytes]
-                     Proto [2 bytes]
-                     Raw protocol(IP, IPv6, etc) frame. */
+        L3,    /**< Raw IP packets. When used on macOS
+                       with utun interfaces, prefixed with
+                       a 4-byte address-family prefix.
+                       The Darwin kernel prepends
+                       AF_INET (2) or AF_INET6 (30) in network byte order
+                       before each packet.
+                    */
+        L3PI,  /**< Raw IP packets for Linux, if flag
+                    IFF_NO_PI is not set on the TUN device,
+                    IP packets will have an extra header:
+                    Flags [2 bytes]
+                    Proto [2 bytes]
+                    Raw protocol(IP, IPv6, etc) frame. */
     };
 
     /**

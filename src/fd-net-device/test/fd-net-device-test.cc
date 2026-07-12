@@ -353,7 +353,376 @@ FdNetDeviceDixpiReceiveTest::DoRun()
 }
 
 // ==========================================================================
-// Test 4: FdNetDevice UTUN mode — receives raw IP with 4-byte AF header
+// Test 4: FdNetDevice L3 mode — receives raw IP datagram
+// ==========================================================================
+
+#if defined(__linux__)
+class FdNetDeviceL3ReceiveTest : public TestCase
+{
+  public:
+    FdNetDeviceL3ReceiveTest()
+        : TestCase("FdNetDevice delivers raw IP in L3 mode"),
+          m_received(false),
+          m_protocol(0),
+          m_pktSize(0)
+    {
+    }
+
+  private:
+    void DoRun() override;
+
+    bool DoReceive(Ptr<NetDevice>, Ptr<const Packet> packet, uint16_t protocol, const Address&)
+    {
+        m_received = true;
+        m_protocol = protocol;
+        m_pktSize = packet->GetSize();
+        m_pktBuf.resize(m_pktSize);
+        packet->CopyData(m_pktBuf.data(), m_pktSize);
+        Simulator::Stop();
+        return true;
+    }
+
+    bool m_received;
+    uint16_t m_protocol;
+    uint32_t m_pktSize;
+    std::vector<uint8_t> m_pktBuf;
+};
+
+void
+FdNetDeviceL3ReceiveTest::DoRun()
+{
+    GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::RealtimeSimulatorImpl"));
+
+    int fds[2];
+    NS_TEST_ASSERT_MSG_EQ(pipe(fds), 0, "pipe() failed");
+
+    Ptr<Node> node = CreateObject<Node>();
+    Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
+
+    device->SetAddress(Mac48Address("AA:BB:CC:DD:EE:FF"));
+    device->SetEncapsulationMode(FdNetDevice::L3);
+    device->SetFileDescriptor(fds[0]);
+    node->AddDevice(device);
+    device->SetReceiveCallback(MakeCallback(&FdNetDeviceL3ReceiveTest::DoReceive, this));
+    device->Start(Seconds(0.0));
+
+    // Minimal IPv4 header (no AF prefix — L3 on Linux peeks the version nibble)
+    uint8_t pkt[20] = {};
+    pkt[0] = 0x45; // IPv4 version + IHL
+    pkt[1] = 0x00; // DSCP
+    pkt[2] = 0x00; // total length high
+    pkt[3] = 0x14; // total length = 20 bytes
+    pkt[4] = 0x00; // ID
+    pkt[5] = 0x01;
+    pkt[6] = 0x00; // flags + fragment offset
+    pkt[7] = 0x00;
+    pkt[8] = 0x40;  // TTL = 64
+    pkt[9] = 0x11;  // protocol = UDP
+    pkt[10] = 0x00; // checksum (0 for test)
+    pkt[11] = 0x00;
+    pkt[12] = 192; // src 192.168.1.1
+    pkt[13] = 168;
+    pkt[14] = 1;
+    pkt[15] = 1;
+    pkt[16] = 10; // dst 10.0.0.1
+    pkt[17] = 0;
+    pkt[18] = 0;
+    pkt[19] = 1;
+
+    ssize_t written = write(fds[1], pkt, sizeof(pkt));
+    NS_TEST_ASSERT_MSG_EQ((size_t)written, sizeof(pkt), "write to pipe failed (L3)");
+
+    Simulator::Stop(Seconds(5));
+    Simulator::Run();
+    Simulator::Destroy();
+
+    close(fds[1]);
+
+    NS_TEST_ASSERT_MSG_EQ(m_received, true, "Packet was not received in L3 mode");
+    if (!m_received)
+    {
+        return;
+    }
+    NS_TEST_ASSERT_MSG_EQ(m_protocol, (uint16_t)0x0800, "Protocol should be IPv4 (0x0800)");
+
+    // After peeking the IP version nibble, the callback sees the raw IP datagram.
+    // The datagram we injected is 20 bytes; verify key fields survived intact.
+    NS_TEST_ASSERT_MSG_EQ(m_pktSize, (uint32_t)20, "IP datagram size mismatch");
+    NS_TEST_ASSERT_MSG_EQ((uint32_t)m_pktBuf[0], (uint32_t)0x45, "IPv4 version+IHL mismatch");
+    NS_TEST_ASSERT_MSG_EQ((uint32_t)m_pktBuf[9], (uint32_t)0x11, "IP protocol (UDP) mismatch");
+    NS_TEST_ASSERT_MSG_EQ((uint32_t)m_pktBuf[12], (uint32_t)192, "Src IP[0] mismatch");
+    NS_TEST_ASSERT_MSG_EQ((uint32_t)m_pktBuf[16], (uint32_t)10, "Dst IP[0] mismatch");
+
+    GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::DefaultSimulatorImpl"));
+}
+#endif // __linux__
+
+// ==========================================================================
+// Test 5: FdNetDevice L3PI mode — receives raw IP with PI header (Linux TUN)
+// ==========================================================================
+
+#if defined(__linux__)
+class FdNetDeviceL3PIReceiveTest : public TestCase
+{
+  public:
+    FdNetDeviceL3PIReceiveTest()
+        : TestCase("FdNetDevice strips the 4-byte PI header in L3PI mode"),
+          m_received(false),
+          m_protocol(0),
+          m_pktSize(0)
+    {
+    }
+
+  private:
+    void DoRun() override;
+
+    bool DoReceive(Ptr<NetDevice>, Ptr<const Packet> packet, uint16_t protocol, const Address&)
+    {
+        m_received = true;
+        m_protocol = protocol;
+        m_pktSize = packet->GetSize();
+        m_pktBuf.resize(m_pktSize);
+        packet->CopyData(m_pktBuf.data(), m_pktSize);
+        Simulator::Stop();
+        return true;
+    }
+
+    bool m_received;
+    uint16_t m_protocol;
+    uint32_t m_pktSize;
+    std::vector<uint8_t> m_pktBuf;
+};
+
+void
+FdNetDeviceL3PIReceiveTest::DoRun()
+{
+    GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::RealtimeSimulatorImpl"));
+
+    int fds[2];
+    NS_TEST_ASSERT_MSG_EQ(pipe(fds), 0, "pipe() failed");
+
+    Ptr<Node> node = CreateObject<Node>();
+    Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
+
+    Mac48Address devAddr("11:22:33:44:55:66");
+    device->SetAddress(devAddr);
+    device->SetEncapsulationMode(FdNetDevice::L3PI);
+    device->SetFileDescriptor(fds[0]);
+    node->AddDevice(device);
+    device->SetReceiveCallback(MakeCallback(&FdNetDeviceL3PIReceiveTest::DoReceive, this));
+    device->Start(Seconds(0.0));
+
+    // PI header (flags=0, proto=0x0800 in network byte order) + minimal IPv4 header
+    std::vector<uint8_t> piFrame;
+    piFrame.push_back(0x00); // flags high byte
+    piFrame.push_back(0x00); // flags low byte
+    piFrame.push_back(0x08); // proto high byte (IPv4 big-endian)
+    piFrame.push_back(0x00); // proto low byte
+    uint8_t ipHeader[20] = {};
+    ipHeader[0] = 0x45; // IPv4 version + IHL
+    ipHeader[1] = 0x00;
+    ipHeader[2] = 0x00;
+    ipHeader[3] = 0x14; // total length = 20
+    ipHeader[4] = 0x00; // ID
+    ipHeader[5] = 0x01;
+    ipHeader[6] = 0x00; // flags + fragment offset
+    ipHeader[7] = 0x00;
+    ipHeader[8] = 0x40;  // TTL = 64
+    ipHeader[9] = 0x11;  // protocol = UDP
+    ipHeader[10] = 0x00; // checksum
+    ipHeader[11] = 0x00;
+    ipHeader[12] = 192; // src 192.168.1.1
+    ipHeader[13] = 168;
+    ipHeader[14] = 1;
+    ipHeader[15] = 1;
+    ipHeader[16] = 10; // dst 10.0.0.1
+    ipHeader[17] = 0;
+    ipHeader[18] = 0;
+    ipHeader[19] = 1;
+    piFrame.insert(piFrame.end(), ipHeader, ipHeader + sizeof(ipHeader));
+
+    ssize_t piWritten = write(fds[1], piFrame.data(), static_cast<unsigned int>(piFrame.size()));
+    NS_TEST_ASSERT_MSG_EQ((size_t)piWritten, piFrame.size(), "write to pipe failed (L3PI)");
+
+    Simulator::Stop(Seconds(5));
+    Simulator::Run();
+    Simulator::Destroy();
+
+    close(fds[1]);
+
+    NS_TEST_ASSERT_MSG_EQ(m_received, true, "Packet was not received in L3PI mode");
+    if (!m_received)
+    {
+        return;
+    }
+
+    // After stripping the 4-byte PI header and reading the protocol from it,
+    // the callback should see the raw IP datagram (20 bytes, protocol IPv4).
+    NS_TEST_ASSERT_MSG_EQ(m_protocol, (uint16_t)0x0800, "Protocol mismatch in L3PI mode");
+    NS_TEST_ASSERT_MSG_EQ(m_pktSize, (uint32_t)20, "IP datagram size mismatch in L3PI mode");
+    NS_TEST_ASSERT_MSG_EQ((uint32_t)m_pktBuf[0], (uint32_t)0x45, "IPv4 byte mismatch in L3PI mode");
+
+    GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::DefaultSimulatorImpl"));
+}
+#endif // __linux__
+
+// ==========================================================================
+// Platform-specific probe tests
+//
+// Each of these tests exercises the real kernel/driver API for TAP/TUN on
+// its respective OS.  If the required capability is not available (missing
+// driver, no root/CAP_NET_ADMIN, old kernel, etc.) the test logs a message
+// and returns without failing — it never calls NS_TEST_ASSERT_MSG_EQ with
+// a false condition.  This allows the test suite to run everywhere while
+// still exercising the native path when the environment supports it.
+// ==========================================================================
+
+// --------------------------------------------------------------------------
+// Linux: TUN device probe
+// --------------------------------------------------------------------------
+#if defined(__linux__)
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
+#include <net/if.h>
+#include <string.h>
+#include <sys/ioctl.h>
+
+/**
+ * @ingroup fd-net-device
+ * @brief Linux TUN device availability probe
+ */
+class FdNetDeviceLinuxTunProbeTest : public TestCase
+{
+  public:
+    FdNetDeviceLinuxTunProbeTest()
+        : TestCase("Linux TUN device availability probe")
+    {
+    }
+
+  private:
+    void DoRun() override;
+};
+
+void
+FdNetDeviceLinuxTunProbeTest::DoRun()
+{
+    int tunFd = open("/dev/net/tun", O_RDWR);
+    if (tunFd < 0)
+    {
+        NS_LOG_UNCOND("[Linux TUN probe] /dev/net/tun unavailable (" << strerror(errno)
+                                                                     << "); skipping");
+        return;
+    }
+
+    struct ifreq ifr = {};
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+    strncpy(ifr.ifr_name, "ns3tstun0", IFNAMSIZ - 1);
+
+    if (ioctl(tunFd, TUNSETIFF, &ifr) < 0)
+    {
+        close(tunFd);
+        NS_LOG_UNCOND("[Linux TUN probe] TUNSETIFF requires CAP_NET_ADMIN; skipping");
+        return;
+    }
+
+    // FdNetDevice L3 smoke-test: start, run briefly, no crash = pass.
+    Ptr<Node> node = CreateObject<Node>();
+    Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
+    device->SetAddress(Mac48Address("AA:BB:CC:DD:EE:01"));
+    device->SetEncapsulationMode(FdNetDevice::L3);
+    device->SetFileDescriptor(tunFd);
+    node->AddDevice(device);
+    device->Start(Seconds(0.0));
+
+    Simulator::Stop(MilliSeconds(20));
+    Simulator::Run();
+    Simulator::Destroy();
+
+    NS_LOG_UNCOND("[Linux TUN probe] TUN interface '" << ifr.ifr_name << "' created OK");
+}
+#endif // __linux__
+
+// --------------------------------------------------------------------------
+// macOS: utun socket probe
+// --------------------------------------------------------------------------
+#if defined(__APPLE__)
+#include <errno.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/kern_control.h>
+#include <sys/socket.h>
+#include <sys/sys_domain.h>
+
+/**
+ * @ingroup fd-net-device
+ * @brief macOS utun socket creation probe
+ */
+class FdNetDeviceMacOsUtunProbeTest : public TestCase
+{
+  public:
+    FdNetDeviceMacOsUtunProbeTest()
+        : TestCase("macOS utun socket creation probe")
+    {
+    }
+
+  private:
+    void DoRun() override;
+};
+
+void
+FdNetDeviceMacOsUtunProbeTest::DoRun()
+{
+    int fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
+    if (fd < 0)
+    {
+        NS_LOG_UNCOND("[macOS utun probe] socket(PF_SYSTEM) failed (" << strerror(errno)
+                                                                      << "); skipping");
+        return;
+    }
+
+    struct ctl_info info = {};
+    strlcpy(info.ctl_name, "com.apple.net.utun_control", sizeof(info.ctl_name));
+    if (ioctl(fd, CTLIOCGINFO, &info) < 0)
+    {
+        close(fd);
+        NS_LOG_UNCOND("[macOS utun probe] CTLIOCGINFO failed (" << strerror(errno)
+                                                                << "); skipping");
+        return;
+    }
+
+    struct sockaddr_ctl addr = {};
+    addr.sc_len = sizeof(addr);
+    addr.sc_family = AF_SYSTEM;
+    addr.ss_sysaddr = AF_SYS_CONTROL;
+    addr.sc_id = info.ctl_id;
+    addr.sc_unit = 0; // 0 = auto-assign unit number
+
+    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+    {
+        close(fd);
+        NS_LOG_UNCOND("[macOS utun probe] connect() failed (" << strerror(errno) << "); skipping");
+        return;
+    }
+
+    // utun fd in hand — UTUN-mode FdNetDevice smoke-test.
+    Ptr<Node> node = CreateObject<Node>();
+    Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
+    device->SetAddress(Mac48Address("AA:BB:CC:DD:EE:02"));
+    device->SetEncapsulationMode(FdNetDevice::L3);
+    device->SetFileDescriptor(fd);
+    node->AddDevice(device);
+    device->Start(Seconds(0.0));
+
+    Simulator::Stop(MilliSeconds(20));
+    Simulator::Run();
+    Simulator::Destroy();
+
+    NS_LOG_UNCOND("[macOS utun probe] utun interface created OK");
+}
+
+// ==========================================================================
+// Test 6: FdNetDevice UTUN mode — receives raw IP with 4-byte AF header
 // ==========================================================================
 
 class FdNetDeviceUtunReceiveTest : public TestCase
@@ -458,161 +827,6 @@ FdNetDeviceUtunReceiveTest::DoRun()
 
     GlobalValue::Bind("SimulatorImplementationType", StringValue("ns3::DefaultSimulatorImpl"));
 }
-
-// ==========================================================================
-// Platform-specific probe tests
-//
-// Each of these tests exercises the real kernel/driver API for TAP/TUN on
-// its respective OS.  If the required capability is not available (missing
-// driver, no root/CAP_NET_ADMIN, old kernel, etc.) the test logs a message
-// and returns without failing — it never calls NS_TEST_ASSERT_MSG_EQ with
-// a false condition.  This allows the test suite to run everywhere while
-// still exercising the native path when the environment supports it.
-// ==========================================================================
-
-// --------------------------------------------------------------------------
-// Linux: TUN device probe
-// --------------------------------------------------------------------------
-#if defined(__linux__)
-#include <errno.h>
-#include <fcntl.h>
-#include <linux/if_tun.h>
-#include <net/if.h>
-#include <string.h>
-#include <sys/ioctl.h>
-
-/**
- * @ingroup fd-net-device
- * @brief Linux TUN device availability probe
- */
-class FdNetDeviceLinuxTunProbeTest : public TestCase
-{
-  public:
-    FdNetDeviceLinuxTunProbeTest()
-        : TestCase("Linux TUN device availability probe")
-    {
-    }
-
-  private:
-    void DoRun() override;
-};
-
-void
-FdNetDeviceLinuxTunProbeTest::DoRun()
-{
-    int tunFd = open("/dev/net/tun", O_RDWR);
-    if (tunFd < 0)
-    {
-        NS_LOG_UNCOND("[Linux TUN probe] /dev/net/tun unavailable (" << strerror(errno)
-                                                                     << "); skipping");
-        return;
-    }
-
-    struct ifreq ifr = {};
-    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-    strncpy(ifr.ifr_name, "ns3tstun0", IFNAMSIZ - 1);
-
-    if (ioctl(tunFd, TUNSETIFF, &ifr) < 0)
-    {
-        close(tunFd);
-        NS_LOG_UNCOND("[Linux TUN probe] TUNSETIFF requires CAP_NET_ADMIN; skipping");
-        return;
-    }
-
-    // FdNetDevice DIX smoke-test: start, run briefly, no crash = pass.
-    Ptr<Node> node = CreateObject<Node>();
-    Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
-    device->SetAddress(Mac48Address("AA:BB:CC:DD:EE:01"));
-    device->SetEncapsulationMode(FdNetDevice::DIX);
-    device->SetFileDescriptor(tunFd);
-    node->AddDevice(device);
-    device->Start(Seconds(0.0));
-
-    Simulator::Stop(MilliSeconds(20));
-    Simulator::Run();
-    Simulator::Destroy();
-
-    NS_LOG_UNCOND("[Linux TUN probe] TUN interface '" << ifr.ifr_name << "' created OK");
-}
-#endif // __linux__
-
-// --------------------------------------------------------------------------
-// macOS: utun socket probe
-// --------------------------------------------------------------------------
-#if defined(__APPLE__)
-#include <errno.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/kern_control.h>
-#include <sys/socket.h>
-#include <sys/sys_domain.h>
-
-/**
- * @ingroup fd-net-device
- * @brief macOS utun socket creation probe
- */
-class FdNetDeviceMacOsUtunProbeTest : public TestCase
-{
-  public:
-    FdNetDeviceMacOsUtunProbeTest()
-        : TestCase("macOS utun socket creation probe")
-    {
-    }
-
-  private:
-    void DoRun() override;
-};
-
-void
-FdNetDeviceMacOsUtunProbeTest::DoRun()
-{
-    int fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
-    if (fd < 0)
-    {
-        NS_LOG_UNCOND("[macOS utun probe] socket(PF_SYSTEM) failed (" << strerror(errno)
-                                                                      << "); skipping");
-        return;
-    }
-
-    struct ctl_info info = {};
-    strlcpy(info.ctl_name, "com.apple.net.utun_control", sizeof(info.ctl_name));
-    if (ioctl(fd, CTLIOCGINFO, &info) < 0)
-    {
-        close(fd);
-        NS_LOG_UNCOND("[macOS utun probe] CTLIOCGINFO failed (" << strerror(errno)
-                                                                << "); skipping");
-        return;
-    }
-
-    struct sockaddr_ctl addr = {};
-    addr.sc_len = sizeof(addr);
-    addr.sc_family = AF_SYSTEM;
-    addr.ss_sysaddr = AF_SYS_CONTROL;
-    addr.sc_id = info.ctl_id;
-    addr.sc_unit = 0; // 0 = auto-assign unit number
-
-    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-    {
-        close(fd);
-        NS_LOG_UNCOND("[macOS utun probe] connect() failed (" << strerror(errno) << "); skipping");
-        return;
-    }
-
-    // utun fd in hand — UTUN-mode FdNetDevice smoke-test.
-    Ptr<Node> node = CreateObject<Node>();
-    Ptr<FdNetDevice> device = CreateObject<FdNetDevice>();
-    device->SetAddress(Mac48Address("AA:BB:CC:DD:EE:02"));
-    device->SetEncapsulationMode(FdNetDevice::L3);
-    device->SetFileDescriptor(fd);
-    node->AddDevice(device);
-    device->Start(Seconds(0.0));
-
-    Simulator::Stop(MilliSeconds(20));
-    Simulator::Run();
-    Simulator::Destroy();
-
-    NS_LOG_UNCOND("[macOS utun probe] utun interface created OK");
-}
 #endif // __APPLE__
 
 // --------------------------------------------------------------------------
@@ -706,11 +920,13 @@ class FdNetDeviceTestSuite : public TestSuite
         AddTestCase(new FdNetDeviceReceiveTest, TestCase::Duration::QUICK);
         AddTestCase(new FdNetDeviceSendTest, TestCase::Duration::QUICK);
         AddTestCase(new FdNetDeviceDixpiReceiveTest, TestCase::Duration::QUICK);
-        AddTestCase(new FdNetDeviceUtunReceiveTest, TestCase::Duration::QUICK);
 #if defined(__linux__)
+        AddTestCase(new FdNetDeviceL3ReceiveTest, TestCase::Duration::QUICK);
+        AddTestCase(new FdNetDeviceL3PIReceiveTest, TestCase::Duration::QUICK);
         AddTestCase(new FdNetDeviceLinuxTunProbeTest, TestCase::Duration::QUICK);
 #endif
 #if defined(__APPLE__)
+        AddTestCase(new FdNetDeviceUtunReceiveTest, TestCase::Duration::QUICK);
         AddTestCase(new FdNetDeviceMacOsUtunProbeTest, TestCase::Duration::QUICK);
 #endif
 #if defined(_WIN32)

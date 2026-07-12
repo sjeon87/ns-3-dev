@@ -167,7 +167,8 @@ TapFdNetDeviceHelper::InstallPriv(Ptr<Node> node) const
         // Linux TUN delivers raw IP with no prefix
         device->SetEncapsulationMode(!m_modePi ? FdNetDevice::L3 : FdNetDevice::L3PI);
     }
-    else if (m_modePi) {
+    else if (m_modePi)
+    {
         device->SetEncapsulationMode(FdNetDevice::DIXPI);
     }
 #else
