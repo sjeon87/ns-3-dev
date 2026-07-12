@@ -48,7 +48,7 @@ namespace
  * Build the smallest valid Ethernet II frame containing a dummy IPv4 payload.
  * dst and src are 6-byte arrays in network order.
  */
-static std::vector<uint8_t>
+std::vector<uint8_t>
 BuildEthernetFrame(const uint8_t dst[6], const uint8_t src[6], const uint8_t* payload, size_t len)
 {
     std::vector<uint8_t> frame;

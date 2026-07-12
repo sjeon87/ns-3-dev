@@ -757,7 +757,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
         }
         return true;
 #elif defined(__linux__)
-        size_t len = (size_t)packet->GetSize();
+        auto len = (size_t)packet->GetSize();
         uint8_t* buf = AllocateBuffer(len);
         if (!buf)
         {
@@ -785,7 +785,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
 
         NS_LOG_LOGIC("L3PI calling write, proto=" << std::hex << protocolNumber);
 
-        size_t payloadLen = (size_t)packet->GetSize();
+        auto payloadLen = (size_t)packet->GetSize();
         size_t totalLen = payloadLen + 4;
         uint8_t* buffer = AllocateBuffer(totalLen);
         if (!buffer)
