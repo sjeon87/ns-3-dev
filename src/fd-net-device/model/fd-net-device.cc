@@ -23,6 +23,8 @@
 #include "ns3/string.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/uinteger.h"
+
+#include <cstddef>
 #include <cstdint>
 
 #ifdef _WIN32
@@ -107,11 +109,12 @@ FdNetDevice::GetTypeId()
                           TimeValue(Seconds(0.)),
                           MakeTimeAccessor(&FdNetDevice::m_tStop),
                           MakeTimeChecker())
-            .AddAttribute("EncapsulationMode",
-                          "The link-layer encapsulation type to use.",
-                          EnumValue(DIX),
-                          MakeEnumAccessor<EncapsulationMode>(&FdNetDevice::m_encapMode),
-                          MakeEnumChecker(DIX, "Dix", LLC, "Llc", DIXPI, "DixPi", L3, "L3"))
+            .AddAttribute(
+                "EncapsulationMode",
+                "The link-layer encapsulation type to use.",
+                EnumValue(DIX),
+                MakeEnumAccessor<EncapsulationMode>(&FdNetDevice::m_encapMode),
+                MakeEnumChecker(DIX, "Dix", LLC, "Llc", DIXPI, "DixPi", L3, "L3", L3PI, "L3Pi"))
             .AddAttribute("RxQueueSize",
                           "Maximum size of the read queue.  "
                           "This value limits number of packets that have been read "
@@ -521,6 +524,7 @@ FdNetDevice::ForwardUp()
         }
 
 #else // applying L3 on neither Apple or Linux
+        uint32_t af = 0;
         if (true)
         {
             NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid")
@@ -549,6 +553,35 @@ FdNetDevice::ForwardUp()
         m_rxCallback(this, packet, protocol, source);
         return;
     }
+#if defined(__linux__)
+    else if (m_encapMode == L3PI)
+    {
+        if (packet->GetSize() < 4)
+        {
+            m_phyRxDropTrace(originalPacket);
+            return;
+        }
+        uint8_t piBuf[4];
+        packet->CopyData(piBuf, 4);
+        packet->RemoveAtStart(4);
+        protocol = (piBuf[2] << 8) | piBuf[3];
+        destination = m_address;
+        source = Mac48Address("00:00:00:00:00:00");
+
+        NS_LOG_LOGIC("L3PI pkt proto=" << std::hex << protocol);
+
+        m_promiscSnifferTrace(originalPacket);
+        if (!m_promiscRxCallback.IsNull())
+        {
+            m_macPromiscRxTrace(originalPacket);
+            m_promiscRxCallback(this, packet, protocol, source, destination, NS3_PACKET_HOST);
+        }
+        m_snifferTrace(originalPacket);
+        m_macRxTrace(originalPacket);
+        m_rxCallback(this, packet, protocol, source);
+        return;
+    }
+#endif
 
     EthernetHeader header(false);
 
@@ -669,7 +702,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
     }
 
     //
-    // UTUN mode: macOS utun expects raw IP with a 4-byte address-family prefix.
+    // L3 mode: macOS utun expects raw IP with a 4-byte address-family prefix.
     // Skip Ethernet header construction entirely.
     //
     if (m_encapMode == L3)
@@ -740,9 +773,45 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
             return false;
         }
         return true;
+    }
+    else if (m_encapMode == L3PI)
+    {
+        NS_ASSERT_MSG(packet->GetSize() <= m_mtu,
+                      "FdNetDevice::SendFrom(): Packet too big " << packet->GetSize());
+
+        m_macTxTrace(packet);
+        m_promiscSnifferTrace(packet);
+        m_snifferTrace(packet);
+
+        NS_LOG_LOGIC("L3PI calling write, proto=" << std::hex << protocolNumber);
+
+        size_t payloadLen = (size_t)packet->GetSize();
+        size_t totalLen = payloadLen + 4;
+        uint8_t* buffer = AllocateBuffer(totalLen);
+        if (!buffer)
+        {
+            m_macTxDropTrace(packet);
+            return false;
+        }
+
+        // flags = 0, proto = protocolNumber (big-endian)
+        buffer[0] = 0;
+        buffer[1] = 0;
+        buffer[2] = (protocolNumber >> 8) & 0xFF;
+        buffer[3] = protocolNumber & 0xFF;
+        packet->CopyData(buffer + 4, payloadLen);
+
+        ssize_t written = Write(buffer, totalLen);
+        FreeBuffer(buffer);
+
+        if (written == -1 || (size_t)written != totalLen)
+        {
+            m_macTxDropTrace(packet);
+            return false;
+        }
+        return true;
 #endif
     }
-
     Mac48Address destination = Mac48Address::ConvertFrom(dest);
     Mac48Address source = Mac48Address::ConvertFrom(src);
 
