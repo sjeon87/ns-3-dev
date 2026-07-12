@@ -470,10 +470,9 @@ FdNetDevice::ForwardUp()
     bool isBroadcast = false;
     bool isMulticast = false;
 
-
     if (m_encapMode == L3)
     {
-        #if defined(__APPLE__)
+#if defined(__APPLE__)
         //
         // UTUN mode: macOS utun sends raw IP with a 4-byte address-family prefix.
         // Strip it, determine the Ethernet protocol type, and deliver directly
@@ -501,10 +500,14 @@ FdNetDevice::ForwardUp()
         {
             protocol = 0x86DD;
         }
-        #else
+#elif defined(__linux__)
         // Raw IP mode on other platforms
         // Peek IP header for version nibble
-
+        if (packet->GetSize() < 1)
+        {
+            m_phyRxDropTrace(originalPacket);
+            return;
+        }
         uint8_t af;
         packet->CopyData(&af, 1);
         af >>= 4;
@@ -516,7 +519,13 @@ FdNetDevice::ForwardUp()
         {
             protocol = 0x86DD;
         }
-        #endif
+
+#else // applying L3 on neither Apple or Linux
+        if (true)
+        {
+            NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid")
+        }
+#endif
         else
         {
             m_phyRxDropTrace(originalPacket);
@@ -673,7 +682,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
         m_snifferTrace(packet);
 
         NS_LOG_LOGIC("L3 calling write, proto=" << std::hex << protocolNumber);
-        #if defined(__APPLE__)
+#if defined(__APPLE__)
         // 4-byte AF header in network byte order, followed by raw IP
         uint32_t af;
         if (protocolNumber == 0x0800)
@@ -714,7 +723,24 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
             return false;
         }
         return true;
-
+#elif defined(__linux__)
+        size_t len = (size_t)packet->GetSize();
+        uint8_t* buf = AllocateBuffer(len);
+        if (!buf)
+        {
+            m_macTxDropTrace(packet);
+            return false;
+        }
+        packet->CopyData(buf, len);
+        ssize_t written = Write(buf, len);
+        FreeBuffer(buf);
+        if (written == -1 || (size_t)written != len)
+        {
+            m_macTxDropTrace(packet);
+            return false;
+        }
+        return true;
+#endif
     }
 
     Mac48Address destination = Mac48Address::ConvertFrom(dest);
