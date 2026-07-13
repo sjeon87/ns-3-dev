@@ -46,7 +46,12 @@ namespace
 
 /**
  * Build the smallest valid Ethernet II frame containing a dummy IPv4 payload.
- * dst and src are 6-byte arrays in network order.
+ *
+ * @param dst 6-byte destination MAC address, in network order.
+ * @param src 6-byte source MAC address, in network order.
+ * @param payload Bytes to place after the Ethernet header.
+ * @param len Number of bytes in @p payload.
+ * @return The assembled, zero-padded-to-minimum-length Ethernet frame.
  */
 std::vector<uint8_t>
 BuildEthernetFrame(const uint8_t dst[6], const uint8_t src[6], const uint8_t* payload, size_t len)
@@ -89,6 +94,13 @@ class FdNetDeviceReceiveTest : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * Receive callback registered on the device under test.
+     *
+     * @param packet The received network-layer PDU.
+     * @param protocol EtherType of the received frame.
+     * @return Always true (packet accepted).
+     */
     bool DoReceive(Ptr<NetDevice>, Ptr<const Packet> packet, uint16_t protocol, const Address&)
     {
         NS_LOG_UNCOND("FdNetDeviceReceiveTest: received packet, protocol=0x" << std::hex
@@ -184,6 +196,10 @@ FdNetDeviceReceiveTest::DoRun()
 // Test 2: FdNetDevice sends a packet out via the fd (read from the pipe)
 // ==========================================================================
 
+/**
+ * @ingroup fd-net-device
+ * @brief Test that FdNetDevice writes a sent packet to its file descriptor.
+ */
 class FdNetDeviceSendTest : public TestCase
 {
   public:
@@ -262,6 +278,10 @@ FdNetDeviceSendTest::DoRun()
 // Test 3: FdNetDevice correctly handles DIXPI (PI header) mode
 // ==========================================================================
 
+/**
+ * @ingroup fd-net-device
+ * @brief Test that FdNetDevice strips the 4-byte PI header in DIXPI mode.
+ */
 class FdNetDeviceDixpiReceiveTest : public TestCase
 {
   public:
@@ -276,6 +296,13 @@ class FdNetDeviceDixpiReceiveTest : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * Receive callback registered on the device under test.
+     *
+     * @param packet The received network-layer PDU.
+     * @param protocol EtherType of the received frame.
+     * @return Always true (packet accepted).
+     */
     bool DoReceive(Ptr<NetDevice>, Ptr<const Packet> packet, uint16_t protocol, const Address&)
     {
         m_received = true;
@@ -287,10 +314,10 @@ class FdNetDeviceDixpiReceiveTest : public TestCase
         return true;
     }
 
-    bool m_received;
-    uint16_t m_protocol;
-    uint32_t m_pktSize;
-    std::vector<uint8_t> m_pktBuf;
+    bool m_received;               //!< set to true once a packet is forwarded up
+    uint16_t m_protocol;           //!< EtherType from the forwarded packet
+    uint32_t m_pktSize;            //!< size of the received network-layer PDU
+    std::vector<uint8_t> m_pktBuf; //!< copy of the received bytes
 };
 
 void
@@ -357,6 +384,10 @@ FdNetDeviceDixpiReceiveTest::DoRun()
 // ==========================================================================
 
 #if defined(__linux__)
+/**
+ * @ingroup fd-net-device
+ * @brief Test that FdNetDevice delivers raw IP in L3 mode.
+ */
 class FdNetDeviceL3ReceiveTest : public TestCase
 {
   public:
@@ -371,6 +402,13 @@ class FdNetDeviceL3ReceiveTest : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * Receive callback registered on the device under test.
+     *
+     * @param packet The received network-layer PDU.
+     * @param protocol EtherType of the received frame.
+     * @return Always true (packet accepted).
+     */
     bool DoReceive(Ptr<NetDevice>, Ptr<const Packet> packet, uint16_t protocol, const Address&)
     {
         m_received = true;
@@ -382,10 +420,10 @@ class FdNetDeviceL3ReceiveTest : public TestCase
         return true;
     }
 
-    bool m_received;
-    uint16_t m_protocol;
-    uint32_t m_pktSize;
-    std::vector<uint8_t> m_pktBuf;
+    bool m_received;               //!< set to true once a packet is forwarded up
+    uint16_t m_protocol;           //!< EtherType from the forwarded packet
+    uint32_t m_pktSize;            //!< size of the received network-layer PDU
+    std::vector<uint8_t> m_pktBuf; //!< copy of the received bytes
 };
 
 void
@@ -462,6 +500,10 @@ FdNetDeviceL3ReceiveTest::DoRun()
 // ==========================================================================
 
 #if defined(__linux__)
+/**
+ * @ingroup fd-net-device
+ * @brief Test that FdNetDevice strips the 4-byte PI header in L3PI mode.
+ */
 class FdNetDeviceL3PIReceiveTest : public TestCase
 {
   public:
@@ -476,6 +518,13 @@ class FdNetDeviceL3PIReceiveTest : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * Receive callback registered on the device under test.
+     *
+     * @param packet The received network-layer PDU.
+     * @param protocol EtherType of the received frame.
+     * @return Always true (packet accepted).
+     */
     bool DoReceive(Ptr<NetDevice>, Ptr<const Packet> packet, uint16_t protocol, const Address&)
     {
         m_received = true;
@@ -487,10 +536,10 @@ class FdNetDeviceL3PIReceiveTest : public TestCase
         return true;
     }
 
-    bool m_received;
-    uint16_t m_protocol;
-    uint32_t m_pktSize;
-    std::vector<uint8_t> m_pktBuf;
+    bool m_received;               //!< set to true once a packet is forwarded up
+    uint16_t m_protocol;           //!< EtherType from the forwarded packet
+    uint32_t m_pktSize;            //!< size of the received network-layer PDU
+    std::vector<uint8_t> m_pktBuf; //!< copy of the received bytes
 };
 
 void
@@ -725,6 +774,10 @@ FdNetDeviceMacOsUtunProbeTest::DoRun()
 // Test 6: FdNetDevice UTUN mode — receives raw IP with 4-byte AF header
 // ==========================================================================
 
+/**
+ * @ingroup fd-net-device
+ * @brief Test that FdNetDevice strips the 4-byte AF header in UTUN mode.
+ */
 class FdNetDeviceUtunReceiveTest : public TestCase
 {
   public:
@@ -739,6 +792,13 @@ class FdNetDeviceUtunReceiveTest : public TestCase
   private:
     void DoRun() override;
 
+    /**
+     * Receive callback registered on the device under test.
+     *
+     * @param packet The received network-layer PDU.
+     * @param protocol EtherType of the received frame.
+     * @return Always true (packet accepted).
+     */
     bool DoReceive(Ptr<NetDevice>, Ptr<const Packet> packet, uint16_t protocol, const Address&)
     {
         m_received = true;
@@ -750,10 +810,10 @@ class FdNetDeviceUtunReceiveTest : public TestCase
         return true;
     }
 
-    bool m_received;
-    uint16_t m_protocol;
-    uint32_t m_pktSize;
-    std::vector<uint8_t> m_pktBuf;
+    bool m_received;               //!< set to true once a packet is forwarded up
+    uint16_t m_protocol;           //!< EtherType from the forwarded packet
+    uint32_t m_pktSize;            //!< size of the received network-layer PDU
+    std::vector<uint8_t> m_pktBuf; //!< copy of the received bytes
 };
 
 void
