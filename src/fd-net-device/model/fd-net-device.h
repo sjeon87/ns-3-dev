@@ -1,9 +1,12 @@
 /*
- * Copyright (c) 2012 INRIA, 2012 University of Washington
+ * Copyright (c) 2026 PES Innovation Lab
+ *               2012 INRIA, 2012 University of Washington
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- * Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+ * Author: Vinaayak G Dasika <vinaayak@dasika.link>
+ *         Andey Hemanth <andy34g7@gmail.com>
+ *         Alina Quereilhac <alina.quereilhac@inria.fr>
  *         Claudio Freire <klaussfreire@sourceforge.net>
  */
 

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2026 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+ * Copyright (c) 2026 PES Innovation Lab
+ *               2026 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
@@ -10,7 +11,9 @@
  * platform-specific TAP/TUN drivers.  They run on all supported platforms
  * (Linux, macOS, Windows).
  *
- * Author: Gabriel Ferreira <gabrielcarvfer@gmail.com>
+ * Author: Vinaayak G Dasika <vinaayak@dasika.link>
+ *         Andey Hemanth <andy34g7@gmail.com>
+ *         Gabriel Ferreira <gabrielcarvfer@gmail.com>
  */
 
 #include "ns3/fd-net-device.h"
