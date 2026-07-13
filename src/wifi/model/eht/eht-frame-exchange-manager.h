@@ -14,6 +14,8 @@
 
 #include <unordered_map>
 
+class EmlsrStaleTxopEndTest;
+
 namespace ns3
 {
 
@@ -68,6 +70,9 @@ operator<<(std::ostream& os, WifiIcfDrop reason)
  */
 class EhtFrameExchangeManager : public HeFrameExchangeManager
 {
+    /// @brief the EMLSR TXOP end tracking test needs to schedule the TXOP end event
+    friend class ::EmlsrStaleTxopEndTest;
+
   public:
     /**
      * @brief Get the type ID.

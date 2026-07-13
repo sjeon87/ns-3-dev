@@ -44,6 +44,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 - (mesh) #1341 Fixed dot11s regression that ignored the link rate, degrading the HWMP routing metric to hop count.
 - (sixlowpan) #1342 Fixed a deserialization error in the MESH header.
 - (dsr) !2762 Fixes header format to comply with RFC4728. Also other minor bug fixes and modernization.
+- (wifi) !2944 An EMLSR client starting an UL TXOP while the AP was still tracking the end of a previous TXOP is now recognized as the new TXOP holder; previously the frame was treated as a continuation of the old TXOP and the blocking of the client's other links was skipped (debug builds failed an assert).
 
 ## Release 3.48
 

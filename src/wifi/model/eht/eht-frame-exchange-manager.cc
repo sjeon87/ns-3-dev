@@ -1401,8 +1401,29 @@ EhtFrameExchangeManager::CheckEmlsrClientStartingTxop(const WifiMacHeader& hdr,
 
     if (m_ongoingTxopEnd.IsPending())
     {
-        NS_LOG_DEBUG("A TXOP is already ongoing");
-        return false;
+        // after each frame exchange of a multi-frame TXOP, the TXOP end event stays pending
+        // for a short window in which we wait to see whether the TXOP holder continues its
+        // TXOP. If, in that window, another station transmits a frame that makes it the new
+        // TXOP holder, the pending event refers to a TXOP that has been terminated: deliver
+        // that event now (it takes care of switching the previous holder, if an EMLSR client,
+        // back to listening operation) and process the start of the new TXOP, lest the
+        // cross-link blocking for the new (EMLSR) holder be skipped
+        if (const auto holder = FindTxopHolder(hdr, txVector);
+            holder == sender && m_txopHolder != sender)
+        {
+            NS_LOG_DEBUG("The TXOP tracked by the pending TXOP end event has terminated");
+            // detach the event first, so that the TXOP end processing does not regard the
+            // previous TXOP as still ongoing
+            auto txopEnd = m_ongoingTxopEnd;
+            m_ongoingTxopEnd = EventId();
+            txopEnd.PeekEventImpl()->Invoke();
+            txopEnd.Cancel();
+        }
+        else
+        {
+            NS_LOG_DEBUG("A TXOP is already ongoing");
+            return false;
+        }
     }
 
     if (auto holder = FindTxopHolder(hdr, txVector); holder != sender)
