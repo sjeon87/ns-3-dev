@@ -45,7 +45,7 @@ FdReader::FdReader()
     : m_fd(-1),
       m_stop(false),
       m_destroyEvent(),
-      m_eventsignal(nullptr)
+      m_eventSignal(nullptr)
 {
     NS_LOG_FUNCTION(this);
     m_evpipe[0] = -1;
@@ -104,11 +104,11 @@ FdReader::Start(int fd, Callback<void, uint8_t*, ssize_t> readCallback)
     //
     NS_LOG_LOGIC("Spinning up read thread");
 
-    m_eventsignal = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    m_eventSignal = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     m_readThread = std::thread(&FdReader::Run, this);
-    WaitForSingleObject(m_eventsignal, INFINITE);
-    CloseHandle(m_eventsignal);
-    m_eventsignal = nullptr;
+    WaitForSingleObject(m_eventSignal, INFINITE);
+    CloseHandle(m_eventSignal);
+    m_eventSignal = nullptr;
 }
 
 void
@@ -156,9 +156,9 @@ FdReader::Run()
     // blocking in DoRead so Start() is not held up indefinitely.
     bool startSignaled = false;
     auto signalStart = [&]() {
-        if (!startSignaled && m_eventsignal)
+        if (!startSignaled && m_eventSignal)
         {
-            SetEvent(m_eventsignal);
+            SetEvent(m_eventSignal);
             startSignaled = true;
         }
     };

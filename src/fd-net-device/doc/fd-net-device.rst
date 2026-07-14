@@ -662,8 +662,8 @@ incoming packet, the packet is silently lost.
 
 To prevent this, ``FdReader::Start()`` creates a one-shot Windows Event object
 (``CreateEvent(nullptr, FALSE, FALSE, nullptr)``) and blocks on
-``WaitForSingleObject(m_eventsignal, INFINITE)`` after launching the read
-thread.  The read thread signals the event (``SetEvent(m_eventsignal)``) after
+``WaitForSingleObject(m_eventSignal, INFINITE)`` after launching the read
+thread.  The read thread signals the event (``SetEvent(m_eventSignal)``) after
 completing its first loop iteration.
 
 For the pipe case with pre-queued data (used in tests), the thread calls

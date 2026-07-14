@@ -151,7 +151,7 @@ class FdReader : public SimpleRefCount<FdReader>
      *  Start() can return once any pre-queued data has been processed.
      *  Stored as void* to avoid pulling <windows.h> into every TU;
      *  the win32-fd-reader.cc implementation casts it to HANDLE. */
-    void* m_eventsignal;
+    void* m_eventSignal{nullptr};
 #endif
 };
 
