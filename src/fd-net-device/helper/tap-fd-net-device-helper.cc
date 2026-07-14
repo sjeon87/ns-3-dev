@@ -26,32 +26,23 @@
 #include <string>
 
 // ---- Platform-specific includes ----
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 #include <arpa/inet.h>
-#include <net/ethernet.h>
 #include <net/if.h>
 #include <netinet/in.h>
-#include <netpacket/packet.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-#include <time.h>
 #include <unistd.h>
+#endif
 
-#elif defined(__APPLE__)
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/un.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#if defined(__linux__)
+#include <net/ethernet.h>
+#include <netpacket/packet.h>
+#include <time.h>
 
 #elif defined(_WIN32)
 // winsock2.h must come before windows.h to avoid winsock.h re-inclusion.
