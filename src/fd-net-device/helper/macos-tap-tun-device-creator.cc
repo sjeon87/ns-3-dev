@@ -146,9 +146,37 @@ CreateUtun(int unit, char* assignedName)
     return fd;
 }
 
+/**
+ * Print the command synopsis and option summary to stderr.
+ *
+ * @param progName The program's argv[0].
+ */
+static void
+Usage(const char* progName)
+{
+    std::cerr << "Usage: " << progName << " -p <path> [-d <device>] [-i <ipv4>] [-n <netmask>]"
+              << " [-u <unit>] [-v]" << std::endl;
+    std::cerr << "  Privileged helper that creates a utun (TUN) interface on macOS and\n"
+                 "  hands the fd back to the parent ns-3 process over a Unix socket.\n"
+                 "\n"
+                 "  -p <path>     Unix socket path to send the created fd back on (required)\n"
+                 "  -d <device>   Interface name hint (ignored; utun names are kernel-assigned)\n"
+                 "  -i <ipv4>     IPv4 address to assign (requires -n)\n"
+                 "  -n <netmask>  IPv4 netmask to assign (requires -i)\n"
+                 "  -u <unit>     utun unit number (default: auto-assign)\n"
+                 "  -v            Enable verbose logging"
+              << std::endl;
+}
+
 int
 main(int argc, char* argv[])
 {
+    if (argc == 1)
+    {
+        Usage(argv[0]);
+        return 1;
+    }
+
     int c;
     char* dev = nullptr;
     char* ip4 = nullptr;
@@ -179,11 +207,16 @@ main(int argc, char* argv[])
             gVerbose = true;
             break;
         default:
-            break;
+            Usage(argv[0]);
+            return 1;
         }
     }
 
-    ABORT_IF(path == nullptr, "path is a required argument", 0);
+    if (path == nullptr)
+    {
+        Usage(argv[0]);
+        ABORT("path is a required argument", 0);
+    }
 
     (void)dev; // utun names are kernel-assigned; caller hint is ignored
 
