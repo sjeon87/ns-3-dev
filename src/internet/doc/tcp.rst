@@ -47,7 +47,7 @@ connection setup and close logic. Several congestion control algorithms
 are supported, with CUBIC the default, and NewReno, Westwood, Hybla, HighSpeed,
 Vegas, Scalable, Veno, Binary Increase Congestion Control (BIC), Yet Another
 HighSpeed TCP (YeAH), Illinois, H-TCP, Low Extra Delay Background Transport
-(LEDBAT), TCP Low Priority (TCP-LP), Data Center TCP (DCTCP) and Bottleneck
+(LEDBAT), LEDBAT++, TCP Low Priority (TCP-LP), Data Center TCP (DCTCP) and Bottleneck
 Bandwidth and RTT (BBR) also supported. The model also supports Selective
 Acknowledgements (SACK), Forward Acknowledgement (FACK), Proportional Rate Reduction (PRR) and Explicit
 Congestion Notification (ECN). Multipath-TCP is not yet supported in the |ns3|
@@ -887,6 +887,86 @@ implementation are:
 
 More information about LEDBAT is available in RFC 6817: https://tools.ietf.org/html/rfc6817
 
+
+LEDBAT++
+^^^^^^^^
+
+LEDBAT++ is a modification of LEDBAT that mitigates the following drawbacks of the LEDBAT algorithm:
+
+* *Latecomer-Advantage*: It occurs when a newly arriving flow measures an already inflated queuing delay and incorrectly assumes it to be the base propagation delay. As a result, the new flow sends data faster and takes most of the bandwidth, while the older LEDBAT flows slow down.
+* *Inter-LEDBAT fairness*: It refers to the issue where multiple LEDBAT flows sharing the same network do not get equal bandwidth, even when base delay is measured correctly.
+* *Latency Drift*: It happens when the protocol keeps updating the base delay over time while queues are never fully empty. Because of this, the base delay slowly increases again and again, which leads to wrong delay measurement during long connections.
+* *Low latency competition*: It occurs when the network buffer is too small to reach the target queuing delay. In such cases, LEDBAT behaves like regular TCP, becoming aggressive and competing equally for bandwidth instead of remaining low priority.
+* *Dependency on one-way delay measurements*: LEDBAT depends on one-way delay measurements, but protocols like TCP cannot measure one-way delay reliably because clocks between sender and receiver are not synchronized. As a result, estimating delay requires fragile assumptions and heuristics, which can lead to inaccurate measurements.
+
+*LEDBAT++ Mechanism*
+
+1. **Slower-than-Reno Increase**: LEDBAT++ adjusts its sending speed using a dynamic GAIN value. This makes LEDBAT++ grow slower than normal TCP on low-latency links so it yields bandwidth. In LEDBAT++, GAIN is a function of the ratio of the target delay to the base delay, and is at most 1 ::
+
+      GAIN = 1 / min(16, ceil(2 * target_delay / base_delay))
+
+   The shorter the base delay, the larger the ratio and the smaller the GAIN, down to a floor of 1/16.
+
+2. **Additive Increase and Multiplicative Decrease**: LEDBAT++ replaces the delay-proportional increase of LEDBAT with a constant increase, and reacts to excess delay with a multiplicative decrease. While the queue delay stays below the target delay, the congestion window is increased once per RTT as ::
+
+      cwnd = cwnd + GAIN
+
+   Once the queue delay exceeds the target delay, the congestion window is decreased instead, by an amount proportional to the excess delay and capped at half the window per RTT ::
+
+      cwnd = cwnd + max( (GAIN - Constant * cwnd * (queue_delay / target_delay - 1)), -cwnd / 2)
+
+   This improves fairness between multiple LEDBAT flows and prevents some flows from dominating bandwidth. The congestion window is never reduced below ``MinCwnd`` segments, two by default.
+
+3. **Modified Slow Start**: LEDBAT++ increases its congestion window more slowly during startup, by ``GAIN`` times the number of bytes acknowledged, so that the window grows by a factor of ``1 + GAIN`` per RTT rather than doubling.
+
+   During the initial slow start only, LEDBAT++ also leaves slow start as soon as the queuing delay exceeds 3/4 of the target delay, which avoids overshooting the target on the way up. The slow start used to ramp back up after a slowdown does not exit on delay.
+
+4. **Initial and Periodic Slowdown**: LEDBAT++ periodically reduces its sending rate for a short time to allow network queues to empty. This helps obtain accurate delay measurements and mitigates issues such as latecomer advantage and unfair bandwidth sharing.
+
+   On entering a slowdown, the slow start threshold is set to the current congestion window, and the congestion window is reduced to two packets and frozen for two RTTs. After the freezing period, LEDBAT++ re-enters Slow Start and increases the congestion window until that threshold is reached.
+
+   The first slowdown is scheduled two RTTs after the initial slow start is left. If ``t`` denotes the time at which the current slowdown ends, the next slowdown is scheduled at ::
+
+      next_slowdown_time = t + 9 * slowdown_duration
+
+   The duration of a slowdown is given by ::
+
+      slowdown_duration = t - slowdown_entry
+
+5. **Use of Round Trip Time (RTT)**: Instead of relying on potentially unreliable one-way delay measurements, LEDBAT++ uses RTT samples. The current delay is the minimum of the ``NoiseFilterLen`` most recent samples, four by default, which suppresses the noise that delayed acknowledgments introduce. The base delay is the minimum over the ``BaseHistoryLen`` most recent one-minute minima, ten by default. The queuing delay is their difference.
+
+To enable LEDBAT++ on all TCP sockets, the following configuration can be used::
+
+  Config::SetDefault("ns3::TcpL4Protocol::SocketType", TypeIdValue(TcpLedbatPp::GetTypeId()));
+
+To enable LEDBAT++ on a chosen TCP socket, the following configuration can be used::
+
+  Config::Set("$ns3::NodeListPriv/NodeList/1/$ns3::TcpL4Protocol/SocketType", TypeIdValue(TcpLedbatPp::GetTypeId()));
+
+The following unit tests have been written to validate the implementation of LEDBAT++:
+
+* Verify LEDBAT++ congestion window growth in Slow Start phase and correct transition from Slow Start to Congestion Avoidance
+* Validate Additive Increase and Multiplicative Decrease behaviour during Congestion Avoidance based on delay conditions
+* Ensure slowdown mechanism freezes cwnd to 2 packets for 2 RTTs, schedules slowdown cycles, and resumes normal operation correctly
+* Exercise the slowdown and the minimum congestion window over a real sender and receiver, driven by the ACK clock rather than by hand
+
+The ``ns3-tcp-ledbat-pp`` system test suite guards the properties that the above arithmetic is meant to deliver, over flows sharing a 20 Mbit/s bottleneck. It checks that LEDBAT++ yields the bottleneck to a competing CUBIC flow and takes it back once that flow leaves, that four LEDBAT++ flows joining at different times share the bottleneck rather than starving one another, that a lone flow holds the queuing delay near the target while keeping the link busy, that a buffer too small to hold the target delay bounds the delay instead, and that the periodic slowdown drains the bottleneck queue. These tests are marked ``EXTENSIVE``, since each one simulates tens of seconds.
+
+The algorithm is tuned through the ``TargetDelay`` (60 ms), ``BaseHistoryLen`` (10), ``NoiseFilterLen`` (4), ``MinCwnd`` (2 segments) and ``Constant`` (1.0) attributes, and its state can be observed through the ``QueueDelay``, ``CurrentDelay``, ``BaseDelay``, ``Gain`` and ``Phase`` trace sources.
+
+On a congestion signal, LEDBAT++ halves the congestion window, but never below ``MinCwnd`` segments. Section 1.3 of RFC 6817 asks for an ECN mark to be treated exactly as a loss, so unlike ``TcpNewReno`` and ``TcpLinuxReno`` this implementation deliberately does not apply the gentler ABE back-off of RFC 8511.
+
+In comparison to LEDBAT, the scope and limitations of the current LEDBAT++ implementation are:
+
+* It uses RTT samples instead of one-way delay, so the TCP timestamps option is not required and the sender and receiver clocks need not be synchronised
+* Only the MIN function is used for noise filtering
+* The periodic slowdown is always enabled and cannot be turned off
+
+An example program, ``examples/tcp/tcp-ledbat-pp-example.cc``, places any number of flows on a shared bottleneck, each with its own congestion control, start time and stop time. Its default configuration illustrates inter-LEDBAT++ fairness; introducing a competing CUBIC flow partway through illustrates the scavenging behaviour instead.
+
+More information about LEDBAT++ is available in Internet Draft: https://datatracker.ietf.org/doc/draft-irtf-iccrg-ledbat-plus-plus
+
+
 TCP-LP
 ^^^^^^
 
@@ -1420,6 +1500,8 @@ section below on :ref:`Writing-tcp-tests`.
 * **tcp-yeah-test:** Unit tests on the YeAH congestion control
 * **tcp-illinois-test:** Unit tests on the Illinois congestion control
 * **tcp-ledbat-test:** Unit tests on the LEDBAT congestion control
+* **tcp-ledbat-pp-test:** Unit tests on the LEDBAT++ congestion control
+* **ns3-tcp-ledbat-pp:** System tests on the behaviour of the LEDBAT++ congestion control
 * **tcp-lp-test:** Unit tests on the TCP-LP congestion control
 * **tcp-dctcp-test:** Unit tests on the DCTCP congestion control
 * **tcp-bbr-test:** Unit tests on the BBR congestion control

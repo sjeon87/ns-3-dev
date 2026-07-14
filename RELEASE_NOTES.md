@@ -37,6 +37,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 ### New user-visible features
 
 - (network) IANA protocol and link types are now centralized in network module headers.
+- (tcp) !2752 A LEDBAT++ congestion control model has been added.
 
 ### Bugs fixed
 
