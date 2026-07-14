@@ -1255,9 +1255,10 @@ macro(process_options)
     # EMU (PF_PACKET) is Linux-only; disable it but keep fd-net-device for the
     # native TAP/TUN implementations (macOS utun, Windows tap-windows6).
     set(ENABLE_EMU OFF)
+
+    set(ENABLE_DPDKDEVNET False CACHE INTERNAL "")
     set(ENABLE_EMUNETDEV False CACHE INTERNAL "")
     set(ENABLE_NETMAP_EMU False CACHE INTERNAL "")
-    set(ENABLE_DPDKDEVNET False CACHE INTERNAL "")
     message(
       STATUS
         "${PLATFORM_UNSUPPORTED_PRE} EMU FdNetDevice (PF_PACKET) ${PLATFORM_UNSUPPORTED_POST}"
