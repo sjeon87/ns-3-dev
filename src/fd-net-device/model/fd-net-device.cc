@@ -479,7 +479,12 @@ FdNetDevice::ForwardUp()
 
     if (m_encapMode == L3)
     {
-#if defined(__APPLE__)
+        uint32_t af = UINT32_MAX;
+        uint8_t ip4Flag = 0;
+        uint8_t ip6Flag = 0;
+#ifdef _WIN32
+        NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid")
+#elifdef __APPLE__
         //
         // UTUN mode: macOS utun sends raw IP with a 4-byte address-family prefix.
         // Strip it, determine the Ethernet protocol type, and deliver directly
@@ -499,15 +504,9 @@ FdNetDevice::ForwardUp()
         uint32_t af = (static_cast<uint32_t>(afBuf[0]) << 24) |
                       (static_cast<uint32_t>(afBuf[1]) << 16) |
                       (static_cast<uint32_t>(afBuf[2]) << 8) | static_cast<uint32_t>(afBuf[3]);
-        if (af == 2) // AF_INET
-        {
-            protocol = 0x0800;
-        }
-        else if (af == 30) // AF_INET6 on macOS
-        {
-            protocol = 0x86DD;
-        }
-#elif defined(__linux__)
+        ip4Flag = 2;  // AF_INET
+        ip6Flag = 30; // AF_INET6 on macOS
+#elifdef __linux__
         // Raw IP mode on other platforms
         // Peek IP header for version nibble
         if (packet->GetSize() < 1)
@@ -515,25 +514,22 @@ FdNetDevice::ForwardUp()
             m_phyRxDropTrace(originalPacket);
             return;
         }
-        uint8_t af;
-        packet->CopyData(&af, 1);
-        af >>= 4;
-        if (af == 4) // AF_INET
+        uint8_t afBuf;
+        packet->CopyData(&afBuf, 1);
+        af = afBuf >> 4;
+        ip4Flag = 4; // AF_INET
+        ip6Flag = 6; // AF_INET6
+#else // applying L3 on unknown architecture
+        NS_FATAL_ERROR("could not apply L3 encapsulation on unknown architecture")
+#endif
+        if (af == ip4Flag)
         {
             protocol = 0x0800;
         }
-        else if (af == 6) // AF_INET6
+        else if (af == ip6Flag)
         {
             protocol = 0x86DD;
         }
-
-#else // applying L3 on neither Apple or Linux
-        uint32_t af = 0;
-        if (true)
-        {
-            NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid")
-        }
-#endif
         else
         {
             m_phyRxDropTrace(originalPacket);
@@ -557,9 +553,10 @@ FdNetDevice::ForwardUp()
         m_rxCallback(this, packet, protocol, source);
         return;
     }
-#if defined(__linux__)
-    else if (m_encapMode == L3PI)
+
+    if (m_encapMode == L3PI)
     {
+#ifdef __linux__
         if (packet->GetSize() < 4)
         {
             m_phyRxDropTrace(originalPacket);
@@ -584,8 +581,8 @@ FdNetDevice::ForwardUp()
         m_macRxTrace(originalPacket);
         m_rxCallback(this, packet, protocol, source);
         return;
-    }
 #endif
+    }
 
     EthernetHeader header(false);
 
@@ -719,7 +716,9 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
         m_snifferTrace(packet);
 
         NS_LOG_LOGIC("L3 calling write, proto=" << std::hex << protocolNumber);
-#if defined(__APPLE__)
+#ifdef _WIN32
+        NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid")
+#elifdef __APPLE__
         // 4-byte AF header in network byte order, followed by raw IP
         uint32_t af;
         if (protocolNumber == 0x0800)
@@ -745,10 +744,8 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
             return false;
         }
 
-        buffer[0] = static_cast<uint8_t>((af >> 24) & 0xFF);
-        buffer[1] = static_cast<uint8_t>((af >> 16) & 0xFF);
-        buffer[2] = static_cast<uint8_t>((af >> 8) & 0xFF);
-        buffer[3] = static_cast<uint8_t>(af & 0xFF);
+        uint32_t netAf = htonl(af);
+        std::memcpy(buffer, &netAf, sizeof(netAf));
         packet->CopyData(buffer + 4, payloadLen);
 
         ssize_t written = Write(buffer, totalLen);
@@ -760,7 +757,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
             return false;
         }
         return true;
-#elif defined(__linux__)
+#elifdef __linux__
         auto len = (size_t)packet->GetSize();
         uint8_t* buf = AllocateBuffer(len);
         if (!buf)
@@ -777,9 +774,13 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
             return false;
         }
         return true;
+#else // applying L3 on unknown architecture
+        NS_FATAL_ERROR("could not apply L3 encapsulation on unknown architecture")
+#endif
     }
-    else if (m_encapMode == L3PI)
+    if (m_encapMode == L3PI)
     {
+#ifdef __linux__
         NS_ASSERT_MSG(packet->GetSize() <= m_mtu,
                       "FdNetDevice::SendFrom(): Packet too big " << packet->GetSize());
 
