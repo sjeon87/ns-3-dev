@@ -1908,6 +1908,14 @@ BlockAckAggregationDisabledTest::DoRun()
                     "TxopLimits",
                     AttributeContainerValue<TimeValue>(std::list{MicroSeconds(4800)}));
     }
+    else
+    {
+        // single frame exchange per channel access, so that the expected ack policy
+        // is used on every QoS Data frame
+        mac.SetEdca(AC_BE,
+                    "TxopLimits",
+                    AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0)}));
+    }
 
     NetDeviceContainer apDevices;
     apDevices = wifi.Install(phy, mac, wifiApNode);

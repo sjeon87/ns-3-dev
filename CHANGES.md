@@ -29,6 +29,17 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 ### Changed behavior
 
+* (wifi) The default TXOP limit for the AC_BE and AC_BK access categories is now
+  3.264 ms for DSSS/HR-DSSS PHYs and 2.528 ms for OFDM-based PHYs, as prescribed by
+  the Default EDCA Parameter Set (IEEE Std 802.11-2024, Table 9-194), instead of 0.
+  A TXOP limit of 0 does not disable TXOPs: it restricts each channel access to a
+  single frame exchange (IEEE Std 802.11-2024, Sec. 10.23.2.9), whereas the new
+  defaults permit multiple frame exchanges (and CF-End truncation) within one TXOP.
+  Best-effort and background traffic results (throughput, frame timing, pcap
+  content) will change in simulations that do not configure TXOP limits explicitly;
+  the previous behavior can be restored by setting the `TxopLimits` attribute of the
+  BE/BK `QosTxop` objects to 0.
+
 ## Changes from ns-3.47 to ns-3.48
 
 ### New API

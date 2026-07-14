@@ -829,7 +829,8 @@ WifiMac::ConfigureDcf(Ptr<Txop> dcf,
     Time txopLimitDsss(0);
     Time txopLimitNoDsss(0);
 
-    /* see IEEE 802.11-2020 Table 9-155 "Default EDCA Parameter Set element parameter values" */
+    /* see IEEE 802.11-2024 Table 9-194 "Default EDCA Parameter Set element parameters
+     * if dot11OCBActivated is false and the STA is a non-sensor STA" */
     switch (ac)
     {
     case AC_VO:
@@ -850,15 +851,15 @@ WifiMac::ConfigureDcf(Ptr<Txop> dcf,
         cwMinValue = cwmin;
         cwMaxValue = cwmax;
         aifsnValue = 3;
-        txopLimitDsss = MicroSeconds(0);   // TODO should be MicroSeconds (3264)
-        txopLimitNoDsss = MicroSeconds(0); // TODO should be MicroSeconds (2528)
+        txopLimitDsss = MicroSeconds(3264);
+        txopLimitNoDsss = MicroSeconds(2528);
         break;
     case AC_BK:
         cwMinValue = cwmin;
         cwMaxValue = cwmax;
         aifsnValue = 7;
-        txopLimitDsss = MicroSeconds(0);   // TODO should be MicroSeconds (3264)
-        txopLimitNoDsss = MicroSeconds(0); // TODO should be MicroSeconds (2528)
+        txopLimitDsss = MicroSeconds(3264);
+        txopLimitNoDsss = MicroSeconds(2528);
         break;
     case AC_BE_NQOS:
         cwMinValue = cwmin;

@@ -44,6 +44,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 - (mesh) #1341 Fixed dot11s regression that ignored the link rate, degrading the HWMP routing metric to hop count.
 - (sixlowpan) #1342 Fixed a deserialization error in the MESH header.
 - (dsr) !2762 Fixes header format to comply with RFC4728. Also other minor bug fixes and modernization.
+- (wifi) #289 Aligned the default AC_BE/AC_BK TXOP limits to the Default EDCA Parameter Set of IEEE Std 802.11-2024 (Table 9-194); best-effort and background traffic can now use multi-frame TXOPs by default.
 
 ## Release 3.48
 

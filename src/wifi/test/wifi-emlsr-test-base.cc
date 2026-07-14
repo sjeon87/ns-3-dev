@@ -370,6 +370,17 @@ EmlsrOperationsTestBase::DoSetup()
         m_staMacs.push_back(DynamicCast<StaWifiMac>(device->GetMac()));
     }
 
+    // EMLSR tests check scripted sequences of frame exchanges; use a BE TXOP limit of 0
+    // (single frame exchange per channel access) so that TXOP bursting and CF-End frames
+    // do not alter the scripted sequences (tests exercising TXOPs override these limits)
+    m_apMac->GetQosTxop(AC_BE)->SetTxopLimits(
+        std::vector<Time>(m_apMac->GetNLinks(), MicroSeconds(0)));
+    for (auto& staMac : m_staMacs)
+    {
+        staMac->GetQosTxop(AC_BE)->SetTxopLimits(
+            std::vector<Time>(staMac->GetNLinks(), MicroSeconds(0)));
+    }
+
     // Trace PSDUs passed to the PHY on AP MLD and non-AP MLDs
     for (uint8_t phyId = 0; phyId < m_apMac->GetDevice()->GetNPhys(); phyId++)
     {

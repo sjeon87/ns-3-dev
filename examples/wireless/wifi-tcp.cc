@@ -191,7 +191,7 @@ main(int argc, char* argv[])
 
     Simulator::Destroy();
 
-    if (averageThroughput < 50)
+    if (averageThroughput < 42)
     {
         NS_LOG_ERROR("Obtained throughput is not in the expected boundaries!");
         exit(1);

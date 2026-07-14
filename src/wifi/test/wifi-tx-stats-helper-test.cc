@@ -296,6 +296,17 @@ WifiTxStatsHelperTest::DoRun()
                     "EnableBeaconJitter",
                     BooleanValue(false));
         apDevices = wifi.Install(phy, mac, m_wifiApNode);
+
+        // the expected PSDU timeline on link 0 (BE) assumes single frame exchanges per
+        // channel access; use a BE TXOP limit of 0 so that no TXOP bursting or CF-End
+        // frames shift the reception indices used to force frame corruption
+        for (const auto& devices : {staDevices, apDevices})
+        {
+            DynamicCast<WifiNetDevice>(devices.Get(0))
+                ->GetMac()
+                ->GetQosTxop(AC_BE)
+                ->SetTxopLimits({MicroSeconds(0), MicroSeconds(0)});
+        }
     }
 
     m_sifs = DynamicCast<WifiNetDevice>(apDevices.Get(0))->GetPhy()->GetSifs();

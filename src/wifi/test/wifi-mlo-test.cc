@@ -732,6 +732,18 @@ MultiLinkOperationsTestBase::DoSetup()
             DynamicCast<StaWifiMac>(DynamicCast<WifiNetDevice>(staDevices.Get(i))->GetMac());
     }
 
+    // test cases check scripted sequences of frame exchanges (e.g., a given number of
+    // QoS data frames aggregated in an A-MPDU acknowledged via BlockAck); use a BE TXOP
+    // limit of 0 (single frame exchange per channel access) on all links so that TXOP
+    // bursting does not alter the expected sequences
+    m_apMac->GetQosTxop(AC_BE)->SetTxopLimits(
+        std::vector<Time>(m_apMac->GetNLinks(), MicroSeconds(0)));
+    for (uint8_t i = 0; i < m_nStations; i++)
+    {
+        m_staMacs[i]->GetQosTxop(AC_BE)->SetTxopLimits(
+            std::vector<Time>(m_staMacs[i]->GetNLinks(), MicroSeconds(0)));
+    }
+
     // Trace PSDUs passed to the PHY on all devices
     for (uint8_t phyId = 0; phyId < m_apMac->GetDevice()->GetNPhys(); phyId++)
     {

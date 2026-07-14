@@ -7,6 +7,7 @@
  */
 
 #include "ns3/ap-wifi-mac.h"
+#include "ns3/attribute-container.h"
 #include "ns3/boolean.h"
 #include "ns3/config.h"
 #include "ns3/double.h"
@@ -158,6 +159,12 @@ WifiChannelSettingsTest::DoRun()
 
     WifiMacHelper mac;
     mac.SetType("ns3::ApWifiMac", "Ssid", SsidValue(Ssid("ns-3-ssid")));
+    // single frame exchange per channel access: this test checks channel width compatibility
+    // by probing whether single DL/UL packets are received, hence the AP must not get the
+    // chance to transmit a pending frame in a TXOP granted for another exchange
+    mac.SetEdca(AC_BE,
+                "TxopLimits",
+                AttributeContainerValue<TimeValue>(std::list{MicroSeconds(0)}));
     auto apDevice = wifi.Install(phy, mac, wifiApNode);
 
     wifi.SetStandard(m_params.staStandard);

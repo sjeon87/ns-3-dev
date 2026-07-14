@@ -75,27 +75,27 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-ht-network --simulationTime=0.2s --frequency=2.4 --useRts=0 --minExpectedThroughput=5 --maxExpectedThroughput=132",
+        "wifi-ht-network --simulationTime=0.2s --frequency=2.4 --useRts=0 --minExpectedThroughput=4 --maxExpectedThroughput=132",
         "True",
         "True",
     ),
     (
-        "wifi-ht-network --simulationTime=0.2s --frequency=2.4 --useRts=1 --minExpectedThroughput=5 --maxExpectedThroughput=129",
+        "wifi-ht-network --simulationTime=0.2s --frequency=2.4 --useRts=1 --minExpectedThroughput=4 --maxExpectedThroughput=129",
         "True",
         "True",
     ),
     (
-        "wifi-vht-network --simulationTime=0.2s --useRts=0 --minExpectedThroughput=5 --maxExpectedThroughput=630",
+        "wifi-vht-network --simulationTime=0.2s --useRts=0 --minExpectedThroughput=5 --maxExpectedThroughput=675",
         "True",
         "True",
     ),
     (
-        "wifi-vht-network --simulationTime=0.2s --useRts=1 --minExpectedThroughput=5 --maxExpectedThroughput=565",
+        "wifi-vht-network --simulationTime=0.2s --useRts=1 --minExpectedThroughput=4.5 --maxExpectedThroughput=645",
         "True",
         "True",
     ),
     (
-        "wifi-vht-network --simulationTime=0.2s --useRts=0 --use80Plus80=1 --minExpectedThroughput=5 --maxExpectedThroughput=630",
+        "wifi-vht-network --simulationTime=0.2s --useRts=0 --use80Plus80=1 --minExpectedThroughput=5 --maxExpectedThroughput=675",
         "True",
         "True",
     ),
@@ -115,17 +115,17 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-he-network --simulationTime=0.3s --frequency=5 --useRts=1 --minExpectedThroughput=6 --maxExpectedThroughput=745",
+        "wifi-he-network --simulationTime=0.3s --frequency=5 --useRts=1 --minExpectedThroughput=4.7 --maxExpectedThroughput=795",
         "True",
         "True",
     ),
     (
-        "wifi-he-network --simulationTime=0.25s --frequency=2.4 --useRts=0 --minExpectedThroughput=6 --maxExpectedThroughput=238",
+        "wifi-he-network --simulationTime=0.25s --frequency=2.4 --useRts=0 --minExpectedThroughput=4.3 --maxExpectedThroughput=246",
         "True",
         "True",
     ),
     (
-        "wifi-he-network --simulationTime=0.3s --frequency=2.4 --useRts=1 --minExpectedThroughput=6 --maxExpectedThroughput=223",
+        "wifi-he-network --simulationTime=0.3s --frequency=2.4 --useRts=1 --minExpectedThroughput=4.1 --maxExpectedThroughput=238",
         "True",
         "True",
     ),
@@ -135,7 +135,8 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-he-network --simulationTime=0.3s --frequency=2.4 --udp=0 --downlink=1 --useRts=1 --nStations=5 --dlAckType=MU-BAR --enableUlOfdma=1 --enableBsrp=1 --mcs=5 --minExpectedThroughput=21 --maxExpectedThroughput=56",
+        # TXOP limit pinned to 0 pending !2938 (per-MPDU DL MU protection fix)
+        "wifi-he-network --simulationTime=0.3s --frequency=2.4 --udp=0 --downlink=1 --useRts=1 --nStations=5 --dlAckType=MU-BAR --enableUlOfdma=1 --enableBsrp=1 --mcs=5 --ns3::Txop::TxopLimits=0us --minExpectedThroughput=21 --maxExpectedThroughput=56",
         "True",
         "True",
     ),
@@ -150,22 +151,22 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.1s --frequency=5 --useRts=0 --minExpectedThroughput=6 --maxExpectedThroughput=760",
+        "wifi-eht-network --simulationTime=0.1s --frequency=5 --useRts=0 --minExpectedThroughput=4.9 --maxExpectedThroughput=1000",
         "True",
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.1s --frequency=5 --useRts=0 --use80Plus80=1 --minExpectedThroughput=6 --maxExpectedThroughput=760",
+        "wifi-eht-network --simulationTime=0.1s --frequency=5 --useRts=0 --use80Plus80=1 --minExpectedThroughput=4.9 --maxExpectedThroughput=1000",
         "True",
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.1s --frequency=5 --useRts=0 --mpduBufferSize=1024 --frequency2=6 --minExpectedThroughput=7 --maxExpectedThroughput=1444",
+        "wifi-eht-network --simulationTime=0.1s --frequency=5 --useRts=0 --mpduBufferSize=1024 --frequency2=6 --minExpectedThroughput=7 --maxExpectedThroughput=1900",
         "True",
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.1s --frequency=6 --useRts=1 --minExpectedThroughput=5 --maxExpectedThroughput=800",
+        "wifi-eht-network --simulationTime=0.1s --frequency=6 --useRts=1 --minExpectedThroughput=4.5 --maxExpectedThroughput=1400",
         "True",
         "True",
     ),
@@ -175,7 +176,7 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.1s --frequency=2.4 --useRts=1 --minExpectedThroughput=5 --maxExpectedThroughput=240",
+        "wifi-eht-network --simulationTime=0.1s --frequency=2.4 --useRts=1 --minExpectedThroughput=3.9 --maxExpectedThroughput=275",
         "True",
         "True",
     ),
@@ -190,12 +191,13 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.3s --udp=0 --downlink=1 --useRts=1 --nStations=5 --dlAckType=AGGR-MU-BAR --enableUlOfdma=1 --enableBsrp=0 --mcs=6 --muSchedAccessReqInterval=50ms --frequency2=2.4 --minExpectedThroughput=50 --maxExpectedThroughput=140",
+        # TXOP limit pinned to 0 pending !2938 (per-MPDU DL MU protection fix)
+        "wifi-eht-network --simulationTime=0.3s --udp=0 --downlink=1 --useRts=1 --nStations=5 --dlAckType=AGGR-MU-BAR --enableUlOfdma=1 --enableBsrp=0 --mcs=6 --muSchedAccessReqInterval=50ms --frequency2=2.4 --ns3::Txop::TxopLimits=0us,0us --minExpectedThroughput=50 --maxExpectedThroughput=140",
         "True",
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.25s --udp=0 --downlink=0 --useRts=0 --nStations=4 --dlAckType=AGGR-MU-BAR --enableUlOfdma=1 --enableBsrp=1 --mpduBufferSize=1024 --mcs=8 --muSchedAccessReqInterval=45ms --frequency2=6 --minExpectedThroughput=50 --maxExpectedThroughput=550 --RngRun=6",
+        "wifi-eht-network --simulationTime=0.25s --udp=0 --downlink=0 --useRts=0 --nStations=4 --dlAckType=AGGR-MU-BAR --enableUlOfdma=1 --enableBsrp=1 --mpduBufferSize=1024 --mcs=8 --muSchedAccessReqInterval=45ms --frequency2=6 --ns3::Txop::TxopLimits=0us,0us --minExpectedThroughput=50 --maxExpectedThroughput=550 --RngRun=6",
         "True",
         "True",
     ),
@@ -215,12 +217,18 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.3s --frequency=2.4 --frequency2=5 --frequency3=6 --guardInterval=1600 --udp=0 --downlink=1 --useRts=0 --mpduBufferSize=512 --emlsrLinks=0,1,2 --emlsrPaddingDelay=32 --emlsrTransitionDelay=32 --channelSwitchDelay=32us --emlsrAuxSwitch=True --emlsrAuxTxCapable=True --nStations=4 --dlAckType=AGGR-MU-BAR --enableUlOfdma=1 --enableBsrp=0 --mcs=0,3,5,9,10 --minExpectedThroughput=8 --maxExpectedThroughput=300",
+        # TXOP limit pinned to 0: at low MCS these EMLSR configurations hit a
+        # pre-existing channel-access issue (backoff state reset on every EMLSR
+        # link switch, issue #1352) that breaks the example's monotonicity
+        # checks
+        "wifi-eht-network --simulationTime=0.3s --frequency=2.4 --frequency2=5 --frequency3=6 --guardInterval=1600 --udp=0 --downlink=1 --useRts=0 --mpduBufferSize=512 --emlsrLinks=0,1,2 --emlsrPaddingDelay=32 --emlsrTransitionDelay=32 --channelSwitchDelay=32us --emlsrAuxSwitch=True --emlsrAuxTxCapable=True --nStations=4 --dlAckType=AGGR-MU-BAR --enableUlOfdma=1 --enableBsrp=0 --mcs=0,3,5,9,10 --ns3::Txop::TxopLimits=0us,0us,0us --minExpectedThroughput=8 --maxExpectedThroughput=300",
         "True",
         "True",
     ),
     (
-        "wifi-eht-network --simulationTime=0.3s --frequency=2.4 --frequency2=5 --frequency3=6 --guardInterval=1600 --udp=0 --downlink=0 --useRts=1 --mpduBufferSize=512 --emlsrLinks=0,1,2 --emlsrPaddingDelay=64 --emlsrTransitionDelay=64 --channelSwitchDelay=64us --emlsrAuxSwitch=False --emlsrAuxTxCapable=True --nStations=4 --dlAckType=MU-BAR --enableUlOfdma=1 --enableBsrp=1 --mcs=1,4,8,11,13 --minExpectedThroughput=10 --maxExpectedThroughput=260",
+        # TXOP limit pinned to 0: same pre-existing EMLSR channel-access issue
+        # (#1352) as the previous invocation
+        "wifi-eht-network --simulationTime=0.3s --frequency=2.4 --frequency2=5 --frequency3=6 --guardInterval=1600 --udp=0 --downlink=0 --useRts=1 --mpduBufferSize=512 --emlsrLinks=0,1,2 --emlsrPaddingDelay=64 --emlsrTransitionDelay=64 --channelSwitchDelay=64us --emlsrAuxSwitch=False --emlsrAuxTxCapable=True --nStations=4 --dlAckType=MU-BAR --enableUlOfdma=1 --enableBsrp=1 --mcs=1,4,8,11,13 --ns3::Txop::TxopLimits=0us,0us,0us --minExpectedThroughput=10 --maxExpectedThroughput=260",
         "True",
         "True",
     ),
@@ -230,12 +238,12 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-simple-ht-hidden-stations --simulationTime=1s --enableRts=0 --nMpdus=32 --minExpectedThroughput=59 --maxExpectedThroughput=60",
+        "wifi-simple-ht-hidden-stations --simulationTime=1s --enableRts=0 --nMpdus=32 --minExpectedThroughput=54 --maxExpectedThroughput=56",
         "True",
         "True",
     ),
     (
-        "wifi-simple-ht-hidden-stations --simulationTime=1s --enableRts=1 --nMpdus=32 --minExpectedThroughput=56 --maxExpectedThroughput=57",
+        "wifi-simple-ht-hidden-stations --simulationTime=1s --enableRts=1 --nMpdus=32 --minExpectedThroughput=51.5 --maxExpectedThroughput=53.5",
         "True",
         "True",
     ),
@@ -310,12 +318,20 @@ cpp_examples = [
         "True",
     ),
     (
-        "wifi-multicast --gcrRetransmissionPolicy=GcrUr --maxAmpduLength=65535 --maxPackets=0 --nStations=4 --dataRate=50Mbps --gcrProtection=Rts-Cts --rtsThreshold=0 --simulationTime=1 --minExpectedThroughput=35 --maxExpectedThroughput=40",
+        # TXOP limit pinned to 0: GCR-UR retransmission scheduling does not
+        # implement the per-TXOP rules of IEEE 802.11-2024 Sec. 10.23.2.12.2
+        # (no MPDU and its retransmission within the same GCR TXOP; backoff
+        # after each unsolicited retry transmission when the protection
+        # mechanism elicits no response; issue #1353), so GCR-UR is exercised
+        # at TXOP limit 0, where its operation is compliant
+        "wifi-multicast --gcrRetransmissionPolicy=GcrUr --maxAmpduLength=65535 --maxPackets=0 --nStations=4 --dataRate=50Mbps --gcrProtection=Rts-Cts --rtsThreshold=0 --simulationTime=1 --ns3::Txop::TxopLimits=0us --minExpectedThroughput=35 --maxExpectedThroughput=40",
         "True",
         "True",
     ),
     (
-        "wifi-multicast --gcrRetransmissionPolicy=GcrUr --maxAmpduLength=65535 --maxPackets=0 --nStations=4 --dataRate=50Mbps --gcrProtection=Cts-To-Self --simulationTime=1 --minExpectedThroughput=40 --maxExpectedThroughput=45",
+        # TXOP limit pinned to 0: see the GCR-UR compliance note (#1353) on
+        # the previous entry
+        "wifi-multicast --gcrRetransmissionPolicy=GcrUr --maxAmpduLength=65535 --maxPackets=0 --nStations=4 --dataRate=50Mbps --gcrProtection=Cts-To-Self --simulationTime=1 --ns3::Txop::TxopLimits=0us --minExpectedThroughput=40 --maxExpectedThroughput=45",
         "True",
         "True",
     ),
