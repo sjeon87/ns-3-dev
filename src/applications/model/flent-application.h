@@ -165,7 +165,6 @@ class FlentApplication : public Application
     /**
      * @brief Calculate the Time in UTC time format
      * from the number of seconds.
-     * @param [in] sec Seconds
      * @return The time in UTC format
      *
      */

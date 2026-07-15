@@ -121,6 +121,7 @@ SOURCEFIGS = \
 	$(SRC)/applications/doc/http-num-of-embedded-objects.png \
 	$(SRC)/applications/doc/http-parsing-time.png \
 	$(SRC)/applications/doc/http-reading-time.png \
+	$(SRC)/applications/doc/ns3-flent-rrul.png \
 	$(SRC)/dsr/doc/figures/dsrRreq.dia \
 	$(SRC)/dsr/doc/figures/dsrRrep.dia \
 	$(SRC)/network/doc/packet.dia \

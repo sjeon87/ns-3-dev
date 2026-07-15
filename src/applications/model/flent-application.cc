@@ -40,7 +40,7 @@ NS_OBJECT_ENSURE_REGISTERED(FlentApplication);
 namespace
 {
 
-/*
+/**
  * @brief sink for packet transmissions.
  * @param counter counter of bytes sent
  * @param packet Pointer to packet sent
@@ -51,7 +51,7 @@ TraceSentPacket(uint32_t* counter, Ptr<const Packet> packet)
     *counter += packet->GetSize();
 }
 
-/*
+/**
  * @brief sink for packet received.
  * @param counter counter of bytes received
  * @param packet Pointer to packet received
@@ -101,7 +101,7 @@ FlentApplication::GetTypeId()
             .AddAttribute("OutputFilename",
                           "Path of the .flent output file to write, absolute or "
                           "relative to the working directory. If empty (the default), "
-                          "the file is written as '<TestName>.flent' in the working "
+                          "the file is written as 'TestName.flent' in the working "
                           "directory.",
                           StringValue(""),
                           MakeStringAccessor(&FlentApplication::m_outputFilename),

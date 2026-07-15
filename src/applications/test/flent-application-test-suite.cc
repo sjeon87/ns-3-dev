@@ -9,20 +9,17 @@
  */
 
 /*
- This test suite:
-   - Runs the first 4 tests for sanity check and generating the flent files required for the Flent
- file integrity and Flent results test. Flent files generated from the first 4 tests can be reused
- again for the Flent file integrity and Flent results test.
-   - Runs the Flent file integrity test which reads the files from first 4 tests and check if
- metadata required for flent-gui is available
-   - Runs the Flent result test which reads the files from the 4 tests and calculate average
- throughput and average ICMP latency. The result is checked if its within bounds obtained from
- results at the time of writing the test suite.
+  This test suite executes independent, self-contained test cases for FlentApplication.
+  Each test case:
+  - Runs a specific Flent configuration (rrul, tcp_upload, tcp_download, ping).
+  - Writes a .flent output file to the runner-managed temporary directory.
+  - Verifies the File integrity of the generated JSON metadata.
+  - Asserts that the calculated metrics (throughput and/or ICMP latency) fall within expected
+  baseline bounds.
  */
 
 #include "nlohmann/json.hpp"
 
-#include <fstream>
 #include "ns3/application-container.h"
 #include "ns3/boolean.h"
 #include "ns3/config.h"
@@ -44,6 +41,8 @@
 #include "ns3/traffic-control-helper.h"
 #include "ns3/uinteger.h"
 
+#include <fstream>
+
 using namespace ns3;
 
 /**
@@ -52,9 +51,18 @@ using namespace ns3;
 class FlentTestCase : public TestCase
 {
   public:
+    /**
+     * @brief Constructor
+     * @param name The name of the test case
+     */
     FlentTestCase(std::string name);
 
   protected:
+    /**
+     * @brief Verifies the structural integrity of the generated JSON data.
+     * @param root The parsed JSON root object.
+     * @param filename The name of the file being verified.
+     */
     void VerifyFlentFileIntegrity(const nlohmann::json& root, const std::string& filename);
 };
 
@@ -97,7 +105,8 @@ FlentTestCase::VerifyFlentFileIntegrity(const nlohmann::json& root, const std::s
 }
 
 /**
- * Flent rrul test, checks if the test is running.
+ * Flent rrul test: verifies test execution, metadata integrity, throughput limits, and ICMP latency
+ * limits.
  */
 class FlentApplicationRrul : public FlentTestCase
 {
@@ -271,7 +280,8 @@ FlentApplicationRrul::DoRun()
 }
 
 /**
- * Flent tcp_upload test, checks if the test is running.
+ * Flent tcp_upload test: verifies test execution, metadata integrity, throughput limits, and ICMP
+ * latency limits.
  */
 class FlentApplicationTcpUpload : public FlentTestCase
 {
@@ -417,13 +427,12 @@ FlentApplicationTcpUpload::DoRun()
         pingLatency += itr->get<double>();
     }
     NS_TEST_ASSERT_MSG_LT(pingLatency / count, 82, "Ping latency should be less than 82");
-    NS_TEST_ASSERT_MSG_GT(pingLatency / count,
-                          80,
-                          "Ping latency throughput should be greater than 80");
+    NS_TEST_ASSERT_MSG_GT(pingLatency / count, 80, "Ping latency should be greater than 80");
 }
 
 /**
- * Flent tcp_download test, checks if the test is running.
+ * Flent tcp_download test: verifies test execution, metadata integrity, throughput limits, and ICMP
+ * latency limits.
  */
 class FlentApplicationTcpDownload : public FlentTestCase
 {
@@ -571,13 +580,12 @@ FlentApplicationTcpDownload::DoRun()
         pingLatency += itr->get<double>();
     }
     NS_TEST_ASSERT_MSG_LT(pingLatency / count, 82, "Ping latency should be less than 82");
-    NS_TEST_ASSERT_MSG_GT(pingLatency / count,
-                          80,
-                          "Ping latency throughput should be greater than 80");
+    NS_TEST_ASSERT_MSG_GT(pingLatency / count, 80, "Ping latency should be greater than 80");
 }
 
 /**
- * Flent ping test, checks if the test is running.
+ * Flent ping test: verifies test execution, metadata integrity, throughput limits, and ICMP latency
+ * limits.
  */
 class FlentApplicationPing : public FlentTestCase
 {
@@ -705,14 +713,19 @@ FlentApplicationPing::DoRun()
         pingLatency += itr->get<double>();
     }
     NS_TEST_ASSERT_MSG_LT(pingLatency / count, 82, "Ping latency should be less than 82");
-    NS_TEST_ASSERT_MSG_GT(pingLatency / count,
-                          80,
-                          "Ping latency throughput should be greater than 80");
+    NS_TEST_ASSERT_MSG_GT(pingLatency / count, 80, "Ping latency should be greater than 80");
 }
 
+/**
+ * @ingroup applications
+ * @brief Flent Application Test Suite
+ */
 class FlentApplicationTestSuite : public TestSuite
 {
   public:
+    /**
+     * @brief Constructor
+     */
     FlentApplicationTestSuite();
 };
 
