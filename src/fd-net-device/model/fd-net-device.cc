@@ -473,9 +473,8 @@ FdNetDevice::ForwardUp()
 
     Mac48Address destination;
     Mac48Address source;
-    uint16_t protocol;
-    bool isBroadcast = false;
-    bool isMulticast = false;
+    uint16_t protocol = 0;
+    PacketType packetType = NS3_PACKET_HOST;
 
     if (m_encapMode == L3)
     {
@@ -483,7 +482,7 @@ FdNetDevice::ForwardUp()
         uint8_t ip4Flag = 0;
         uint8_t ip6Flag = 0;
 #ifdef _WIN32
-        NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid")
+        NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid");
 #elifdef __APPLE__
         //
         // UTUN mode: macOS utun sends raw IP with a 4-byte address-family prefix.
@@ -501,9 +500,8 @@ FdNetDevice::ForwardUp()
         packet->RemoveAtStart(4);
 
         // Address family is in network byte order on macOS utun
-        uint32_t af = (static_cast<uint32_t>(afBuf[0]) << 24) |
-                      (static_cast<uint32_t>(afBuf[1]) << 16) |
-                      (static_cast<uint32_t>(afBuf[2]) << 8) | static_cast<uint32_t>(afBuf[3]);
+        af = (static_cast<uint32_t>(afBuf[0]) << 24) | (static_cast<uint32_t>(afBuf[1]) << 16) |
+             (static_cast<uint32_t>(afBuf[2]) << 8) | static_cast<uint32_t>(afBuf[3]);
         ip4Flag = 2;  // AF_INET
         ip6Flag = 30; // AF_INET6 on macOS
 #elifdef __linux__
@@ -520,7 +518,7 @@ FdNetDevice::ForwardUp()
         ip4Flag = 4; // AF_INET
         ip6Flag = 6; // AF_INET6
 #else // applying L3 on unknown architecture
-        NS_FATAL_ERROR("could not apply L3 encapsulation on unknown architecture")
+        NS_FATAL_ERROR("could not apply L3 encapsulation on unknown architecture");
 #endif
         if (af == ip4Flag)
         {
@@ -541,20 +539,8 @@ FdNetDevice::ForwardUp()
         source = Mac48Address("00:00:00:00:00:00");
 
         NS_LOG_LOGIC("L3 pkt af=" << af << " proto=" << std::hex << protocol);
-
-        m_promiscSnifferTrace(originalPacket);
-        if (!m_promiscRxCallback.IsNull())
-        {
-            m_macPromiscRxTrace(originalPacket);
-            m_promiscRxCallback(this, packet, protocol, source, destination, NS3_PACKET_HOST);
-        }
-        m_snifferTrace(originalPacket);
-        m_macRxTrace(originalPacket);
-        m_rxCallback(this, packet, protocol, source);
-        return;
     }
-
-    if (m_encapMode == L3PI)
+    else if (m_encapMode == L3PI)
     {
 #ifdef __linux__
         if (packet->GetSize() < 4)
@@ -570,84 +556,75 @@ FdNetDevice::ForwardUp()
         source = Mac48Address("00:00:00:00:00:00");
 
         NS_LOG_LOGIC("L3PI pkt proto=" << std::hex << protocol);
-
-        m_promiscSnifferTrace(originalPacket);
-        if (!m_promiscRxCallback.IsNull())
-        {
-            m_macPromiscRxTrace(originalPacket);
-            m_promiscRxCallback(this, packet, protocol, source, destination, NS3_PACKET_HOST);
-        }
-        m_snifferTrace(originalPacket);
-        m_macRxTrace(originalPacket);
-        m_rxCallback(this, packet, protocol, source);
-        return;
+#else
+        NS_FATAL_ERROR("applying L3PI encapsulation on this platform is not valid");
 #endif
     }
-
-    EthernetHeader header(false);
-
-    //
-    // This device could be running in an environment where completely unexpected
-    // kinds of packets are flying around, so we need to harden things a bit and
-    // filter out packets we think are completely bogus, so we always check to see
-    // that the packet is long enough to contain the header we want to remove.
-    //
-    if (packet->GetSize() < header.GetSerializedSize())
+    else
     {
-        m_phyRxDropTrace(originalPacket);
-        return;
-    }
+        EthernetHeader header(false);
 
-    packet->RemoveHeader(header);
-    destination = header.GetDestination();
-    source = header.GetSource();
-    isBroadcast = header.GetDestination().IsBroadcast();
-    isMulticast = header.GetDestination().IsGroup();
-    protocol = header.GetLengthType();
-
-    //
-    // If the length/type is less than 1500, it corresponds to a length
-    // interpretation packet.  In this case, it is an 802.3 packet and
-    // will also have an 802.2 LLC header.  If greater than 1500, we
-    // find the protocol number (Ethernet type) directly.
-    //
-    if (m_encapMode == LLC and header.GetLengthType() <= 1500)
-    {
-        LlcSnapHeader llc;
         //
-        // Check to see that the packet is long enough to possibly contain the
-        // header we want to remove before just naively calling.
+        // This device could be running in an environment where completely unexpected
+        // kinds of packets are flying around, so we need to harden things a bit and
+        // filter out packets we think are completely bogus, so we always check to see
+        // that the packet is long enough to contain the header we want to remove.
         //
-        if (packet->GetSize() < llc.GetSerializedSize())
+        if (packet->GetSize() < header.GetSerializedSize())
         {
             m_phyRxDropTrace(originalPacket);
             return;
         }
 
-        packet->RemoveHeader(llc);
-        protocol = llc.GetType();
-    }
+        packet->RemoveHeader(header);
+        destination = header.GetDestination();
+        source = header.GetSource();
+        bool isBroadcast = header.GetDestination().IsBroadcast();
+        bool isMulticast = header.GetDestination().IsGroup();
+        protocol = header.GetLengthType();
 
-    NS_LOG_LOGIC("Pkt source is " << source);
-    NS_LOG_LOGIC("Pkt destination is " << destination);
+        //
+        // If the length/type is less than 1500, it corresponds to a length
+        // interpretation packet.  In this case, it is an 802.3 packet and
+        // will also have an 802.2 LLC header.  If greater than 1500, we
+        // find the protocol number (Ethernet type) directly.
+        //
+        if (m_encapMode == LLC and header.GetLengthType() <= 1500)
+        {
+            LlcSnapHeader llc;
+            //
+            // Check to see that the packet is long enough to possibly contain the
+            // header we want to remove before just naively calling.
+            //
+            if (packet->GetSize() < llc.GetSerializedSize())
+            {
+                m_phyRxDropTrace(originalPacket);
+                return;
+            }
 
-    PacketType packetType;
+            packet->RemoveHeader(llc);
+            protocol = llc.GetType();
+        }
 
-    if (isBroadcast)
-    {
-        packetType = NS3_PACKET_BROADCAST;
-    }
-    else if (isMulticast)
-    {
-        packetType = NS3_PACKET_MULTICAST;
-    }
-    else if (destination == m_address)
-    {
-        packetType = NS3_PACKET_HOST;
-    }
-    else
-    {
-        packetType = NS3_PACKET_OTHERHOST;
+        NS_LOG_LOGIC("Pkt source is " << source);
+        NS_LOG_LOGIC("Pkt destination is " << destination);
+
+        if (isBroadcast)
+        {
+            packetType = NS3_PACKET_BROADCAST;
+        }
+        else if (isMulticast)
+        {
+            packetType = NS3_PACKET_MULTICAST;
+        }
+        else if (destination == m_address)
+        {
+            packetType = NS3_PACKET_HOST;
+        }
+        else
+        {
+            packetType = NS3_PACKET_OTHERHOST;
+        }
     }
 
     //
@@ -702,22 +679,21 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
         return false;
     }
 
+    NS_ASSERT_MSG(packet->GetSize() <= m_mtu,
+                  "FdNetDevice::SendFrom(): Packet too big " << packet->GetSize());
+
+    uint8_t prefix[4] = {};
+    size_t prefixLen = 0;
+
     //
     // L3 mode: macOS utun expects raw IP with a 4-byte address-family prefix.
     // Skip Ethernet header construction entirely.
     //
     if (m_encapMode == L3)
     {
-        NS_ASSERT_MSG(packet->GetSize() <= m_mtu,
-                      "FdNetDevice::SendFrom(): Packet too big " << packet->GetSize());
-
-        m_macTxTrace(packet);
-        m_promiscSnifferTrace(packet);
-        m_snifferTrace(packet);
-
         NS_LOG_LOGIC("L3 calling write, proto=" << std::hex << protocolNumber);
 #ifdef _WIN32
-        NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid")
+        NS_FATAL_ERROR("applying L3 encapsulation on Windows is not valid");
 #elifdef __APPLE__
         // 4-byte AF header in network byte order, followed by raw IP
         uint32_t af;
@@ -735,116 +711,58 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
             return false;
         }
 
-        auto payloadLen = (size_t)packet->GetSize();
-        size_t totalLen = payloadLen + 4;
-        uint8_t* buffer = AllocateBuffer(totalLen);
-        if (!buffer)
-        {
-            m_macTxDropTrace(packet);
-            return false;
-        }
-
         uint32_t netAf = htonl(af);
-        std::memcpy(buffer, &netAf, sizeof(netAf));
-        packet->CopyData(buffer + 4, payloadLen);
-
-        ssize_t written = Write(buffer, totalLen);
-        FreeBuffer(buffer);
-
-        if (written == -1 || (size_t)written != totalLen)
-        {
-            m_macTxDropTrace(packet);
-            return false;
-        }
-        return true;
+        std::memcpy(prefix, &netAf, sizeof(netAf));
+        prefixLen = 4;
 #elifdef __linux__
-        auto len = (size_t)packet->GetSize();
-        uint8_t* buf = AllocateBuffer(len);
-        if (!buf)
-        {
-            m_macTxDropTrace(packet);
-            return false;
-        }
-        packet->CopyData(buf, len);
-        ssize_t written = Write(buf, len);
-        FreeBuffer(buf);
-        if (written == -1 || (size_t)written != len)
-        {
-            m_macTxDropTrace(packet);
-            return false;
-        }
-        return true;
+        prefixLen = 0;
 #else // applying L3 on unknown architecture
-        NS_FATAL_ERROR("could not apply L3 encapsulation on unknown architecture")
+        NS_FATAL_ERROR("could not apply L3 encapsulation on unknown architecture");
 #endif
     }
-    if (m_encapMode == L3PI)
+    else if (m_encapMode == L3PI)
     {
 #ifdef __linux__
-        NS_ASSERT_MSG(packet->GetSize() <= m_mtu,
-                      "FdNetDevice::SendFrom(): Packet too big " << packet->GetSize());
-
-        m_macTxTrace(packet);
-        m_promiscSnifferTrace(packet);
-        m_snifferTrace(packet);
-
         NS_LOG_LOGIC("L3PI calling write, proto=" << std::hex << protocolNumber);
 
-        auto payloadLen = (size_t)packet->GetSize();
-        size_t totalLen = payloadLen + 4;
-        uint8_t* buffer = AllocateBuffer(totalLen);
-        if (!buffer)
-        {
-            m_macTxDropTrace(packet);
-            return false;
-        }
-
         // flags = 0, proto = protocolNumber (big-endian)
-        buffer[0] = 0;
-        buffer[1] = 0;
-        buffer[2] = (protocolNumber >> 8) & 0xFF;
-        buffer[3] = protocolNumber & 0xFF;
-        packet->CopyData(buffer + 4, payloadLen);
-
-        ssize_t written = Write(buffer, totalLen);
-        FreeBuffer(buffer);
-
-        if (written == -1 || (size_t)written != totalLen)
-        {
-            m_macTxDropTrace(packet);
-            return false;
-        }
-        return true;
+        prefix[0] = 0;
+        prefix[1] = 0;
+        prefix[2] = (protocolNumber >> 8) & 0xFF;
+        prefix[3] = protocolNumber & 0xFF;
+        prefixLen = 4;
+#else
+        NS_FATAL_ERROR("applying L3PI encapsulation on this platform is not valid");
 #endif
-    }
-    Mac48Address destination = Mac48Address::ConvertFrom(dest);
-    Mac48Address source = Mac48Address::ConvertFrom(src);
-
-    NS_LOG_LOGIC("Transmit packet with UID " << packet->GetUid());
-    NS_LOG_LOGIC("Transmit packet from " << source);
-    NS_LOG_LOGIC("Transmit packet to " << destination);
-
-    EthernetHeader header(false);
-    header.SetSource(source);
-    header.SetDestination(destination);
-
-    NS_ASSERT_MSG(packet->GetSize() <= m_mtu,
-                  "FdNetDevice::SendFrom(): Packet too big " << packet->GetSize());
-
-    if (m_encapMode == LLC)
-    {
-        LlcSnapHeader llc;
-        llc.SetType(protocolNumber);
-        packet->AddHeader(llc);
-
-        header.SetLengthType(packet->GetSize());
     }
     else
     {
-        header.SetLengthType(protocolNumber);
-    }
+        Mac48Address destination = Mac48Address::ConvertFrom(dest);
+        Mac48Address source = Mac48Address::ConvertFrom(src);
 
-    packet->AddHeader(header);
+        NS_LOG_LOGIC("Transmit packet with UID " << packet->GetUid());
+        NS_LOG_LOGIC("Transmit packet from " << source);
+        NS_LOG_LOGIC("Transmit packet to " << destination);
+
+        EthernetHeader header(false);
+        header.SetSource(source);
+        header.SetDestination(destination);
+
+        if (m_encapMode == LLC)
+        {
+            LlcSnapHeader llc;
+            llc.SetType(protocolNumber);
+            packet->AddHeader(llc);
+
+            header.SetLengthType(packet->GetSize());
+        }
+        else
+        {
+            header.SetLengthType(protocolNumber);
+        }
+
+        packet->AddHeader(header);
+    }
 
     //
     // there's not much meaning associated with the different layers in this
@@ -852,32 +770,36 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
     // essentially one place.  We do this for trace consistency across devices.
     //
     m_macTxTrace(packet);
-
     m_promiscSnifferTrace(packet);
     m_snifferTrace(packet);
 
     NS_LOG_LOGIC("calling write");
 
-    auto len = (size_t)packet->GetSize();
-    uint8_t* buffer = AllocateBuffer(len);
+    auto payloadLen = (size_t)packet->GetSize();
+    size_t totalLen = payloadLen + prefixLen;
+    uint8_t* buffer = AllocateBuffer(totalLen);
     if (!buffer)
     {
         m_macTxDropTrace(packet);
         return false;
     }
 
-    packet->CopyData(buffer, len);
+    if (prefixLen)
+    {
+        std::memcpy(buffer, prefix, prefixLen);
+    }
+    packet->CopyData(buffer + prefixLen, payloadLen);
 
     // We need to add the PI header
     if (m_encapMode == DIXPI)
     {
-        AddPIHeader(buffer, len);
+        AddPIHeader(buffer, totalLen);
     }
 
-    ssize_t written = Write(buffer, len);
+    ssize_t written = Write(buffer, totalLen);
     FreeBuffer(buffer);
 
-    if (written == -1 || (size_t)written != len)
+    if (written == -1 || (size_t)written != totalLen)
     {
         m_macTxDropTrace(packet);
         return false;
