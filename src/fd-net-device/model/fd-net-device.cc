@@ -18,6 +18,7 @@
 #include "ns3/enum.h"
 #include "ns3/ethernet-header.h"
 #include "ns3/ethernet-trailer.h"
+#include "ns3/iana-ieee802-numbers.h"
 #include "ns3/llc-snap-header.h"
 #include "ns3/log.h"
 #include "ns3/mac48-address.h"
@@ -522,11 +523,11 @@ FdNetDevice::ForwardUp()
 #endif
         if (af == ip4Flag)
         {
-            protocol = 0x0800;
+            protocol = iana::ieee802numbers::IPV4;
         }
         else if (af == ip6Flag)
         {
-            protocol = 0x86DD;
+            protocol = iana::ieee802numbers::IPV6;
         }
         else
         {
@@ -697,11 +698,11 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
 #elifdef __APPLE__
         // 4-byte AF header in network byte order, followed by raw IP
         uint32_t af;
-        if (protocolNumber == 0x0800)
+        if (protocolNumber == iana::ieee802numbers::IPV4)
         {
             af = 0x00000002; // AF_INET, already big-endian
         }
-        else if (protocolNumber == 0x86DD)
+        else if (protocolNumber == iana::ieee802numbers::IPV6)
         {
             af = 0x0000001e; // AF_INET6 (30) on macOS, big-endian
         }

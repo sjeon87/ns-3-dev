@@ -45,6 +45,7 @@ extern bool gVerbose;
         ABORT(msg, printErrno);                                                                    \
     }
 
+#ifndef _WIN32
 /**
  * @ingroup fd-net-device
  * @brief Send the file descriptor back to the code that invoked the creation.
@@ -59,7 +60,6 @@ extern bool gVerbose;
  * @param magic_number A verification number to verify the caller is talking to the
  * right process.
  */
-#ifndef _WIN32
 void SendSocket(const char* path, int fd, const int magic_number);
 #endif
 
