@@ -197,15 +197,20 @@ PeerManagementProtocol::ReceiveBeacon(uint32_t interface,
 }
 
 void
-PeerManagementProtocol::ReceivePeerLinkFrame(uint32_t interface,
-                                             Mac48Address peerAddress,
-                                             Mac48Address peerMeshPointAddress,
-                                             uint16_t aid,
-                                             IePeerManagement peerManagementElement,
-                                             IeConfiguration meshConfig)
+PeerManagementProtocol::ReceivePeerLinkFrame(
+    uint32_t interface,
+    Mac48Address peerAddress,
+    Mac48Address peerMeshPointAddress,
+    uint16_t aid,
+    WifiActionHeader::SelfProtectedActionValue actionFrameType,
+    IeMeshPeeringManagement peerManagementElement,
+    IeConfiguration meshConfig)
 {
+    NS_ASSERT(actionFrameType == WifiActionHeader::PEER_LINK_OPEN ||
+              actionFrameType == WifiActionHeader::PEER_LINK_CONFIRM ||
+              actionFrameType == WifiActionHeader::PEER_LINK_CLOSE);
     Ptr<PeerLink> peerLink = FindPeerLink(interface, peerAddress);
-    if (peerManagementElement.SubtypeIsOpen())
+    if (actionFrameType == WifiActionHeader::PEER_LINK_OPEN)
     {
         PmpReasonCode reasonCode(REASON11S_RESERVED);
         bool reject = !(ShouldAcceptOpen(interface, peerAddress, reasonCode));
@@ -231,19 +236,19 @@ PeerManagementProtocol::ReceivePeerLinkFrame(uint32_t interface,
     {
         return;
     }
-    if (peerManagementElement.SubtypeIsConfirm())
+    if (actionFrameType == WifiActionHeader::PEER_LINK_CONFIRM)
     {
         peerLink->ConfirmAccept(peerManagementElement.GetLocalLinkId(),
-                                peerManagementElement.GetPeerLinkId(),
+                                peerManagementElement.GetPeerLinkId().value(),
                                 aid,
                                 meshConfig,
                                 peerMeshPointAddress);
     }
-    if (peerManagementElement.SubtypeIsClose())
+    if (actionFrameType == WifiActionHeader::PEER_LINK_CLOSE)
     {
         peerLink->Close(peerManagementElement.GetLocalLinkId(),
-                        peerManagementElement.GetPeerLinkId(),
-                        peerManagementElement.GetReasonCode());
+                        peerManagementElement.GetPeerLinkId().value(),
+                        peerManagementElement.GetReasonCode().value());
     }
 }
 

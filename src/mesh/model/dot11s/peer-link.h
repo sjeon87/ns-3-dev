@@ -12,7 +12,7 @@
 
 #include "ie-dot11s-beacon-timing.h"
 #include "ie-dot11s-configuration.h"
-#include "ie-dot11s-peer-management.h"
+#include "ie-dot11s-mesh-peering-management.h"
 
 #include "ns3/callback.h"
 #include "ns3/event-id.h"

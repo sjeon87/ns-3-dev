@@ -16,8 +16,8 @@
 #include "ns3/ie-dot11s-beacon-timing.h"
 #include "ns3/ie-dot11s-configuration.h"
 #include "ns3/ie-dot11s-id.h"
+#include "ns3/ie-dot11s-mesh-peering-management.h"
 #include "ns3/ie-dot11s-metric-report.h"
-#include "ns3/ie-dot11s-peer-management.h"
 #include "ns3/ie-dot11s-perr.h"
 #include "ns3/ie-dot11s-prep.h"
 #include "ns3/ie-dot11s-preq.h"
@@ -116,7 +116,7 @@ MeshInformationElementVector::DeserializeSingleIe(Buffer::Iterator start)
         newElement = Create<dot11s::IeLinkMetricReport>();
         break;
     case IE_MESH_PEERING_MANAGEMENT:
-        newElement = Create<dot11s::IePeerManagement>();
+        newElement = Create<dot11s::IeMeshPeeringManagement>();
         break;
     case IE_BEACON_TIMING:
         newElement = Create<dot11s::IeBeaconTiming>();

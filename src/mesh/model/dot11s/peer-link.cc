@@ -746,11 +746,17 @@ PeerLink::ClearHoldingTimer()
 void
 PeerLink::SendPeerLinkClose(PmpReasonCode reasoncode)
 {
-    IePeerManagement peerElement;
-    peerElement.SetPeerClose(m_localLinkId, m_peerLinkId, reasoncode);
+    IeMeshPeeringManagement peerElement;
+    peerElement.SetLocalLinkId(m_localLinkId);
+    // always set the peer link id on close so the mesh peering management element is 8 bytes.
+    // this lets the receiver tell confirm (6 bytes) and close (8 bytes) apart by their length.
+    // see dot11s::IeMeshPeeringManagement::DeserializeInformationField for more details.
+    peerElement.SetPeerLinkId(m_peerLinkId);
+    peerElement.SetReasonCode(reasoncode);
     m_macPlugin->SendPeerLinkManagementFrame(m_peerAddress,
                                              m_peerMeshPointAddress,
                                              m_assocId,
+                                             WifiActionHeader::PEER_LINK_CLOSE,
                                              peerElement,
                                              m_configuration);
 }
@@ -758,12 +764,13 @@ PeerLink::SendPeerLinkClose(PmpReasonCode reasoncode)
 void
 PeerLink::SendPeerLinkOpen()
 {
-    IePeerManagement peerElement;
-    peerElement.SetPeerOpen(m_localLinkId);
+    IeMeshPeeringManagement peerElement;
+    peerElement.SetLocalLinkId(m_localLinkId);
     NS_ASSERT(m_macPlugin);
     m_macPlugin->SendPeerLinkManagementFrame(m_peerAddress,
                                              m_peerMeshPointAddress,
                                              m_assocId,
+                                             WifiActionHeader::PEER_LINK_OPEN,
                                              peerElement,
                                              m_configuration);
 }
@@ -771,11 +778,13 @@ PeerLink::SendPeerLinkOpen()
 void
 PeerLink::SendPeerLinkConfirm()
 {
-    IePeerManagement peerElement;
-    peerElement.SetPeerConfirm(m_localLinkId, m_peerLinkId);
+    IeMeshPeeringManagement peerElement;
+    peerElement.SetLocalLinkId(m_localLinkId);
+    peerElement.SetPeerLinkId(m_peerLinkId);
     m_macPlugin->SendPeerLinkManagementFrame(m_peerAddress,
                                              m_peerMeshPointAddress,
                                              m_assocId,
+                                             WifiActionHeader::PEER_LINK_CONFIRM,
                                              peerElement,
                                              m_configuration);
 }

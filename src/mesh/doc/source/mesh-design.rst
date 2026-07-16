@@ -193,9 +193,6 @@ Mesh PCAP is not decoded properly by Wireshark (https://www.nsnam.org/bugzilla/s
 
 Energy module can not be used on mesh devices (https://www.nsnam.org/bugzilla/show_bug.cgi?id=2265).
 
-IE11S_MESH_PEERING_PROTOCOL_VERSION should be removed as per standard.
-Protocol ID should actually be part of the Mesh Peering Management IE (https://www.nsnam.org/bugzilla/show_bug.cgi?id=2600).
-
 MeshInformationElementVector printing error (https://www.nsnam.org/bugzilla/show_bug.cgi?id=2728).
 
 Mesh is not compatible with IPv6 (https://www.nsnam.org/bugzilla/show_bug.cgi?id=2881).

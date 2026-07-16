@@ -14,13 +14,15 @@ build_lib(
     model/dot11s/ie-dot11s-beacon-timing.cc
     model/dot11s/ie-dot11s-configuration.cc
     model/dot11s/ie-dot11s-id.cc
+    model/dot11s/ie-dot11s-mesh-peering-management.cc
     model/dot11s/ie-dot11s-metric-report.cc
-    model/dot11s/ie-dot11s-peer-management.cc
     model/dot11s/ie-dot11s-perr.cc
     model/dot11s/ie-dot11s-prep.cc
     model/dot11s/ie-dot11s-preq.cc
     model/dot11s/ie-dot11s-rann.cc
-    model/dot11s/peer-link-frame.cc
+    model/dot11s/mesh-peering-close-header.cc
+    model/dot11s/mesh-peering-confirm-header.cc
+    model/dot11s/mesh-peering-open-header.cc
     model/dot11s/peer-link.cc
     model/dot11s/peer-management-protocol-mac.cc
     model/dot11s/peer-management-protocol.cc
@@ -44,13 +46,15 @@ build_lib(
     model/dot11s/ie-dot11s-beacon-timing.h
     model/dot11s/ie-dot11s-configuration.h
     model/dot11s/ie-dot11s-id.h
+    model/dot11s/ie-dot11s-mesh-peering-management.h
     model/dot11s/ie-dot11s-metric-report.h
-    model/dot11s/ie-dot11s-peer-management.h
     model/dot11s/ie-dot11s-perr.h
     model/dot11s/ie-dot11s-prep.h
     model/dot11s/ie-dot11s-preq.h
     model/dot11s/ie-dot11s-rann.h
-    model/dot11s/peer-link-frame.h
+    model/dot11s/mesh-peering-close-header.h
+    model/dot11s/mesh-peering-confirm-header.h
+    model/dot11s/mesh-peering-open-header.h
     model/dot11s/peer-link.h
     model/dot11s/peer-management-protocol.h
     model/flame/flame-header.h

@@ -10,6 +10,7 @@
 #define PEER_MANAGEMENT_PROTOCOL_MAC_H
 
 #include "ns3/mesh-wifi-interface-mac-plugin.h"
+#include "ns3/mgt-action-headers.h"
 
 namespace ns3
 {
@@ -21,7 +22,7 @@ namespace dot11s
 {
 class PeerManagementProtocol;
 class IeConfiguration;
-class IePeerManagement;
+class IeMeshPeeringManagement;
 class PeerManagementProtocol;
 
 /**
@@ -181,13 +182,15 @@ class PeerManagementProtocolMac : public MeshWifiInterfaceMacPlugin
      * @param peerAddress the peer MAC address
      * @param peerMpAddress the peer MP address
      * @param aid the AID
-     * @param peerElement IePeerManagement
+     * @param actionFrameType identifies open/confirm/close subtypes
+     * @param peerElement IeMeshPeeringManagement
      * @param meshConfig IeConfiguration
      */
     void SendPeerLinkManagementFrame(Mac48Address peerAddress,
                                      Mac48Address peerMpAddress,
                                      uint16_t aid,
-                                     IePeerManagement peerElement,
+                                     WifiActionHeader::SelfProtectedActionValue actionFrameType,
+                                     IeMeshPeeringManagement peerElement,
                                      IeConfiguration meshConfig);
     /**
      * @brief debug only, used to print established links

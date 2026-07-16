@@ -315,6 +315,15 @@ MeshWifiInterfaceMac::CheckSupportedRates(AllSupportedRates rates) const
     return true;
 }
 
+CapabilityInformation
+MeshWifiInterfaceMac::GetCapabilities() const
+{
+    CapabilityInformation capabilities;
+    capabilities.SetShortPreamble(GetWifiPhy()->GetShortPhyPreambleSupported() ||
+                                  GetErpSupported(SINGLE_LINK_OP_ID));
+    return capabilities;
+}
+
 //-----------------------------------------------------------------------------
 // Beacons
 //-----------------------------------------------------------------------------

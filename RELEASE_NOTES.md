@@ -43,6 +43,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 
 - (lr-wpan) !2916 Pcap files are now correctly generated with and without FCS cases.
 - (mesh) #1341 Fixed dot11s regression that ignored the link rate, degrading the HWMP routing metric to hop count.
+- (mesh) Fixed the format of the Mesh Peering Open/Confirm/Close frames and of the Mesh Peering Management element to comply with IEEE 802.11-2020.
 - (sixlowpan) #1342 Fixed a deserialization error in the MESH header.
 - (dsr) !2762 Fixes header format to comply with RFC4728. Also other minor bug fixes and modernization.
 - (zigbee) In the NWK, broadcast initiator devices are now registered in the BTT to avoid receiving retransmissions.
