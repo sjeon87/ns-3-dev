@@ -83,8 +83,13 @@ class MeshHelper
     /**
      *  @brief Spread/not spread frequency channels of MP interfaces.
      *
-     *  If set to true different non-overlapping 20MHz frequency
-     *  channels will be assigned to different mesh point interfaces.
+     *  If set to SPREAD_CHANNELS and more than one interface is installed per
+     *  MP, non-overlapping frequency channels are assigned to the interfaces
+     *  of each mesh point. Channels are assigned ascending, overlapping channels
+     *  are skipped.
+     *
+     *  If set to ZERO_CHANNEL, the channels configured on the PHY are left
+     *  untouched.
      */
     enum ChannelPolicy
     {
@@ -155,14 +160,13 @@ class MeshHelper
 
   private:
     /**
-     * @param phyHelper
-     * @param node
-     * @param channelId
+     * Create a WifiNetDevice interface for a mesh point.
+     *
+     * @param phyHelper the PHY helper used to configure the interface
+     * @param node the node the interface is installed on
      * @returns a WifiNetDevice with ready-to-use interface
      */
-    Ptr<WifiNetDevice> CreateInterface(const WifiPhyHelper& phyHelper,
-                                       Ptr<Node> node,
-                                       uint16_t channelId) const;
+    Ptr<WifiNetDevice> CreateInterface(const WifiPhyHelper& phyHelper, Ptr<Node> node) const;
     uint32_t m_nInterfaces;              ///< number of interfaces
     ChannelPolicy m_spreadChannelPolicy; ///< spread channel policy
     Ptr<MeshStack> m_stack;              ///< stack

@@ -167,7 +167,7 @@ Unsupported features
 * Security.
 * Power save.
 * Path maintenance (sending PREQ proactively before a path expires)
-* Though multi-radio operation is supported, no channel assignment protocol is proposed for now. (Correct channel switching is not implemented)
+* Though multi-radio operation is supported, no channel assignment protocol is proposed for now. (Channels are assigned once at install time. Channel switching is not implemented)
 
 Models yet to be created
 ########################

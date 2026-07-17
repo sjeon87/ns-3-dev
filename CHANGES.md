@@ -34,6 +34,8 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 ### Changed behavior
 
+* (mesh) `MeshHelper::Install` no longer forces the operating channel of mesh interfaces to channel `100` or `100 + i * 5`. `SPREAD_CHANNELS` with more than one interface assigns non-overlapping valid channels.
+
 ## Changes from ns-3.47 to ns-3.48
 
 ### New API

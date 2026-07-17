@@ -21,6 +21,9 @@
 #include "ns3/wifi-default-protection-manager.h"
 #include "ns3/wifi-helper.h"
 #include "ns3/wifi-net-device.h"
+#include "ns3/wifi-phy-operating-channel.h"
+
+#include <iterator>
 
 namespace ns3
 {
@@ -57,24 +60,51 @@ MeshHelper::Install(const WifiPhyHelper& phyHelper, NodeContainer c) const
     for (auto i = c.Begin(); i != c.End(); ++i)
     {
         Ptr<Node> node = *i;
+
         // Create a mesh point device
         Ptr<MeshPointDevice> mp = CreateObject<MeshPointDevice>();
         node->AddDevice(mp);
+
         // Create wifi interfaces (single interface by default)
-        for (uint32_t i = 0; i < m_nInterfaces; ++i)
+        auto channelIt = WifiPhyOperatingChannel::GetFrequencyChannels().cbegin();
+        for (uint32_t ifIndex = 0; ifIndex < m_nInterfaces; ++ifIndex)
         {
-            uint32_t channel = 0;
-            if (m_spreadChannelPolicy == ZERO_CHANNEL)
+            Ptr<WifiNetDevice> iface = CreateInterface(phyHelper, node);
+
+            // assign non-overlapping channels if SPREAD_CHANNELS is selected
+            if (m_spreadChannelPolicy == SPREAD_CHANNELS && m_nInterfaces > 1)
             {
-                channel = 100;
+                auto phy = iface->GetPhy();
+                const auto width = phy->GetChannelWidth();
+                const auto band = phy->GetPhyBand();
+                const auto end = WifiPhyOperatingChannel::GetFrequencyChannels().cend();
+                if (ifIndex == 0)
+                {
+                    // the first interface gets the lowest channel
+                    channelIt =
+                        WifiPhyOperatingChannel::FindFirst(0, MHz_u{0}, width, m_standard, band);
+                }
+                else
+                {
+                    // find the next non-overlapping channel
+                    const auto prevFrequency = channelIt->frequency;
+                    do
+                    {
+                        channelIt = WifiPhyOperatingChannel::FindFirst(0,
+                                                                       MHz_u{0},
+                                                                       width,
+                                                                       m_standard,
+                                                                       band,
+                                                                       std::next(channelIt));
+                    } while (channelIt != end && channelIt->frequency - prevFrequency < width);
+                }
+                NS_ABORT_MSG_IF(channelIt == end,
+                                "Not enough non-overlapping channels for interface " << ifIndex);
+                phy->SetOperatingChannel(WifiPhy::ChannelTuple{channelIt->number, width, band, 0});
             }
-            if (m_spreadChannelPolicy == SPREAD_CHANNELS)
-            {
-                channel = 100 + i * 5;
-            }
-            Ptr<WifiNetDevice> iface = CreateInterface(phyHelper, node, channel);
             mp->AddInterface(iface);
         }
+
         if (!m_stack->InstallStack(mp))
         {
             NS_FATAL_ERROR("Stack is not installed!");
@@ -101,9 +131,7 @@ MeshHelper::SetStandard(WifiStandard standard)
 }
 
 Ptr<WifiNetDevice>
-MeshHelper::CreateInterface(const WifiPhyHelper& phyHelper,
-                            Ptr<Node> node,
-                            uint16_t channelId) const
+MeshHelper::CreateInterface(const WifiPhyHelper& phyHelper, Ptr<Node> node) const
 {
     Ptr<WifiNetDevice> device = CreateObject<WifiNetDevice>();
 
@@ -145,7 +173,6 @@ MeshHelper::CreateInterface(const WifiPhyHelper& phyHelper,
     Ptr<WifiAckManager> ackManager = CreateObject<WifiDefaultAckManager>();
     ackManager->SetWifiMac(mac);
     fem->SetAckManager(ackManager);
-    mac->SwitchFrequencyChannel(channelId);
 
     return device;
 }

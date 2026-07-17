@@ -172,28 +172,6 @@ MeshWifiInterfaceMac::GetFrequencyChannel() const
     return GetWifiPhy()->GetChannelNumber();
 }
 
-void
-MeshWifiInterfaceMac::SwitchFrequencyChannel(uint16_t new_id)
-{
-    NS_LOG_FUNCTION(this);
-    NS_ASSERT(GetWifiPhy()); // need PHY to set/get channel
-    /**
-     * @todo
-     * Correct channel switching is:
-     *
-     * 1. Interface down, e.g. to stop packets from layer 3
-     * 2. Wait before all output queues will be empty
-     * 3. Switch PHY channel
-     * 4. Interface up
-     *
-     * Now we use dirty channel switch -- just change frequency
-     */
-    GetWifiPhy()->SetOperatingChannel(
-        WifiPhy::ChannelTuple{static_cast<uint8_t>(new_id), 0, GetWifiPhy()->GetPhyBand(), 0});
-    // Don't know NAV on new channel
-    GetLink(SINGLE_LINK_OP_ID).channelAccessManager->NotifyNavResetNow(Seconds(0));
-}
-
 //-----------------------------------------------------------------------------
 // Forward frame down
 //-----------------------------------------------------------------------------
