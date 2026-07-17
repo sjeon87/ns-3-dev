@@ -43,6 +43,7 @@
 #include "ns3/ipv4-interface-container.h"
 #include "ns3/ipv6-address-helper.h"
 #include "ns3/ipv6-interface-container.h"
+#include "ns3/ipv6-static-routing-helper.h" // Needed to set default routes in test topology
 #include "ns3/log.h"
 #include "ns3/neighbor-cache-helper.h"
 #include "ns3/node-container.h"
@@ -543,6 +544,177 @@ PingTestCase::DoRun()
     }
 }
 
+////
+/**
+ * @ingroup ping-test
+ * @ingroup tests
+ *
+ * @brief Test for Ping reaction to ICMPv6 destination unreachable (no route).
+ */
+// Test case to verify Ping application reacts to ICMPv6 destination unreachable errors
+// by emitting the Drop trace with the correct reason code (DROP_NET_UNREACHABLE).
+class PingIcmpv6NoRouteTestCase : public TestCase
+{
+  public:
+    /**
+     * Constructor.
+     */
+    PingIcmpv6NoRouteTestCase();
+
+  private:
+    void DoTeardown() override;
+    void DoRun() override;
+
+    /**
+     * Trace Drop events.
+     * @param seq Sequence number.
+     * @param reason Drop reason.
+     */
+    void DropTraceSink(uint16_t seq, Ping::DropReason reason);
+
+    /**
+     * Trace Report generation events.
+     * @param report The report sample.
+     */
+    void ReportTraceSink(const Ping::PingReport& report);
+
+    uint32_t m_dropCount{0};           ///< Number of expected DROP_NET_UNREACHABLE callbacks.
+    bool m_reportReceived{false};      ///< True when the Report trace callback is observed.
+    Ping::PingReport m_report{};       ///< Final Ping report sample captured from trace.
+    bool m_wrongDropReasonSeen{false}; ///< True if a non-expected drop reason is observed.
+};
+
+PingIcmpv6NoRouteTestCase::PingIcmpv6NoRouteTestCase()
+    : TestCase("11. Test Ping reaction to ICMPv6 destination unreachable (no route)")
+{
+}
+
+// Callback function invoked when Ping detects a drop/error condition
+// This validates that we receive exactly the DROP_NET_UNREACHABLE reason we expect
+void
+PingIcmpv6NoRouteTestCase::DropTraceSink(uint16_t seq, Ping::DropReason reason)
+{
+    NS_LOG_FUNCTION(this << seq << static_cast<uint16_t>(reason));
+    // The first ping (sequence 0) to unreachable destination should trigger this
+    NS_TEST_ASSERT_MSG_EQ(seq, 0, "Unexpected ICMP sequence for first ping request");
+    // Check if this is the "network unreachable" reason we're testing for
+    if (reason == Ping::DROP_NET_UNREACHABLE)
+    {
+        m_dropCount++;
+    }
+    else
+    {
+        // Any other drop reason is unexpected and signals a test failure
+        m_wrongDropReasonSeen = true;
+    }
+}
+
+// Callback function invoked when Ping finishes and generates its statistics report
+// We capture the report to verify: 1 packet sent, 0 received, 100% loss
+void
+PingIcmpv6NoRouteTestCase::ReportTraceSink(const Ping::PingReport& report)
+{
+    NS_LOG_FUNCTION(this << report.m_transmitted << report.m_received << report.m_loss);
+    m_reportReceived = true;
+    m_report = report; // Save for assertion checks after simulation
+}
+
+// Test execution: create topology, configure ping, run simulation, and verify results
+void
+PingIcmpv6NoRouteTestCase::DoRun()
+{
+    // Create a 2-node network: node 0 (ping sender) and node 1 (router/forwarder)
+    NodeContainer nodes;
+    nodes.Create(2);
+
+    // Connect the two nodes with a simple point-to-point link (10ms delay, 1Gbps speed)
+    SimpleNetDeviceHelper deviceHelper;
+    deviceHelper.SetChannel("ns3::SimpleChannel", "Delay", TimeValue(MilliSeconds(10)));
+    deviceHelper.SetDeviceAttribute("DataRate", DataRateValue(DataRate("1Gbps")));
+    deviceHelper.SetNetDevicePointToPointMode(true);
+    NetDeviceContainer devices = deviceHelper.Install(nodes);
+
+    // Install IPv6 stack on both nodes (IPv4 disabled to keep test simple and deterministic)
+    InternetStackHelper internetHelper;
+    internetHelper.SetIpv4StackInstall(false);
+    internetHelper.Install(nodes);
+
+    // Disable Duplicate Address Detection (DAD) on both nodes to speed up startup
+    // and make the test deterministic (no random DAD delays)
+    nodes.Get(0)->GetObject<Icmpv6L4Protocol>()->SetAttribute("DAD", BooleanValue(false));
+    nodes.Get(1)->GetObject<Icmpv6L4Protocol>()->SetAttribute("DAD", BooleanValue(false));
+
+    // Assign IPv6 addresses: 2001:1::1 (node 0) and 2001:1::2 (node 1)
+    Ipv6AddressHelper ipv6AddrHelper;
+    ipv6AddrHelper.SetBase(Ipv6Address("2001:1::"), Ipv6Prefix(64));
+    Ipv6InterfaceContainer interfaces = ipv6AddrHelper.Assign(devices);
+
+    // Get the IPv6 layer objects for both nodes to enable forwarding
+    Ptr<Ipv6L3Protocol> ipv6Node0 = nodes.Get(0)->GetObject<Ipv6L3Protocol>();
+    Ptr<Ipv6L3Protocol> ipv6Node1 = nodes.Get(1)->GetObject<Ipv6L3Protocol>();
+
+    // Enable IPv6 forwarding on node 1 so it acts as a router and can generate NO_ROUTE errors
+    ipv6Node1->SetForwarding(1, true);
+    // Enable forwarding on node 0 too (suppresses Router Solicitation messages)
+    ipv6Node0->SetForwarding(1, true);
+
+    // Configure static routing on node 0: send all packets destined for unknown networks to node 1
+    Ipv6StaticRoutingHelper routing;
+    Ptr<Ipv6StaticRouting> staticRoutingNode0 = routing.GetStaticRouting(ipv6Node0);
+    // Default route: node 1's interface (2001:1::2) on interface 1
+    staticRoutingNode0->SetDefaultRoute(interfaces.GetAddress(1, 1), 1);
+
+    // Create a Ping application that will test the unreachable destination
+    Ptr<Ping> ping = CreateObject<Ping>();
+    ping->SetAttribute("VerboseMode", EnumValue(Ping::VerboseMode::SILENT)); // No console output
+    ping->SetAttribute("Count", UintegerValue(1)); // Send exactly 1 ping packet
+    ping->SetAttribute("InterfaceAddress",
+                       AddressValue(interfaces.GetAddress(0, 1))); // From node 0
+    // Destination is unreachable (not in network 2001:1::/64), so node 1 will return NO_ROUTE error
+    ping->SetAttribute("Destination", AddressValue(Ipv6Address("2001:2::1")));
+    ping->SetStartTime(Seconds(1)); // Start ping at 1 second simulation time
+    ping->SetStopTime(Seconds(4));  // Stop at 4 seconds
+
+    // Install the Ping application on node 0 and connect our trace callbacks
+    nodes.Get(0)->AddApplication(ping);
+    // Hook the Drop trace: called when Ping receives an ICMP error
+    ping->TraceConnectWithoutContext("Drop",
+                                     MakeCallback(&PingIcmpv6NoRouteTestCase::DropTraceSink, this));
+    // Hook the Report trace: called when Ping finishes with statistics
+    ping->TraceConnectWithoutContext(
+        "Report",
+        MakeCallback(&PingIcmpv6NoRouteTestCase::ReportTraceSink, this));
+
+    // Pre-populate the neighbor cache to avoid extra neighbor discovery delays
+    NeighborCacheHelper neighborCacheHelper;
+    neighborCacheHelper.PopulateNeighborCache();
+
+    // Run the simulation for 5 seconds (Ping stops at 4s, giving 1s to process final events)
+    Simulator::Stop(Seconds(5));
+    Simulator::Run();
+
+    // Verify exactly one DROP_NET_UNREACHABLE trace was emitted when Ping got the error
+    NS_TEST_ASSERT_MSG_EQ(m_dropCount, 1, "Expected exactly one DROP_NET_UNREACHABLE event");
+    // Verify no unexpected drop reasons were observed
+    NS_TEST_ASSERT_MSG_EQ(m_wrongDropReasonSeen,
+                          false,
+                          "Observed an unexpected Ping::DropReason value");
+    // Verify the Report trace callback was called at all
+    NS_TEST_ASSERT_MSG_EQ(m_reportReceived, true, "Expected one Ping report trace callback");
+    // Verify statistics: 1 packet sent, 0 received (all failed), 100% loss
+    NS_TEST_ASSERT_MSG_EQ(m_report.m_transmitted, 1, "Unexpected transmitted packet count");
+    NS_TEST_ASSERT_MSG_EQ(m_report.m_received, 0, "Unexpected received packet count");
+    NS_TEST_ASSERT_MSG_EQ(m_report.m_loss, 100, "Unexpected packet loss percentage");
+}
+
+void
+PingIcmpv6NoRouteTestCase::DoTeardown()
+{
+    Simulator::Destroy();
+}
+
+////
+
 /**
  * @ingroup ping-test
  * @ingroup tests
@@ -933,6 +1105,12 @@ PingTestSuite::PingTestSuite()
     testcase10v6->CheckTraceTx(5);
     testcase10v6->SetDestinationAddress(Ipv6Address("2001:1::200:ff:fe00:2"));
     AddTestCase(testcase10v6, TestCase::Duration::QUICK);
+    ////
+    // Register the new ICMPv6 destination unreachable test (test 11 for IPv6)
+    auto testcase11v6 = new PingIcmpv6NoRouteTestCase();
+    AddTestCase(testcase11v6, TestCase::Duration::QUICK); // Mark as quick-running test
 }
+
+////
 
 static PingTestSuite pingTestSuite; //!< Static variable for test initialization
