@@ -11,12 +11,14 @@
 
 #include "mesh-wifi-interface-mac.h"
 
+#include "ns3/llc-snap-header.h"
 #include "ns3/log.h"
 #include "ns3/packet.h"
 #include "ns3/pointer.h"
 #include "ns3/simulator.h"
 #include "ns3/string.h"
 #include "ns3/wifi-net-device.h"
+#include "ns3/wifi-standard-constants.h"
 
 namespace ns3
 {
@@ -35,9 +37,9 @@ MeshPointDevice::GetTypeId()
             .AddConstructor<MeshPointDevice>()
             .AddAttribute("Mtu",
                           "The MAC-level Maximum Transmission Unit",
-                          UintegerValue(0xffff),
+                          UintegerValue(MAX_MSDU_SIZE - LLC_SNAP_HEADER_LENGTH),
                           MakeUintegerAccessor(&MeshPointDevice::SetMtu, &MeshPointDevice::GetMtu),
-                          MakeUintegerChecker<uint16_t>())
+                          MakeUintegerChecker<uint16_t>(1, MAX_MSDU_SIZE - LLC_SNAP_HEADER_LENGTH))
             .AddAttribute("RoutingProtocol",
                           "The mesh routing protocol used by this mesh point.",
                           PointerValue(),
@@ -225,6 +227,10 @@ bool
 MeshPointDevice::SetMtu(const uint16_t mtu)
 {
     NS_LOG_FUNCTION(this);
+    if (mtu > MAX_MSDU_SIZE - LLC_SNAP_HEADER_LENGTH)
+    {
+        return false;
+    }
     m_mtu = mtu;
     return true;
 }

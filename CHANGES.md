@@ -33,6 +33,8 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 ### Changed behavior
 
+* (mesh) The `Mtu` attribute of `MeshPointDevice` now defaults to 2296 (the maximum MTU of a `WifiNetDevice`) instead of 65535, and 2296 is also the upper limit now.
+
 ## Changes from ns-3.47 to ns-3.48
 
 ### New API
