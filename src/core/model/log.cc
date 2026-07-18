@@ -16,8 +16,10 @@
 #include <ctype.h>   // toupper
 #include <iostream>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 /**
  * @file
@@ -176,6 +178,120 @@ GetLogComponent(const std::string name)
         NS_FATAL_ERROR("Log component \"" << name << "\" does not exist.");
     }
     return *ret;
+}
+
+/** Unnamed namespace for log line assembly buffers. */
+namespace
+{
+
+/**
+ * A streambuf appending to a std::string whose capacity is reused
+ * between log lines, so steady-state logging does not allocate.
+ */
+class LogLineBuf : public std::streambuf
+{
+  public:
+    std::string m_line; //!< The log line being assembled.
+
+  protected:
+    /**
+     * Append a character sequence to the line.
+     *
+     * @param s The characters to append.
+     * @param n The number of characters to append.
+     * @return The number of characters appended.
+     */
+    std::streamsize xsputn(const char* s, std::streamsize n) override
+    {
+        m_line.append(s, static_cast<std::size_t>(n));
+        return n;
+    }
+
+    /**
+     * Append a single character to the line.
+     *
+     * @param c The character to append, or EOF.
+     * @return A value other than EOF on success.
+     */
+    int_type overflow(int_type c) override
+    {
+        if (!traits_type::eq_int_type(c, traits_type::eof()))
+        {
+            m_line.push_back(traits_type::to_char_type(c));
+        }
+        return traits_type::not_eof(c);
+    }
+};
+
+/** A memory buffer and the ostream assembling a log line into it. */
+struct LogLine
+{
+    LogLineBuf buf;        //!< The line buffer.
+    std::ostream os{&buf}; //!< The stream assembling the line.
+};
+
+/**
+ * Whether this thread's LogLine has been destroyed.
+ *
+ * Trivially destructible, so it remains readable during program shutdown,
+ * after the buffer's own thread_local destructor has run.  Core itself logs
+ * during static destruction (e.g. Time::Clear() from ~Time of static
+ * attribute defaults), so this must be handled.
+ */
+thread_local bool g_logLineDestroyed = false;
+
+/** Arm g_logLineDestroyed when the thread's LogLine is destroyed. */
+struct LogLineHolder
+{
+    LogLine line; //!< The line buffer and stream.
+
+    ~LogLineHolder()
+    {
+        g_logLineDestroyed = true;
+    }
+};
+
+/** @return The thread-local log line buffer. */
+LogLine&
+GetLogLine()
+{
+    thread_local LogLineHolder holder;
+    return holder.line;
+}
+
+} // unnamed namespace
+
+std::ostream&
+LogLineBegin()
+{
+    if (g_logLineDestroyed)
+    {
+        // Logging during program shutdown, after this thread's buffer is
+        // gone: stream directly to std::clog, which is kept alive by
+        // std::ios_base::Init.
+        return std::clog;
+    }
+    // The buffer is empty here except for nested logging (a user-defined
+    // operator<< that itself logs while a log message is being assembled);
+    // then the inner line is appended to the outer line in progress and
+    // LogLineCommit() flushes both, matching the historical interleaving of
+    // direct std::clog streaming.
+    return GetLogLine().os;
+}
+
+void
+LogLineCommit(std::ostream& os)
+{
+    if (&os == &std::clog)
+    {
+        std::clog << std::endl;
+        return;
+    }
+    auto& line = static_cast<LogLineBuf*>(os.rdbuf())->m_line;
+    line.push_back('\n');
+    std::clog.write(line.data(), static_cast<std::streamsize>(line.size()));
+    std::clog.flush();
+    line.clear();
 }
 
 void

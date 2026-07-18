@@ -434,6 +434,31 @@ class LogComponent
 LogComponent& GetLogComponent(const std::string name);
 
 /**
+ * @ingroup logging
+ * @internal
+ * Begin assembling a log line in a reusable, thread-local memory buffer.
+ *
+ * The returned stream (named `ns3LogContext` inside the NS_LOG_* macros)
+ * collects the whole log line (prefixes, context and user message) in
+ * memory; LogLineCommit() then emits it to `std::clog` with a single write
+ * operation.  The buffer keeps its capacity between log lines, so
+ * steady-state logging performs no memory allocations.
+ *
+ * @return The stream in which to assemble the log line.
+ */
+std::ostream& LogLineBegin();
+
+/**
+ * @ingroup logging
+ * @internal
+ * Terminate a log line started with LogLineBegin(): append a newline and
+ * write the assembled line to `std::clog` with a single write operation.
+ *
+ * @param [in,out] os The stream returned by LogLineBegin().
+ */
+void LogLineCommit(std::ostream& os);
+
+/**
  * Insert `, ` when streaming function arguments.
  */
 class ParameterLogger

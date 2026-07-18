@@ -28,7 +28,7 @@
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT                                                                      \
-    std::clog << "[" << m_shortAddress << " | " << m_macExtendedAddress << "] ";
+    ns3LogContext << "[" << m_shortAddress << " | " << m_macExtendedAddress << "] ";
 
 namespace ns3
 {
@@ -249,7 +249,6 @@ LrWpanMac::LrWpanMac()
 
 LrWpanMac::~LrWpanMac()
 {
-    NS_LOG_FUNCTION(this);
 }
 
 void
