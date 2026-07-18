@@ -262,6 +262,7 @@ endif()
 
 set(test_sources
     test/global-route-manager-impl-test-suite.cc
+    test/icmp-checksum-test-suite.cc
     test/icmp-test.cc
     test/internet-stack-helper-test-suite.cc
     test/ipv4-address-generator-test-suite.cc
@@ -271,6 +272,7 @@ set(test_sources
     test/ipv4-fragmentation-test.cc
     test/global-routing-test-suite.cc
     test/ipv4-header-test.cc
+    test/ipv4-icmp-no-route-test-suite.cc
     test/ipv4-list-routing-test-suite.cc
     test/ipv4-packet-info-tag-test-suite.cc
     test/ipv4-raw-test.cc
@@ -300,6 +302,7 @@ set(test_sources
     test/tcp-close-test.cc
     test/tcp-cong-avoid-test.cc
     test/tcp-datasentcb-test.cc
+    test/tcp-dctcp-loss-test-suite.cc
     test/tcp-dctcp-test.cc
     test/tcp-ecn-test.cc
     test/tcp-endpoint-bug2211.cc
@@ -333,6 +336,7 @@ set(test_sources
     test/tcp-tx-buffer-test.cc
     test/tcp-vegas-test.cc
     test/tcp-veno-test.cc
+    test/tcp-window-update-test-suite.cc
     test/tcp-wscaling-test.cc
     test/tcp-yeah-test.cc
     test/tcp-zero-window-test.cc
