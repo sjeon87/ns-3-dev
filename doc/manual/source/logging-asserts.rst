@@ -321,6 +321,60 @@ Be advised:  even the trivial ``scratch-simulator`` produces over
 46K lines of output with ``NS_LOG="***"``!
 
 
+Filtering by Time Window and Node Id
+====================================
+
+Logging output can be restricted to a simulation time window, to a set
+of nodes, or both.  Unlike the per-component options above, these
+filters are global: they apply to all enabled log components.  Filtered
+log statements are suppressed before the log message is evaluated, so
+they add almost no runtime cost, unlike filtering the output downstream
+with ``grep``.
+
+A time window is given as a ``min/max`` token (both bounds inclusive),
+using any Time-parseable bounds.  Either bound may be omitted for an
+open-ended window:
+
+.. sourcecode:: bash
+
+   # Print only between 1.2s and 1.5s (inclusive)
+   $ NS_LOG="1.2s/1.5s:PacketSink:PointToPointChannel" ./ns3 run fifth
+   # Print only until 1.5s (inclusive)
+   $ NS_LOG="/1.5s:PacketSink:PointToPointChannel" ./ns3 run fifth
+   # Print only after 1.2s (inclusive)
+   $ NS_LOG="1.2s/:PacketSink:PointToPointChannel" ./ns3 run fifth
+
+A node filter is given as a ``ContextId=`` token, whose value is a
+comma-separated list of integers and ``[min-max]`` ranges.  The filter
+matches the simulator context, which by convention is the id of the node
+executing the current event.  Log statements executing outside of any
+event (for example, during topology setup in ``main()``) have no
+context, which prints as ``-1`` in the node prefix; these are selected
+with the value ``-1``:
+
+.. sourcecode:: bash
+
+   # Print for nodes 0, 2, 3, 4, and 6
+   $ NS_LOG="ContextId=0,[2-4],6:PacketSink:PointToPointChannel" ./ns3 run fifth
+   # Print only statements executing outside of any context
+   $ NS_LOG="ContextId=-1:PacketSink:PointToPointChannel" ./ns3 run fifth
+   # Combined with a time window and per-component options
+   $ NS_LOG="1.2s/:ContextId=3,6:PacketSink=level_info|prefix_all:PointToPointChannel" ./ns3 run fifth
+
+When both filters are given, a log statement is printed only if it
+matches both.  The filters take effect once the simulator implementation
+exists; ``NS_LOG_UNCOND`` and the ``NS_FATAL`` macros are not affected.
+
+The filters can also be configured programmatically:
+
+.. sourcecode:: cpp
+
+   LogSetTimeWindow(Seconds(1.2), Seconds(1.5));  // or LogSetTimeWindow("1.2s/1.5s")
+   LogSetContextFilter("0,[2-4],6");
+
+Passing an empty string to either function removes that filter.
+
+
 How to add logging to your code
 *******************************
 

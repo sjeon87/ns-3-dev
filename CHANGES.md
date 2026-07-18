@@ -16,6 +16,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 ### New API
 
+* (core) Logging output can now be restricted to a simulation time window and/or to a set of simulator contexts (node ids). The filters are configured with new global `NS_LOG` tokens (e.g., `NS_LOG="1.2s/1.5s:ContextId=0,[2-4],6:PacketSink"`) or programmatically via `LogSetTimeWindow()` and `LogSetContextFilter()`.
 * (core) The `Time` class now declares an explicit `operator==` on MSVC builds (guarded by `NS_MSVC`), to work around an MSVC 18 (2026) STL issue that otherwise breaks compilation. It is semantically identical to the defaulted comparison and has no behavioral effect on any platform.
 * Centralization of ``PPP`` and ``IEEE802`` numbers. These are now contained in network model in ``iana-ppp-numbers.h`` and ``iana-ieee802-numbers.h`` respectively.
 * (core) The new `NS_OBJECT_TEMPLATE_CLASS_WITH_NS_DEFINE`  macro enables the registration of template classes inside a namespace.

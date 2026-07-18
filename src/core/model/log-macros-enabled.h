@@ -198,7 +198,7 @@
     NS_LOG_CONDITION                                                                               \
     do                                                                                             \
     {                                                                                              \
-        if (g_log.IsEnabled(level))                                                                \
+        if (g_log.IsEnabled(level) && !ns3::LogIsFiltered())                                       \
         {                                                                                          \
             std::ostream& ns3LogContext = ns3::LogLineBegin();                                     \
             NS_LOG_APPEND_TIME_PREFIX;                                                             \
@@ -225,7 +225,7 @@
     NS_LOG_CONDITION                                                                               \
     do                                                                                             \
     {                                                                                              \
-        if (g_log.IsEnabled(ns3::LOG_FUNCTION))                                                    \
+        if (g_log.IsEnabled(ns3::LOG_FUNCTION) && !ns3::LogIsFiltered())                           \
         {                                                                                          \
             std::ostream& ns3LogContext = ns3::LogLineBegin();                                     \
             NS_LOG_APPEND_TIME_PREFIX;                                                             \
@@ -263,7 +263,7 @@
     NS_LOG_CONDITION                                                                               \
     do                                                                                             \
     {                                                                                              \
-        if (g_log.IsEnabled(ns3::LOG_FUNCTION))                                                    \
+        if (g_log.IsEnabled(ns3::LOG_FUNCTION) && !ns3::LogIsFiltered())                           \
         {                                                                                          \
             std::ostream& ns3LogContext = ns3::LogLineBegin();                                     \
             NS_LOG_APPEND_TIME_PREFIX;                                                             \

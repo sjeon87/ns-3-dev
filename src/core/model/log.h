@@ -66,6 +66,26 @@
  * \c NS_LOG='*=level_all|prefix' would enable all log levels and prefix all
  * prints with the component and function names.
  *
+ * Two global filter tokens may also be included in \c NS_LOG.
+ * A time window token of the form `min/max` restricts all logging output
+ * to simulation times between \c min and \c max (inclusive); either bound
+ * may be omitted for an open-ended window:
+ * @code
+ *   $ NS_LOG="1.2s/1.5s:PacketSink:PointToPointChannel" ./ns3 run ...
+ * @endcode
+ * A `ContextId=` token restricts all logging output to the listed
+ * simulator contexts (node ids), given as a comma-separated list of
+ * integers and `[min-max]` ranges; the value `-1` selects log statements
+ * executed outside of any simulator context, such as during topology
+ * setup:
+ * @code
+ *   $ NS_LOG="ContextId=0,[2-4],6:PacketSink:PointToPointChannel" ./ns3 run ...
+ * @endcode
+ * These filters apply globally, to all enabled log components, and take
+ * effect once the simulator implementation exists.  They can also be
+ * configured programmatically; see LogSetTimeWindow() and
+ * LogSetContextFilter().
+ *
  * A note on NS_LOG_FUNCTION() and NS_LOG_FUNCTION_NOARGS():
  * generally, use of (at least) NS_LOG_FUNCTION(this) is preferred,
  * with the any function parameters added:
@@ -312,6 +332,95 @@ void LogSetNodePrinter(NodePrinter np);
  * @returns The current LogNodePrinter function.
  */
 NodePrinter LogGetNodePrinter();
+
+class Time;
+
+/**
+ * Function signature for a source of the current simulation time,
+ * used by the log filter.
+ *
+ * @see LogSetFilterSources()
+ */
+typedef Time (*LogTimeSource)();
+
+/**
+ * Function signature for a source of the current simulator context,
+ * used by the log filter.
+ *
+ * @see LogSetFilterSources()
+ */
+typedef uint32_t (*LogContextSource)();
+
+/**
+ * Restrict all logging output to a simulation time window.
+ *
+ * Only log statements executing at simulation times between \c minTime
+ * and \c maxTime (inclusive) are printed.  This is the same filter
+ * installed by the `min/max` token of the NS_LOG environment variable.
+ *
+ * The filter applies to all enabled log components and takes effect once
+ * the simulator implementation exists.
+ *
+ * @param [in] minTime The lower bound (inclusive) of the time window.
+ * @param [in] maxTime The upper bound (inclusive) of the time window.
+ */
+void LogSetTimeWindow(const Time& minTime, const Time& maxTime);
+
+/**
+ * Restrict all logging output to a simulation time window, given
+ * as a string.
+ *
+ * The window has the form `min/max`, using any Time-parseable bounds,
+ * e.g. "1.2s/1.5s".  Either bound (but not both) may be omitted for an
+ * open-ended window, e.g. "1.2s/" or "/1.5s".  An empty string removes
+ * the time window.
+ *
+ * @param [in] window The time window specification.
+ */
+void LogSetTimeWindow(const std::string& window);
+
+/**
+ * Restrict all logging output to a set of simulator contexts (node ids).
+ *
+ * The filter is a comma-separated list of context ids and `[min-max]`
+ * ranges, e.g. "0,[2-4],6".  The value `-1` selects log statements
+ * executed outside of any simulator context, such as during topology
+ * setup.  An empty string removes the context filter.  This is the same
+ * filter installed by the `ContextId=` token of the NS_LOG environment
+ * variable.
+ *
+ * The filter applies to all enabled log components and takes effect once
+ * the simulator implementation exists.
+ *
+ * @param [in] contexts The context filter specification.
+ */
+void LogSetContextFilter(const std::string& contexts);
+
+/**
+ * Check whether the current log statement is suppressed by the time
+ * window or context filter.
+ *
+ * Called by the NS_LOG_* macros before the log message is evaluated,
+ * so suppressed statements cost no more than this check.
+ *
+ * @return \c true if the current log statement is suppressed.
+ */
+bool LogIsFiltered();
+
+/**
+ * Set the sources of the current simulation time and simulator context
+ * used by the log filter.
+ *
+ * @internal
+ * Called by the simulator at the same points where the time and node
+ * printers are registered; the indirection avoids calling into the
+ * simulator before its implementation exists.
+ * @endinternal
+ *
+ * @param [in] timeSource The simulation time source, or nullptr.
+ * @param [in] contextSource The simulator context source, or nullptr.
+ */
+void LogSetFilterSources(LogTimeSource timeSource, LogContextSource contextSource);
 
 /**
  * A single log component configuration.
