@@ -27,6 +27,18 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("TcpGeneralTest");
 
+namespace
+{
+//! Context label identifying traces from the sender side
+constexpr const char* kCtxSender = "SENDER";
+//! Context label identifying traces from the receiver side
+constexpr const char* kCtxReceiver = "RECEIVER";
+//! Trace source name for packets dropped at the PHY layer during reception
+constexpr const char* kPhyRxDrop = "PhyRxDrop";
+//! Trace source name for packets dropped at the queue
+constexpr const char* kQueueDrop = "Drop";
+} // namespace
+
 TcpGeneralTest::TcpGeneralTest(const std::string& desc)
     : TestCase(desc),
       m_congControlTypeId(TcpNewReno::GetTypeId()),
@@ -143,17 +155,17 @@ TcpGeneralTest::DoRun()
     Ptr<SimpleNetDevice> receiverDev = DynamicCast<SimpleNetDevice>(net.Get(1));
 
     senderDev->SetMtu(m_mtu);
-    senderDev->GetQueue()->TraceConnect("Drop",
-                                        "SENDER",
+    senderDev->GetQueue()->TraceConnect(kQueueDrop,
+                                        kCtxSender,
                                         MakeCallback(&TcpGeneralTest::QueueDropCb, this));
-    senderDev->TraceConnect("PhyRxDrop", "sender", MakeCallback(&TcpGeneralTest::PhyDropCb, this));
+    senderDev->TraceConnect(kPhyRxDrop, kCtxSender, MakeCallback(&TcpGeneralTest::PhyDropCb, this));
 
     receiverDev->SetMtu(m_mtu);
-    receiverDev->GetQueue()->TraceConnect("Drop",
-                                          "RECEIVER",
+    receiverDev->GetQueue()->TraceConnect(kQueueDrop,
+                                          kCtxReceiver,
                                           MakeCallback(&TcpGeneralTest::QueueDropCb, this));
-    receiverDev->TraceConnect("PhyRxDrop",
-                              "RECEIVER",
+    receiverDev->TraceConnect(kPhyRxDrop,
+                              kCtxReceiver,
                               MakeCallback(&TcpGeneralTest::PhyDropCb, this));
 
     senderDev->SetReceiveErrorModel(senderEM);
@@ -338,11 +350,11 @@ TcpGeneralTest::CreateReceiverSocket(Ptr<Node> node)
 void
 TcpGeneralTest::QueueDropCb(std::string context, Ptr<const Packet> p)
 {
-    if (context == "SENDER")
+    if (context == kCtxSender)
     {
         QueueDrop(SENDER);
     }
-    else if (context == "RECEIVER")
+    else if (context == kCtxReceiver)
     {
         QueueDrop(RECEIVER);
     }
@@ -355,11 +367,11 @@ TcpGeneralTest::QueueDropCb(std::string context, Ptr<const Packet> p)
 void
 TcpGeneralTest::PhyDropCb(std::string context, Ptr<const Packet> /* p */)
 {
-    if (context == "SENDER")
+    if (context == kCtxSender)
     {
         PhyDrop(SENDER);
     }
-    else if (context == "RECEIVER")
+    else if (context == kCtxReceiver)
     {
         PhyDrop(RECEIVER);
     }

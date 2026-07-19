@@ -122,6 +122,7 @@ TcpSocketState::TcpSocketState(const TcpSocketState& other)
       m_lastRtt(other.m_lastRtt),
       m_ecnMode(other.m_ecnMode),
       m_useEcn(other.m_useEcn),
+      m_useEcnPlusPlus(other.m_useEcnPlusPlus),
       m_abeEnabled(other.m_abeEnabled),
       m_ectCodePoint(other.m_ectCodePoint),
       m_lastAckedSackedBytes(other.m_lastAckedSackedBytes)

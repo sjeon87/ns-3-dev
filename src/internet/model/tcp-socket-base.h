@@ -529,6 +529,18 @@ class TcpSocketBase : public TcpSocket
     }
 
     /**
+     * @brief Handle ECN capability in a received SYN-ACK.
+     *
+     * This method inspects the TCP header of a received SYN-ACK packet
+     * to determine whether the peer supports ECN and sends the ACK with appropriate flags.
+     * For ECN++ and CE-marked SYN-ACKs, it sends ACK|ECE; otherwise it sends a plain ACK.
+     * If the SYN-ACK is not ECN-capable, ECN is disabled.
+     *
+     * @param tcpHeader The TCP header of the received SYN-ACK packet.
+     */
+    void SendEcnRcvdSynAck(const TcpHeader& tcpHeader);
+
+    /**
      * @brief Checks if TOS has no ECN codepoints
      *
      * @param tos the TOS byte to check
@@ -604,6 +616,24 @@ class TcpSocketBase : public TcpSocket
      */
     bool GetUseAbe() const;
     /**
+     * @brief Set ECN mode on the socket
+     *
+     * @param ecnMode ECN mode to set.
+     */
+    void SetEcnMode(TcpSocketState::EcnMode_t ecnMode);
+
+    /**
+     * @brief Enable or disable ECT marking of TCP control packets (ECN++).
+     *
+     * When set, ECT is applied to SYN/ACK, Window Probe, FIN, RST, and
+     * retransmitted segments per draft-ietf-tcpm-generalized-ecn. ECN is
+     * enabled automatically if not already active.
+     *
+     * @param useEcnPlusPlus Set to true to enable ECN++.
+     */
+    void SetUseEcnPlusPlus(bool useEcnPlusPlus);
+
+    /**
      * @brief Enable or disable pacing
      * @param pacing Boolean to enable or disable pacing
      */
@@ -620,7 +650,7 @@ class TcpSocketBase : public TcpSocket
      * ECN mode.
      *
      * Currently, only Classic ECN and DCTCP ECN modes are supported, with
-     * potential extensions for future modes (Ecnpp).
+     * potential extensions for future modes (EcnPlusPlus).
      *
      * @param packetType The type of the TCP packet, represented by an enum TcpPacketType.
      * @return true if the packet is ECN-capable (ECT), false otherwise.
@@ -829,6 +859,20 @@ class TcpSocketBase : public TcpSocket
                     Ipv6Header header,
                     uint16_t port,
                     Ptr<Ipv6Interface> incomingInterface);
+
+    /**
+     * @brief Determine whether CE (Congestion Experienced) should be detected for a packet.
+     *
+     * The decision is based on the current ECN mode of the socket and the TCP header of the
+     * incoming packet.
+     * - Classic ECN: detect CE only after the connection is ESTABLISHED
+     * - ECN++: detect CE except for RST or FIN
+     * - DCTCP ECN: always detect CE
+     *
+     * @param tcpHeader TCP header of the incoming packet
+     * @return true if CE should be detected/acted upon, false otherwise
+     */
+    bool ShouldDetectCe(const TcpHeader& tcpHeader) const;
 
     /**
      * @brief Called by TcpSocketBase::ForwardUp{,6}().

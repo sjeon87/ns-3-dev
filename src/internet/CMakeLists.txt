@@ -305,6 +305,7 @@ set(test_sources
     test/tcp-dctcp-loss-test-suite.cc
     test/tcp-dctcp-test.cc
     test/tcp-ecn-test.cc
+    test/tcp-ecnpp-test.cc
     test/tcp-endpoint-bug2211.cc
     test/tcp-error-model.cc
     test/tcp-fack-test.cc

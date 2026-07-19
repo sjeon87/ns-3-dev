@@ -1192,8 +1192,9 @@ The following enum represents the mode of ECN::
 The following are some important ECN parameters::
 
   // ECN parameters
-  EcnMode_t              m_ecnMode {ClassicEcn}; //!< ECN mode
-  UseEcn_t               m_useEcn {Off};         //!< Socket ECN capability
+  EcnMode_t              m_ecnMode {ClassicEcn};  //!< ECN mode
+  UseEcn_t               m_useEcn {Off};          //!< Socket ECN capability
+  bool                   m_useEcnPlusPlus {false}; //!< Enable ECN++ control-packet marking
 
 Enabling ECN
 ^^^^^^^^^^^^
@@ -1317,6 +1318,159 @@ The following issues are yet to be addressed:
 3. Support for separately handling the enabling of ECN on the incoming and
    outgoing TCP sessions (e.g. a TCP may perform ECN echoing but not set the
    ECT codepoints on its outbound data segments).
+
+ECN++: Adding Explicit Congestion Notification (ECN) to TCP Control Packets
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Classic ECN (RFC 3168) specifies ECN support solely for TCP data packets. ECN++
+extends ECN support to TCP control packets: SYN, SYN/ACK, pure ACK, Window
+Probe, FIN, RST, and retransmitted packets. The specification is defined in
+Internet draft:
+
+https://datatracker.ietf.org/doc/html/draft-ietf-tcpm-generalized-ecn-17
+
+The current |ns3| implementation of ECN++ follows this Internet draft and is
+enabled by setting the ``UseEcnPlusPlus`` attribute to ``true``.
+
+Enabling ECN++
+^^^^^^^^^^^^^^
+
+ECN++ requires ECN to be enabled on the socket. The ``UseEcnPlusPlus`` attribute
+enables ECT marking of TCP control packets and also enables ECN automatically
+if it is not already on::
+
+  Config::SetDefault("ns3::TcpSocketBase::UseEcn", StringValue("On"))
+  Config::SetDefault("ns3::TcpSocketBase::UseEcnPlusPlus", BooleanValue(true))
+
+This is implemented via ``TcpSocketBase::SetUseEcnPlusPlus()``, which sets
+``m_useEcn = On`` when it is not already enabled.
+
+ECN support for SYN packets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Per Section 3.2.1.1.2 of the draft, ECT MUST NOT be set on a SYN unless the
+sender also negotiates Accurate ECN (AccECN) feedback or an equivalent safety
+mechanism. Since the current |ns3| implementation does not support AccECN,
+ECT is not set on SYN packets. This is reflected in the ``ECN_PLUS_PLUS_RESTRICTION_MAP``
+where ``SYN`` maps to ``false`` when ECN++ is enabled.
+
+ECN support for SYN/ACK packets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Section 3.2.2 of the draft specifies the following behaviour:
+
+1. The TCP responder (the node sending the SYN/ACK) sets ECT on the SYN/ACK.
+   In the |ns3| implementation, the ECN state is transitioned to ``ECN_IDLE``
+   before ``SendEmptyPacket`` is called so that the ECT mark is applied
+   correctly.
+
+2. If the SYN/ACK is CE-marked, the responder MUST reduce its initial
+   congestion window (SHOULD reduce to 1 SMSS). The responder does not need
+   to back off its retransmission timer, exit slow start, or reduce ssthresh.
+   This is handled in ``ProcessSynRcvd()``::
+
+     if (m_tcb->m_useEcnPlusPlus && (tcpHeader.GetFlags() & TcpHeader::ECE))
+     {
+         m_tcb->m_cWnd = 1 * m_tcb->m_segmentSize;
+         m_tcb->m_cWndInfl = m_tcb->m_cWnd;
+     }
+
+3. The TCP initiator (the node that sent the SYN) handles a CE-marked SYN/ACK
+   by sending ACK|ECE as feedback to the responder, then transitioning to
+   ``ECN_IDLE``. This is done in ``SendEcnRcvdSynAck()``::
+
+     if (m_tcb->m_useEcnPlusPlus && m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD)
+     {
+         m_tcb->m_ecnState = TcpSocketState::ECN_IDLE;
+         SendEmptyPacket(TcpHeader::ACK | TcpHeader::ECE);
+     }
+
+4. If the SYN/ACK is not ECN-capable, ECN is disabled on the connection.
+
+5. Fall-back (Section 3.2.2.3): if the retransmission timer expires after
+   sending an ECT SYN/ACK, the responder SHOULD retransmit one more SYN/ACK
+   with ECT set. If the timer expires again, the SYN/ACK SHOULD be
+   retransmitted with not-ECT. The ``IsEct()`` function implements this via
+   the SYN retry count::
+
+     if (m_tcb->m_useEcnPlusPlus && packetType == TcpSocketBase::SYN_ACK)
+     {
+         return m_synRetries == m_synCount ||
+                (m_synRetries > 0 && (m_synRetries - 1 == m_synCount));
+     }
+
+ECN support for Window Probe packets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Section 3.2.4 of the draft specifies:
+
+1. The sender sets ECT on Window Probe packets. This is defined in the
+   ``ECN_PLUS_PLUS_RESTRICTION_MAP`` (``WINDOW_PROBE`` maps to ``true`` when
+   ECN++ is enabled).
+
+2. A Window Probe carries a single octet, so it is treated like a regular
+   data segment. If a CE mark is received on a Window Probe, the sender
+   reduces its congestion window as normal (usual cwnd response). For ECN++,
+   the CWR reduction applies even on retransmissions::
+
+     if (m_tcb->m_ecnState == TcpSocketState::ECN_ECE_RCVD &&
+         m_ecnEchoSeq.Get() > m_ecnCWRSeq.Get() &&
+         (!isRetransmission || m_tcb->m_useEcnPlusPlus))
+
+ECN support for FIN and RST packets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Sections 3.2.5 and 3.2.6 of the draft specify:
+
+1. The sender sets ECT on FIN and RST packets. This is defined in the
+   ``ECN_PLUS_PLUS_RESTRICTION_MAP`` (``FIN`` and ``RST`` map to ``true`` when
+   ECN++ is enabled).
+
+2. A congestion response to CE-marking on a FIN is not required. After
+   sending a FIN, no more data is sent, so reducing the congestion window
+   has no effect.
+
+3. A congestion response to CE-marking on a RST is not required (and not
+   possible).
+
+4. CE detection is suppressed for FIN and RST packets via
+   ``ShouldDetectCe()``::
+
+     if (m_tcb->m_useEcnPlusPlus)
+     {
+         // ECN++ draft: no congestion response required for RST and FIN
+         return !isTerminationPacket;
+     }
+
+ECN support for retransmitted packets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Section 3.2.7 of the draft specifies:
+
+1. The sender sets ECT on retransmitted segments. This is defined in the
+   ``ECN_PLUS_PLUS_RESTRICTION_MAP`` (``RE_XMT`` maps to ``true`` when ECN++ is
+   enabled).
+
+2. If feedback is received that a retransmitted packet was CE-marked, the
+   sender reacts as it would for CE-marking on any data packet (usual cwnd
+   response). Unlike Classic ECN, ECN++ allows the congestion window to be
+   reduced in response to ECE even on a retransmission.
+
+Limitations of the ECN++ implementation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following features specified in draft-ietf-tcpm-generalized-ecn-17 are not
+yet implemented in |ns3|:
+
+1. **ECT on SYN packets** (Section 3.2.1): ECT on a SYN requires AccECN
+   feedback to be negotiated. Since AccECN is not supported in the current
+   |ns3| implementation, ECT is not set on SYNs (``SYN`` maps to ``false``
+   in ``ECN_PLUS_PLUS_RESTRICTION_MAP``).
+
+2. **ECT on pure ACK packets** (Section 3.2.3): Setting ECT on pure ACKs
+   requires AccECN feedback to have been successfully negotiated, along with
+   SACK. Since AccECN is not supported, ECT is not set on pure ACKs
+   (``PURE_ACK`` maps to ``false`` in ``ECN_PLUS_PLUS_RESTRICTION_MAP``).
 
 Support for Dynamic Pacing
 ++++++++++++++++++++++++++
