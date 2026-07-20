@@ -7,20 +7,29 @@
 #ifndef CREATOR_UTILS_H
 #define CREATOR_UTILS_H
 
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
-#include <errno.h>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <stdlib.h>
 #include <string>
 #ifndef _WIN32
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #endif
 
 namespace ns3
 {
+
+constexpr int TAP_MAGIC = 95549;
+constexpr int EMU_MAGIC = 65867;
 
 extern bool gVerbose;
 

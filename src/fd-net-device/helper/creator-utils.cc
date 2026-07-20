@@ -8,24 +8,6 @@
 
 #include "encode-decode.h"
 
-#ifndef _WIN32
-#include <arpa/inet.h>
-#include <cstdlib>
-#include <cstring>
-#include <errno.h>
-#include <iomanip>
-#include <iostream>
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <sstream>
-#include <string>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-#endif
-
 namespace ns3
 {
 

@@ -39,6 +39,10 @@ if(APPLE)
     sys/sys_domain.h
     HAVE_SYS_SYS_DOMAIN_H
   )
+  check_include_file_cxx(
+    net/if_utun.h
+    HAVE_NET_IF_UTUN_H
+  )
 endif()
 
 # Windows tap-windows6 support

@@ -6,23 +6,7 @@
 
 #include "creator-utils.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <iomanip>
-#include <iostream>
 #include <net/ethernet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <sstream>
-#include <stdlib.h>
-#include <string>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-
-#define EMU_MAGIC 65867
 
 using namespace ns3;
 

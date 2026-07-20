@@ -20,25 +20,19 @@
 
 #include "ns3/mac48-address.h"
 
-#include <arpa/inet.h>
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
-#include <fcntl.h>
-#include <iomanip>
-#include <iostream>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <sys/ioctl.h>
 #include <sys/kern_control.h>
-#include <sys/socket.h>
 #include <sys/sys_domain.h>
-#include <sys/un.h>
-#include <unistd.h>
+#if __has_include(<net/if_utun.h>)
+#include <net/if_utun.h>
+#endif
 
-#define TAP_MAGIC 95549
-#define UTUN_CONTROL_NAME "com.apple.net.utun_control"
-#define UTUN_OPT_IFNAME 2
+#ifndef UTUN_CONTROL_NAME
+constexpr const char* UTUN_CONTROL_NAME = "com.apple.net.utun_control";
+#endif
+
+#ifndef UTUN_OPT_IFNAME
+constexpr int UTUN_OPT_IFNAME = 2;
+#endif
 
 using namespace ns3;
 

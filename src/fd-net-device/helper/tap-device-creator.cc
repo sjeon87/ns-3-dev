@@ -8,26 +8,10 @@
 
 #include "ns3/mac48-address.h"
 
-#include <arpa/inet.h>
 #include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <errno.h>
-#include <fcntl.h>
-#include <iomanip>
-#include <iostream>
 #include <linux/if_tun.h>
-#include <net/if.h>
 #include <net/route.h>
-#include <netinet/in.h>
-#include <sstream>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
-
-#define TAP_MAGIC 95549
 
 using namespace ns3;
 

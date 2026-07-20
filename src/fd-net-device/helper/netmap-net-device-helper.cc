@@ -8,6 +8,7 @@
 
 #include "netmap-net-device-helper.h"
 
+#include "creator-utils.h"
 #include "encode-decode.h"
 
 #include "ns3/abort.h"
@@ -48,8 +49,6 @@ namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("NetmapNetDeviceHelper");
-
-#define EMU_MAGIC 65867
 
 NetmapNetDeviceHelper::NetmapNetDeviceHelper()
 {
