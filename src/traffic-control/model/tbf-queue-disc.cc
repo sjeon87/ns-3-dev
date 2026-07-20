@@ -276,8 +276,20 @@ TbfQueueDisc::DoDequeue()
                 }
             }
             NS_ASSERT_MSG(requiredDelayTime.GetSeconds() >= 0, "Negative time");
-            m_id = Simulator::Schedule(requiredDelayTime, &QueueDisc::Run, this);
-            NS_LOG_LOGIC("Waking Event Scheduled in " << requiredDelayTime.As(Time::S));
+            // Skip the self-scheduled wake when no send callback is bound
+            // (the inner-qdisc configuration). The parent qdisc revisits
+            // this child on its own dequeue cadence; tokens accumulate via
+            // the elapsed-time delta in DoDequeue.
+            if (GetSendCallback())
+            {
+                m_id = Simulator::Schedule(requiredDelayTime, &QueueDisc::Run, this);
+                NS_LOG_LOGIC("Waking Event Scheduled in " << requiredDelayTime.As(Time::S));
+            }
+            else
+            {
+                NS_LOG_LOGIC("Inner queue disc deployment (no send callback); "
+                             "wake deferred to parent qdisc cadence");
+            }
         }
     }
     return nullptr;
