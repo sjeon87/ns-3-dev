@@ -890,15 +890,15 @@ MinstrelHtWifiManager::UpdateRate(MinstrelHtWifiRemoteStation* station)
         /// Sample rate is used only once
         /// Use the best rate.
         if (station->m_longRetry <
-            1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTp2RateId].retryCount)
+            1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount)
         {
             NS_LOG_DEBUG("Sampling use the MaxTP rate");
-            station->m_txrate = station->m_maxTpRate2;
+            station->m_txrate = station->m_maxTpRate;
         }
 
         /// Use the best probability rate.
         else if (station->m_longRetry <=
-                 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTp2RateId].retryCount +
+                 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount +
                      station->m_groupsTable[maxProbGroupId].m_ratesTable[maxProbRateId].retryCount)
         {
             NS_LOG_DEBUG("Sampling use the MaxProb rate");
@@ -1220,7 +1220,7 @@ MinstrelHtWifiManager::CountRetries(MinstrelHtWifiRemoteStation* station)
     }
     else
     {
-        return 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTp2RateId].retryCount +
+        return 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount +
                station->m_groupsTable[maxProbGroupId].m_ratesTable[maxProbRateId].retryCount;
     }
 }
