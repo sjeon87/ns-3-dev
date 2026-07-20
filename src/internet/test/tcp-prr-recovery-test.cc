@@ -90,10 +90,14 @@ PrrRecoveryTest::DoRun()
     m_state->m_segmentSize = m_segmentSize;
     m_state->m_ssThresh = m_ssThresh;
     m_state->m_bytesInFlight = m_bytesInFlight;
+    // This test drives DoRecovery with deliveredBytes = 0 and relies on PRR's
+    // "+1 SMSS per duplicate ACK" DeliveredData estimate, which (per RFC 9937
+    // Section 6.2) applies only to connections without SACK.
+    m_state->m_sackEnabled = false;
 
     Ptr<TcpPrrRecovery> recovery = CreateObject<TcpPrrRecovery>();
 
-    recovery->EnterRecovery(m_state, 3, m_unAckDataCount, 0);
+    recovery->EnterRecovery(m_state, 3, m_unAckDataCount, 0, 0);
 
     NS_TEST_ASSERT_MSG_GT_OR_EQ(m_state->m_cWnd.Get(),
                                 m_cWnd + m_segmentSize,
@@ -196,11 +200,15 @@ PrrRecoveryArithmeticTest::DoRun()
     state->m_segmentSize = m_segmentSize;
     state->m_ssThresh = m_ssThresh;
     state->m_bytesInFlight = m_bytesInFlight;
+    // These regression scenarios rely on the "+1 SMSS per duplicate ACK"
+    // DeliveredData estimate (the "dupack bump"), which PRR applies only to
+    // connections without SACK (RFC 9937 Section 6.2).
+    state->m_sackEnabled = false;
 
     Ptr<TcpPrrRecovery> recovery = CreateObject<TcpPrrRecovery>();
 
     // EnterRecovery sets RecoverFS = bytesInFlight and performs the first DoRecovery.
-    recovery->EnterRecovery(state, 3, m_bytesInFlight, 0);
+    recovery->EnterRecovery(state, 3, m_bytesInFlight, 0, 0);
 
     // Report data sent during recovery, advancing m_prrOut one segment at a time.
     for (uint32_t sent = 0; sent < m_bytesSentInRecovery; sent += m_segmentSize)

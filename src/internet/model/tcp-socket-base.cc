@@ -1458,6 +1458,10 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
             m_sackEnabled = false;
             m_txBuffer->SetSackEnabled(false);
         }
+        // Mirror the negotiated SACK state into the shared TcpSocketState so that
+        // recovery algorithms (e.g. PRR) can distinguish SACK from non-SACK
+        // DeliveredData accounting.
+        m_tcb->m_sackEnabled = m_sackEnabled;
 
         // When receiving a <SYN> or <SYN-ACK> we should adapt TS to the other end
         if (tcpHeader.HasOption(TcpOption::TS) && m_timestampEnabled)
@@ -1728,7 +1732,11 @@ TcpSocketBase::EnterCwr(uint32_t currentDelivered)
     if (!m_congestionControl->HasCongControl())
     {
         // If there is a recovery algorithm, invoke it.
-        m_recoveryOps->EnterRecovery(m_tcb, m_dupAckCount, UnAckDataCount(), currentDelivered);
+        m_recoveryOps->EnterRecovery(m_tcb,
+                                     m_dupAckCount,
+                                     UnAckDataCount(),
+                                     currentDelivered,
+                                     m_txBuffer->GetSacked());
         NS_LOG_INFO("Enter CWR recovery mode; set cwnd to " << m_tcb->m_cWnd << ", ssthresh to "
                                                             << m_tcb->m_ssThresh << ", recover to "
                                                             << m_recover);
@@ -1742,6 +1750,11 @@ TcpSocketBase::EnterRecovery(uint32_t currentDelivered)
     NS_ASSERT(m_tcb->m_congState != TcpSocketState::CA_RECOVERY);
 
     NS_LOG_DEBUG(TcpSocketState::TcpCongStateName[m_tcb->m_congState] << " -> CA_RECOVERY");
+
+    NS_LOG_INFO("Enter CA_RECOVERY from "
+                << TcpSocketState::TcpCongStateName[m_tcb->m_congState] << ": recovering highRxAck "
+                << m_highRxAckMark << "; prior recover " << m_recover << " (active "
+                << m_recoverActive << "), new recover " << m_tcb->m_highTxMark);
 
     if (!m_sackEnabled)
     {
@@ -1778,7 +1791,11 @@ TcpSocketBase::EnterRecovery(uint32_t currentDelivered)
 
     if (!m_congestionControl->HasCongControl())
     {
-        m_recoveryOps->EnterRecovery(m_tcb, m_dupAckCount, UnAckDataCount(), currentDelivered);
+        m_recoveryOps->EnterRecovery(m_tcb,
+                                     m_dupAckCount,
+                                     UnAckDataCount(),
+                                     currentDelivered,
+                                     m_txBuffer->GetSacked());
         NS_LOG_INFO(m_dupAckCount << " dupack. Enter fast recovery mode."
                                   << "Reset cwnd to " << m_tcb->m_cWnd << ", ssthresh to "
                                   << m_tcb->m_ssThresh << " at fast recovery seqnum " << m_recover
@@ -2334,6 +2351,10 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
                 NewAck(ackNumber, true);
                 m_tcb->m_cWnd = m_tcb->m_ssThresh.Get();
                 m_recoveryOps->ExitRecovery(m_tcb);
+                NS_LOG_INFO("Exit CA_RECOVERY -> CA_OPEN: ack "
+                            << ackNumber << " reached recover " << m_recover << "; cWnd "
+                            << m_tcb->m_cWnd << " ssThresh " << m_tcb->m_ssThresh
+                            << " bytesInFlight " << BytesInFlight());
                 NS_LOG_DEBUG("Leaving Fast Recovery; BytesInFlight() = "
                              << BytesInFlight() << "; cWnd = " << m_tcb->m_cWnd);
             }
