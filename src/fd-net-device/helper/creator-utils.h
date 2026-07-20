@@ -28,7 +28,14 @@
 namespace ns3
 {
 
+/**
+ * Magic number used to verify TAP creator IPC messages.
+ */
 constexpr int TAP_MAGIC = 95549;
+
+/**
+ * Magic number used to verify EMU creator IPC messages.
+ */
 constexpr int EMU_MAGIC = 65867;
 
 extern bool gVerbose;

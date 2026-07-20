@@ -10,6 +10,9 @@
 namespace ns3
 {
 
+/**
+ * Magic number used to verify TAP creator IPC messages.
+ */
 constexpr int TAP_MAGIC = 95549;
 
 } // namespace ns3
