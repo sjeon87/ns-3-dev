@@ -218,6 +218,11 @@ main(int argc, char* argv[])
         ABORT("path is a required argument", 0);
     }
 
+    if ((ip4 == nullptr) != (netmask == nullptr))
+    {
+        ABORT("Both -i <IPv4> and -n <netmask> must be provided together", 0);
+    }
+
     (void)dev; // utun names are kernel-assigned; caller hint is ignored
 
     char assignedName[IFNAMSIZ] = {};
@@ -229,10 +234,6 @@ main(int argc, char* argv[])
     if (ip4 && netmask)
     {
         SetIpv4(assignedName, ip4, netmask);
-    }
-    else if (ip4 || netmask)
-    {
-        ABORT("Both -i <IPv4> and -n <netmask> must be provided together", 0);
     }
 
     SetUp(assignedName);
