@@ -38,7 +38,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 /*
  * PORT NOTE: This code was ported from ns-2 (queue/red.cc).  Almost all
  * comments have also been ported from NS-2
@@ -128,7 +127,7 @@ RedQueueDisc::GetTypeId()
             .AddAttribute("QW",
                           "Queue weight related to the exponential weighted moving average (EWMA)",
                           DoubleValue(0.002),
-                          MakeDoubleAccessor(&RedQueueDisc::m_qW),
+                          MakeDoubleAccessor(&RedQueueDisc::m_wQ),
                           MakeDoubleChecker<double>())
             .AddAttribute("LInterm",
                           "The maximum probability of dropping a packet",
@@ -138,7 +137,7 @@ RedQueueDisc::GetTypeId()
             .AddAttribute("TargetDelay",
                           "Target average queuing delay in ARED",
                           TimeValue(Seconds(0.005)),
-                          MakeTimeAccessor(&RedQueueDisc::m_targetDelay),
+                          MakeTimeAccessor(&RedQueueDisc::m_targetQueueDelay),
                           MakeTimeChecker())
             .AddAttribute("Interval",
                           "Time interval to update m_curMaxP",
@@ -276,9 +275,9 @@ void
 RedQueueDisc::SetFengAdaptiveA(double a)
 {
     NS_LOG_FUNCTION(this << a);
-    m_a = a;
+    m_fengAlpha = a;
 
-    if (m_a != 3)
+    if (m_fengAlpha != 3)
     {
         NS_LOG_WARN("Alpha value does not follow the recommendations!");
     }
@@ -288,16 +287,16 @@ double
 RedQueueDisc::GetFengAdaptiveA()
 {
     NS_LOG_FUNCTION(this);
-    return m_a;
+    return m_fengAlpha;
 }
 
 void
 RedQueueDisc::SetFengAdaptiveB(double b)
 {
     NS_LOG_FUNCTION(this << b);
-    m_b = b;
+    m_fengBeta = b;
 
-    if (m_b != 2)
+    if (m_fengBeta != 2)
     {
         NS_LOG_WARN("Beta value does not follow the recommendations!");
     }
@@ -307,7 +306,7 @@ double
 RedQueueDisc::GetFengAdaptiveB()
 {
     NS_LOG_FUNCTION(this);
-    return m_b;
+    return m_fengBeta;
 }
 
 void
@@ -355,7 +354,7 @@ RedQueueDisc::DoEnqueue(Ptr<QueueDiscItem> item)
         m_idle = 0;
     }
 
-    m_qAvg = Estimator(nQueued, m + 1, m_qAvg, m_qW);
+    m_qAvg = Estimator(nQueued, m + 1, m_qAvg, m_wQ);
 
     NS_LOG_DEBUG("\t bytesInQueue  " << GetInternalQueue(0)->GetNBytes() << "\tQavg " << m_qAvg);
     NS_LOG_DEBUG("\t packetsInQueue  " << GetInternalQueue(0)->GetNPackets() << "\tQavg "
@@ -451,10 +450,10 @@ RedQueueDisc::InitializeParams()
 
     if (m_isARED)
     {
-        // Set m_minTh, m_maxTh and m_qW to zero for automatic setting
+        // Set m_minTh, m_maxTh and m_wQ to zero for automatic setting
         m_minTh = 0;
         m_maxTh = 0;
-        m_qW = 0;
+        m_wQ = 0;
 
         // Turn on m_isAdaptMaxP to adapt m_curMaxP
         m_isAdaptMaxP = true;
@@ -472,7 +471,7 @@ RedQueueDisc::InitializeParams()
 
         // set m_minTh to max(m_minTh, targetqueue/2.0) [Ref:
         // http://www.icir.org/floyd/papers/adaptiveRed.pdf]
-        double targetqueue = m_targetDelay.GetSeconds() * m_ptc;
+        double targetqueue = m_targetQueueDelay.GetSeconds() * m_ptc;
 
         if (m_minTh < targetqueue / 2.0)
         {
@@ -513,23 +512,23 @@ RedQueueDisc::InitializeParams()
     m_idleTime = NanoSeconds(0);
 
     /*
-     * If m_qW=0, set it to a reasonable value of 1-exp(-1/C)
-     * This corresponds to choosing m_qW to be of that value for
+     * If m_wQ=0, set it to a reasonable value of 1-exp(-1/C)
+     * This corresponds to choosing m_wQ to be of that value for
      * which the packet time constant -1/ln(1-m)qW) per default RTT
      * of 100ms is an order of magnitude more than the link capacity, C.
      *
-     * If m_qW=-1, then the queue weight is set to be a function of
+     * If m_wQ=-1, then the queue weight is set to be a function of
      * the bandwidth and the link propagation delay.  In particular,
      * the default RTT is assumed to be three times the link delay and
      * transmission delay, if this gives a default RTT greater than 100 ms.
      *
-     * If m_qW=-2, set it to a reasonable value of 1-exp(-10/C).
+     * If m_wQ=-2, set it to a reasonable value of 1-exp(-10/C).
      */
-    if (m_qW == 0.0)
+    if (m_wQ == 0.0)
     {
-        m_qW = 1.0 - std::exp(-1.0 / m_ptc);
+        m_wQ = 1.0 - std::exp(-1.0 / m_ptc);
     }
-    else if (m_qW == -1.0)
+    else if (m_wQ == -1.0)
     {
         double rtt = 3.0 * (m_linkDelay.GetSeconds() + 1.0 / m_ptc);
 
@@ -537,11 +536,11 @@ RedQueueDisc::InitializeParams()
         {
             rtt = 0.1;
         }
-        m_qW = 1.0 - std::exp(-1.0 / (10 * rtt * m_ptc));
+        m_wQ = 1.0 - std::exp(-1.0 / (10 * rtt * m_ptc));
     }
-    else if (m_qW == -2.0)
+    else if (m_wQ == -2.0)
     {
-        m_qW = 1.0 - std::exp(-10.0 / m_ptc);
+        m_wQ = 1.0 - std::exp(-10.0 / m_ptc);
     }
 
     if (m_bottom == 0)
@@ -557,8 +556,8 @@ RedQueueDisc::InitializeParams()
         }
     }
 
-    NS_LOG_DEBUG("\tm_delay " << m_linkDelay.GetSeconds() << "; m_isWait " << m_isWait << "; m_qW "
-                              << m_qW << "; m_ptc " << m_ptc << "; m_minTh " << m_minTh
+    NS_LOG_DEBUG("\tm_delay " << m_linkDelay.GetSeconds() << "; m_isWait " << m_isWait << "; m_wQ "
+                              << m_wQ << "; m_ptc " << m_ptc << "; m_minTh " << m_minTh
                               << "; m_maxTh " << m_maxTh << "; m_isGentle " << m_isGentle
                               << "; th_diff " << th_diff << "; lInterm " << m_lInterm << "; va "
                               << m_vA << "; cur_max_p " << m_curMaxP << "; v_b " << m_vB
@@ -567,44 +566,44 @@ RedQueueDisc::InitializeParams()
 
 // Updating m_curMaxP, following the pseudocode
 // from: A Self-Configuring RED Gateway, INFOCOMM '99.
-// They recommend m_a = 3, and m_b = 2.
+// They recommend m_fengAlpha = 3, and m_fengBeta = 2.
 void
-RedQueueDisc::UpdateMaxPFeng(double newAve)
+RedQueueDisc::UpdateMaxPFeng(double newAvg)
 {
-    NS_LOG_FUNCTION(this << newAve);
+    NS_LOG_FUNCTION(this << newAvg);
 
-    if (m_minTh < newAve && newAve < m_maxTh)
+    if (m_minTh < newAvg && newAvg < m_maxTh)
     {
         m_fengStatus = Between;
     }
-    else if (newAve < m_minTh && m_fengStatus != Below)
+    else if (newAvg < m_minTh && m_fengStatus != Below)
     {
         m_fengStatus = Below;
-        m_curMaxP = m_curMaxP / m_a;
+        m_curMaxP = m_curMaxP / m_fengAlpha;
     }
-    else if (newAve > m_maxTh && m_fengStatus != Above)
+    else if (newAvg > m_maxTh && m_fengStatus != Above)
     {
         m_fengStatus = Above;
-        m_curMaxP = m_curMaxP * m_b;
+        m_curMaxP = m_curMaxP * m_fengBeta;
     }
 }
 
 // Update m_curMaxP to keep the average queue length within the target range.
 void
-RedQueueDisc::UpdateMaxP(double newAve)
+RedQueueDisc::UpdateMaxP(double newAvg)
 {
-    NS_LOG_FUNCTION(this << newAve);
+    NS_LOG_FUNCTION(this << newAvg);
 
     Time now = Simulator::Now();
-    double m_part = 0.4 * (m_maxTh - m_minTh);
+    double m_targetRange = 0.4 * (m_maxTh - m_minTh);
     // AIMD rule to keep target Q~1/2(m_minTh + m_maxTh)
-    if (newAve < m_minTh + m_part && m_curMaxP > m_bottom)
+    if (newAvg < m_minTh + m_part && m_curMaxP > m_bottom)
     {
         // we should increase the average queue size, so decrease m_curMaxP
         m_curMaxP = m_curMaxP * m_beta;
         m_lastSet = now;
     }
-    else if (newAve > m_maxTh - m_part && m_top > m_curMaxP)
+    else if (newAvg > m_maxTh - m_part && m_top > m_curMaxP)
     {
         // we should decrease the average queue size, so increase m_curMaxP
         double alpha = m_alpha;
@@ -619,24 +618,24 @@ RedQueueDisc::UpdateMaxP(double newAve)
 
 // Compute the average queue size
 double
-RedQueueDisc::Estimator(uint32_t nQueued, uint32_t m, double qAvg, double qW)
+RedQueueDisc::Estimator(uint32_t nQueued, uint32_t m, double oldAvg, double qW)
 {
     NS_LOG_FUNCTION(this << nQueued << m << qAvg << qW);
 
-    double newAve = qAvg * std::pow(1.0 - qW, m);
-    newAve += qW * nQueued;
+    double newAvg = oldAvg * std::pow(1.0 - qW, m);
+    newAvg += qW * nQueued;
 
     Time now = Simulator::Now();
     if (m_isAdaptMaxP && now > m_lastSet + m_interval)
     {
-        UpdateMaxP(newAve);
+        UpdateMaxP(newAvg);
     }
     else if (m_isFengAdaptive)
     {
-        UpdateMaxPFeng(newAve); // Update m_curMaxP in MIMD fashion.
+        UpdateMaxPFeng(newAvg); // Update m_curMaxP in MIMD fashion.
     }
 
-    return newAve;
+    return newAvg;
 }
 
 // Check if packet p needs to be dropped due to probability mark
@@ -657,7 +656,7 @@ RedQueueDisc::DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize)
          * pkts: the number of packets arriving in 50 ms
          */
         double pkts = m_ptc * 0.05;
-        double fraction = std::pow((1 - m_qW), pkts);
+        double fraction = std::pow((1 - m_wQ), pkts);
 
         if ((double)qSize < fraction * m_qAvg)
         {
@@ -677,7 +676,7 @@ RedQueueDisc::DropEarly(Ptr<QueueDiscItem> item, uint32_t qSize)
          * pkts: the number of packets arriving in 50 ms
          */
         double pkts = m_ptc * 0.05;
-        double fraction = std::pow((1 - m_qW), pkts);
+        double fraction = std::pow((1 - m_wQ), pkts);
         double ratio = qSize / (fraction * m_qAvg);
 
         if (ratio < 1.0)
