@@ -295,6 +295,81 @@ GetMaximumChannelWidth(WifiModulationClass modulation)
     }
 }
 
+std::optional<WifiTonePlan>
+GetTonePlan(WifiModulationClass modulation, MHz_u channelWidth)
+{
+    const auto bw = static_cast<std::size_t>(channelWidth);
+
+    switch (modulation)
+    {
+    case WIFI_MOD_CLASS_OFDM:
+    case WIFI_MOD_CLASS_ERP_OFDM:
+        // Table 17-5 "Timing-related parameters" of 802.11-2020
+        switch (bw)
+        {
+        case 20:
+        case 10: // same layout as 20 MHz with halved subcarrier spacing
+        case 5:  // same layout as 20 MHz with quartered subcarrier spacing
+            return WifiTonePlan{64, 52, 48, 4, 6, 1};
+        default:
+            return std::nullopt;
+        }
+    case WIFI_MOD_CLASS_HT:
+        // Table 19-6 "Timing-related constants" of 802.11-2020
+        switch (bw)
+        {
+        case 20:
+            return WifiTonePlan{64, 56, 52, 4, 4, 1};
+        case 40:
+            return WifiTonePlan{128, 114, 108, 6, 6, 3};
+        default:
+            return std::nullopt;
+        }
+    case WIFI_MOD_CLASS_VHT:
+        // Table 21-5 "Timing-related constants" of 802.11-2020
+        switch (bw)
+        {
+        case 20:
+            return WifiTonePlan{64, 56, 52, 4, 4, 1};
+        case 40:
+            return WifiTonePlan{128, 114, 108, 6, 6, 3};
+        case 80:
+            return WifiTonePlan{256, 242, 234, 8, 6, 3};
+        case 160:
+            return WifiTonePlan{512, 484, 468, 16, 6, 3};
+        default:
+            return std::nullopt;
+        }
+    case WIFI_MOD_CLASS_HE:
+    case WIFI_MOD_CLASS_EHT:
+        // Subcarrier allocation per full-bandwidth RU (Table 27-14 "Subcarrier allocation related
+        // constants for RUs in an OFDMA HE PPDU" of 802.11ax-2021, Table 36-21 "Subcarrier
+        // allocation related constants for RUs in an OFDMA EHT PPDU" of 802.11be-2024)
+        switch (bw)
+        {
+        case 20: // 242-tone RU
+            return WifiTonePlan{256, 242, 234, 8, 6, 3};
+        case 40: // 484-tone RU
+            return WifiTonePlan{512, 484, 468, 16, 12, 5};
+        case 80: // 996-tone RU
+            return WifiTonePlan{1024, 996, 980, 16, 12, 5};
+        case 160: // 2x996-tone RU
+            return WifiTonePlan{2048, 1992, 1960, 32, 12, 5};
+        case 320:
+            if (modulation == WIFI_MOD_CLASS_EHT)
+            {
+                // 4x996-tone RU (Table 36-21 of 802.11be-2024)
+                return WifiTonePlan{4096, 3984, 3920, 64, 12, 5};
+            }
+            return std::nullopt;
+        default:
+            return std::nullopt;
+        }
+    default:
+        return std::nullopt;
+    }
+}
+
 MHz_u
 GetChannelWidthInMhz(WifiChannelWidthType width)
 {
