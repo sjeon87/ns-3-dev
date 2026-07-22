@@ -66,6 +66,18 @@ build_lib_example(
 )
 
 build_lib_example(
+  NAME pi-square-example
+  SOURCE_FILES pi-square-example.cc
+  LIBRARIES_TO_LINK
+    ${libpoint-to-point}
+    ${libpoint-to-point-layout}
+    ${libinternet}
+    ${libapplications}
+    ${libflow-monitor}
+    ${libtraffic-control}
+)
+
+build_lib_example(
   NAME pie-example
   SOURCE_FILES pie-example.cc
   LIBRARIES_TO_LINK
