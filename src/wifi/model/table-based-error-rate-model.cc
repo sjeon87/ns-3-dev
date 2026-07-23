@@ -9,6 +9,8 @@
 
 #include "table-based-error-rate-model.h"
 
+#include "wifi-phy-common.h"
+#include "wifi-ru.h"
 #include "wifi-tx-vector.h"
 #include "wifi-utils.h"
 #include "yans-error-rate-model.h"
@@ -146,7 +148,59 @@ TableBasedErrorRateModel::DoGetChunkSuccessRate(WifiMode mode,
 {
     NS_LOG_FUNCTION(this << mode << txVector << snr << nbits << +numRxAntennas << field << staId);
     const auto size = std::max<uint64_t>(1, (nbits / 8)); // in bytes
-    const auto roundedSnr = RoundSnr(RatioToDb(snr), SNR_PRECISION);
+
+    // 1. Extract context variables for modulation class and channel width
+    const auto modClass = mode.GetModulationClass();
+    const auto channelWidth = txVector.GetChannelWidth();
+
+    // 2. Base baseline parameters on legacy 802.11a/g (Non-HT OFDM 20 MHz)
+    double fftLength = 64.0;
+    double numTones = 52.0; // 48 Data + 4 Pilots
+
+    // 3. Evaluate tone metrics dynamically across 802.11n/ac/ax standard families
+    if (const auto tonePlan = GetTonePlan(modClass, channelWidth); tonePlan.has_value())
+    {
+        fftLength = tonePlan->fftLength;
+        numTones = tonePlan->usedTones;
+    }
+    else if (modClass != WIFI_MOD_CLASS_OFDM && modClass != WIFI_MOD_CLASS_ERP_OFDM)
+    {
+        NS_LOG_DEBUG("Unrecognized Modulation Class. Defaulting to 802.11a parameters.");
+    }
+
+    // For MU PPDUs, the SNR is computed over the band of the RU allocated to the receiving
+    // STA rather than over the full channel, so derive the tone metrics from that RU
+    if (txVector.IsMu() && (modClass == WIFI_MOD_CLASS_HE || modClass == WIFI_MOD_CLASS_EHT))
+    {
+        // the tone span is identical for all RUs of a given type, hence PHY index 1 is used
+        const auto group = WifiRu::GetSubcarrierGroup(channelWidth,
+                                                      WifiRu::GetRuType(txVector.GetRu(staId)),
+                                                      1,
+                                                      modClass);
+        if (!group.empty())
+        {
+            fftLength = group.back().second - group.front().first + 1;
+            numTones = 0.0;
+            for (const auto& range : group)
+            {
+                numTones += range.second - range.first + 1;
+            }
+        }
+    }
+
+    // 4. Compute calibration factor and shift lookup index to track table generation criteria
+    // The SNR is adjusted to account for the difference in subcarrier density between the
+    // reference table and the actual transmission. The adjustment is based on the ratio of
+    // the FFT length to the number of tones used for data transmission. The adjustment is
+    // calculated as 10 * log10(fftLength / numTones), which represents the difference in power
+    // per subcarrier due to the different number of tones.
+    //
+    // See, for example, Eq. (2) in p. 32 of R. Patidar, S. Roy, T. R. Henderson, and
+    // A. Chandramohan, "Link-to-System Mapping for ns-3 Wi-Fi OFDMA Error Models," in Proc. of
+    // WNS3 2017, Porto, Portugal - June 13-14, 2017, ISBN: 978-1-4503-5219-2.
+    const auto subcarrierAdjustment = 10.0 * std::log10(fftLength / numTones);
+    const auto roundedSnr = RoundSnr(RatioToDb(snr) + subcarrierAdjustment, SNR_PRECISION);
+
     uint8_t mcs;
     if (auto ret = GetMcsForMode(mode); ret.has_value())
     {

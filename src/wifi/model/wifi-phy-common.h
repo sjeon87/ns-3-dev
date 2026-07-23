@@ -18,6 +18,7 @@
 #include "ns3/fatal-error.h"
 #include "ns3/ptr.h"
 
+#include <optional>
 #include <ostream>
 #include <set>
 #include <vector>
@@ -703,6 +704,33 @@ std::set<MHz_u> GetSupportedChannelWidthSet(WifiStandard standard, WifiPhyBand b
  * @return the maximum channel width allowed for the given modulation class
  */
 MHz_u GetMaximumChannelWidth(WifiModulationClass modulation);
+
+/**
+ * Tone plan characteristics for a given modulation class and channel width.
+ *
+ * Default values are set to pre-HT 802.11 20 MHz OFDM parameters
+ * (see Table 17-5 "Timing-related parameters" of 802.11-2020)
+ */
+struct WifiTonePlan
+{
+    std::size_t fftLength = 64;      ///< number of subcarriers spanning the channel (FFT size)
+    std::size_t usedTones = 52;      ///< number of used subcarriers (data + pilots)
+    std::size_t dataTones = 48;      ///< number of data subcarriers
+    std::size_t pilotTones = 4;      ///< number of pilot subcarriers
+    std::size_t skippedSubbands = 6; ///< number of guard subcarriers skipped at the lower edge of
+                                     ///< the channel (per 80 MHz segment for 160 and 320 MHz)
+    std::size_t numDc = 1; ///< number of DC (null) subcarriers at the center of the channel (per 80
+                           ///< MHz segment for 160 and 320 MHz)
+};
+
+/**
+ * Get the tone plan for a given modulation class and channel width.
+ *
+ * @param modulation the modulation class
+ * @param channelWidth the channel width
+ * @return the tone plan, or std::nullopt if the combination is not supported
+ */
+std::optional<WifiTonePlan> GetTonePlan(WifiModulationClass modulation, MHz_u channelWidth);
 
 /**
  * Get the total channel width for the channel width type.
