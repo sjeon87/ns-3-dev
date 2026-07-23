@@ -417,18 +417,22 @@ build_lib(
     test/wifi-emlsr-test-base.cc
     test/wifi-error-rate-models-test.cc
     test/wifi-fils-frame-test.cc
+    test/wifi-fragmentation-blockack-test-suite.cc
     test/wifi-gcr-test.cc
     test/wifi-he-info-elems-test.cc
+    test/wifi-ht-single-model-spectrum-test-suite.cc
     test/wifi-ie-fragment-test.cc
     test/wifi-mac-ofdma-test.cc
     test/wifi-mac-queue-test.cc
     test/wifi-mlo-test.cc
     test/wifi-phy-ofdma-test.cc
+    test/wifi-pcap-fcs-test.cc
     test/wifi-phy-reception-test.cc
     test/wifi-phy-rx-trace-helper-test.cc
     test/wifi-phy-thresholds-test.cc
     test/wifi-primary-channels-test.cc
     test/wifi-probe-exchange-test.cc
+    test/wifi-promisc-receive-test-suite.cc
     test/wifi-protection-test.cc
     test/wifi-queue-scheduler-test.cc
     test/wifi-retransmit-test.cc
