@@ -161,7 +161,7 @@ SpectrumWifiPhyHelper
 WifiStaticEmlsrTest::GetPhyHelper(const std::vector<std::string>& settings,
                                   const WifiStaticEmlsrTestConstants::ChannelMap& channelMap) const
 {
-    NS_ASSERT(not settings.empty());
+    NS_ASSERT_MSG(!settings.empty(), "Settings vector cannot be empty when creating PHY helper");
     SpectrumWifiPhyHelper helper(settings.size());
 
     uint8_t linkId = 0;
@@ -256,9 +256,9 @@ WifiStaticEmlsrTest::DoSetup()
                      << ") mismatch");
 
     m_apDev = GetWifiNetDevice(true, channelMap);
-    NS_ASSERT(m_apDev);
+    NS_ASSERT_MSG(m_apDev, "Failed to create AP Wi-Fi device");
     m_clientDev = GetWifiNetDevice(false, channelMap);
-    NS_ASSERT(m_clientDev);
+    NS_ASSERT_MSG(m_clientDev, "Failed to create Client Wi-Fi device");
 
     m_linkIdMap = WifiStaticSetupHelper::GetLinkIdMap(m_apDev, m_clientDev);
 
