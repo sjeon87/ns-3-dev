@@ -159,6 +159,71 @@ actually in use. This keeps the flow-control behavior local to the MAC and makes
 the thresholds and resume policy easy to replace later without changing the rest
 of the model.
 
+Ethernet Switch
+---------------
+
+The ``EthernetSwitch`` class models a learning Ethernet switch. It is aggregated
+to a node and manages a set of ports, one for each link.The switch controls when
+a received frame is removed from the port's Rx queue. If the switch cannot currently
+accept the frame, the frame remains in the ingress receiRxve queue and is retried
+later.
+
+For every frame it receives, the switch associates the source address with the
+port the frame came in on, and looks the destination address up in the same
+table. A frame whose destination address is known is forwarded to the port that
+address was learned on, unless that is the port the frame came in on, in which
+case it is discarded. A frame whose destination address is unknown is flooded to
+every port other than the one it came in on. Learned addresses are forgotten
+after ``ExpirationTime``.
+
+Buffering and scheduling
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Frames are not handed to an output port as soon as they are switched. They are
+placed in a buffer owned by the switch, out of which an
+``EthernetSwitchScheduler`` picks them and hands them to the ports, one
+transmission per port at a time. ``EthernetSwitchFcfsScheduler`` serves them in
+the order they were received.
+
+Because the switch does not own the queues of its ports, it cannot hand a frame
+to a port whose Tx queue is full. ``EthernetSwitch::CanForwardTo()`` is the
+single point at which the room left on an output port is established, and the
+scheduler consults it before handing a frame over. What is done with a frame
+that its output port cannot take is left to the scheduler: serving frames in the
+order they arrived leaves the FCFS scheduler nothing else to do than drop them,
+which it reports through the ``ForwardDrop`` trace source, whereas a scheduler
+free to serve them in another order can hold them back in the buffer until the
+port drains.
+
+The switch also controls when frames are removed from the ingress Rx
+queues. Before dequeuing a frame, ``EthernetSwitch::CanAccept()`` checks whether
+the switch can accept it, including the optional switch memory policy. If the
+memory check rejects the frame, EthernetSwitch::ReceiveFromPort() leaves
+the frame in the ingress RX queue, providing backpressure until the switch can
+accept it.
+
+Queue memory model
+~~~~~~~~~~~~~~~~~~
+
+The transmit and receive queues of a MAC each have their own configured queue
+limits. The available space in a queue is determined by its configured limit.
+
+Real switches often organise their queue memory differently. The transmit and
+the receive queue of a port may draw on a pool shared between them, so that the
+split between the two directions is free to vary as long as their total stays
+within one limit; or all the ports may draw on a pool shared switch-wide. Under
+either of those, the limit that decides whether a frame is accepted is no longer
+the limit of the queue it would be placed in, and asking the queue whether it is
+full stops being meaningful.
+
+Neither shared-memory model is enforced by default. The memory-check callbacks
+provide an extensible mechanism for modelling such policies without reworking
+the switch or changing the port queues. The forwarding memory check can be used
+to account for additional memory constraints beyond the port queue limits,
+while the switch memory check can be used to impose additional constraints on
+frames entering the switch. No additional memory limit is enforced unless the
+corresponding callback is configured.
+
 Scope and Limitations
 ---------------------
 - The model currently supports Ethernet over twisted-pair copper links operating in full-duplex mode; support for fiber-optic and other link types is planned for future work.
@@ -167,6 +232,9 @@ their operating speed is set to the minimum of the two maximum speeds; this impl
 - Half-duplex Ethernet and CSMA/CD collision detection are not implemented and are planned for future work.
 - Ethernet Flow Control using IEEE 802.3 PAUSE frames is implemented for full-duplex Ethernet links.
 - The current implementation uses a simple queue-threshold policy for PAUSE frames. Priority-based PAUSE/advanced queue management is not currently supported and is considered future enhancement.
+- The switch models queue memory as a fixed allocation per queue. Ports whose transmit and receive queues share a pool with each other, or with the queues of the other ports, are not supported.
+- The buffer the switch holds frames in while they wait for their turn on an output port is unbounded, so the memory of the switch fabric itself is not modelled.
+- The switch forwards every frame it receives. VLANs, the spanning tree protocol and the reserved multicast addresses that carry it are not implemented.
 
 Extensibility and Future Enhancements
 -------------------------------------
@@ -189,6 +257,13 @@ without rewriting the frame-processing logic.
 - The flow-control code is isolated in the MAC, which makes it possible to replace
 the current threshold-based PAUSE policy with priority-based flow control,
 different pause-release criteria, or additional MAC Control opcodes in the future.
+
+- The switch keeps its forwarding policy, scheduling policy, and memory policies apart.
+A new scheduling discipline only has to subclass EthernetSwitchScheduler and can decide
+for itself what to do with a frame that its output port cannot accept.
+Queue memory organisations beyond the fixed per-queue limits can be modelled through
+EthernetSwitch::SetMemoryCheck() for forwarding and EthernetSwitch::SetSwitchMemoryCheck()
+for switch-level ingress acceptance, without changing the forwarding or scheduling logic.
 
 - Future work can also extend the PHY layer independently by adding new error
 models, alternative link-state behavior, or richer receive timing models. Because
@@ -263,6 +338,10 @@ The EthernetMac provides the following attributes:
 * ``TxQueue``: The queue holding the frames waiting for transmission.
 * ``RxQueue``: The queue holding the received frames waiting to be processed.
 
+The EthernetSwitch provides the following attributes:
+
+* ``ExpirationTime``: The time after which a learned address is forgotten.
+
 Traces
 ~~~~~~
 
@@ -285,12 +364,17 @@ The following trace sources have been implemented to monitor the behavior of the
 * ``Sniffer``: Indicates that a packet has been received at the MAC layer in sniffer mode.
 * ``PromiscSniffer``: Indicates that a packet has been received at the MAC layer in promiscuous sniffer mode.
 
+The following trace source has been implemented to monitor the behavior of the **switch**:
+
+* ``ForwardDrop``: Indicates that the switch gave up on forwarding a frame to the port it is destined to.
+
 Examples and Tests
 ------------------
 
-The following example have been written in ``src/ethernet/examples``.
+The following examples have been written in ``src/ethernet/examples``.
 
 * ``ethernet-ping.cc``: A simple two-node topology demonstrating basic communication over Ethernet links.
+* ``ethernet-switch-ping.cc``: Two hosts pinging each other through a switch, exercising address learning and flooding.
 
 The following unit-tests have been written in ``src/ethernet/test``.
 
@@ -298,6 +382,8 @@ The following unit-tests have been written in ``src/ethernet/test``.
 * ``ethernet-ifg-test.cc``: A test for the inter-frame gap functionality in Ethernet.
 * ``ethernet-link-speed-test.cc``: A test for verifying the Ethernet PHY transmission and packet reception timing for supported link speeds. .
 * ``ethernet-flow-control-test.cc``: Unit test for Ethernet flow control functionality.
+* ``ethernet-switch-test.cc``: Unit test for switch address learning, flooding, and the queue limits of the output ports.
+* ``ethernet-switch-fcfs-test.cc``: Unit test for the FCFS switch scheduler, verifying that it serves frames in the order they were received and respects the output port queue limits.
 
 References
 ----------
