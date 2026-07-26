@@ -5,13 +5,18 @@
  *
  */
 
-// This script configures three nodes on an 802.11b physical layer, with
-// 802.11b NICs in adhoc mode.  There is a transmitter, receiver, and
-// interferer.  The transmitter sends one packet to the receiver and
-// the receiver receives it with a certain configurable RSS (by default,
-// -80 dBm).  The interferer does not do carrier sense and also sends
-// the packet to interfere with the primary packet.  The channel model
-// is clear channel.
+// This script configures three nodes using an 802.11a OFDM physical layer
+// with ad hoc MAC.  There is a transmitter, receiver, and interferer.
+// The transmitter sends one packet to the receiver and the receiver
+// receives it with a configurable received power (by default, -80 dBm).
+// The interferer transmits a packet at a configurable time offset to
+// overlap with the primary transmission at the receiver.
+//
+// A MatrixPropagationLossModel is used to configure deterministic received
+// powers (Prss/Irss) at the receiver, independent of distance.  A large loss
+// is configured between the transmitter and interferer so that they do not
+// carrier-sense each other, preserving the intended "forced overlap"
+// experiment.
 //
 // Therefore, at the receiver, the reception looks like this:
 //
@@ -79,6 +84,8 @@
 #include "ns3/log.h"
 #include "ns3/mobility-helper.h"
 #include "ns3/mobility-model.h"
+#include "ns3/propagation-delay-model.h"
+#include "ns3/propagation-loss-model.h"
 #include "ns3/ssid.h"
 #include "ns3/string.h"
 #include "ns3/yans-wifi-channel.h"
@@ -138,7 +145,7 @@ GenerateTraffic(Ptr<Socket> socket, uint32_t pktSize)
 int
 main(int argc, char* argv[])
 {
-    std::string phyMode{"DsssRate1Mbps"};
+    std::string phyMode{"OfdmRate6Mbps"};
     dBm_u Prss{-80};
     dBm_u Irss{-95};
     Time delta{"0ns"};
@@ -160,6 +167,22 @@ main(int argc, char* argv[])
     cmd.AddValue("verbose", "turn on all WifiNetDevice log components", verbose);
     cmd.Parse(argc, argv);
 
+    // These are not enforced as errors,
+    //  because this example is intended to allow controlled experimentation.
+    if (Prss > -10.0 || Prss < -110.0)
+    {
+        NS_LOG_WARN("Primary RSS " << Prss << " dBm is outside typical Wi-Fi ranges");
+    }
+    if (Irss > -10.0 || Irss < -110.0)
+    {
+        NS_LOG_WARN("Interferer RSS " << Irss << " dBm is outside typical Wi-Fi ranges");
+    }
+    if (Irss > Prss)
+    {
+        NS_LOG_WARN("Interferer RSS " << Irss << " dBm is stronger than primary RSS " << Prss
+                                      << " dBm");
+    }
+
     // Fix non-unicast data rate to be the same as that of unicast
     Config::SetDefault("ns3::WifiRemoteStationManager::NonUnicastMode", StringValue(phyMode));
 
@@ -172,20 +195,30 @@ main(int argc, char* argv[])
     {
         WifiHelper::EnableLogComponents(); // Turn on all Wifi logging
     }
-    wifi.SetStandard(WIFI_STANDARD_80211b);
+    wifi.SetStandard(WIFI_STANDARD_80211a);
 
     YansWifiPhyHelper wifiPhy;
 
     // ns-3 supports RadioTap and Prism tracing extensions for 802.11b
     wifiPhy.SetPcapDataLinkType(WifiPhyHelper::DLT_IEEE802_11_RADIO);
 
+    // Lock transmit power so that the configured losses map deterministically
+    // to the intended received powers (Prss/Irss).
+    constexpr double txPowerDbm = 16.0;
+    wifiPhy.Set("TxPowerStart", DoubleValue(txPowerDbm));
+    wifiPhy.Set("TxPowerEnd", DoubleValue(txPowerDbm));
+
     // Disable preamble detection model to receive signals below -82 dBm
     wifiPhy.DisablePreambleDetectionModel();
 
-    YansWifiChannelHelper wifiChannel;
-    wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel");
-    wifiPhy.SetChannel(wifiChannel.Create());
+    Ptr<MatrixPropagationLossModel> matrixLoss = CreateObject<MatrixPropagationLossModel>();
+    Ptr<ConstantSpeedPropagationDelayModel> delay =
+        CreateObject<ConstantSpeedPropagationDelayModel>();
+
+    Ptr<YansWifiChannel> channel = CreateObject<YansWifiChannel>();
+    channel->SetPropagationDelayModel(delay);
+    channel->SetPropagationLossModel(matrixLoss);
+    wifiPhy.SetChannel(channel);
 
     // Add a mac and disable rate control
     WifiMacHelper wifiMac;
@@ -197,21 +230,9 @@ main(int argc, char* argv[])
     // Set it to adhoc mode
     wifiMac.SetType("ns3::AdhocWifiMac");
     NetDeviceContainer devices = wifi.Install(wifiPhy, wifiMac, c.Get(0));
-    // Setting RxSensitivity to 0 dBm will disable the two sending devices from detecting
-    // received signals, so that they do not back off
-    wifiPhy.Set("RxSensitivity", DoubleValue(0));
-    // We use the TxGain parameter on each sender to control the received signal power.
-    // The transmit power is roughly 16 dBm.  The signal attenuation from both senders to
-    // the receiving device is 106.7 dB (100 meters at this frequency, based on the
-    // LogDistancePropagationLossModel).  We want the receive signal strength to be
-    // Prss dBm.  We therefore want to solve for the gain as follows:
-    // 16 dBm + TxGain - propagationLoss = Prss (dBm)
-    // Working backwards, TxGain = Prss (dBm) - 16 dB + 106.7 dB = Prss (dBm) + 90.7 dB
-    dB_u powerOffset{90.7};
-    wifiPhy.Set("TxGain", DoubleValue(Prss + powerOffset));
+
     devices.Add(wifi.Install(wifiPhy, wifiMac, c.Get(1)));
-    // Repeat for the interferer
-    wifiPhy.Set("TxGain", DoubleValue(Irss + powerOffset));
+
     devices.Add(wifi.Install(wifiPhy, wifiMac, c.Get(2)));
 
     MobilityHelper mobility;
@@ -223,6 +244,27 @@ main(int argc, char* argv[])
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
     mobility.Install(c);
 
+    // Configure deterministic received powers at the receiver (node 0) by setting
+    // per-link losses in the MatrixPropagationLossModel.
+    //
+    // RxPower(dBm) = TxPower(dBm) - Loss(dB)
+    // => Loss(dB) = TxPower(dBm) - RxPower(dBm)
+    Ptr<MobilityModel> rxMob = c.Get(0)->GetObject<MobilityModel>();
+    Ptr<MobilityModel> txMob = c.Get(1)->GetObject<MobilityModel>();
+    Ptr<MobilityModel> intMob = c.Get(2)->GetObject<MobilityModel>();
+
+    matrixLoss->SetLoss(txMob, rxMob, txPowerDbm - Prss);
+    matrixLoss->SetLoss(intMob, rxMob, txPowerDbm - Irss);
+    // Set reverse directions too, to avoid any ambiguity.
+    matrixLoss->SetLoss(rxMob, txMob, txPowerDbm - Prss);
+    matrixLoss->SetLoss(rxMob, intMob, txPowerDbm - Irss);
+
+    // Prevent the transmitter and interferer from sensing each other.
+    // This preserves the intended "forced overlap" experiment.
+    constexpr double txIntLossDb = 200.0;
+    matrixLoss->SetLoss(txMob, intMob, txIntLossDb);
+    matrixLoss->SetLoss(intMob, txMob, txIntLossDb);
+
     InternetStackHelper internet;
     internet.Install(c);
 
@@ -233,7 +275,8 @@ main(int argc, char* argv[])
 
     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
     Ptr<Socket> recvSink = Socket::CreateSocket(c.Get(0), tid);
-    InetSocketAddress local = InetSocketAddress(Ipv4Address("10.1.1.1"), 80);
+    InetSocketAddress local = InetSocketAddress(Ipv4Address::GetAny(), 80);
+
     recvSink->Bind(local);
     recvSink->SetRecvCallback(MakeCallback(&ReceivePacket));
 
