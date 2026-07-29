@@ -245,7 +245,46 @@ SixlowpanGhcEngineTest::DoRun()
         }
     }
 
-    // Subtest 5: Bytecode classification
+    // Subtest 5: Payload larger than the IPv6 minimum MTU (1280). The engine
+    // sizes its working buffers from the caller's lengths, so payloads from
+    // larger-MTU links (e.g. Ethernet) must round-trip too.
+    {
+        constexpr uint32_t largeLen = 2000;
+        std::vector<uint8_t> input(largeLen);
+        for (uint32_t i = 0; i < largeLen; i++)
+        {
+            // Repetitive pattern with zero runs: compressible via backrefs
+            input[i] = (i % 8 < 4) ? static_cast<uint8_t>(i % 4) : 0;
+        }
+
+        std::vector<uint8_t> compressed(largeLen);
+        uint32_t compLen = SixLowPanGhcEngine::Compress(srcAddr,
+                                                        dstAddr,
+                                                        input.data(),
+                                                        largeLen,
+                                                        compressed.data(),
+                                                        largeLen,
+                                                        false);
+
+        NS_TEST_ASSERT_MSG_GT(compLen, 0u, "Subtest 5: compressor produced no output");
+        NS_TEST_ASSERT_MSG_LT(compLen, largeLen, "Subtest 5: no compression benefit");
+
+        std::vector<uint8_t> decompressed(largeLen);
+        uint32_t decompLen = SixLowPanGhcEngine::Decompress(srcAddr,
+                                                            dstAddr,
+                                                            compressed.data(),
+                                                            compLen,
+                                                            decompressed.data(),
+                                                            largeLen,
+                                                            false);
+
+        NS_TEST_ASSERT_MSG_EQ(decompLen, largeLen, "Subtest 5: decompressed length mismatch");
+        NS_TEST_ASSERT_MSG_EQ(std::memcmp(input.data(), decompressed.data(), largeLen),
+                              0,
+                              "Subtest 5: decompressed data must match original");
+    }
+
+    // Subtest 6: Bytecode classification
     {
         NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0x00),
                               (int)GhcBytecodeType::LITERAL,

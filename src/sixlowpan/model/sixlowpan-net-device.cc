@@ -36,6 +36,7 @@
 #include "ns3/uinteger.h"
 
 #include <algorithm>
+#include <vector>
 
 NS_LOG_COMPONENT_DEFINE("SixLowPanNetDevice");
 
@@ -3526,13 +3527,13 @@ SixLowPanNetDevice::DecompressLowPanGhcNhc(Ptr<Packet> packet,
     uint32_t compressedLen = encoding.CopyBlob(compressed, 256);
 
     // Decompress using GHC engine (with Stop Code termination for extension headers)
-    uint8_t decompressed[1280];
+    std::vector<uint8_t> decompressed(GetMtu());
     uint32_t decompressedLen = SixLowPanGhcEngine::Decompress(srcAddress,
                                                               dstAddress,
                                                               compressed,
                                                               compressedLen,
-                                                              decompressed,
-                                                              1280,
+                                                              decompressed.data(),
+                                                              GetMtu(),
                                                               true); // use Stop Code
 
     if (decompressedLen == 0)
@@ -3567,8 +3568,9 @@ SixLowPanNetDevice::DecompressLowPanGhcNhc(Ptr<Packet> packet,
     }
 
     // Reconstruct the full extension header
-    // Byte 0: Next Header, Byte 1: Length, rest: decompressed body
-    uint8_t fullHeader[1280 + 2];
+    // Byte 0: Next Header, Byte 1: Length, rest: decompressed body,
+    // then up to 7 bytes of Pad1/PadN to reach 8-octet alignment
+    std::vector<uint8_t> fullHeader(decompressedLen + 2 + 7);
     uint32_t fullLen = decompressedLen + 2;
 
     // Get the next header byte
@@ -3623,7 +3625,7 @@ SixLowPanNetDevice::DecompressLowPanGhcNhc(Ptr<Packet> packet,
     }
 
     // Copy decompressed body
-    std::memcpy(fullHeader + 2, decompressed, decompressedLen);
+    std::memcpy(fullHeader.data() + 2, decompressed.data(), decompressedLen);
 
     // Add padding if needed
     if (paddingSize > 0)
@@ -3647,7 +3649,7 @@ SixLowPanNetDevice::DecompressLowPanGhcNhc(Ptr<Packet> packet,
     // Deserialize and add the reconstructed extension header
     Buffer blob;
     blob.AddAtStart(fullLen);
-    blob.Begin().Write(fullHeader, fullLen);
+    blob.Begin().Write(fullHeader.data(), fullLen);
 
     switch (actualHeaderType)
     {
@@ -3701,9 +3703,8 @@ SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     }
 
     // Snapshot the raw ICMPv6 bytes (header + body) for the LZ77 engine.
-    uint8_t rawIcmpv6[1280];
-    const uint32_t rawLen = std::min(packetSize, 1280u);
-    packet->CopyData(rawIcmpv6, rawLen);
+    std::vector<uint8_t> rawIcmpv6(packetSize);
+    packet->CopyData(rawIcmpv6.data(), packetSize);
 
     // GHC-compress the entire ICMPv6 datagram. We emit STOP_CODE so the
     // receiver's Deserialize can find the end of the bytecode stream
@@ -3713,34 +3714,42 @@ SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     // rejects RemoveHeader. RFC 7400 section 3 explicitly permits the
     // STOP_CODE termination as an alternative to packet-boundary
     // termination, so this stays spec-compliant.
-    uint8_t compressed[1280];
+    std::vector<uint8_t> compressed(packetSize);
     const uint32_t compressedLen = SixLowPanGhcEngine::Compress(srcAddress,
                                                                 dstAddress,
-                                                                rawIcmpv6,
-                                                                rawLen,
-                                                                compressed,
-                                                                1280,
+                                                                rawIcmpv6.data(),
+                                                                packetSize,
+                                                                compressed.data(),
+                                                                packetSize,
                                                                 /* emitStopCode = */ true);
 
-    if (compressedLen == 0 || compressedLen >= rawLen)
+    if (compressedLen == 0 || compressedLen >= packetSize)
     {
         NS_LOG_DEBUG("GHC: ICMPv6 compression not beneficial");
         return 0;
     }
 
+    // The NHC blob length field is 8 bits, so bytecode streams longer than
+    // 255 octets cannot be carried; fall back to the uncompressed path.
+    if (compressedLen > 255)
+    {
+        NS_LOG_DEBUG("GHC: ICMPv6 compressed size " << compressedLen << " exceeds blob limit");
+        return 0;
+    }
+
     // Remove original ICMPv6 data from packet
-    packet->RemoveAtStart(rawLen);
+    packet->RemoveAtStart(packetSize);
 
     // Create GHC ICMPv6 header
     SixLowPanGhcIcmpv6 ghcHeader;
-    ghcHeader.SetBlob(compressed, compressedLen);
+    ghcHeader.SetBlob(compressed.data(), compressedLen);
 
     packet->AddHeader(ghcHeader);
 
-    NS_LOG_DEBUG("GHC ICMPv6 compression: " << rawLen << " -> " << ghcHeader.GetSerializedSize()
+    NS_LOG_DEBUG("GHC ICMPv6 compression: " << packetSize << " -> " << ghcHeader.GetSerializedSize()
                                             << " bytes");
 
-    return rawLen;
+    return packetSize;
 }
 
 /**
@@ -3811,13 +3820,13 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     // Decompress using GHC engine; useStopCode=true matches the
     // emitStopCode=true used on the compress side (see comment in
     // CompressLowPanGhcIcmpv6 above).
-    uint8_t decompressed[1280];
+    std::vector<uint8_t> decompressed(GetMtu());
     const uint32_t decompressedLen = SixLowPanGhcEngine::Decompress(srcAddress,
                                                                     dstAddress,
                                                                     compressed,
                                                                     compressedLen,
-                                                                    decompressed,
-                                                                    1280,
+                                                                    decompressed.data(),
+                                                                    GetMtu(),
                                                                     /* useStopCode = */ true);
 
     if (decompressedLen < 4)
@@ -3848,38 +3857,39 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     {
     case Icmpv6Header::ICMPV6_ECHO_REQUEST:
     case Icmpv6Header::ICMPV6_ECHO_REPLY:
-        headerLen = GhcIcmpHdrSize<Icmpv6Echo>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6Echo>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_ROUTER_SOLICITATION:
-        headerLen = GhcIcmpHdrSize<Icmpv6RS>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6RS>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_ROUTER_ADVERTISEMENT:
-        headerLen = GhcIcmpHdrSize<Icmpv6RA>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6RA>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_NEIGHBOR_SOLICITATION:
-        headerLen = GhcIcmpHdrSize<Icmpv6NS>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6NS>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_NEIGHBOR_ADVERTISEMENT:
-        headerLen = GhcIcmpHdrSize<Icmpv6NA>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6NA>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_REDIRECTION:
-        headerLen = GhcIcmpHdrSize<Icmpv6Redirection>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6Redirection>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_DESTINATION_UNREACHABLE:
-        headerLen = GhcIcmpHdrSize<Icmpv6DestinationUnreachable>(decompressed, decompressedLen);
+        headerLen =
+            GhcIcmpHdrSize<Icmpv6DestinationUnreachable>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_PACKET_TOO_BIG:
-        headerLen = GhcIcmpHdrSize<Icmpv6TooBig>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6TooBig>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_TIME_EXCEEDED:
-        headerLen = GhcIcmpHdrSize<Icmpv6TimeExceeded>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6TimeExceeded>(decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_PARAMETER_ERROR:
-        headerLen = GhcIcmpHdrSize<Icmpv6ParameterError>(decompressed, decompressedLen);
+        headerLen = GhcIcmpHdrSize<Icmpv6ParameterError>(decompressed.data(), decompressedLen);
         break;
     default:
         NS_LOG_ERROR("GHC: unhandled ICMPv6 type " << int(icmpType) << " - emitting raw bytes");
-        packet->AddAtEnd(Create<Packet>(decompressed, decompressedLen));
+        packet->AddAtEnd(Create<Packet>(decompressed.data(), decompressedLen));
         return;
     }
 
@@ -3925,12 +3935,12 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
 
     if (trailingLen > 0)
     {
-        packet->AddAtEnd(Create<Packet>(decompressed + trailingPos, trailingLen));
+        packet->AddAtEnd(Create<Packet>(decompressed.data() + trailingPos, trailingLen));
     }
 
     for (auto it = opts.rbegin(); it != opts.rend(); ++it)
     {
-        const uint8_t* optData = decompressed + it->pos;
+        const uint8_t* optData = decompressed.data() + it->pos;
         switch (it->type)
         {
         case Icmpv6Header::ICMPV6_OPT_LINK_LAYER_SOURCE:
@@ -3962,36 +3972,42 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     {
     case Icmpv6Header::ICMPV6_ECHO_REQUEST:
     case Icmpv6Header::ICMPV6_ECHO_REPLY:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6Echo>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6Echo>(packet, decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_ROUTER_SOLICITATION:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6RS>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6RS>(packet, decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_ROUTER_ADVERTISEMENT:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6RA>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6RA>(packet, decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_NEIGHBOR_SOLICITATION:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6NS>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6NS>(packet, decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_NEIGHBOR_ADVERTISEMENT:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6NA>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6NA>(packet, decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ND_REDIRECTION:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6Redirection>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6Redirection>(packet,
+                                                         decompressed.data(),
+                                                         decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_DESTINATION_UNREACHABLE:
         (void)GhcAddIcmpv6TypedHeader<Icmpv6DestinationUnreachable>(packet,
-                                                                    decompressed,
+                                                                    decompressed.data(),
                                                                     decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_PACKET_TOO_BIG:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6TooBig>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6TooBig>(packet, decompressed.data(), decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_TIME_EXCEEDED:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6TimeExceeded>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6TimeExceeded>(packet,
+                                                          decompressed.data(),
+                                                          decompressedLen);
         break;
     case Icmpv6Header::ICMPV6_ERROR_PARAMETER_ERROR:
-        (void)GhcAddIcmpv6TypedHeader<Icmpv6ParameterError>(packet, decompressed, decompressedLen);
+        (void)GhcAddIcmpv6TypedHeader<Icmpv6ParameterError>(packet,
+                                                            decompressed.data(),
+                                                            decompressedLen);
         break;
     default:
         // unreachable: handled by the early-return path above

@@ -17,7 +17,9 @@
 #include "ns3/log.h"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
+#include <vector>
 
 namespace ns3
 {
@@ -34,33 +36,29 @@ SixLowPanGhcEngine::InitDictionary(uint8_t* dict,
                                    const Ipv6Address& dstAddr)
 {
     // Bytes 0-15: Source IPv6 address
-    uint8_t srcBuf[16];
-    srcAddr.GetBytes(srcBuf);
-    std::memcpy(dict, srcBuf, 16);
+    srcAddr.GetBytes(dict);
 
     // Bytes 16-31: Destination IPv6 address
-    uint8_t dstBuf[16];
-    dstAddr.GetBytes(dstBuf);
-    std::memcpy(dict + 16, dstBuf, 16);
+    dstAddr.GetBytes(dict + 16);
 
     // Bytes 32-47: static dictionary (RFC 7400 Section 3.1)
-    static constexpr uint8_t staticDict[16] = {0x16,
-                                               0xfe,
-                                               0xfd,
-                                               0x17,
-                                               0xfe,
-                                               0xfd,
-                                               0x00,
-                                               0x01,
-                                               0x00,
-                                               0x00,
-                                               0x00,
-                                               0x00,
-                                               0x00,
-                                               0x01,
-                                               0x00,
-                                               0x00};
-    std::memcpy(dict + 32, staticDict, sizeof(staticDict));
+    static constexpr std::array<uint8_t, 16> staticDict = {0x16,
+                                                           0xfe,
+                                                           0xfd,
+                                                           0x17,
+                                                           0xfe,
+                                                           0xfd,
+                                                           0x00,
+                                                           0x01,
+                                                           0x00,
+                                                           0x00,
+                                                           0x00,
+                                                           0x00,
+                                                           0x00,
+                                                           0x01,
+                                                           0x00,
+                                                           0x00};
+    std::copy(staticDict.begin(), staticDict.end(), dict + 32);
 }
 
 GhcBytecodeType
@@ -109,13 +107,13 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
 {
     NS_LOG_FUNCTION(srcAddr << dstAddr << compressedLen << outputMaxLen << useStopCode);
 
-    // Allocate decompression buffer: dictionary + output space
-    // Maximum buffer = dictionary(48) + MTU(1280)
-    static constexpr uint32_t BUFFER_SIZE = DICTIONARY_SIZE + MAX_OUTPUT_SIZE;
-    uint8_t buffer[BUFFER_SIZE];
+    // Working buffer: dictionary followed by the decompressed output.
+    // Sized from the caller's limit so any link MTU is supported.
+    const uint32_t bufferSize = DICTIONARY_SIZE + outputMaxLen;
+    std::vector<uint8_t> buffer(bufferSize);
 
     // Initialize dictionary in buffer[0..47]
-    InitDictionary(buffer, srcAddr, dstAddr);
+    InitDictionary(buffer.data(), srcAddr, dstAddr);
 
     uint32_t outputPos = DICTIONARY_SIZE; // Current write position in buffer
     uint32_t inputPos = 0;                // Current read position in compressed
@@ -148,13 +146,13 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
                 NS_LOG_WARN("GHC: Literal overruns compressed data");
                 return 0;
             }
-            if (outputPos + k > BUFFER_SIZE)
+            if (outputPos + k > bufferSize)
             {
                 NS_LOG_WARN("GHC: Literal would exceed buffer");
                 return 0;
             }
 
-            std::memcpy(buffer + outputPos, compressed + inputPos, k);
+            std::memcpy(buffer.data() + outputPos, compressed + inputPos, k);
             outputPos += k;
             inputPos += k;
             break;
@@ -164,13 +162,13 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
             // 1000nnnn: insert (n+2) zero bytes
             uint32_t n = (codeByte & 0x0F) + 2;
 
-            if (outputPos + n > BUFFER_SIZE)
+            if (outputPos + n > bufferSize)
             {
                 NS_LOG_WARN("GHC: Zero insert would exceed buffer");
                 return 0;
             }
 
-            std::memset(buffer + outputPos, 0, n);
+            std::memset(buffer.data() + outputPos, 0, n);
             outputPos += n;
             break;
         }
@@ -224,7 +222,7 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
                                                    << outputPos);
                 return 0;
             }
-            if (outputPos + copyLen > BUFFER_SIZE)
+            if (outputPos + copyLen > bufferSize)
             {
                 NS_LOG_WARN("GHC: Backref would exceed buffer");
                 return 0;
@@ -247,17 +245,11 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
     }
 
 done:
-    // Output is everything after the dictionary
+    // Output is everything after the dictionary. The per-bytecode buffer
+    // checks above already guarantee decompressedLen <= outputMaxLen.
     uint32_t decompressedLen = outputPos - DICTIONARY_SIZE;
 
-    if (decompressedLen > outputMaxLen)
-    {
-        NS_LOG_WARN("GHC: Decompressed size " << decompressedLen << " exceeds output buffer "
-                                              << outputMaxLen);
-        return 0;
-    }
-
-    std::memcpy(output, buffer + DICTIONARY_SIZE, decompressedLen);
+    std::memcpy(output, buffer.data() + DICTIONARY_SIZE, decompressedLen);
 
     NS_LOG_DEBUG("GHC: Decompressed " << compressedLen << " bytes to " << decompressedLen
                                       << " bytes");
@@ -449,10 +441,10 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
         return 0;
     }
 
-    // Build the working buffer with dictionary pre-loaded
-    static constexpr uint32_t BUFFER_SIZE = DICTIONARY_SIZE + MAX_OUTPUT_SIZE;
-    uint8_t buffer[BUFFER_SIZE];
-    InitDictionary(buffer, srcAddr, dstAddr);
+    // Working buffer: dictionary followed by the input bytes consumed so far
+    // (bufPos advances in lockstep with inPos, so this size is exact).
+    std::vector<uint8_t> buffer(DICTIONARY_SIZE + inputLen);
+    InitDictionary(buffer.data(), srcAddr, dstAddr);
 
     uint32_t bufPos = DICTIONARY_SIZE; // Next write position in buffer
     uint32_t inPos = 0;                // Current position in input
@@ -497,7 +489,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
 
         uint32_t matchOffset = 0;
         uint32_t matchLength = 0;
-        bool haveMatch = FindLongestMatch(buffer,
+        bool haveMatch = FindLongestMatch(buffer.data(),
                                           bufPos,
                                           input + inPos,
                                           inputLen - inPos,
@@ -530,7 +522,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
             if (EmitBackref(output, outPos, outputMaxLen, matchLength, matchOffset))
             {
                 // Advance buffer with matched data
-                std::memcpy(buffer + bufPos, input + inPos, matchLength);
+                std::memcpy(buffer.data() + bufPos, input + inPos, matchLength);
                 bufPos += matchLength;
                 inPos += matchLength;
                 continue;
@@ -560,7 +552,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
                 output[outPos++] = 0x80 | ((emit - 2) & 0x0F);
 
                 // Also advance the buffer (for future backreferences)
-                std::memset(buffer + bufPos, 0, emit);
+                std::memset(buffer.data() + bufPos, 0, emit);
                 bufPos += emit;
                 inPos += emit;
                 zeros -= emit;
@@ -572,13 +564,6 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
         literalBuf.push_back(input[inPos]);
         buffer[bufPos++] = input[inPos];
         inPos++;
-
-        // Check buffer overflow
-        if (bufPos >= BUFFER_SIZE)
-        {
-            NS_LOG_WARN("GHC: Compression buffer overflow");
-            return 0;
-        }
     }
 
     // Flush remaining literals

@@ -79,11 +79,6 @@ class SixLowPanGhcEngine
     static constexpr uint32_t DICTIONARY_SIZE = 48;
 
     /**
-     * @brief Maximum decompressed output size (IPv6 minimum MTU).
-     */
-    static constexpr uint32_t MAX_OUTPUT_SIZE = 1280;
-
-    /**
      * @brief Decompress a GHC-compressed byte stream.
      *
      * @param [in] srcAddr   Source IPv6 address for dictionary initialization.
