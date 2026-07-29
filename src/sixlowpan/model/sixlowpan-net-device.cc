@@ -3728,14 +3728,9 @@ SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     std::vector<uint8_t> rawIcmpv6(packetSize);
     packet->CopyData(rawIcmpv6.data(), packetSize);
 
-    // GHC-compress the entire ICMPv6 datagram. We emit STOP_CODE so the
-    // receiver's Deserialize can find the end of the bytecode stream
-    // without depending on the buffer end. Without a STOP_CODE, link-
-    // layer padding (e.g. CSMA min-frame zero pad) extends the buffer
-    // beyond the GHC bytes and the strict PacketMetadata size check
-    // rejects RemoveHeader. RFC 7400 section 3 explicitly permits the
-    // STOP_CODE termination as an alternative to packet-boundary
-    // termination, so this stays spec-compliant.
+    // GHC-compress the entire ICMPv6 datagram. The bytecode stream ends at
+    // the packet boundary (RFC 7400 Section 3); no Stop Code is needed
+    // since ICMPv6 is the last header and nothing follows the blob.
     std::vector<uint8_t> compressed(packetSize);
     const uint32_t compressedLen = SixLowPanGhcEngine::Compress(srcAddress,
                                                                 dstAddress,
@@ -3743,7 +3738,7 @@ SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
                                                                 packetSize,
                                                                 compressed.data(),
                                                                 packetSize,
-                                                                /* emitStopCode = */ true);
+                                                                /* emitStopCode = */ false);
 
     if (compressedLen == 0 || compressedLen >= packetSize)
     {
@@ -3836,17 +3831,19 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
 {
     NS_LOG_FUNCTION(this << *packet);
 
+    // ICMPv6 is the last header: the blob extends to the end of the packet
+    // (RFC 7400 Section 3), so use the sized RemoveHeader variant.
     SixLowPanGhcIcmpv6 encoding;
-    uint32_t ret [[maybe_unused]] = packet->RemoveHeader(encoding);
+    uint32_t ret [[maybe_unused]] = packet->RemoveHeader(encoding, packet->GetSize());
     NS_LOG_DEBUG("GHC ICMPv6: removed " << ret << " bytes");
 
     // Get compressed blob
     uint8_t compressed[256];
     const uint32_t compressedLen = encoding.CopyBlob(compressed, 256);
 
-    // Decompress using GHC engine; useStopCode=true matches the
-    // emitStopCode=true used on the compress side (see comment in
-    // CompressLowPanGhcIcmpv6 above).
+    // Decompress using GHC engine. Our compressor terminates at the packet
+    // boundary, but accept a Stop Code too for interoperability with
+    // implementations that emit one.
     std::vector<uint8_t> decompressed(GetMtu());
     const uint32_t decompressedLen = SixLowPanGhcEngine::Decompress(srcAddress,
                                                                     dstAddress,
@@ -3860,14 +3857,6 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     {
         NS_LOG_WARN("GHC: ICMPv6 decompression failed (len=" << decompressedLen << ")");
         return;
-    }
-
-    // Drop any trailing link-layer padding (e.g. CSMA min-frame zero
-    // pad) that may have survived past the GHC blob. The decompressed
-    // ICMPv6 stream must be the only thing remaining in the packet.
-    if (packet->GetSize() > 0)
-    {
-        packet->RemoveAtEnd(packet->GetSize());
     }
 
     // The receiver's upper-layer ICMPv6 stack uses Packet::RemoveHeader

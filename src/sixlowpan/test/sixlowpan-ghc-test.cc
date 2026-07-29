@@ -411,7 +411,7 @@ SixlowpanGhcHeaderTest::DoRun()
         original.Serialize(buf.Begin());
 
         SixLowPanGhcIcmpv6 decoded;
-        decoded.Deserialize(buf.Begin());
+        decoded.Deserialize(buf.Begin(), buf.End());
 
         NS_TEST_ASSERT_MSG_EQ(decoded.GetBlobLength(), 6u, "Blob length must match");
         NS_TEST_ASSERT_MSG_EQ(decoded.GetNhcDispatchType(),

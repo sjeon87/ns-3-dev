@@ -545,6 +545,20 @@ class SixLowPanGhcIcmpv6 : public Header
     uint32_t Deserialize(Buffer::Iterator start) override;
 
     /**
+     * @brief Deserialize the header from the given buffer region.
+     *
+     * The GHC ICMPv6 wire format has no length field: the bytecode blob
+     * extends to the end of the packet (RFC 7400 Section 3). This
+     * variable-size variant must be used, through
+     * Packet::RemoveHeader(header, size).
+     *
+     * @param [in] start Start of the header.
+     * @param [in] end   End of the blob (end of the packet).
+     * @return Bytes consumed.
+     */
+    uint32_t Deserialize(Buffer::Iterator start, Buffer::Iterator end) override;
+
+    /**
      * @brief Get the NhcDispatch type.
      * @return The NhcDispatch type (LOWPAN_GHC_ICMPV6).
      */
