@@ -1216,10 +1216,21 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
             {
                 // CanCompressLowPanNhc(ICMPV6) is only true when m_compressionType == GHC,
                 // so the check here would be redundant.
-                iphcHeader.SetNh(true);
-                size += CompressLowPanGhcIcmpv6(packet,
-                                                ipHeader.GetSource(),
-                                                ipHeader.GetDestination());
+                uint32_t sizeGhc = CompressLowPanGhcIcmpv6(packet,
+                                                           ipHeader.GetSource(),
+                                                           ipHeader.GetDestination());
+                if (sizeGhc)
+                {
+                    iphcHeader.SetNh(true);
+                    size += sizeGhc;
+                }
+                else
+                {
+                    // GHC not beneficial (or blob limit exceeded):
+                    // carry the ICMPv6 message uncompressed.
+                    iphcHeader.SetNh(false);
+                    iphcHeader.SetNextHeader(nextHeader);
+                }
             }
             else if (nextHeader == Ipv6Header::IPV6_IPV6)
             {
@@ -3471,7 +3482,18 @@ SixLowPanNetDevice::CompressLowPanGhcNhc(Ptr<Packet> packet,
         }
         else if (nextHeader == Ipv6Header::IPV6_ICMPV6)
         {
-            size += CompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+            uint32_t sizeGhc = CompressLowPanGhcIcmpv6(packet, srcAddress, dstAddress);
+            if (sizeGhc)
+            {
+                size += sizeGhc;
+            }
+            else
+            {
+                // GHC not beneficial (or blob limit exceeded):
+                // carry the ICMPv6 message uncompressed.
+                ghcHeader.SetNh(false);
+                ghcHeader.SetNextHeader(nextHeader);
+            }
         }
         else if (nextHeader == Ipv6Header::IPV6_IPV6)
         {
