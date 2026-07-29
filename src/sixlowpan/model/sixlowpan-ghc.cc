@@ -107,7 +107,7 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
                                uint32_t outputMaxLen,
                                bool useStopCode)
 {
-    NS_LOG_FUNCTION_NOARGS();
+    NS_LOG_FUNCTION(srcAddr << dstAddr << compressedLen << outputMaxLen << useStopCode);
 
     // Allocate decompression buffer: dictionary + output space
     // Maximum buffer = dictionary(48) + MTU(1280)
@@ -442,7 +442,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
                              uint32_t outputMaxLen,
                              bool emitStopCode)
 {
-    NS_LOG_FUNCTION_NOARGS();
+    NS_LOG_FUNCTION(srcAddr << dstAddr << inputLen << outputMaxLen << emitStopCode);
 
     if (inputLen == 0)
     {
