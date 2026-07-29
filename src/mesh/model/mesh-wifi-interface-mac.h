@@ -131,12 +131,6 @@ class MeshWifiInterfaceMac : public WifiMac
      * @returns the frequency channel
      */
     uint16_t GetFrequencyChannel() const;
-    /**
-     * Switch frequency channel.
-     *
-     * @param new_id New ID.
-     */
-    void SwitchFrequencyChannel(uint16_t new_id);
 
     /**
      * To be used by plugins sending management frames.
