@@ -79,6 +79,26 @@ class SixLowPanGhcEngine
     static constexpr uint32_t DICTIONARY_SIZE = 48;
 
     /**
+     * @brief Maximum bytes copied by one 0kkkkkkk literal bytecode.
+     *
+     * k is in [1, 95]; values 96-127 are reserved (RFC 7400 Section 3).
+     */
+    static constexpr uint32_t MAX_LITERAL_RUN = 95;
+
+    /**
+     * @brief Maximum zeros inserted by one 1000nnnn bytecode: n+2 with n <= 15.
+     */
+    static constexpr uint32_t MAX_ZERO_RUN = 17;
+
+    /**
+     * @brief Maximum copy length of one 11nnnkkk backreference.
+     *
+     * n = nnn (max 7) + na (max 8 from one extended-args byte) + 2 = 17.
+     * Longer repeats become consecutive backreferences.
+     */
+    static constexpr uint32_t MAX_BACKREF_LEN = 17;
+
+    /**
      * @brief Decompress a GHC-compressed byte stream.
      *
      * @param [in] srcAddr   Source IPv6 address for dictionary initialization.
@@ -298,6 +318,11 @@ class SixLowPanGhcExtension : public Header
     bool GetNh() const;
 
     /**
+     * @brief Maximum blob size: the blob length field is 8 bits.
+     */
+    static constexpr uint32_t MAX_BLOB_SIZE = 255;
+
+    /**
      * @brief Set the GHC-compressed bytecode blob.
      * @param [in] blob  Buffer holding compressed bytecodes.
      * @param [in] size  Blob length.
@@ -319,10 +344,10 @@ class SixLowPanGhcExtension : public Header
     uint32_t GetBlobLength() const;
 
   private:
-    uint8_t m_nhcByte;    //!< NHC header byte: 1011EID[NH]
-    uint8_t m_nextHeader; //!< Next Header value (if NH=0)
-    uint8_t m_blobLength; //!< Length of GHC compressed data
-    uint8_t m_blob[256];  //!< GHC compressed bytecodes
+    uint8_t m_nhcByte;                 //!< NHC header byte: 1011EID[NH]
+    uint8_t m_nextHeader;              //!< Next Header value (if NH=0)
+    uint8_t m_blobLength;              //!< Length of GHC compressed data
+    uint8_t m_blob[MAX_BLOB_SIZE + 1]; //!< GHC compressed bytecodes
 
     /**
      * @brief Base NHC byte pattern for GHC extension: 10110000 = 0xB0.
@@ -526,6 +551,11 @@ class SixLowPanGhcIcmpv6 : public Header
     SixLowPanDispatch::NhcDispatch_e GetNhcDispatchType() const;
 
     /**
+     * @brief Maximum blob size: the blob length field is 8 bits.
+     */
+    static constexpr uint32_t MAX_BLOB_SIZE = 255;
+
+    /**
      * @brief Set the GHC-compressed bytecode blob for the ICMPv6 body.
      * @param [in] blob  Buffer holding compressed bytecodes.
      * @param [in] size  Blob length.
@@ -549,7 +579,7 @@ class SixLowPanGhcIcmpv6 : public Header
   private:
     static constexpr uint8_t GHC_ICMPV6_NHC = 0xDF; //!< Fixed: 11011111
     uint8_t m_blobLength;                           //!< Length of GHC compressed ICMPv6 body
-    uint8_t m_blob[256];                            //!< GHC compressed bytecodes
+    uint8_t m_blob[MAX_BLOB_SIZE + 1];              //!< GHC compressed bytecodes
 };
 
 /**

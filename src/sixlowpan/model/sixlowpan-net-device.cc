@@ -3751,9 +3751,9 @@ SixLowPanNetDevice::CompressLowPanGhcIcmpv6(Ptr<Packet> packet,
         return 0;
     }
 
-    // The NHC blob length field is 8 bits, so bytecode streams longer than
-    // 255 octets cannot be carried; fall back to the uncompressed path.
-    if (compressedLen > 255)
+    // Bytecode streams longer than the 8-bit blob length field cannot be
+    // carried; fall back to the uncompressed path.
+    if (compressedLen > SixLowPanGhcIcmpv6::MAX_BLOB_SIZE)
     {
         NS_LOG_DEBUG("GHC: ICMPv6 compressed size " << compressedLen << " exceeds blob limit");
         return 0;

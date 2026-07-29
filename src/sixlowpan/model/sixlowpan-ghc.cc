@@ -137,9 +137,9 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
                 // No-op
                 break;
             }
-            if (k >= 96)
+            if (k > MAX_LITERAL_RUN)
             {
-                NS_LOG_WARN("GHC: Literal count k=" << k << " >= 96, reserved");
+                NS_LOG_WARN("GHC: Literal count k=" << k << " is reserved");
                 return 0;
             }
             if (inputPos + k > compressedLen)
@@ -238,7 +238,7 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
         }
 
         case GhcBytecodeType::RESERVED:
-            NS_LOG_WARN("GHC: Reserved bytecode 0x" << std::hex << static_cast<uint32_t>(codeByte));
+            NS_LOG_WARN("GHC: Reserved bytecode 0x" << std::hex << +codeByte);
             return 0;
         }
     }
@@ -305,10 +305,7 @@ SixLowPanGhcEngine::FindLongestMatch(const uint8_t* buffer,
     // header-scale data, so the O(window * matchLen) cost is negligible and
     // no hash chains or suffix structures are needed.
 
-    // Maximum single-backref copy length: n = nnn(7) + na(8, one extended-args
-    // byte) + 2 = 17. Longer repeats simply become consecutive backrefs on the
-    // following search rounds.
-    uint32_t maxMatchLen = std::min<uint32_t>(inputRemaining, 17);
+    uint32_t maxMatchLen = std::min<uint32_t>(inputRemaining, MAX_BACKREF_LEN);
 
     // Search the whole buffer: extended-args bytes let a backref address any
     // offset (each one adds up to 120), so the dictionary at the start of the
@@ -477,9 +474,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
     auto flushLiterals = [&]() -> bool {
         while (!literalBuf.empty())
         {
-            // 0kkkkkkk literal copy: k in [1, 95]; 96-127 are reserved
-            // (RFC 7400 Section 3).
-            uint32_t chunk = std::min<uint32_t>(literalBuf.size(), 95);
+            uint32_t chunk = std::min<uint32_t>(literalBuf.size(), MAX_LITERAL_RUN);
 
             // Need 1 byte (count) + chunk bytes (data)
             if (outPos + 1 + chunk > outputMaxLen)
@@ -554,8 +549,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
             // Emit zero insertion instructions
             while (zeros >= 2)
             {
-                // 1000nnnn inserts n+2 zeros with n <= 15: 17 max per opcode
-                uint32_t emit = std::min<uint32_t>(zeros, 17);
+                uint32_t emit = std::min<uint32_t>(zeros, MAX_ZERO_RUN);
                 if (outPos + 1 > outputMaxLen)
                 {
                     return 0;
@@ -642,8 +636,8 @@ SixLowPanGhcExtension::GetInstanceTypeId() const
 void
 SixLowPanGhcExtension::Print(std::ostream& os) const
 {
-    os << "GHC Ext Header: EID=" << static_cast<uint32_t>(GetEid()) << " NH=" << GetNh() << " blob["
-       << static_cast<uint32_t>(m_blobLength) << "]";
+    os << "GHC Ext Header: EID=" << GetEid() << " NH=" << GetNh() << " blob[" << +m_blobLength
+       << "]";
 }
 
 uint32_t
@@ -758,8 +752,7 @@ SixLowPanGhcExtension::GetNh() const
 void
 SixLowPanGhcExtension::SetBlob(const uint8_t* blob, uint32_t size)
 {
-    // The blob length field is 8 bits
-    NS_ASSERT(size <= 255);
+    NS_ASSERT(size <= MAX_BLOB_SIZE);
     m_blobLength = size;
     std::memcpy(m_blob, blob, size);
 }
@@ -819,7 +812,7 @@ void
 SixLowPanGhcUdp::Print(std::ostream& os) const
 {
     os << "GHC UDP: src=" << m_srcPort << " dst=" << m_dstPort << " C=" << GetC()
-       << " P=" << static_cast<uint32_t>(GetPorts());
+       << " P=" << GetPorts();
 }
 
 uint32_t
@@ -1025,7 +1018,7 @@ SixLowPanGhcIcmpv6::GetInstanceTypeId() const
 void
 SixLowPanGhcIcmpv6::Print(std::ostream& os) const
 {
-    os << "GHC ICMPv6: blob[" << static_cast<uint32_t>(m_blobLength) << "]";
+    os << "GHC ICMPv6: blob[" << +m_blobLength << "]";
 }
 
 uint32_t
@@ -1099,8 +1092,7 @@ SixLowPanGhcIcmpv6::GetNhcDispatchType() const
 void
 SixLowPanGhcIcmpv6::SetBlob(const uint8_t* blob, uint32_t size)
 {
-    // The blob length field is 8 bits
-    NS_ASSERT(size <= 255);
+    NS_ASSERT(size <= MAX_BLOB_SIZE);
     m_blobLength = size;
     std::memcpy(m_blob, blob, size);
 }
