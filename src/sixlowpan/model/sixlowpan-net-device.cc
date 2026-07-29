@@ -3793,8 +3793,13 @@ template <typename T>
 static uint32_t
 GhcIcmpHdrSize(const uint8_t* data, uint32_t len)
 {
+    // Zero-pad the staging buffer so Deserialize cannot read past the end
+    // of a truncated input; the largest ICMPv6 base header is 40 bytes
+    // (Redirection). The caller rejects results larger than the input.
+    const uint32_t stagingLen = std::max(len, 64u);
     Buffer staging;
-    staging.AddAtStart(len);
+    staging.AddAtStart(stagingLen);
+    staging.Begin().WriteU8(0, stagingLen);
     staging.Begin().Write(data, len);
 
     T hdr;
@@ -3890,6 +3895,16 @@ SixLowPanNetDevice::DecompressLowPanGhcIcmpv6(Ptr<Packet> packet,
     default:
         NS_LOG_ERROR("GHC: unhandled ICMPv6 type " << int(icmpType) << " - emitting raw bytes");
         packet->AddAtEnd(Create<Packet>(decompressed.data(), decompressedLen));
+        return;
+    }
+
+    // A truncated message whose typed header is larger than the available
+    // data cannot be reconstructed; drop it instead of underflowing the
+    // trailing-length math below.
+    if (headerLen > decompressedLen)
+    {
+        NS_LOG_WARN("GHC: ICMPv6 header (" << headerLen << " bytes) exceeds decompressed data ("
+                                           << decompressedLen << " bytes)");
         return;
     }
 
