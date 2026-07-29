@@ -119,8 +119,9 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
     uint32_t inputPos = 0;                // Current read position in compressed
     uint32_t sa = 0;                      // Start adjust accumulator
     uint32_t na = 0;                      // Number adjust accumulator
+    bool stopCodeFound = false;
 
-    while (inputPos < compressedLen)
+    while (inputPos < compressedLen && !stopCodeFound)
     {
         uint8_t codeByte = compressed[inputPos++];
         GhcBytecodeType type = ClassifyBytecode(codeByte);
@@ -175,16 +176,14 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
 
         case GhcBytecodeType::STOP_CODE: {
             // 10010000: terminate decompression (extension headers only)
-            if (useStopCode)
-            {
-                NS_LOG_DEBUG("GHC: Stop code encountered");
-                goto done;
-            }
-            else
+            if (!useStopCode)
             {
                 NS_LOG_WARN("GHC: Unexpected stop code in non-extension context");
                 return 0;
             }
+            NS_LOG_DEBUG("GHC: Stop code encountered");
+            stopCodeFound = true;
+            break;
         }
 
         case GhcBytecodeType::EXTENDED_ARGS: {
@@ -239,12 +238,11 @@ SixLowPanGhcEngine::Decompress(const Ipv6Address& srcAddr,
         }
 
         case GhcBytecodeType::RESERVED:
-            NS_LOG_WARN("GHC: Reserved bytecode 0x" << std::hex << (uint32_t)codeByte);
+            NS_LOG_WARN("GHC: Reserved bytecode 0x" << std::hex << static_cast<uint32_t>(codeByte));
             return 0;
         }
     }
 
-done:
     // Output is everything after the dictionary. The per-bytecode buffer
     // checks above already guarantee decompressedLen <= outputMaxLen.
     uint32_t decompressedLen = outputPos - DICTIONARY_SIZE;
@@ -268,6 +266,29 @@ SixLowPanGhcEngine::CountZeros(const uint8_t* input, uint32_t remaining)
     return count;
 }
 
+uint32_t
+SixLowPanGhcEngine::CountBackrefExtArgBytes(uint32_t matchLength, uint32_t matchOffset)
+{
+    // Backref encoding 11nnnkkk: n = na + nnn + 2, s = kkk + sa + n, with
+    // nnn and kkk in [0,7]. Work out the extended-args accumulators needed,
+    // rounded up to their unit of 8 (see EmitBackref).
+    uint32_t nBase = matchLength - 2;
+    uint32_t kBase = matchOffset - matchLength;
+
+    uint32_t na = (nBase > 7) ? ((nBase - 7 + 7) / 8) * 8 : 0;
+    uint32_t sa = (kBase > 7) ? ((kBase - 7 + 7) / 8) * 8 : 0;
+
+    // Each 101nssss byte carries up to ssss(15)*8 = 120 of sa and 8 of na.
+    uint32_t bytes = 0;
+    while (sa > 0 || na > 0)
+    {
+        bytes++;
+        sa -= std::min<uint32_t>(sa, 15 * 8);
+        na -= std::min<uint32_t>(na, 8);
+    }
+    return bytes;
+}
+
 bool
 SixLowPanGhcEngine::FindLongestMatch(const uint8_t* buffer,
                                      uint32_t bufLen,
@@ -281,18 +302,20 @@ SixLowPanGhcEngine::FindLongestMatch(const uint8_t* buffer,
 
     // Simple exhaustive (brute-force) LZ77 search: for every backward distance
     // we compare against the input and keep the longest match. GHC operates on
-    // tiny sub-MTU packets, so the O(window * matchLen) cost is negligible and
+    // header-scale data, so the O(window * matchLen) cost is negligible and
     // no hash chains or suffix structures are needed.
 
-    // Maximum copy length with extended args: na_max(8) + nnn_max(7) + 2 = 17.
-    // Maximum window to search backward: 256 bytes covers the dictionary and
-    // recent output.
-    uint32_t maxSearchBack = std::min<uint32_t>(bufLen, 256);
-
-    // Maximum match length we'll encode (keep encoding overhead reasonable).
+    // Maximum single-backref copy length: n = nnn(7) + na(8, one extended-args
+    // byte) + 2 = 17. Longer repeats simply become consecutive backrefs on the
+    // following search rounds.
     uint32_t maxMatchLen = std::min<uint32_t>(inputRemaining, 17);
 
-    for (uint32_t back = 2; back <= maxSearchBack; back++)
+    // Search the whole buffer: extended-args bytes let a backref address any
+    // offset (each one adds up to 120), so the dictionary at the start of the
+    // buffer stays reachable even for long payloads. The cost check below
+    // rejects matches whose extended-args overhead would exceed the bytes
+    // they save.
+    for (uint32_t back = 2; back <= bufLen; back++)
     {
         uint32_t searchPos = bufLen - back;
         uint32_t len = 0;
@@ -302,15 +325,28 @@ SixLowPanGhcEngine::FindLongestMatch(const uint8_t* buffer,
             len++;
         }
 
-        if (len >= 2 && len > matchLength)
-        {
-            matchLength = len;
-            matchOffset = back;
+        // The encoding requires offset >= length; clamp overlapping matches
+        // to what can actually be emitted.
+        len = std::min(len, back);
 
-            if (matchLength == maxMatchLen)
-            {
-                break; // Can't do better
-            }
+        if (len < 2 || len <= matchLength)
+        {
+            continue;
+        }
+
+        // Emit a backref only when it is no larger than the literal bytes
+        // it replaces: 1 opcode byte + extended-args bytes vs len bytes.
+        if (1 + CountBackrefExtArgBytes(len, back) > len)
+        {
+            continue;
+        }
+
+        matchLength = len;
+        matchOffset = back;
+
+        if (matchLength == maxMatchLen)
+        {
+            break; // Can't do better
         }
     }
 
@@ -374,32 +410,16 @@ SixLowPanGhcEngine::EmitBackref(uint8_t* output,
         return false;
     }
 
-    // Emit extended argument bytes for sa and na
-    uint32_t extArgBytes = 0;
-
-    // We need to emit extended arg bytes to build up sa and na
-    uint32_t remainingSa = sa;
-    uint32_t remainingNa = na;
-
-    // Count how many extended arg bytes we need
-    while (remainingSa > 0 || remainingNa > 0)
-    {
-        extArgBytes++;
-        uint32_t sChunk = std::min<uint32_t>(remainingSa, 15 * 8);
-        uint32_t nChunk = std::min<uint32_t>(remainingNa, 8);
-        remainingSa -= std::min(sChunk, remainingSa);
-        remainingNa -= std::min(nChunk, remainingNa);
-    }
-
-    // Check output space: extArgBytes + 1 (backref byte)
+    // Check output space: extended-args bytes + 1 (backref byte)
+    uint32_t extArgBytes = CountBackrefExtArgBytes(matchLength, matchOffset);
     if (outPos + extArgBytes + 1 > outputMaxLen)
     {
         return false;
     }
 
     // Emit extended args
-    remainingSa = sa;
-    remainingNa = na;
+    uint32_t remainingSa = sa;
+    uint32_t remainingNa = na;
 
     while (remainingSa > 0 || remainingNa > 0)
     {
@@ -457,6 +477,8 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
     auto flushLiterals = [&]() -> bool {
         while (!literalBuf.empty())
         {
+            // 0kkkkkkk literal copy: k in [1, 95]; 96-127 are reserved
+            // (RFC 7400 Section 3).
             uint32_t chunk = std::min<uint32_t>(literalBuf.size(), 95);
 
             // Need 1 byte (count) + chunk bytes (data)
@@ -495,16 +517,6 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
                                           inputLen - inPos,
                                           matchOffset,
                                           matchLength);
-        // GHC backreference encoding requires offset >= length; clamp
-        // overlapping matches from the LZ77 match finder.
-        if (haveMatch && matchOffset < matchLength)
-        {
-            matchLength = matchOffset;
-        }
-        if (matchLength < 2)
-        {
-            haveMatch = false;
-        }
 
         // Prefer BACKREF if it strictly covers more input than ZERO_INSERT
         // (or if no zero run is available). Ties go to ZERO_INSERT since its
@@ -542,7 +554,8 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
             // Emit zero insertion instructions
             while (zeros >= 2)
             {
-                uint32_t emit = std::min<uint32_t>(zeros, 17); // Max per instruction
+                // 1000nnnn inserts n+2 zeros with n <= 15: 17 max per opcode
+                uint32_t emit = std::min<uint32_t>(zeros, 17);
                 if (outPos + 1 > outputMaxLen)
                 {
                     return 0;
@@ -591,7 +604,7 @@ SixLowPanGhcEngine::Compress(const Ipv6Address& srcAddr,
     }
 
     NS_LOG_DEBUG("GHC: Compressed " << inputLen << " bytes to " << outPos << " bytes (ratio "
-                                    << (float)inputLen / outPos << "x)");
+                                    << static_cast<float>(inputLen) / outPos << "x)");
 
     return outPos;
 }
@@ -629,8 +642,8 @@ SixLowPanGhcExtension::GetInstanceTypeId() const
 void
 SixLowPanGhcExtension::Print(std::ostream& os) const
 {
-    os << "GHC Ext Header: EID=" << (uint32_t)GetEid() << " NH=" << GetNh() << " blob["
-       << (uint32_t)m_blobLength << "]";
+    os << "GHC Ext Header: EID=" << static_cast<uint32_t>(GetEid()) << " NH=" << GetNh() << " blob["
+       << static_cast<uint32_t>(m_blobLength) << "]";
 }
 
 uint32_t
@@ -745,6 +758,7 @@ SixLowPanGhcExtension::GetNh() const
 void
 SixLowPanGhcExtension::SetBlob(const uint8_t* blob, uint32_t size)
 {
+    // The blob length field is 8 bits
     NS_ASSERT(size <= 255);
     m_blobLength = size;
     std::memcpy(m_blob, blob, size);
@@ -805,7 +819,7 @@ void
 SixLowPanGhcUdp::Print(std::ostream& os) const
 {
     os << "GHC UDP: src=" << m_srcPort << " dst=" << m_dstPort << " C=" << GetC()
-       << " P=" << (uint32_t)GetPorts();
+       << " P=" << static_cast<uint32_t>(GetPorts());
 }
 
 uint32_t
@@ -1011,7 +1025,7 @@ SixLowPanGhcIcmpv6::GetInstanceTypeId() const
 void
 SixLowPanGhcIcmpv6::Print(std::ostream& os) const
 {
-    os << "GHC ICMPv6: blob[" << (uint32_t)m_blobLength << "]";
+    os << "GHC ICMPv6: blob[" << static_cast<uint32_t>(m_blobLength) << "]";
 }
 
 uint32_t
@@ -1085,6 +1099,7 @@ SixLowPanGhcIcmpv6::GetNhcDispatchType() const
 void
 SixLowPanGhcIcmpv6::SetBlob(const uint8_t* blob, uint32_t size)
 {
+    // The blob length field is 8 bits
     NS_ASSERT(size <= 255);
     m_blobLength = size;
     std::memcpy(m_blob, blob, size);

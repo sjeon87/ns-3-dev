@@ -286,32 +286,32 @@ SixlowpanGhcEngineTest::DoRun()
 
     // Subtest 6: Bytecode classification
     {
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0x00),
-                              (int)GhcBytecodeType::LITERAL,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0x00)),
+                              static_cast<int>(GhcBytecodeType::LITERAL),
                               "0x00 should be LITERAL");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0x7F),
-                              (int)GhcBytecodeType::LITERAL,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0x7F)),
+                              static_cast<int>(GhcBytecodeType::LITERAL),
                               "0x7F should be LITERAL");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0x80),
-                              (int)GhcBytecodeType::ZERO_INSERT,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0x80)),
+                              static_cast<int>(GhcBytecodeType::ZERO_INSERT),
                               "0x80 should be ZERO_INSERT");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0x8F),
-                              (int)GhcBytecodeType::ZERO_INSERT,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0x8F)),
+                              static_cast<int>(GhcBytecodeType::ZERO_INSERT),
                               "0x8F should be ZERO_INSERT");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0x90),
-                              (int)GhcBytecodeType::STOP_CODE,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0x90)),
+                              static_cast<int>(GhcBytecodeType::STOP_CODE),
                               "0x90 should be STOP_CODE");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0xA0),
-                              (int)GhcBytecodeType::EXTENDED_ARGS,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0xA0)),
+                              static_cast<int>(GhcBytecodeType::EXTENDED_ARGS),
                               "0xA0 should be EXTENDED_ARGS");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0xBF),
-                              (int)GhcBytecodeType::EXTENDED_ARGS,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0xBF)),
+                              static_cast<int>(GhcBytecodeType::EXTENDED_ARGS),
                               "0xBF should be EXTENDED_ARGS");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0xC0),
-                              (int)GhcBytecodeType::BACKREF,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0xC0)),
+                              static_cast<int>(GhcBytecodeType::BACKREF),
                               "0xC0 should be BACKREF");
-        NS_TEST_ASSERT_MSG_EQ((int)SixLowPanGhcEngine::ClassifyBytecode(0xFF),
-                              (int)GhcBytecodeType::BACKREF,
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(SixLowPanGhcEngine::ClassifyBytecode(0xFF)),
+                              static_cast<int>(GhcBytecodeType::BACKREF),
                               "0xFF should be BACKREF");
     }
 }

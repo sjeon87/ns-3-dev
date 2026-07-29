@@ -144,6 +144,19 @@ class SixLowPanGhcEngine
                                const Ipv6Address& dstAddr);
 
     /**
+     * @brief Count the extended-args bytes a backreference encoding needs.
+     *
+     * Each 101nssss extended-args byte carries up to 15*8 = 120 of the
+     * start-adjust and 8 of the number-adjust accumulator (RFC 7400
+     * Section 3.2).
+     *
+     * @param [in] matchLength  Number of bytes to copy (>= 2).
+     * @param [in] matchOffset  Offset from current position (>= matchLength).
+     * @return Number of 101nssss bytes needed before the 11nnnkkk bytecode.
+     */
+    static uint32_t CountBackrefExtArgBytes(uint32_t matchLength, uint32_t matchOffset);
+
+    /**
      * @brief Find the longest match in the buffer for LZ77 compression.
      *
      * Searches backward from the current position for the longest
