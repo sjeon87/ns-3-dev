@@ -169,6 +169,7 @@ build_lib(
     test/error-model-test-suite.cc
     test/ipv6-address-test-suite.cc
     test/lollipop-counter-test.cc
+    test/network-traced-callback-typedef-test-suite.cc
     test/packet-metadata-test.cc
     test/packet-socket-apps-test-suite.cc
     test/packet-test-suite.cc
@@ -176,4 +177,5 @@ build_lib(
     test/pcap-file-test-suite.cc
     test/sequence-number-test-suite.cc
     test/test-data-rate.cc
+    test/traced-value-callback-typedef-test-suite.cc
 )
