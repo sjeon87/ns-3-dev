@@ -118,6 +118,31 @@ class SinkApplication : public Application
      */
     void HandleRead(Ptr<Socket> socket);
 
+    /**
+     * @brief Validate and peek SeqTsHeader from a received packet.
+     *
+     * This performs size and timestamp validation and asserts metadata consistency
+     * between the payload and packet metadata when the payload looks like a valid
+     * SeqTsHeader.
+     *
+     * @param p received packet
+     * @param header output SeqTsHeader (only valid if the method returns true)
+     * @return true when a valid SeqTsHeader was decoded, false otherwise
+     */
+    bool TryPeekValidSeqTsHeader(Ptr<const Packet> p, SeqTsHeader& header) const;
+
+    /**
+     * @brief Validate and peek SeqTsSizeHeader from a received packet.
+     *
+     * This performs packet size, timestamp, and payload size validation for stream-based
+     * sockets before the header is removed from the assembled byte stream.
+     *
+     * @param p received packet
+     * @param header output SeqTsSizeHeader (only valid if the method returns true)
+     * @return true when a valid SeqTsSizeHeader was decoded, false otherwise
+     */
+    bool TryPeekValidSeqTsSizeHeader(Ptr<const Packet> p, SeqTsSizeHeader& header) const;
+
   private:
     void StartApplication() override;
     void StopApplication() override;

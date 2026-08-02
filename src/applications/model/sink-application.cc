@@ -10,6 +10,7 @@
 
 #include "ns3/boolean.h"
 #include "ns3/log.h"
+#include "ns3/simulator.h"
 #include "ns3/socket.h"
 #include "ns3/uinteger.h"
 
@@ -19,6 +20,17 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("SinkApplication");
 
 NS_OBJECT_ENSURE_REGISTERED(SinkApplication);
+
+namespace
+{
+
+bool
+IsValidSeqTsTimestamp(const Time& ts)
+{
+    return ((ts <= Simulator::Now()) && (ts.IsStrictlyPositive()));
+}
+
+} // namespace
 
 TypeId
 SinkApplication::GetTypeId()
@@ -201,8 +213,7 @@ SinkApplication::ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
     SeqTsSizeHeader header;
     while ((buffer->GetSize() >= header.GetSerializedSize()))
     {
-        buffer->PeekHeader(header);
-        NS_ABORT_MSG_IF((header.GetSize() == 0),
+        NS_ABORT_MSG_IF(!TryPeekValidSeqTsSizeHeader(buffer, header),
                         "A SeqTsSizeHeader could not be found in the packet");
 
         if (buffer->GetSize() < header.GetSize())
@@ -221,6 +232,47 @@ SinkApplication::ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
     }
 }
 
+bool
+SinkApplication::TryPeekValidSeqTsHeader(Ptr<const Packet> p, SeqTsHeader& header) const
+{
+    if (p->GetSize() < header.GetSerializedSize())
+    {
+        return false;
+    }
+
+    p->PeekHeader(header);
+
+    if (!IsValidSeqTsTimestamp(header.GetTs()))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool
+SinkApplication::TryPeekValidSeqTsSizeHeader(Ptr<const Packet> p, SeqTsSizeHeader& header) const
+{
+    if (p->GetSize() < header.GetSerializedSize())
+    {
+        return false;
+    }
+
+    p->PeekHeader(header);
+
+    if (!IsValidSeqTsTimestamp(header.GetTs()))
+    {
+        return false;
+    }
+
+    if (header.GetSize() < header.GetSerializedSize())
+    {
+        return false;
+    }
+
+    return true;
+}
+
 void
 SinkApplication::ProcessSeqTsHeader(const Ptr<Packet>& p,
                                     const Address& from,
@@ -229,9 +281,7 @@ SinkApplication::ProcessSeqTsHeader(const Ptr<Packet>& p,
     NS_LOG_FUNCTION(this << p << from << localAddress);
 
     SeqTsHeader header;
-    p->PeekHeader(header);
-
-    if ((header.GetSeq() == 0) && (header.GetTs().IsZero()))
+    if (!TryPeekValidSeqTsHeader(p, header))
     {
         NS_LOG_WARN("SeqTsHeader not transmitted");
         return;
