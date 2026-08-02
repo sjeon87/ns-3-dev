@@ -140,8 +140,14 @@ UdpServer::ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& 
 
     NS_ASSERT_MSG(packet->GetSize() != 0, "Received empty packet.");
     const auto receivedSize = packet->GetSize();
+    m_received++;
+
     SeqTsHeader seqTs;
-    packet->RemoveHeader(seqTs);
+    if (!TryPeekValidSeqTsHeader(packet, seqTs))
+    {
+        return;
+    }
+
     const auto currentSequenceNumber = seqTs.GetSeq();
     if (InetSocketAddress::IsMatchingType(from))
     {
@@ -163,7 +169,6 @@ UdpServer::ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& 
     }
 
     m_lossCounter.NotifyReceived(currentSequenceNumber);
-    m_received++;
 }
 
 } // Namespace ns3

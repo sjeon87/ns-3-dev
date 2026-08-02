@@ -213,8 +213,11 @@ SinkApplication::ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
     SeqTsSizeHeader header;
     while ((buffer->GetSize() >= header.GetSerializedSize()))
     {
-        NS_ABORT_MSG_IF(!TryPeekValidSeqTsSizeHeader(buffer, header),
-                        "A SeqTsSizeHeader could not be found in the packet");
+        if (!TryPeekValidSeqTsSizeHeader(buffer, header))
+        {
+            NS_LOG_WARN("SeqTsHeader not transmitted");
+            break;
+        }
 
         if (buffer->GetSize() < header.GetSize())
         {
