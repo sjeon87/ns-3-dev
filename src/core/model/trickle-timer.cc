@@ -142,6 +142,13 @@ TrickleTimer::GetIntervalLeft() const
     return TimeStep(0);
 }
 
+bool
+TrickleTimer::IsRunning() const
+{
+    NS_LOG_FUNCTION(this);
+    return m_intervalExpiration.IsPending();
+}
+
 void
 TrickleTimer::Enable()
 {
@@ -165,8 +172,8 @@ TrickleTimer::Enable()
 
     m_counter = 0;
 
-    Time timerExpitation = m_uniRand->GetValue(0.5, 1) * m_currentInterval;
-    m_timerExpiration = Simulator::Schedule(timerExpitation, &TrickleTimer::TimerExpire, this);
+    Time timerExpiration = m_uniRand->GetValue(0.5, 1) * m_currentInterval;
+    m_timerExpiration = Simulator::Schedule(timerExpiration, &TrickleTimer::TimerExpire, this);
 }
 
 void
@@ -200,8 +207,8 @@ TrickleTimer::Reset()
 
     m_counter = 0;
 
-    Time timerExpitation = m_uniRand->GetValue(0.5, 1) * m_currentInterval;
-    m_timerExpiration = Simulator::Schedule(timerExpitation, &TrickleTimer::TimerExpire, this);
+    Time timerExpiration = m_uniRand->GetValue(0.5, 1) * m_currentInterval;
+    m_timerExpiration = Simulator::Schedule(timerExpiration, &TrickleTimer::TimerExpire, this);
 }
 
 void
@@ -242,8 +249,8 @@ TrickleTimer::IntervalExpire()
 
     m_counter = 0;
 
-    Time timerExpitation = m_uniRand->GetValue(0.5, 1) * m_currentInterval;
-    m_timerExpiration = Simulator::Schedule(timerExpitation, &TrickleTimer::TimerExpire, this);
+    Time timerExpiration = m_uniRand->GetValue(0.5, 1) * m_currentInterval;
+    m_timerExpiration = Simulator::Schedule(timerExpiration, &TrickleTimer::TimerExpire, this);
 }
 
 } // namespace ns3

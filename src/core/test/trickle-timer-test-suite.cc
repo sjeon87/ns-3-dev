@@ -68,6 +68,12 @@ class TrickleTimerTestCase : public TestCase
     void TestRedundancy(Time unit);
 
     /**
+     * Test the IsRunning state across the timer lifecycle
+     * @param unit Minimum interval
+     */
+    void TestIsRunning(Time unit);
+
+    /**
      * Inject in the timer a consistent event
      * @param interval Interval
      * @param tricklePtr Pointer to the TrickleTimer
@@ -186,11 +192,44 @@ TrickleTimerTestCase::ConsistentEvent(Time interval, TrickleTimer* tricklePtr)
 }
 
 void
+TrickleTimerTestCase::TestIsRunning(Time unit)
+{
+    m_expiredTimes.clear();
+    m_enableDataCollection = false;
+
+    TrickleTimer trickle(unit, 4, 1);
+    trickle.SetFunction(&TrickleTimerTestCase::ExpireTimer, this);
+
+    NS_TEST_EXPECT_MSG_EQ(trickle.IsRunning(), false, "Timer must not run before Enable");
+
+    trickle.Enable();
+    NS_TEST_EXPECT_MSG_EQ(trickle.IsRunning(), true, "Timer must run after Enable");
+
+    trickle.Reset();
+    NS_TEST_EXPECT_MSG_EQ(trickle.IsRunning(), true, "Timer must run after Reset");
+
+    // The in-interval transmit event fires within the first interval; the
+    // timer must still be running after it, until Stop is called.
+    Simulator::Schedule(unit * 2, [this, &trickle]() {
+        NS_TEST_EXPECT_MSG_EQ(trickle.IsRunning(),
+                              true,
+                              "Timer must keep running across interval boundaries");
+        trickle.Stop();
+        NS_TEST_EXPECT_MSG_EQ(trickle.IsRunning(), false, "Timer must not run after Stop");
+    });
+
+    Simulator::Stop(unit * 10);
+    Simulator::Run();
+    Simulator::Destroy();
+}
+
+void
 TrickleTimerTestCase::DoRun()
 {
     TestSteadyState(Time(1));
     TestSteadyState(Seconds(1));
     TestRedundancy(Seconds(1));
+    TestIsRunning(Seconds(1));
 }
 
 /**

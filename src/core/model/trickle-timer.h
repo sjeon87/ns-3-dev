@@ -152,6 +152,18 @@ class TrickleTimer
     Time GetIntervalLeft() const;
 
     /**
+     * @brief Check if the timer is running.
+     *
+     * The check is done on the interval expiration event, since the
+     * in-interval transmit event is already spent once the transmit
+     * point of the current interval has passed.
+     *
+     * @returns True if the timer is running (i.e., it has been enabled
+     *          or reset, and not stopped).
+     */
+    bool IsRunning() const;
+
+    /**
      * @brief Enable the timer.
      */
     void Enable();
