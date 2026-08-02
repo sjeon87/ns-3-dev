@@ -52,11 +52,7 @@ SixLowPanTrickleSuppression::GetTypeId()
 }
 
 SixLowPanTrickleSuppression::SixLowPanTrickleSuppression()
-    : m_minInterval(MilliSeconds(10)),
-      m_doublings(4),
-      m_redundancy(1),
-      m_maxForwardingDelay(MilliSeconds(500)),
-      m_timerRunning(false)
+    : m_timerRunning(false)
 {
     NS_LOG_FUNCTION(this);
     m_timer.SetFunction(&SixLowPanTrickleSuppression::Transmit, this);

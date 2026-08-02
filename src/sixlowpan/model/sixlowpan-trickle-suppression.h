@@ -28,7 +28,7 @@ namespace ns3
  * Where SixLowPanSimpleFlooding rebroadcasts every received packet
  * unconditionally, this strategy uses the Trickle algorithm to suppress
  * redundant rebroadcasts (the broadcast-storm problem) while preserving
- * coverage. A single Trickle timer governs how often this node transmits
+ * coverage. A single Trickle timer governs how often a node transmits
  * its pending forwards. The duplicate cache in the base class still
  * handles duplicate detection; this class only decides when, and whether,
  * to rebroadcast.
@@ -49,8 +49,12 @@ namespace ns3
  *
  *  - Transmit decision (\RFC{6206} Rule 4). When the timer fires it
  *    forwards the pending set only if fewer than @c k consistent events
- *    were heard in the interval (c < k). Otherwise it stays silent: enough
- *    neighbours have already covered the packets.
+ *    were heard in the interval (c < k). Otherwise the packet is not
+ *    forwarded.
+ *
+ *  - Suppressed packets. A packet suppressed at a firing stays in the
+ *    pending set: it may be forwarded at a later firing, and it is
+ *    discarded once it has waited MaxForwardingDelay in total.
  *
  *  - Reset on resolution. The timer is reset (restarted from the minimum
  *    interval) when the pending work is resolved: either after a successful
