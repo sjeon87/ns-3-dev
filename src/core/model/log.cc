@@ -11,6 +11,7 @@
 #include "environment-variable.h"
 #include "fatal-error.h"
 #include "nstime.h"
+#include "simulator.h"
 #include "string.h"
 
 #include <algorithm> // transform
@@ -123,14 +124,6 @@ static LogContextSource g_logContextSource = nullptr;
  * This is private to the logging implementation.
  */
 static bool g_logFilterConfigured = false;
-
-/**
- * @ingroup logging
- * The simulator context value indicating "no context", selected by `-1`
- * in a context filter.  Matches Simulator::NO_CONTEXT, which cannot be
- * referenced from here.
- */
-static constexpr uint32_t LOG_NO_CONTEXT = 0xffffffff;
 
 /**
  * @ingroup logging
@@ -621,7 +614,7 @@ ParseTimeWindow(const std::string& window)
     auto slash = window.find('/');
     if (slash == std::string::npos)
     {
-        NS_FATAL_ERROR("Invalid log time window \"" << window << "\": expected the form min/max");
+        NS_FATAL_ERROR("Invalid log time window \"" << window << "\": expected 'min/max'");
     }
     std::string minStr = window.substr(0, slash);
     std::string maxStr = window.substr(slash + 1);
@@ -683,7 +676,7 @@ ParseContextFilter(const std::string& contexts)
         {
             if (item == "-1")
             {
-                config.contexts.emplace_back(LOG_NO_CONTEXT, LOG_NO_CONTEXT);
+                config.contexts.emplace_back(Simulator::NO_CONTEXT, Simulator::NO_CONTEXT);
             }
             else if (item.size() > 1 && item.front() == '[' && item.back() == ']')
             {
@@ -693,7 +686,7 @@ ParseContextFilter(const std::string& contexts)
                 {
                     NS_FATAL_ERROR("Invalid context range \""
                                    << item << "\" in log context filter \"" << contexts
-                                   << "\": expected [min-max]");
+                                   << "\": expected '[min-max]'");
                 }
                 uint32_t min = ParseContextId(inner.substr(0, dash), contexts);
                 uint32_t max = ParseContextId(inner.substr(dash + 1), contexts);

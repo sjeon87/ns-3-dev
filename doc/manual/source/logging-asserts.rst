@@ -320,6 +320,16 @@ for all log components.  These are all equivalent:
 Be advised:  even the trivial ``scratch-simulator`` produces over
 46K lines of output with ``NS_LOG="***"``!
 
+One way to pare down voluminous logging output is to filter it
+downstream, for example with ``grep``.  With the time and node prefixes
+enabled, the output can be filtered by simulation time or by node id:
+
+.. sourcecode:: bash
+
+   # Keep only output from node 3
+   $ NS_LOG="PacketSink=level_info|prefix_all" ./ns3 run fifth 2>&1 | \
+       grep "^+[0-9.]*s 3 "
+
 
 Filtering by Time Window and Node Id
 ====================================

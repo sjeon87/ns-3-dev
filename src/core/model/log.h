@@ -341,7 +341,7 @@ class Time;
  *
  * @see LogSetFilterSources()
  */
-typedef Time (*LogTimeSource)();
+using LogTimeSource = Time (*)();
 
 /**
  * Function signature for a source of the current simulator context,
@@ -349,52 +349,51 @@ typedef Time (*LogTimeSource)();
  *
  * @see LogSetFilterSources()
  */
-typedef uint32_t (*LogContextSource)();
+using LogContextSource = uint32_t (*)();
 
+/**
+ * @name Log filtering
+ *
+ * Restrict all logging output to a simulation time window, and/or a set
+ * of simulator contexts (node ids).
+ *
+ * These filters apply globally, to all enabled log components, and take
+ * effect once the simulator implementation exists.  They are the same
+ * filters installed by the time window and `ContextId=` tokens of the
+ * \c NS_LOG environment variable.
+ * @{
+ */
 /**
  * Restrict all logging output to a simulation time window.
  *
  * Only log statements executing at simulation times between \c minTime
- * and \c maxTime (inclusive) are printed.  This is the same filter
- * installed by the `min/max` token of the NS_LOG environment variable.
- *
- * The filter applies to all enabled log components and takes effect once
- * the simulator implementation exists.
+ * and \c maxTime (inclusive) are printed.
  *
  * @param [in] minTime The lower bound (inclusive) of the time window.
  * @param [in] maxTime The upper bound (inclusive) of the time window.
  */
 void LogSetTimeWindow(const Time& minTime, const Time& maxTime);
-
 /**
- * Restrict all logging output to a simulation time window, given
- * as a string.
- *
- * The window has the form `min/max`, using any Time-parseable bounds,
- * e.g. "1.2s/1.5s".  Either bound (but not both) may be omitted for an
+ * Restrict all logging output to a simulation time window, given as a
+ * string of the form `min/max`, using any Time-parseable bounds, e.g.
+ * "1.2s/1.5s".  Either bound (but not both) may be omitted for an
  * open-ended window, e.g. "1.2s/" or "/1.5s".  An empty string removes
  * the time window.
  *
  * @param [in] window The time window specification.
  */
 void LogSetTimeWindow(const std::string& window);
-
 /**
- * Restrict all logging output to a set of simulator contexts (node ids).
- *
- * The filter is a comma-separated list of context ids and `[min-max]`
- * ranges, e.g. "0,[2-4],6".  The value `-1` selects log statements
- * executed outside of any simulator context, such as during topology
- * setup.  An empty string removes the context filter.  This is the same
- * filter installed by the `ContextId=` token of the NS_LOG environment
- * variable.
- *
- * The filter applies to all enabled log components and takes effect once
- * the simulator implementation exists.
+ * Restrict all logging output to a set of simulator contexts (node ids),
+ * given as a comma-separated list of context ids and `[min-max]` ranges,
+ * e.g. "0,[2-4],6".  The value `-1` selects log statements executed
+ * outside of any simulator context, such as during topology setup.  An
+ * empty string removes the context filter.
  *
  * @param [in] contexts The context filter specification.
  */
 void LogSetContextFilter(const std::string& contexts);
+/** @} */
 
 /**
  * Check whether the current log statement is suppressed by the time
