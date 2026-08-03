@@ -80,6 +80,12 @@ class TrickleTimerTestCase : public TestCase
      */
     void ConsistentEvent(Time interval, TrickleTimer* tricklePtr);
 
+    /**
+     * Check that the timer is running, stop it, and check that it stopped
+     * @param tricklePtr Pointer to the TrickleTimer
+     */
+    void CheckRunningAndStop(TrickleTimer* tricklePtr);
+
     bool m_enableDataCollection; //!< Collect data if true
 };
 
@@ -210,17 +216,21 @@ TrickleTimerTestCase::TestIsRunning(Time unit)
 
     // The in-interval transmit event fires within the first interval; the
     // timer must still be running after it, until Stop is called.
-    Simulator::Schedule(unit * 2, [this, &trickle]() {
-        NS_TEST_EXPECT_MSG_EQ(trickle.IsRunning(),
-                              true,
-                              "Timer must keep running across interval boundaries");
-        trickle.Stop();
-        NS_TEST_EXPECT_MSG_EQ(trickle.IsRunning(), false, "Timer must not run after Stop");
-    });
+    Simulator::Schedule(unit * 2, &TrickleTimerTestCase::CheckRunningAndStop, this, &trickle);
 
     Simulator::Stop(unit * 10);
     Simulator::Run();
     Simulator::Destroy();
+}
+
+void
+TrickleTimerTestCase::CheckRunningAndStop(TrickleTimer* tricklePtr)
+{
+    NS_TEST_EXPECT_MSG_EQ(tricklePtr->IsRunning(),
+                          true,
+                          "Timer must keep running across interval boundaries");
+    tricklePtr->Stop();
+    NS_TEST_EXPECT_MSG_EQ(tricklePtr->IsRunning(), false, "Timer must not run after Stop");
 }
 
 void
