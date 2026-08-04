@@ -6,8 +6,8 @@
  * Author: Usham Roy <ushamroy80@gmail.com>
  */
 
-#ifndef SIXLOWPAN_TRICKLE_SUPPRESSION_H
-#define SIXLOWPAN_TRICKLE_SUPPRESSION_H
+#ifndef SIXLOWPAN_TRICKLE_FORWARDING_H
+#define SIXLOWPAN_TRICKLE_FORWARDING_H
 
 #include "sixlowpan-mesh-under-routing.h"
 
@@ -23,10 +23,10 @@ namespace ns3
 /**
  * @ingroup sixlowpan
  *
- * @brief Trickle-based mesh-under forwarding strategy (\RFC{6206}).
+ * @brief Trickle-based mesh-under forwarding policy (\RFC{6206}).
  *
  * Where SixLowPanSimpleFlooding rebroadcasts every received packet
- * unconditionally, this strategy uses the Trickle algorithm to suppress
+ * unconditionally, this policy uses the Trickle algorithm to suppress
  * redundant rebroadcasts (the broadcast-storm problem) while preserving
  * coverage. A single Trickle timer governs how often a node transmits
  * its pending forwards. The duplicate cache in the base class still
@@ -65,7 +65,7 @@ namespace ns3
  * A zero RedundancyConstant disables suppression: the node always forwards,
  * behaving like jittered flooding driven by the Trickle interval.
  */
-class SixLowPanTrickleSuppression : public SixLowPanMeshUnderRouting
+class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
 {
   public:
     /**
@@ -74,12 +74,12 @@ class SixLowPanTrickleSuppression : public SixLowPanMeshUnderRouting
      */
     static TypeId GetTypeId();
 
-    SixLowPanTrickleSuppression();
-    ~SixLowPanTrickleSuppression() override;
+    SixLowPanTrickleForwarding();
+    ~SixLowPanTrickleForwarding() override;
 
     // Delete copy constructor and assignment operator to avoid misuse.
-    SixLowPanTrickleSuppression(const SixLowPanTrickleSuppression&) = delete;
-    SixLowPanTrickleSuppression& operator=(const SixLowPanTrickleSuppression&) = delete;
+    SixLowPanTrickleForwarding(const SixLowPanTrickleForwarding&) = delete;
+    SixLowPanTrickleForwarding& operator=(const SixLowPanTrickleForwarding&) = delete;
 
     void OnPacketForward(Ptr<Packet> packet,
                          const Address& originator,
@@ -142,4 +142,4 @@ class SixLowPanTrickleSuppression : public SixLowPanMeshUnderRouting
 
 } // namespace ns3
 
-#endif /* SIXLOWPAN_TRICKLE_SUPPRESSION_H */
+#endif /* SIXLOWPAN_TRICKLE_FORWARDING_H */

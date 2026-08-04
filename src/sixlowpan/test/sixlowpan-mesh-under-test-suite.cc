@@ -20,7 +20,7 @@
 #include "ns3/sixlowpan-mesh-under-routing.h"
 #include "ns3/sixlowpan-net-device.h"
 #include "ns3/sixlowpan-simple-flooding.h"
-#include "ns3/sixlowpan-trickle-suppression.h"
+#include "ns3/sixlowpan-trickle-forwarding.h"
 #include "ns3/test.h"
 #include "ns3/uinteger.h"
 
@@ -196,7 +196,7 @@ class TrickleForwardsWhenQuietTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->AssignStreams(1);
@@ -247,7 +247,7 @@ class TrickleSuppressesWhileCoveredTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->SetAttribute("MaxForwardingDelay", TimeValue(MilliSeconds(1000)));
@@ -265,7 +265,7 @@ class TrickleSuppressesWhileCoveredTestCase : public TestCase
         for (uint32_t ms = 3; ms <= 300; ms += 5)
         {
             Simulator::Schedule(MilliSeconds(ms),
-                                &SixLowPanTrickleSuppression::OnDuplicateReceived,
+                                &SixLowPanTrickleForwarding::OnDuplicateReceived,
                                 trickle,
                                 Address(orig),
                                 uint8_t(1));
@@ -306,7 +306,7 @@ class TrickleZeroRedundancyAlwaysForwardsTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
         trickle->AssignStreams(1);
@@ -321,12 +321,12 @@ class TrickleZeroRedundancyAlwaysForwardsTestCase : public TestCase
 
         // Even with duplicates, k = 0 means suppression is disabled.
         Simulator::Schedule(MilliSeconds(1),
-                            &SixLowPanTrickleSuppression::OnDuplicateReceived,
+                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
                             trickle,
                             Address(orig),
                             uint8_t(1));
         Simulator::Schedule(MilliSeconds(2),
-                            &SixLowPanTrickleSuppression::OnDuplicateReceived,
+                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
                             trickle,
                             Address(orig),
                             uint8_t(1));
@@ -366,7 +366,7 @@ class TrickleFlushesAllPendingTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleSuppression> trickle = CreateObject<SixLowPanTrickleSuppression>();
+        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->AssignStreams(1);

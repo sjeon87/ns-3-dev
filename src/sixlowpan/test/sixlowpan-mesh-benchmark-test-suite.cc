@@ -140,7 +140,7 @@ class MeshBenchmarkComparisonTestCase : public TestCase
         SixLowPanHelper sixLowPanHelper;
         if (useSuppression)
         {
-            sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanTrickleSuppression");
+            sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanTrickleForwarding");
         }
         NetDeviceContainer sixLowPanDevices = sixLowPanHelper.Install(lrwpanDevices);
         stream += sixLowPanHelper.AssignStreams(sixLowPanDevices, stream);

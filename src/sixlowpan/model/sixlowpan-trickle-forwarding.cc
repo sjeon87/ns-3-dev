@@ -6,7 +6,7 @@
  * Author: Usham Roy <ushamroy80@gmail.com>
  */
 
-#include "sixlowpan-trickle-suppression.h"
+#include "sixlowpan-trickle-forwarding.h"
 
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -15,56 +15,56 @@
 namespace ns3
 {
 
-NS_LOG_COMPONENT_DEFINE("SixLowPanTrickleSuppression");
-NS_OBJECT_ENSURE_REGISTERED(SixLowPanTrickleSuppression);
+NS_LOG_COMPONENT_DEFINE("SixLowPanTrickleForwarding");
+NS_OBJECT_ENSURE_REGISTERED(SixLowPanTrickleForwarding);
 
 TypeId
-SixLowPanTrickleSuppression::GetTypeId()
+SixLowPanTrickleForwarding::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::SixLowPanTrickleSuppression")
+        TypeId("ns3::SixLowPanTrickleForwarding")
             .SetParent<SixLowPanMeshUnderRouting>()
             .SetGroupName("SixLowPan")
-            .AddConstructor<SixLowPanTrickleSuppression>()
+            .AddConstructor<SixLowPanTrickleForwarding>()
             .AddAttribute("MinInterval",
                           "RFC 6206 Imin: the minimum Trickle interval.",
                           TimeValue(MilliSeconds(10)),
-                          MakeTimeAccessor(&SixLowPanTrickleSuppression::m_minInterval),
+                          MakeTimeAccessor(&SixLowPanTrickleForwarding::m_minInterval),
                           MakeTimeChecker(MilliSeconds(1)))
             .AddAttribute("Doublings",
                           "Number of interval doublings; Imax = MinInterval * 2^Doublings.",
                           UintegerValue(4),
-                          MakeUintegerAccessor(&SixLowPanTrickleSuppression::m_doublings),
+                          MakeUintegerAccessor(&SixLowPanTrickleForwarding::m_doublings),
                           MakeUintegerChecker<uint8_t>(0, 16))
             .AddAttribute("RedundancyConstant",
                           "RFC 6206 k: forward only if fewer than k copies were heard. "
                           "Zero disables suppression.",
                           UintegerValue(1),
-                          MakeUintegerAccessor(&SixLowPanTrickleSuppression::m_redundancy),
+                          MakeUintegerAccessor(&SixLowPanTrickleForwarding::m_redundancy),
                           MakeUintegerChecker<uint16_t>())
             .AddAttribute("MaxForwardingDelay",
                           "Discard a pending packet if it is not forwarded within this time "
                           "(suppression won, or too many tries).",
                           TimeValue(MilliSeconds(500)),
-                          MakeTimeAccessor(&SixLowPanTrickleSuppression::m_maxForwardingDelay),
+                          MakeTimeAccessor(&SixLowPanTrickleForwarding::m_maxForwardingDelay),
                           MakeTimeChecker(MilliSeconds(1)));
     return tid;
 }
 
-SixLowPanTrickleSuppression::SixLowPanTrickleSuppression()
+SixLowPanTrickleForwarding::SixLowPanTrickleForwarding()
     : m_timerRunning(false)
 {
     NS_LOG_FUNCTION(this);
-    m_timer.SetFunction(&SixLowPanTrickleSuppression::Transmit, this);
+    m_timer.SetFunction(&SixLowPanTrickleForwarding::Transmit, this);
 }
 
-SixLowPanTrickleSuppression::~SixLowPanTrickleSuppression()
+SixLowPanTrickleForwarding::~SixLowPanTrickleForwarding()
 {
     NS_LOG_FUNCTION(this);
 }
 
 void
-SixLowPanTrickleSuppression::DoDispose()
+SixLowPanTrickleForwarding::DoDispose()
 {
     NS_LOG_FUNCTION(this);
     StopTimer();
@@ -73,11 +73,11 @@ SixLowPanTrickleSuppression::DoDispose()
 }
 
 void
-SixLowPanTrickleSuppression::OnPacketForward(Ptr<Packet> packet,
-                                             const Address& originator,
-                                             uint8_t seqNo,
-                                             uint8_t hopsLeft,
-                                             ForwardCallback forwardCb)
+SixLowPanTrickleForwarding::OnPacketForward(Ptr<Packet> packet,
+                                            const Address& originator,
+                                            uint8_t seqNo,
+                                            uint8_t hopsLeft,
+                                            ForwardCallback forwardCb)
 {
     NS_LOG_FUNCTION(this << packet << originator << +seqNo << +hopsLeft);
 
@@ -92,7 +92,8 @@ SixLowPanTrickleSuppression::OnPacketForward(Ptr<Packet> packet,
 }
 
 void
-SixLowPanTrickleSuppression::OnDuplicateReceived(const Address& originator, uint8_t seqNo)
+SixLowPanTrickleForwarding::OnDuplicateReceived(const Address& originator [[maybe_unused]],
+                                                uint8_t seqNo [[maybe_unused]])
 {
     NS_LOG_FUNCTION(this << originator << +seqNo);
 
@@ -105,7 +106,7 @@ SixLowPanTrickleSuppression::OnDuplicateReceived(const Address& originator, uint
 }
 
 void
-SixLowPanTrickleSuppression::StartTimer()
+SixLowPanTrickleForwarding::StartTimer()
 {
     NS_LOG_FUNCTION(this);
 
@@ -113,12 +114,12 @@ SixLowPanTrickleSuppression::StartTimer()
     m_timer.Enable();
     m_timerRunning = true;
     m_discardEvent = Simulator::Schedule(m_maxForwardingDelay,
-                                         &SixLowPanTrickleSuppression::DiscardPending,
+                                         &SixLowPanTrickleForwarding::DiscardPending,
                                          this);
 }
 
 void
-SixLowPanTrickleSuppression::StopTimer()
+SixLowPanTrickleForwarding::StopTimer()
 {
     NS_LOG_FUNCTION(this);
 
@@ -128,7 +129,7 @@ SixLowPanTrickleSuppression::StopTimer()
 }
 
 void
-SixLowPanTrickleSuppression::Transmit()
+SixLowPanTrickleForwarding::Transmit()
 {
     NS_LOG_FUNCTION(this);
 
@@ -144,7 +145,7 @@ SixLowPanTrickleSuppression::Transmit()
 }
 
 void
-SixLowPanTrickleSuppression::DiscardPending()
+SixLowPanTrickleForwarding::DiscardPending()
 {
     NS_LOG_FUNCTION(this);
 
@@ -156,7 +157,7 @@ SixLowPanTrickleSuppression::DiscardPending()
 }
 
 int64_t
-SixLowPanTrickleSuppression::AssignStreams(int64_t stream)
+SixLowPanTrickleForwarding::AssignStreams(int64_t stream)
 {
     NS_LOG_FUNCTION(this << stream);
     return m_timer.AssignStreams(stream);

@@ -10,17 +10,17 @@
  * @file
  * @ingroup sixlowpan
  *
- * Benchmark comparing the two 6LoWPAN mesh-under forwarding strategies:
+ * Benchmark comparing the two 6LoWPAN mesh-under forwarding policies:
  * plain flooding (SixLowPanSimpleFlooding, the default) against Trickle
- * suppression (SixLowPanTrickleSuppression).
+ * suppression (SixLowPanTrickleForwarding).
  *
  * Unlike example-ping-lr-wpan-mesh-under.cc, which shows basic mesh-under
  * reachability through a CSMA gateway, this example quantitatively compares
- * the control overhead of the two forwarding strategies on a flat /64.
+ * the control overhead of the two forwarding policies on a flat /64.
  *
  * A static IEEE 802.15.4 / 6LoWPAN network is built, a single source floods
  * packets towards a sink, and the example reports the figures the forwarding
- * strategy actually influences:
+ * policy actually influences:
  *   - PHY transmissions: every frame put on the air, i.e. the original send
  *     plus all the redundant re-broadcasts that Trickle is meant to suppress.
  *     This is the mesh-under control overhead.
@@ -57,14 +57,14 @@
            src = node 0 (far edge)        sink = node N-1 (far edge)
    @endverbatim
  *
- * The strategy is toggled with --trickle-suppression (false = flooding, true = on),
+ * The policy is toggled with --trickle-forwarding (false = flooding, true = on),
  * the traffic with --traffic (icmp | udp), and the node count with --nodes, so a
  * driver script can sweep them and collect the "CSV," line printed at the end.
  * Results are reproducible for a given --RngRun; pass --RngRun=2,3,... to obtain
  * independent replications.
  *
  * Example:
- *   ./ns3 run "example-sixlowpan-mesh-benchmark --trickle-suppression=1 --topology=dense"
+ *   ./ns3 run "example-sixlowpan-mesh-benchmark --trickle-forwarding=1 --topology=dense"
  */
 
 #include "ns3/applications-module.h"
@@ -125,7 +125,7 @@ CapturePingReport(const Ping::PingReport& report)
 int
 main(int argc, char** argv)
 {
-    bool trickleSuppression = false;
+    bool trickleForwarding = false;
     uint32_t nNodes = 10;
     std::string topology = "dense";
     std::string traffic = "icmp";
@@ -134,9 +134,9 @@ main(int argc, char** argv)
     bool verbose = false;
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("trickle-suppression",
+    cmd.AddValue("trickle-forwarding",
                  "Use Trickle-based suppression (true) instead of plain flooding (false)",
-                 trickleSuppression);
+                 trickleForwarding);
     cmd.AddValue("nodes", "Number of WSN nodes", nNodes);
     cmd.AddValue("topology", "Node layout: dense | bridge", topology);
     cmd.AddValue("traffic", "Traffic type: icmp (ping) | udp", traffic);
@@ -158,7 +158,7 @@ main(int argc, char** argv)
     if (verbose)
     {
         LogComponentEnable("SixLowPanNetDevice", LOG_LEVEL_INFO);
-        LogComponentEnable("SixLowPanTrickleSuppression", LOG_LEVEL_INFO);
+        LogComponentEnable("SixLowPanTrickleForwarding", LOG_LEVEL_INFO);
         LogComponentEnable("SixLowPanSimpleFlooding", LOG_LEVEL_INFO);
     }
 
@@ -252,9 +252,9 @@ main(int argc, char** argv)
     streamNumber += internetv6.AssignStreams(wsnNodes, streamNumber);
 
     SixLowPanHelper sixLowPanHelper;
-    if (trickleSuppression)
+    if (trickleForwarding)
     {
-        sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanTrickleSuppression");
+        sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanTrickleForwarding");
     }
     NetDeviceContainer sixLowPanDevices = sixLowPanHelper.Install(lrwpanDevices);
     streamNumber += sixLowPanHelper.AssignStreams(sixLowPanDevices, streamNumber);
@@ -322,9 +322,9 @@ main(int argc, char** argv)
     Simulator::Destroy();
 
     // ---- Report ----------------------------------------------------------
-    const std::string strategy = trickleSuppression ? "suppression" : "flooding";
+    const std::string policy = trickleForwarding ? "trickle" : "flooding";
     std::cout << "\n=== 6LoWPAN mesh-under benchmark ===\n"
-              << "  strategy         : " << strategy << "\n"
+              << "  policy         : " << policy << "\n"
               << "  topology         : " << topology << "\n"
               << "  traffic          : " << traffic << "\n"
               << "  nodes            : " << nNodes << "\n"
@@ -333,8 +333,8 @@ main(int argc, char** argv)
               << "  PHY transmissions: " << g_phyTx << "\n"
               << "  PHY Rx drops     : " << g_phyRxDrop << "\n";
     // Machine-readable line for a sweep/plot script (column order documented here).
-    std::cout << "CSV_HEADER,topology,traffic,nodes,strategy,sent,recv,phyTx,phyRxDrop\n";
-    std::cout << "CSV," << topology << "," << traffic << "," << nNodes << "," << strategy << ","
+    std::cout << "CSV_HEADER,topology,traffic,nodes,policy,sent,recv,phyTx,phyRxDrop\n";
+    std::cout << "CSV," << topology << "," << traffic << "," << nNodes << "," << policy << ","
               << g_appSent << "," << g_appReceived << "," << g_phyTx << "," << g_phyRxDrop << "\n";
 
     return 0;
