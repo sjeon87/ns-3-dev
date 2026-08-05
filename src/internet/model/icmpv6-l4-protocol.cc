@@ -492,6 +492,7 @@ Icmpv6L4Protocol::HandleRA(Ptr<Packet> packet,
             /* take in account the first LLA option */
             if (!hasLla)
             {
+                llaHdr.SetL2AddressLength(interface->GetDevice()->GetAddress().GetLength());
                 p->RemoveHeader(llaHdr);
                 ReceiveLLA(llaHdr, src, dst, interface);
                 hasLla = true;
@@ -628,6 +629,7 @@ Icmpv6L4Protocol::HandleRS(Ptr<Packet> packet,
         {
             return;
         }
+        lla.SetL2AddressLength(interface->GetDevice()->GetAddress().GetLength());
         packet->RemoveHeader(lla);
         NS_LOG_LOGIC("Cache updated by RS");
 
@@ -706,6 +708,7 @@ Icmpv6L4Protocol::HandleNS(Ptr<Packet> packet,
         case Icmpv6Header::ICMPV6_OPT_LINK_LAYER_SOURCE:
             if (!hasSllao)
             {
+                sllaoHdr.SetL2AddressLength(interface->GetDevice()->GetAddress().GetLength());
                 packet->RemoveHeader(sllaoHdr);
                 hasSllao = true;
             }
@@ -903,6 +906,7 @@ Icmpv6L4Protocol::HandleNA(Ptr<Packet> packet,
     {
         return;
     }
+    lla.SetL2AddressLength(interface->GetDevice()->GetAddress().GetLength());
     packet->RemoveHeader(lla);
 
     /* we receive a NA so stop the probe timer or delay timer if any */

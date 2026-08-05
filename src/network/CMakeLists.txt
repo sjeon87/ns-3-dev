@@ -15,6 +15,7 @@ set(source_files
     model/channel.cc
     model/chunk.cc
     model/header.cc
+    model/link-layer-address-provider.cc
     model/net-device.cc
     model/nix-vector.cc
     model/node-list.cc
@@ -89,6 +90,7 @@ set(header_files
     model/channel.h
     model/chunk.h
     model/header.h
+    model/link-layer-address-provider.h
     model/net-device.h
     model/nix-vector.h
     model/node-list.h

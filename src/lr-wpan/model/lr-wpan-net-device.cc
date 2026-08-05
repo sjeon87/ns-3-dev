@@ -16,6 +16,7 @@
 
 #include "ns3/abort.h"
 #include "ns3/boolean.h"
+#include "ns3/link-layer-address-provider.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/packet.h"
@@ -58,17 +59,7 @@ LrWpanNetDevice::GetTypeId()
                           "Request acknowledgments for data frames.",
                           BooleanValue(true),
                           MakeBooleanAccessor(&LrWpanNetDevice::m_useAcks),
-                          MakeBooleanChecker())
-            .AddAttribute(
-                "PseudoMacAddressMode",
-                "Build the pseudo-MAC Address according to RFC 4944 or RFC 6282 "
-                "(default: RFC 6282).",
-                EnumValue(LrWpanNetDevice::RFC6282),
-                MakeEnumAccessor<PseudoMacAddressMode_e>(&LrWpanNetDevice::m_pseudoMacMode),
-                MakeEnumChecker(LrWpanNetDevice::RFC6282,
-                                "RFC 6282 (don't use PanId)",
-                                LrWpanNetDevice::RFC4944,
-                                "RFC 4944 (use PanId)"));
+                          MakeBooleanChecker());
     return tid;
 }
 
@@ -144,6 +135,15 @@ LrWpanNetDevice::CompleteConfig()
 
     m_csmaca->SetLrWpanMacStateCallback(MakeCallback(&LrWpanMac::SetLrWpanMacState, m_mac));
     m_phy->SetPlmeCcaConfirmCallback(MakeCallback(&LrWpanCsmaCa::PlmeCcaConfirm, m_csmaca));
+
+    // Expose this device's link-layer addresses (short and extended) to upper layers
+    // (e.g. 6LoWPAN) generically, at configuration time, via
+    // GetObject<LinkLayerAddressProvider>() - no concrete lr-wpan dependency required
+    // of the upper layer.
+    Ptr<LinkLayerAddressProvider> addrProvider = CreateObject<LinkLayerAddressProvider>();
+    addrProvider->SetAddressesCallback(MakeCallback(&LrWpanNetDevice::GetLinkLayerAddresses, this));
+    AggregateObject(addrProvider);
+
     m_configComplete = true;
 }
 
@@ -250,20 +250,6 @@ LrWpanNetDevice::SetAddress(Address address)
     {
         m_mac->SetExtendedAddress(Mac64Address::ConvertFrom(address));
     }
-    else if (Mac48Address::IsMatchingType(address))
-    {
-        uint8_t buf[6];
-        Mac48Address addr = Mac48Address::ConvertFrom(address);
-        addr.CopyTo(buf);
-        Mac16Address addr16;
-        addr16.CopyFrom(buf + 4);
-        m_mac->SetShortAddress(addr16);
-        uint16_t panId;
-        panId = buf[0];
-        panId <<= 8;
-        panId |= buf[1];
-        m_mac->SetPanId(panId);
-    }
     else
     {
         NS_ABORT_MSG("LrWpanNetDevice::SetAddress - address is not of a compatible type");
@@ -275,14 +261,28 @@ LrWpanNetDevice::GetAddress() const
 {
     NS_LOG_FUNCTION(this);
 
-    if (m_mac->GetShortAddress() == Mac16Address("00:00"))
+    // The device identity is always the 64-bit extended address (EUI-64), so the
+    // IPv6 link-local is EUI-64 based. The 16-bit short address, when assigned, is
+    // not the interface identity; it is exposed separately through the aggregated
+    // LinkLayerAddressProvider and used for header compression / mesh routing.
+    return m_mac->GetExtendedAddress();
+}
+
+std::vector<Address>
+LrWpanNetDevice::GetLinkLayerAddresses() const
+{
+    NS_LOG_FUNCTION(this);
+    // Most preferred first: the 16-bit short address (when assigned) is preferred for
+    // IPv6 IID formation (compact, RFC 4944 0000:00ff:fe00:XXXX), otherwise the 64-bit
+    // extended address.
+    std::vector<Address> addresses;
+    Mac16Address shortAddr = m_mac->GetShortAddress();
+    if (shortAddr != Mac16Address("ff:ff") && shortAddr != Mac16Address("ff:fe"))
     {
-        return m_mac->GetExtendedAddress();
+        addresses.emplace_back(shortAddr);
     }
-
-    Mac48Address pseudoAddress = BuildPseudoMacAddress(m_mac->GetPanId(), m_mac->GetShortAddress());
-
-    return pseudoAddress;
+    addresses.emplace_back(m_mac->GetExtendedAddress());
+    return addresses;
 }
 
 void
@@ -342,10 +342,7 @@ LrWpanNetDevice::GetBroadcast() const
 {
     NS_LOG_FUNCTION(this);
 
-    Mac48Address pseudoAddress =
-        BuildPseudoMacAddress(m_mac->GetPanId(), Mac16Address::GetBroadcast());
-
-    return pseudoAddress;
+    return Mac16Address::GetBroadcast();
 }
 
 bool
@@ -367,10 +364,7 @@ LrWpanNetDevice::GetMulticast(Ipv6Address addr) const
 {
     NS_LOG_FUNCTION(this << addr);
 
-    Mac48Address pseudoAddress =
-        BuildPseudoMacAddress(m_mac->GetPanId(), Mac16Address::GetMulticast(addr));
-
-    return pseudoAddress;
+    return Mac16Address::GetMulticast(addr);
 }
 
 bool
@@ -405,21 +399,45 @@ LrWpanNetDevice::Send(Ptr<Packet> packet, const Address& dest, uint16_t protocol
 
     McpsDataRequestParams m_mcpsDataRequestParams;
 
-    Mac16Address dst16;
-    if (Mac48Address::IsMatchingType(dest))
+    m_mcpsDataRequestParams.m_dstPanId = m_mac->GetPanId();
+
+    if (Mac64Address::IsMatchingType(dest))
     {
-        uint8_t buf[6];
-        dest.CopyTo(buf);
-        dst16.CopyFrom(buf + 4);
+        // Extended (64-bit) destination: transmit using extended addressing.
+        m_mcpsDataRequestParams.m_dstExtAddr = Mac64Address::ConvertFrom(dest);
+        m_mcpsDataRequestParams.m_dstAddrMode = EXT_ADDR;
     }
     else
     {
-        dst16 = Mac16Address::ConvertFrom(dest);
+        // Short address, or a pseudo-48-bit MAC encoding a 16-bit short address.
+        Mac16Address dst16;
+        if (Mac48Address::IsMatchingType(dest))
+        {
+            uint8_t buf[6];
+            dest.CopyTo(buf);
+            dst16.CopyFrom(buf + 4);
+        }
+        else
+        {
+            dst16 = Mac16Address::ConvertFrom(dest);
+        }
+        m_mcpsDataRequestParams.m_dstAddr = dst16;
+        m_mcpsDataRequestParams.m_dstAddrMode = SHORT_ADDR;
     }
-    m_mcpsDataRequestParams.m_dstAddr = dst16;
-    m_mcpsDataRequestParams.m_dstAddrMode = SHORT_ADDR;
-    m_mcpsDataRequestParams.m_dstPanId = m_mac->GetPanId();
-    m_mcpsDataRequestParams.m_srcAddrMode = SHORT_ADDR;
+
+    // The source addressing mode follows the device's own operational address:
+    // extended when no short address is assigned (FF:FE/FF:FF), short otherwise.
+    // This keeps the source address consistent with GetAddress() so the receiver
+    // reconstructs the correct source IID.
+    Mac16Address shortAddr = m_mac->GetShortAddress();
+    if (shortAddr == Mac16Address("ff:ff") || shortAddr == Mac16Address("ff:fe"))
+    {
+        m_mcpsDataRequestParams.m_srcAddrMode = EXT_ADDR;
+    }
+    else
+    {
+        m_mcpsDataRequestParams.m_srcAddrMode = SHORT_ADDR;
+    }
     // Using ACK requests for broadcast destinations is ok here. They are disabled
     // by the MAC.
     if (m_useAcks)
@@ -487,13 +505,15 @@ LrWpanNetDevice::McpsDataIndication(McpsDataIndicationParams params, Ptr<Packet>
     NS_LOG_FUNCTION(this);
     // TODO: Use the PromiscReceiveCallback if the MAC is in promiscuous mode.
 
-    if (params.m_dstAddrMode == SHORT_ADDR)
+    // Present the source address according to the source addressing mode used in
+    // the received frame, so the upper layer reconstructs the correct source IID.
+    if (params.m_srcAddrMode == EXT_ADDR)
     {
-        m_receiveCallback(this, pkt, 0, BuildPseudoMacAddress(params.m_srcPanId, params.m_srcAddr));
+        m_receiveCallback(this, pkt, 0, params.m_srcExtAddr);
     }
     else
     {
-        m_receiveCallback(this, pkt, 0, params.m_srcExtAddr);
+        m_receiveCallback(this, pkt, 0, params.m_srcAddr);
     }
 }
 
@@ -502,36 +522,6 @@ LrWpanNetDevice::SupportsSendFrom() const
 {
     NS_LOG_FUNCTION_NOARGS();
     return false;
-}
-
-Mac48Address
-LrWpanNetDevice::BuildPseudoMacAddress(uint16_t panId, Mac16Address shortAddr) const
-{
-    NS_LOG_FUNCTION(this);
-
-    uint8_t buf[6];
-
-    if (m_pseudoMacMode == RFC4944)
-    {
-        buf[0] = panId >> 8;
-        // Make sure the U/L bit is set
-        buf[0] |= 0x02;
-        buf[1] = panId & 0xff;
-    }
-    else
-    {
-        // Make sure the U/L bit is set
-        buf[0] = 0x02;
-        buf[1] = 0x00;
-    }
-    buf[2] = 0;
-    buf[3] = 0;
-    shortAddr.CopyTo(buf + 4);
-
-    Mac48Address pseudoAddress;
-    pseudoAddress.CopyFrom(buf);
-
-    return pseudoAddress;
 }
 
 int64_t

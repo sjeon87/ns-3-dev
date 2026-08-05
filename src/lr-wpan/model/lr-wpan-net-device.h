@@ -16,6 +16,8 @@
 #include "ns3/net-device.h"
 #include "ns3/traced-callback.h"
 
+#include <vector>
+
 namespace ns3
 {
 
@@ -52,18 +54,6 @@ class LrWpanNetDevice : public NetDevice
 
     LrWpanNetDevice();
     ~LrWpanNetDevice() override;
-
-    /**
-     * How the pseudo-MAC address is built from
-     * the short address (XXXX) and the PanId (YYYY).
-     *
-     * See \RFC{4944} and \RFC{6282}.
-     */
-    enum PseudoMacAddressMode_e
-    {
-        RFC4944, //!< YYYY:0000:XXXX (with U/L bit set to local)
-        RFC6282  //!< 0200:0000:XXXX
-    };
 
     /**
      * Set the MAC to be used by this NetDevice.
@@ -230,23 +220,13 @@ class LrWpanNetDevice : public NetDevice
     void CompleteConfig();
 
     /**
-     * Builds a "pseudo 48-bit address" from the PanId and Short Address
-     * The form is PanId : 0x0 : 0x0 : ShortAddress
+     * Get this device's link-layer addresses, most preferred first for IPv6 IID
+     * formation: the 16-bit short address (when assigned) then the 64-bit extended
+     * address. Used as the LinkLayerAddressProvider callback.
      *
-     * The address follows RFC 4944, section 6, and it is used to build an
-     * Interface ID.
-     *
-     * The Interface ID should have its U/L bit is set to zero, to indicate that
-     * this interface ID is not globally unique.
-     * However, the U/L bit flipping is performed when the IPv6 address is created.
-     *
-     * As a consequence, here we set it to 1.
-     *
-     * @param panId The PanID
-     * @param shortAddr The Short MAC address
-     * @return a Pseudo-Mac48Address
+     * @return the link-layer addresses
      */
-    Mac48Address BuildPseudoMacAddress(uint16_t panId, Mac16Address shortAddr) const;
+    std::vector<Address> GetLinkLayerAddresses() const;
 
     /**
      * The MAC for this NetDevice.
@@ -299,14 +279,6 @@ class LrWpanNetDevice : public NetDevice
      * Upper layer callback used for notification of new data packet arrivals.
      */
     ReceiveCallback m_receiveCallback;
-
-    /**
-     * How the pseudo MAC address is created.
-     *
-     * According to \RFC{4944} the pseudo-MAC is YYYY:0000:XXXX (with U/L bit set to local)
-     * According to \RFC{6282} the pseudo-MAC is 0200:0000:XXXX
-     */
-    PseudoMacAddressMode_e m_pseudoMacMode;
 };
 
 } // namespace lrwpan

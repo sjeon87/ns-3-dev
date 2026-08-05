@@ -104,11 +104,9 @@ main(int argc, char** argv)
 
     if (enableLSixlowLogLevelInfo)
     {
-        std::cout << "Device 0: pseudo-Mac-48 "
-                  << Mac48Address::ConvertFrom(devices.Get(0)->GetAddress()) << ", IPv6 Address "
+        std::cout << "Device 0: MAC address " << devices.Get(0)->GetAddress() << ", IPv6 Address "
                   << deviceInterfaces.GetAddress(0, 1) << std::endl;
-        std::cout << "Device 1: pseudo-Mac-48 "
-                  << Mac48Address::ConvertFrom(devices.Get(1)->GetAddress()) << ", IPv6 Address "
+        std::cout << "Device 1: MAC address " << devices.Get(1)->GetAddress() << ", IPv6 Address "
                   << deviceInterfaces.GetAddress(1, 1) << std::endl;
     }
 
