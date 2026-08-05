@@ -9,6 +9,8 @@
 
 #include "table-based-error-rate-model.h"
 
+#include "wifi-phy-common.h"
+#include "wifi-ru.h"
 #include "wifi-tx-vector.h"
 #include "wifi-utils.h"
 #include "yans-error-rate-model.h"
@@ -146,7 +148,7 @@ TableBasedErrorRateModel::DoGetChunkSuccessRate(WifiMode mode,
 {
     NS_LOG_FUNCTION(this << mode << txVector << snr << nbits << +numRxAntennas << field << staId);
     const auto size = std::max<uint64_t>(1, (nbits / 8)); // in bytes
-    const auto roundedSnr = RoundSnr(RatioToDb(snr), SNR_PRECISION);
+
     uint8_t mcs;
     if (auto ret = GetMcsForMode(mode); ret.has_value())
     {
@@ -158,6 +160,84 @@ TableBasedErrorRateModel::DoGetChunkSuccessRate(WifiMode mode,
         return m_fallbackErrorModel
             ->GetChunkSuccessRate(mode, txVector, snr, nbits, numRxAntennas, field, staId);
     }
+
+    const auto modClass = mode.GetModulationClass();
+    const auto channelWidth = txVector.GetChannelWidth();
+
+    // Non-HT duplicate PPDUs and the pre-HT fields of wide PPDUs replicate the 20 MHz
+    // OFDM tone layout on each 20 MHz subchannel, so the 20 MHz tone plan applies
+    auto lookupWidth = channelWidth;
+    if ((modClass == WIFI_MOD_CLASS_OFDM || modClass == WIFI_MOD_CLASS_ERP_OFDM) &&
+        (channelWidth > MHz_u{20}))
+    {
+        lookupWidth = MHz_u{20};
+    }
+
+    // Defaults cover queries with no defined tone plan (e.g. rate managers probing an
+    // HT MCS with a channel width above 40 MHz when building SNR threshold tables)
+    double fftLength = 64.0;
+    double numTones = 52.0; // 48 data + 4 pilots
+    if (const auto tonePlan = GetTonePlan(modClass, lookupWidth))
+    {
+        fftLength = tonePlan->fftLength;
+        numTones = tonePlan->usedTones;
+    }
+    else
+    {
+        NS_LOG_DEBUG("No tone plan for " << modClass << " at " << channelWidth
+                                         << " MHz; using non-HT OFDM 20 MHz parameters");
+    }
+
+    // For MU PPDUs, the SNR is computed over the band of the RU allocated to the receiving
+    // STA rather than over the full channel, so derive the tone metrics from that RU.
+    //
+    // PHY header fields are received by all STAs and carry no valid MU station ID
+    // (staId is SU_STA_ID), hence the RU-derived metrics only apply to the payload
+    if (txVector.IsMu() && (staId != SU_STA_ID))
+    {
+        // The tone span is identical for all RUs of a given type, hence PHY index 1 is used
+        // fftLength after the group computation is no longer the FFT size of the full channel.
+        // It becomes the subcarrier span of the RU (first to last index inclusive), while
+        // numTones is the count of actually used subcarriers. Their ratio captures any internal
+        // gaps (DC subcarriers) within the RU. For example:
+        // - 26-tone RU, 20 MHz HE:
+        //     - Initial from tonePlan: fftLength=256, numTones=242
+        //     - Group (phyIndex=1): {{-121, -96}}
+        //     - Result: fftLength = -96 - (-121) + 1 = 26,
+        //               numTones = 26 (no internal DC gap)
+        // - 996-tone RU, 80 MHz HE:
+        //     - Initial from tonePlan: fftLength=1024, numTones=996
+        //     - Group (phyIndex=1): {{-500, -3}, {3, 500}}
+        //     - Result: fftLength = 500 - (-500) + 1 = 1001,
+        //               numTones = 498 + 498 = 996 (5 DC/guard subcarriers in the center)
+        const auto group = WifiRu::GetSubcarrierGroup(channelWidth,
+                                                      WifiRu::GetRuType(txVector.GetRu(staId)),
+                                                      1,
+                                                      modClass);
+        if (!group.empty())
+        {
+            fftLength = group.back().second - group.front().first + 1;
+            numTones = 0.0;
+            for (const auto& range : group)
+            {
+                numTones += range.second - range.first + 1;
+            }
+        }
+    }
+
+    // Compute calibration factor and shift lookup index to track table generation criteria
+    // The SNR is adjusted to account for the difference in subcarrier density between the
+    // reference table and the actual transmission. The adjustment is based on the ratio of
+    // the FFT length to the number of tones used for data transmission. The adjustment is
+    // calculated as 10 * log10(fftLength / numTones), which represents the difference in power
+    // per subcarrier due to the different number of tones.
+    //
+    // See, for example, Eq. (2) in p. 32 of R. Patidar, S. Roy, T. R. Henderson, and
+    // A. Chandramohan, "Link-to-System Mapping for ns-3 Wi-Fi OFDMA Error Models," in Proc. of
+    // WNS3 2017, Porto, Portugal - June 13-14, 2017, ISBN: 978-1-4503-5219-2.
+    const auto subcarrierAdjustment = 10.0 * std::log10((double)fftLength / numTones);
+    const auto roundedSnr = RoundSnr(RatioToDb(snr) + subcarrierAdjustment, SNR_PRECISION);
+
     bool ldpc = txVector.IsLdpc();
     NS_LOG_FUNCTION(this << +mcs << roundedSnr << size << ldpc);
 

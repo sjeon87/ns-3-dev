@@ -295,6 +295,141 @@ GetMaximumChannelWidth(WifiModulationClass modulation)
     }
 }
 
+std::optional<WifiTonePlan>
+GetTonePlan(WifiModulationClass modulation, MHz_u channelWidth)
+{
+    const auto bw = static_cast<std::size_t>(channelWidth);
+
+    switch (modulation)
+    {
+    case WIFI_MOD_CLASS_OFDM:
+    case WIFI_MOD_CLASS_ERP_OFDM:
+        // Table 17-5 "Timing-related parameters" of 802.11-2020
+        switch (bw)
+        {
+        case 20:
+        case 10: // same layout as 20 MHz with halved subcarrier spacing
+        case 5:  // same layout as 20 MHz with quartered subcarrier spacing
+            return WifiTonePlan{.fftLength = 64,
+                                .usedTones = 52,
+                                .dataTones = 48,
+                                .pilotTones = 4,
+                                .skippedSubbands = 6,
+                                .numDc = 1};
+        default:
+            return std::nullopt;
+        }
+    case WIFI_MOD_CLASS_HT:
+        // Table 19-6 "Timing-related constants" of 802.11-2020
+        switch (bw)
+        {
+        case 20:
+            return WifiTonePlan{.fftLength = 64,
+                                .usedTones = 56,
+                                .dataTones = 52,
+                                .pilotTones = 4,
+                                .skippedSubbands = 4,
+                                .numDc = 1};
+        case 40:
+            return WifiTonePlan{.fftLength = 128,
+                                .usedTones = 114,
+                                .dataTones = 108,
+                                .pilotTones = 6,
+                                .skippedSubbands = 6,
+                                .numDc = 3};
+        default:
+            return std::nullopt;
+        }
+    case WIFI_MOD_CLASS_VHT:
+        // Table 21-5 "Timing-related constants" of 802.11-2020
+        switch (bw)
+        {
+        case 20:
+            return WifiTonePlan{.fftLength = 64,
+                                .usedTones = 56,
+                                .dataTones = 52,
+                                .pilotTones = 4,
+                                .skippedSubbands = 4,
+                                .numDc = 1};
+        case 40:
+            return WifiTonePlan{.fftLength = 128,
+                                .usedTones = 114,
+                                .dataTones = 108,
+                                .pilotTones = 6,
+                                .skippedSubbands = 6,
+                                .numDc = 3};
+        case 80:
+            return WifiTonePlan{.fftLength = 256,
+                                .usedTones = 242,
+                                .dataTones = 234,
+                                .pilotTones = 8,
+                                .skippedSubbands = 6,
+                                .numDc = 3};
+        case 160:
+            return WifiTonePlan{.fftLength = 512,
+                                .usedTones = 484,
+                                .dataTones = 468,
+                                .pilotTones = 16,
+                                .skippedSubbands = 6,
+                                .numDc = 3};
+        default:
+            return std::nullopt;
+        }
+    case WIFI_MOD_CLASS_HE:
+    case WIFI_MOD_CLASS_EHT:
+        // Subcarrier allocation per full-bandwidth RU (Table 27-14 "Subcarrier allocation related
+        // constants for RUs in an OFDMA HE PPDU" of 802.11ax-2021, Table 36-21 "Subcarrier
+        // allocation related constants for RUs in an OFDMA EHT PPDU" of 802.11be-2024)
+        switch (bw)
+        {
+        case 20: // 242-tone RU
+            return WifiTonePlan{.fftLength = 256,
+                                .usedTones = 242,
+                                .dataTones = 234,
+                                .pilotTones = 8,
+                                .skippedSubbands = 6,
+                                .numDc = 3};
+        case 40: // 484-tone RU
+            return WifiTonePlan{.fftLength = 512,
+                                .usedTones = 484,
+                                .dataTones = 468,
+                                .pilotTones = 16,
+                                .skippedSubbands = 12,
+                                .numDc = 5};
+        case 80: // 996-tone RU
+            return WifiTonePlan{.fftLength = 1024,
+                                .usedTones = 996,
+                                .dataTones = 980,
+                                .pilotTones = 16,
+                                .skippedSubbands = 12,
+                                .numDc = 5};
+        case 160: // 2x996-tone RU
+            return WifiTonePlan{.fftLength = 2048,
+                                .usedTones = 1992,
+                                .dataTones = 1960,
+                                .pilotTones = 32,
+                                .skippedSubbands = 12,
+                                .numDc = 5};
+        case 320:
+            if (modulation == WIFI_MOD_CLASS_EHT)
+            {
+                // 4x996-tone RU (Table 36-21 of 802.11be-2024)
+                return WifiTonePlan{.fftLength = 4096,
+                                    .usedTones = 3984,
+                                    .dataTones = 3920,
+                                    .pilotTones = 64,
+                                    .skippedSubbands = 12,
+                                    .numDc = 5};
+            }
+            return std::nullopt;
+        default:
+            return std::nullopt;
+        }
+    default:
+        return std::nullopt;
+    }
+}
+
 MHz_u
 GetChannelWidthInMhz(WifiChannelWidthType width)
 {

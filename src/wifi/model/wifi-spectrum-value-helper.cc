@@ -12,6 +12,7 @@
 
 #include "wifi-spectrum-value-helper.h"
 
+#include "wifi-phy-common.h"
 #include "wifi-utils.h"
 
 #include "ns3/assert.h"
@@ -231,12 +232,14 @@ WifiSpectrumValueHelper::CreateOfdmTxPowerSpectralDensity(MHz_u centerFrequency,
     // skip guard band and 6 subbands, then place power in 26 subbands, then
     // skip the center subband, then place power in 26 subbands, then skip
     // the final 6 subbands and the guard band.
-    const auto txPowerPerBand = txPower / 52;
+    const auto tonePlan = GetTonePlan(WIFI_MOD_CLASS_OFDM, channelWidth);
+    NS_ASSERT(tonePlan.has_value());
+    const auto txPowerPerBand = txPower / tonePlan->usedTones;
     NS_LOG_DEBUG("Power per band " << txPowerPerBand << "W");
-    uint32_t start1 = (nGuardBands / 2) + 6;
-    uint32_t stop1 = start1 + 26 - 1;
-    uint32_t start2 = stop1 + 2;
-    uint32_t stop2 = start2 + 26 - 1;
+    const uint32_t start1 = (nGuardBands / 2) + tonePlan->skippedSubbands;
+    const uint32_t stop1 = start1 + (tonePlan->usedTones / 2) - 1;
+    const uint32_t start2 = stop1 + tonePlan->numDc + 1;
+    const uint32_t stop2 = start2 + (tonePlan->usedTones / 2) - 1;
 
     // Build transmit spectrum mask
     std::vector<WifiSpectrumBandIndices> subBands{
@@ -295,13 +298,15 @@ WifiSpectrumValueHelper::CreateDuplicated20MhzTxPowerSpectralDensity(
                       (nAllocatedBands + nGuardBands + nUnallocatedBands + 1),
                   "Unexpected number of bands " << c->GetSpectrumModel()->GetNumBands());
     auto num20MhzBands = Count20MHzSubchannels(channelWidth);
-    std::size_t numAllocatedSubcarriersPer20MHz = 52;
+    const auto tonePlan = GetTonePlan(WIFI_MOD_CLASS_OFDM, MHz_u{20});
+    NS_ASSERT(tonePlan.has_value());
+    const auto numAllocatedSubcarriersPer20MHz = tonePlan->usedTones;
     NS_ASSERT(puncturedSubchannels.empty() || (puncturedSubchannels.size() == num20MhzBands));
     const auto txPowerPerBand = (txPower / numAllocatedSubcarriersPer20MHz) / num20MhzBands;
     NS_LOG_DEBUG("Power per band " << txPowerPerBand << "W");
 
-    std::size_t numSubcarriersPer20MHz = MHzToHz(MHz_u{20}) / carrierSpacing;
-    std::size_t numUnallocatedSubcarriersPer20MHz =
+    const auto numSubcarriersPer20MHz = tonePlan->fftLength;
+    const auto numUnallocatedSubcarriersPer20MHz =
         numSubcarriersPer20MHz - numAllocatedSubcarriersPer20MHz;
     std::vector<std::vector<WifiSpectrumBandIndices>> subBandsPerSegment(
         centerFrequencies.size()); // list of data/pilot-containing subBands (sent at 0dBr)
@@ -323,13 +328,13 @@ WifiSpectrumValueHelper::CreateDuplicated20MhzTxPowerSpectralDensity(
             stop = start + (numAllocatedSubcarriersPer20MHz / 2) - 1;
             *it = std::make_pair(start, stop);
             ++it;
-            uint32_t puncturedStart = start;
+            auto puncturedStart = start;
             start = stop + 2; // skip center subcarrier
             stop = start + (numAllocatedSubcarriersPer20MHz / 2) - 1;
             *it = std::make_pair(start, stop);
             ++it;
             start = stop + numUnallocatedSubcarriersPer20MHz;
-            uint32_t puncturedStop = stop;
+            auto puncturedStop = stop;
             if (!puncturedSubchannels.empty() && puncturedSubchannels.at(index++))
             {
                 puncturedBandsPerSegment.back().emplace_back(puncturedStart, puncturedStop);
@@ -399,13 +404,15 @@ WifiSpectrumValueHelper::CreateHtOfdmTxPowerSpectralDensity(
     NS_ASSERT_MSG(c->GetSpectrumModel()->GetNumBands() ==
                       (nAllocatedBands + nGuardBands + nUnallocatedBands + 1),
                   "Unexpected number of bands " << c->GetSpectrumModel()->GetNumBands());
-    auto num20MhzBands = Count20MHzSubchannels(channelWidth);
-    std::size_t numAllocatedSubcarriersPer20MHz = 56;
-    const auto txPowerPerBand = (txPower / numAllocatedSubcarriersPer20MHz) / num20MhzBands;
+    const std::size_t num20MhzBands = Count20MHzSubchannels(channelWidth);
+    const auto tonePlan = GetTonePlan(WIFI_MOD_CLASS_HT, MHz_u{20});
+    NS_ASSERT(tonePlan.has_value());
+    const std::size_t numAllocatedSubcarriersPer20MHz = tonePlan->usedTones;
+    const double txPowerPerBand = (txPower / numAllocatedSubcarriersPer20MHz) / num20MhzBands;
     NS_LOG_DEBUG("Power per band " << txPowerPerBand << "W");
 
-    std::size_t numSubcarriersPer20MHz = MHzToHz(MHz_u{20}) / carrierSpacing;
-    std::size_t numUnallocatedSubcarriersPer20MHz =
+    const std::size_t numSubcarriersPer20MHz = MHzToHz(MHz_u{20}) / carrierSpacing;
+    const std::size_t numUnallocatedSubcarriersPer20MHz =
         numSubcarriersPer20MHz - numAllocatedSubcarriersPer20MHz;
     std::vector<std::vector<WifiSpectrumBandIndices>> subBandsPerSegment(
         centerFrequencies.size()); // list of data/pilot-containing subBands (sent at 0dBr)
@@ -521,40 +528,21 @@ WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity(
     std::vector<std::vector<WifiSpectrumBandIndices>> subBandsPerSegment(
         centerFrequencies.size()); // list of data/pilot-containing subBands (sent at 0dBr)
     WifiSpectrumBandIndices maskBand(0, nAllocatedBands + nGuardBands + nUnallocatedBands);
-    std::size_t skippedSubbands{0};
-    std::size_t numAllocatedSubbands{0};
-    std::size_t numDc{0};
-    switch (static_cast<uint16_t>(channelWidth))
+    // EHT entries are identical to HE up to 160 MHz and additionally cover 320 MHz
+    const auto tonePlan = GetTonePlan(WIFI_MOD_CLASS_EHT, channelWidth);
+    NS_ABORT_MSG_IF(!tonePlan.has_value(), "ChannelWidth " << channelWidth << " unsupported");
+    txPowerPerBand = txPower / tonePlan->usedTones;
+    if (channelWidth == MHz_u{20})
     {
-    case 20:
-        // 242 subcarriers (234 data + 8 pilot)
-        txPowerPerBand = txPower / 242;
         innerSlopeWidth = static_cast<uint32_t>((Hz_u{5e5} / carrierSpacing) +
                                                 0.5); // [-10.25;-9.75] & [9.75;10.25]
-        skippedSubbands = 6;
-        numAllocatedSubbands = 121;
-        numDc = 3;
-        break;
-    case 40:
-        // 484 subcarriers (468 data + 16 pilot)
-        txPowerPerBand = txPower / 484;
-        skippedSubbands = 12;
-        numAllocatedSubbands = 242;
-        numDc = 5;
-        break;
-    case 80:
-    case 160: // 2 x 80 MHz
-    case 320: // 4 x 80 MHz
-        // 996 subcarriers (980 data + 16 pilot) per 80 MHz band
-        txPowerPerBand = txPower / (996 * (channelWidth / 80));
-        skippedSubbands = 12;
-        numAllocatedSubbands = 498;
-        numDc = 5;
-        break;
-    default:
-        NS_FATAL_ERROR("ChannelWidth " << channelWidth << " unsupported");
-        break;
     }
+    const auto skippedSubbands = tonePlan->skippedSubbands;
+    const auto numDc = tonePlan->numDc;
+    // subbands are allocated per 80 MHz segment for 160 and 320 MHz
+    const auto num80MhzSegments =
+        static_cast<std::size_t>((channelWidth >= MHz_u{160}) ? (channelWidth / MHz_u{80}) : 1);
+    const auto numAllocatedSubbands = tonePlan->usedTones / (2 * num80MhzSegments);
 
     // skip the guard band and skipped subbands, then place power in allocated subbands, then skip
     // DC subbands, then place power in allocated subbands, then skip the final 11 subbands and the
@@ -565,9 +553,9 @@ WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity(
     start = stop + numDc + 1;
     stop = start + numAllocatedSubbands - 1;
     subBandsPerSegment.at(0).emplace_back(start, stop);
-    if (channelWidth >= 160)
+    if (channelWidth >= MHz_u{160})
     {
-        for (std::size_t i = 1; i < (channelWidth / 80); ++i)
+        for (std::size_t i = 1; i < (channelWidth / MHz_u{80}); ++i)
         {
             start = subBandsPerSegment.front().back().second + (2 * skippedSubbands) +
                     nUnallocatedBands;
@@ -584,7 +572,7 @@ WifiSpectrumValueHelper::CreateHeOfdmTxPowerSpectralDensity(
         static_cast<uint32_t>((Hz_u{500e3} / carrierSpacing) +
                               0.5); // size in number of subcarriers of the punctured slope band
     std::vector<std::vector<WifiSpectrumBandIndices>> puncturedBandsPerSegment;
-    std::size_t subcarriersPerSuband = (MHzToHz(MHz_u{20}) / carrierSpacing);
+    const std::size_t subcarriersPerSuband = (MHzToHz(MHz_u{20}) / carrierSpacing);
     start = (nGuardBands / 2);
     stop = start + subcarriersPerSuband - 1;
     if (!puncturedSubchannels.empty())
