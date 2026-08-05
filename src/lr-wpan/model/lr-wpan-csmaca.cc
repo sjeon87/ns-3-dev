@@ -27,21 +27,35 @@ namespace ns3
 {
 namespace lrwpan
 {
-
+// clang-format off
 NS_LOG_COMPONENT_DEFINE("LrWpanCsmaCa");
 NS_OBJECT_ENSURE_REGISTERED(LrWpanCsmaCa);
 
 TypeId
-LrWpanCsmaCa::GetTypeId()
+LrWpanCsmaCa::GetTypeId (void)
 {
-    static TypeId tid = TypeId("ns3::lrwpan::LrWpanCsmaCa")
-                            .AddDeprecatedName("ns3::LrWpanCsmaCa")
-                            .SetParent<Object>()
-                            .SetGroupName("LrWpan")
-                            .AddConstructor<LrWpanCsmaCa>();
-    return tid;
+  static TypeId tid = TypeId ("ns3::lrwpan::LrWpanCsmaCa")
+    .SetParent<Object> ()
+    .SetGroupName ("LrWpan")
+    .AddConstructor<LrWpanCsmaCa> ()
+    .AddAttribute ("MacMinBE",
+                   "The minimum backoff exponent.",
+                   UintegerValue (3),
+                   MakeUintegerAccessor (&LrWpanCsmaCa::m_macMinBE),
+                   MakeUintegerChecker<uint8_t> (0, 8))
+    .AddAttribute ("MacMaxBE",
+                   "The maximum backoff exponent.",
+                   UintegerValue (5),
+                   MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxBE),
+                   MakeUintegerChecker<uint8_t> (3, 8))
+    .AddAttribute ("MacMaxCSMABackoffs",
+                   "The maximum number of backoffs.",
+                   UintegerValue (4),
+                   MakeUintegerAccessor (&LrWpanCsmaCa::m_macMaxCSMABackoffs),
+                   MakeUintegerChecker<uint8_t> (0, 5));
+  return tid;
 }
-
+// clang-format on
 LrWpanCsmaCa::LrWpanCsmaCa()
 {
     // TODO-- make these into ns-3 attributes
@@ -50,9 +64,6 @@ LrWpanCsmaCa::LrWpanCsmaCa()
     m_NB = 0;
     m_CW = 2;
     m_macBattLifeExt = false;
-    m_macMinBE = 3;
-    m_macMaxBE = 5;
-    m_macMaxCSMABackoffs = 4;
     m_random = CreateObject<UniformRandomVariable>();
     m_BE = m_macMinBE;
     m_ccaRequestRunning = false;
@@ -453,7 +464,7 @@ LrWpanCsmaCa::PlmeCcaConfirm(PhyEnumeration status)
 {
     NS_LOG_FUNCTION(this << status);
 
-    // Only react on this event, if we are actually waiting for a CCA.
+    // Only react on this event,  if we are actually waiting for a CCA.
     // If the CSMA algorithm was canceled, we could still receive this event from
     // the PHY. In this case we ignore the event.
     if (m_ccaRequestRunning)
@@ -562,3 +573,4 @@ LrWpanCsmaCa::GetBatteryLifeExtension() const
 
 } // namespace lrwpan
 } // namespace ns3
+// Force pipeline trigger
