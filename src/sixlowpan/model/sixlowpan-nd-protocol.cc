@@ -27,6 +27,7 @@
 #include "ns3/ipv6-l3-protocol.h"
 #include "ns3/ipv6-route.h"
 #include "ns3/ipv6-routing-protocol.h"
+#include "ns3/link-layer-address-provider.h"
 #include "ns3/log.h"
 #include "ns3/mac16-address.h"
 #include "ns3/mac48-address.h"
@@ -706,8 +707,9 @@ SixLowPanNdProtocol::HandleSixLowPanRA(Ptr<Packet> packet,
                                                  Icmpv6OptionPrefixInformation{});
     for (const auto& pio : pios)
     {
-        Ipv6Address gaddr = Ipv6Address::MakeAutoconfiguredAddress(sixLowPanNetDevice->GetAddress(),
-                                                                   pio.GetPrefix());
+        Ipv6Address gaddr = Ipv6Address::MakeAutoconfiguredAddress(
+            LinkLayerAddressProvider::GetAutoconfiguredAddress(sixLowPanNetDevice),
+            pio.GetPrefix());
         pending.addressesToBeRegistered.emplace_back(gaddr, pio);
     }
     m_pendingRas.push_back(pending);

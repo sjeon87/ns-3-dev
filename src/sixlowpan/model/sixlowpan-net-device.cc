@@ -18,6 +18,7 @@
 #include "ns3/iana-ieee802-numbers.h"
 #include "ns3/iana-internet-protocol-numbers.h"
 #include "ns3/ipv6-extension-header.h"
+#include "ns3/link-layer-address-provider.h"
 #include "ns3/log.h"
 #include "ns3/mac16-address.h"
 #include "ns3/mac48-address.h"
@@ -143,11 +144,31 @@ SixLowPanNetDevice::GetNetDevice() const
     return m_netDevice;
 }
 
+std::vector<Address>
+SixLowPanNetDevice::GetUnderlyingLinkLayerAddresses() const
+{
+    NS_LOG_FUNCTION(this);
+    Ptr<LinkLayerAddressProvider> provider = m_netDevice->GetObject<LinkLayerAddressProvider>();
+    if (provider)
+    {
+        return provider->GetLinkLayerAddresses();
+    }
+    return std::vector<Address>();
+}
+
 void
 SixLowPanNetDevice::SetNetDevice(Ptr<NetDevice> device)
 {
     NS_LOG_FUNCTION(this << device);
     m_netDevice = device;
+
+    // Forward the underlying device's link-layer addresses (if any) so that
+    // GetObject<LinkLayerAddressProvider>() on this wrapper resolves to them. Harmless
+    // for devices without a provider (e.g. CSMA): it returns an empty list.
+    Ptr<LinkLayerAddressProvider> addrProvider = CreateObject<LinkLayerAddressProvider>();
+    addrProvider->SetAddressesCallback(
+        MakeCallback(&SixLowPanNetDevice::GetUnderlyingLinkLayerAddresses, this));
+    AggregateObject(addrProvider);
 
     NS_LOG_DEBUG("RegisterProtocolHandler for " << device->GetInstanceTypeId().GetName());
 
@@ -265,20 +286,20 @@ SixLowPanNetDevice::ReceiveFromDevice(Ptr<NetDevice> incomingPort,
             m_seenPkts[meshHdr.GetOriginator()].pop_front();
         }
 
-        NS_ABORT_MSG_IF(!Mac16Address::IsMatchingType(meshHdr.GetFinalDst()),
-                        "SixLowPan mesh-under flooding can not currently handle extended address "
-                        "final destinations: "
-                            << meshHdr.GetFinalDst());
-        NS_ABORT_MSG_IF(!Mac48Address::IsMatchingType(m_netDevice->GetAddress()),
-                        "SixLowPan mesh-under flooding can not currently handle devices using "
-                        "extended addresses: "
-                            << m_netDevice->GetAddress());
-
-        Mac16Address finalDst = Mac16Address::ConvertFrom(meshHdr.GetFinalDst());
+        // The mesh final destination may be a 16-bit short or a 64-bit extended
+        // address (RFC 4944 Section 5.2, F bit). Broadcast/multicast only apply to
+        // the short form.
+        Address meshFinalDst = meshHdr.GetFinalDst();
+        bool forMe = (meshFinalDst == GetAddress());
+        bool bcastOrMcast = false;
+        if (Mac16Address::IsMatchingType(meshFinalDst))
+        {
+            Mac16Address finalDst16 = Mac16Address::ConvertFrom(meshFinalDst);
+            bcastOrMcast = finalDst16.IsBroadcast() || finalDst16.IsMulticast();
+        }
 
         // See if the packet is for others than me. In case forward it.
-        if (meshHdr.GetFinalDst() != Get16MacFrom48Mac(m_netDevice->GetAddress()) ||
-            finalDst.IsBroadcast() || finalDst.IsMulticast())
+        if (!forMe || bcastOrMcast)
         {
             uint8_t hopsLeft = meshHdr.GetHopsLeft();
 
@@ -286,7 +307,7 @@ SixLowPanNetDevice::ReceiveFromDevice(Ptr<NetDevice> incomingPort,
             {
                 NS_LOG_LOGIC("Not forwarding packet -- hop limit reached");
             }
-            else if (meshHdr.GetOriginator() == Get16MacFrom48Mac(m_netDevice->GetAddress()))
+            else if (meshHdr.GetOriginator() == GetAddress())
             {
                 NS_LOG_LOGIC("Not forwarding packet -- I am the originator");
             }
@@ -304,7 +325,7 @@ SixLowPanNetDevice::ReceiveFromDevice(Ptr<NetDevice> incomingPort,
                                     protocol);
             }
 
-            if (!finalDst.IsBroadcast() && !finalDst.IsMulticast())
+            if (!bcastOrMcast)
             {
                 return;
             }
@@ -442,7 +463,22 @@ SixLowPanNetDevice::GetAddress() const
     NS_LOG_FUNCTION(this);
     NS_ASSERT_MSG(m_netDevice, "Sixlowpan: can't find any lower-layer protocol " << m_netDevice);
 
+    if (m_useMinimalLinkLocalId)
+    {
+        // Prefer the underlying device's short address (falls back to its extended
+        // address when none is assigned, e.g. Ethernet/CSMA). Query m_netDevice, not
+        // this device, to avoid recursion through GetAutoconfiguredAddress's fallback.
+        return LinkLayerAddressProvider::GetAutoconfiguredAddress(m_netDevice);
+    }
+
     return m_netDevice->GetAddress();
+}
+
+void
+SixLowPanNetDevice::UseMinimalLinkLocalId()
+{
+    NS_LOG_FUNCTION(this);
+    m_useMinimalLinkLocalId = true;
 }
 
 bool
@@ -600,12 +636,12 @@ SixLowPanNetDevice::DoSend(Ptr<Packet> packet,
     if (m_compressionType == IPHC)
     {
         NS_LOG_LOGIC("Compressing packet using IPHC");
-        origHdrSize += CompressLowPanIphc(packet, m_netDevice->GetAddress(), destination);
+        origHdrSize += CompressLowPanIphc(packet, GetAddress(), destination);
     }
     else
     {
         NS_LOG_LOGIC("Compressing packet using HC1");
-        origHdrSize += CompressLowPanHc1(packet, m_netDevice->GetAddress(), destination);
+        origHdrSize += CompressLowPanHc1(packet, GetAddress(), destination);
     }
 
     uint16_t pktSize = packet->GetSize();
@@ -616,21 +652,17 @@ SixLowPanNetDevice::DoSend(Ptr<Packet> packet,
 
     if (useMesh)
     {
+        // The mesh header carries the originator (this node) and the final destination
+        // (the mesh next hop resolved by IPv6/ND). RFC 4944 Section 5.2 allows both
+        // 16-bit short and 64-bit extended addresses (V/F bits); the SixLowPanMesh
+        // header handles either. We use the device identity (extended address) as the
+        // originator, consistent with the address passed to IPHC compression below, and
+        // the resolved L2 destination as-is (short for broadcast/multicast, extended for
+        // a unicast next hop). A 16-bit mesh would need per-address short resolution.
         Address source = src;
         if (!doSendFrom)
         {
-            source = m_netDevice->GetAddress();
-        }
-
-        if (Mac48Address::IsMatchingType(source))
-        {
-            // We got a Mac48 pseudo-MAC. We need its original Mac16 here.
-            source = Get16MacFrom48Mac(source);
-        }
-        if (Mac48Address::IsMatchingType(destination))
-        {
-            // We got a Mac48 pseudo-MAC. We need its original Mac16 here.
-            destination = Get16MacFrom48Mac(destination);
+            source = GetAddress();
         }
 
         meshHdr.SetOriginator(source);
@@ -2681,20 +2713,6 @@ SixLowPanNetDevice::HandleFragmentsTimeout(FragmentKey_t key, uint32_t iif)
     it->second = nullptr;
 
     m_fragments.erase(key);
-}
-
-Address
-SixLowPanNetDevice::Get16MacFrom48Mac(Address addr)
-{
-    NS_ASSERT_MSG(Mac48Address::IsMatchingType(addr), "Need a Mac48Address" << addr);
-
-    uint8_t buf[6];
-    addr.CopyTo(buf);
-
-    Mac16Address shortAddr;
-    shortAddr.CopyFrom(buf + 4);
-
-    return shortAddr;
 }
 
 SixLowPanNetDevice::FragmentsTimeoutsListI_t

@@ -69,6 +69,22 @@ SixLowPanHelper::Install(const NetDeviceContainer c)
 }
 
 void
+SixLowPanHelper::UseMinimalLinkLocalId(NetDeviceContainer c)
+{
+    NS_LOG_FUNCTION(this);
+
+    for (uint32_t i = 0; i < c.GetN(); ++i)
+    {
+        Ptr<NetDevice> device = c.Get(i);
+        Ptr<SixLowPanNetDevice> sixDevice = DynamicCast<SixLowPanNetDevice>(device);
+        if (sixDevice)
+        {
+            sixDevice->UseMinimalLinkLocalId();
+        }
+    }
+}
+
+void
 SixLowPanHelper::AddContext(NetDeviceContainer c,
                             uint8_t contextId,
                             Ipv6Prefix context,

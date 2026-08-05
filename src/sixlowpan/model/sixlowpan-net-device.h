@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string>
 #include <tuple>
+#include <vector>
 
 namespace ns3
 {
@@ -142,6 +143,18 @@ class SixLowPanNetDevice : public NetDevice
      * @return A smart pointer to the underlying NetDevice.
      */
     Ptr<NetDevice> GetNetDevice() const;
+
+    /**
+     * @brief Build the IPv6 link-local interface identifier from the 16-bit short
+     *        address (when the underlying device has one) instead of the default
+     *        64-bit extended address (EUI-64).
+     *
+     * By default the link-local IID is EUI-64 based. Calling this selects the more
+     * compact short-address form (`0000:00ff:fe00:XXXX`). It has no effect on devices
+     * without a short address (e.g. Ethernet/CSMA). It must be called before the IPv6
+     * interface is brought up, since the link-local is formed once at that point.
+     */
+    void UseMinimalLinkLocalId();
 
     /**
      * @brief Setup SixLowPan to be a proxy for the specified NetDevice.
@@ -618,11 +631,13 @@ class SixLowPanNetDevice : public NetDevice
     void DropOldestFragmentSet();
 
     /**
-     * Get a Mac16 from its Mac48 pseudo-MAC
-     * @param addr the PseudoMac address
-     * @return the Mac16Address
+     * @brief Returns the underlying device's link-layer addresses (if it exposes a
+     * LinkLayerAddressProvider), so this wrapper can forward them. Used as the
+     * LinkLayerAddressProvider callback.
+     *
+     * @return the underlying device's addresses, or an empty vector
      */
-    Address Get16MacFrom48Mac(Address addr);
+    std::vector<Address> GetUnderlyingLinkLayerAddresses() const;
 
     /**
      * Container for fragment key -> fragments.
@@ -651,7 +666,10 @@ class SixLowPanNetDevice : public NetDevice
 
     Ptr<Node> m_node;           //!< Smart pointer to the Node.
     Ptr<NetDevice> m_netDevice; //!< Smart pointer to the underlying NetDevice.
-    uint32_t m_ifIndex;         //!< Interface index.
+
+    bool m_useMinimalLinkLocalId{false}; //!< Use the 16-bit short address for the
+                                         //!< link-local IID instead of the EUI-64.
+    uint32_t m_ifIndex;                  //!< Interface index.
 
     bool m_omitUdpChecksum; //!< Omit UDP checksum in NC1 encoding.
 

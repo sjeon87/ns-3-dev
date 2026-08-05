@@ -75,6 +75,17 @@ class SixLowPanHelper
     NetDeviceContainer Install(NetDeviceContainer c);
 
     /**
+     * @brief Use the 16-bit short address for the IPv6 link-local interface identifier
+     *        (instead of the default EUI-64) on a set of SixLowPanNetDevices.
+     *
+     * Must be called before the IPv6 interfaces are brought up. Has no effect on
+     * devices without a short address. @see SixLowPanNetDevice::UseMinimalLinkLocalId.
+     *
+     * @param [in] c The NetDevice container.
+     */
+    void UseMinimalLinkLocalId(NetDeviceContainer c);
+
+    /**
      * @brief Adds a compression Context to a set of NetDevices.
      *
      * This function installs one Compression Context on a set of NetDevices.

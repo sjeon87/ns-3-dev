@@ -11,6 +11,7 @@
 #include "ns3/assert.h"
 #include "ns3/ipv6-address-generator.h"
 #include "ns3/ipv6.h"
+#include "ns3/link-layer-address-provider.h"
 #include "ns3/log.h"
 #include "ns3/loopback-net-device.h"
 #include "ns3/mac16-address.h"
@@ -255,9 +256,10 @@ Ipv6AddressHelper::Assign(const NetDeviceContainer& c,
 
         if (withConfiguration.at(i))
         {
-            Ipv6InterfaceAddress ipv6Addr = Ipv6InterfaceAddress(NewAddress(device->GetAddress()),
-                                                                 Ipv6Prefix(64),
-                                                                 onLink.at(i));
+            Ipv6InterfaceAddress ipv6Addr = Ipv6InterfaceAddress(
+                NewAddress(LinkLayerAddressProvider::GetAutoconfiguredAddress(device)),
+                Ipv6Prefix(64),
+                onLink.at(i));
             ipv6->AddAddress(ifIndex, ipv6Addr, onLink.at(i));
         }
 

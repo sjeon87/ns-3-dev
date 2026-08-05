@@ -1679,6 +1679,20 @@ class Icmpv6OptionLinkLayerAddress : public Icmpv6OptionHeader
     void SetAddress(Address addr);
 
     /**
+     * @brief Set the link-layer address length of the interface on which this option
+     *        is received.
+     *
+     * RFC 4861 4.6.1 does not encode the link-layer address length in the option; it
+     * is defined by the link layer. This hint lets Deserialize() recover the correct
+     * address length, e.g. to distinguish a 2-byte IEEE 802.15.4 short address from a
+     * 6-byte Ethernet address (which occupy the same option length). If left unset
+     * (0), Deserialize() falls back to inferring the length from the option size.
+     *
+     * @param length the receiving interface's link-layer address length, in octets
+     */
+    void SetL2AddressLength(uint8_t length);
+
+    /**
      * @brief Print information.
      * @param os output stream
      */
@@ -1708,6 +1722,12 @@ class Icmpv6OptionLinkLayerAddress : public Icmpv6OptionHeader
      * @brief The hardware address.
      */
     Address m_addr;
+
+    /**
+     * @brief Length (octets) of the receiving interface's link-layer address, used as
+     *        a hint by Deserialize() to recover the address length. 0 means unknown.
+     */
+    uint8_t m_l2AddrLen{0};
 };
 
 /**

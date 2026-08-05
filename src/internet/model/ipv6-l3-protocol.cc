@@ -25,6 +25,7 @@
 #include "ns3/boolean.h"
 #include "ns3/callback.h"
 #include "ns3/iana-ieee802-numbers.h"
+#include "ns3/link-layer-address-provider.h"
 #include "ns3/log.h"
 #include "ns3/mac16-address.h"
 #include "ns3/mac64-address.h"
@@ -309,7 +310,8 @@ Ipv6L3Protocol::AddAutoconfiguredAddress(uint32_t interface,
                          << preferredTime);
     Ipv6InterfaceAddress address;
 
-    Address addr = GetInterface(interface)->GetDevice()->GetAddress();
+    Address addr =
+        LinkLayerAddressProvider::GetAutoconfiguredAddress(GetInterface(interface)->GetDevice());
 
     if (!defaultRouter.IsAny())
     {

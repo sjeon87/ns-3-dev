@@ -2033,6 +2033,13 @@ Icmpv6OptionLinkLayerAddress::SetAddress(Address addr)
 }
 
 void
+Icmpv6OptionLinkLayerAddress::SetL2AddressLength(uint8_t length)
+{
+    NS_LOG_FUNCTION(this << static_cast<uint32_t>(length));
+    m_l2AddrLen = length;
+}
+
+void
 Icmpv6OptionLinkLayerAddress::Print(std::ostream& os) const
 {
     NS_LOG_FUNCTION(this << &os);
@@ -2078,10 +2085,44 @@ Icmpv6OptionLinkLayerAddress::Deserialize(Buffer::Iterator start)
     SetLength(i.ReadU8());
     // -fstrict-overflow sensitive, see bug 1868
     NS_ASSERT(GetLength() * 8 <= 32 + 2);
-    i.Read(mac, (GetLength() * 8) - 2);
 
-    m_addr.SetType("MacAddress", (GetLength() * 8) - 2);
-    m_addr.CopyFrom(mac, (GetLength() * 8) - 2);
+    // RFC 4861 4.6.1: the option does not carry the link-layer address length. The
+    // address is left-justified and zero-padded to an 8-octet boundary (0..7 octets
+    // of padding), so the address plus padding occupies (Length*8 - 2) octets.
+    uint8_t field = (GetLength() * 8) - 2;
+    uint8_t addrLen;
+    if (m_l2AddrLen == 6)
+    {
+        // Ethernet-family link (e.g. CSMA): 6-octet addresses.
+        addrLen = 6;
+    }
+    else if (m_l2AddrLen == 2 || m_l2AddrLen == 8)
+    {
+        // IEEE 802.15.4-family link: 2-octet short or 8-octet extended address,
+        // distinguished by the option length (Length 1 -> 2, Length 2 -> 8).
+        addrLen = (GetLength() == 1) ? 2 : 8;
+    }
+    else
+    {
+        // No hint: pick the largest known link-layer address size that fits the
+        // option length with valid (< 8 octet) padding. Unambiguous for the sizes
+        // currently on the wire (6 octets at Length 1, 8 octets at Length 2).
+        static const uint8_t knownSizes[] = {8, 6};
+        addrLen = field;
+        for (uint8_t size : knownSizes)
+        {
+            if (size <= field && (field - size) < 8)
+            {
+                addrLen = size;
+                break;
+            }
+        }
+    }
+
+    i.Read(mac, field); // consume the address and any padding
+
+    m_addr.SetType("MacAddress", addrLen);
+    m_addr.CopyFrom(mac, addrLen); // drop trailing padding
 
     return GetSerializedSize();
 }
