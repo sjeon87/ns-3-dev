@@ -13,9 +13,11 @@
 
 #include "ns3/event-id.h"
 #include "ns3/nstime.h"
+#include "ns3/traced-callback.h"
+#include "ns3/traced-value.h"
 #include "ns3/trickle-timer.h"
 
-#include <vector>
+#include <deque>
 
 namespace ns3
 {
@@ -35,32 +37,40 @@ namespace ns3
  *
  * Behaviour (the logic, independent of the implementation):
  *
- *  - Pending set. A packet accepted for forwarding is added to a pending
- *    set. The first packet that makes the set non-empty starts the timer;
- *    a packet arriving while the timer is already running simply joins the
- *    set and does NOT restart the timer (so an earlier packet is never
- *    starved).
+ *  - Pending queue. A packet accepted for forwarding joins a FIFO pending
+ *    queue. The first packet that makes the queue non-empty starts the
+ *    timer with the minimum interval (a new packet is new information);
+ *    a packet arriving while the timer is already running simply joins
+ *    the queue and does NOT restart the timer (so an earlier packet is
+ *    never starved).
  *
  *  - Consistent event (\RFC{6206} Rule 3). Overhearing a neighbour
  *    rebroadcast a packet we have also seen is evidence that the
  *    information is spreading without us. It increments the Trickle
  *    counter c. As consistency accumulates, the Trickle interval grows
  *    (Rule 5), so a well-covered neighbourhood transmits less often.
+ *    With HeadOfLineConsistency enabled only duplicates of the packet at
+ *    the head of the pending queue count (the next packet this node would
+ *    forward); otherwise any duplicate counts (channel-level consistency).
  *
  *  - Transmit decision (\RFC{6206} Rule 4). When the timer fires it
- *    forwards the pending set only if fewer than @c k consistent events
- *    were heard in the interval (c < k). Otherwise the packet is not
- *    forwarded.
+ *    forwards only if fewer than @c k consistent events were heard in the
+ *    interval (c < k). Otherwise nothing is forwarded at this firing.
+ *    With ForwardOnePerFiring enabled a firing forwards only the packet
+ *    at the head of the queue and the timer keeps running (its interval
+ *    doubling per \RFC{6206}) until the queue drains; otherwise a firing
+ *    forwards the whole queue at once.
  *
- *  - Suppressed packets. A packet suppressed at a firing stays in the
- *    pending set: it may be forwarded at a later firing, and it is
- *    discarded once it has waited MaxForwardingDelay in total.
+ *  - Per-packet deadline. Each packet records its own deadline on
+ *    arrival (MaxForwardingDelay later). A packet still pending at its
+ *    deadline (suppression won) is discarded individually; packets that
+ *    arrived later are unaffected until their own deadlines.
  *
- *  - Reset on resolution. The timer is reset (restarted from the minimum
- *    interval) when the pending work is resolved: either after a successful
- *    forward, or after a packet is discarded because it waited too long
- *    (MaxForwardingDelay) without being forwarded. Arrivals never reset the
- *    timer; only resolution does.
+ *  - Reset on empty. The timer stops when the pending queue drains
+ *    (everything forwarded or discarded), so the next arrival restarts
+ *    it from the minimum interval. This is the adaptive backoff: react
+ *    fast when new information appears, back off while the neighbourhood
+ *    is covered.
  *
  * A zero RedundancyConstant disables suppression: the node always forwards,
  * behaving like jittered flooding driven by the Trickle interval.
@@ -100,10 +110,17 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     {
         Ptr<Packet> packet;        ///< The packet to forward.
         ForwardCallback forwardCb; ///< Callback that performs the rebroadcast.
+        Address originator;        ///< Mesh originator (for head-of-line consistency).
+        uint8_t seqNo;             ///< Mesh sequence number (for head-of-line consistency).
+        Time deadline;             ///< Discard time: arrival + MaxForwardingDelay.
     };
 
     /**
      * @brief Start the Trickle timer for a fresh batch of pending packets.
+     *
+     * The timer starts from the minimum interval: the packet that starts
+     * it is new information, so the node must react quickly (in the spirit
+     * of \RFC{6206} inconsistency and \RFC{7731} new-data handling).
      */
     void StartTimer();
 
@@ -113,31 +130,45 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     void StopTimer();
 
     /**
-     * @brief Trickle transmit callback: forward all pending packets (c < k).
+     * @brief Trickle transmit callback, invoked only when c < k.
      *
-     * Invoked by the TrickleTimer only when the redundancy constant has not
-     * been reached. Forwards every pending packet, then resets by stopping
-     * the timer until the next packet arrives.
+     * Forwards the whole pending queue and stops the timer, or, with
+     * ForwardOnePerFiring, forwards only the head of the queue and keeps
+     * the timer running until the queue drains.
      */
     void Transmit();
 
     /**
-     * @brief Discard pending packets that waited too long without forwarding.
+     * @brief Discard the pending packets whose deadline has passed.
      *
-     * Reached when suppression kept the node silent for MaxForwardingDelay.
-     * The packets are dropped and the timer is reset.
+     * Reached when suppression kept a packet silent for MaxForwardingDelay.
+     * Only the expired packets are dropped; the timer stops when the queue
+     * drains.
      */
-    void DiscardPending();
+    void DiscardExpired();
+
+    /**
+     * @brief Schedule the discard event for the head of the pending queue.
+     *
+     * The queue is FIFO and every packet waits the same MaxForwardingDelay,
+     * so deadlines are monotonic and a single event (for the head) suffices.
+     */
+    void ScheduleDiscard();
 
     Time m_minInterval;        ///< RFC 6206 Imin: the minimum Trickle interval.
     uint8_t m_doublings;       ///< Imax = MinInterval * 2^Doublings.
     uint16_t m_redundancy;     ///< RFC 6206 k. Forward iff c < k; zero disables suppression.
-    Time m_maxForwardingDelay; ///< Discard a pending packet not forwarded within this time.
+    Time m_maxForwardingDelay; ///< Per-packet deadline: discard if not forwarded within this time.
+    bool m_onePerFiring;       ///< Forward one packet per firing instead of the whole queue.
+    bool m_headOfLine;         ///< Count only duplicates of the head-of-queue packet.
 
-    TrickleTimer m_timer;                 ///< The single per-node Trickle timer.
-    bool m_timerRunning;                  ///< True while m_timer is enabled.
-    EventId m_discardEvent;               ///< Fires at MaxForwardingDelay to discard stuck packets.
-    std::vector<PendingPacket> m_pending; ///< Packets awaiting a forward decision.
+    TrickleTimer m_timer;                ///< The single per-node Trickle timer.
+    bool m_timerRunning;                 ///< True while m_timer is enabled.
+    EventId m_discardEvent;              ///< Fires at the head-of-queue packet's deadline.
+    std::deque<PendingPacket> m_pending; ///< FIFO queue of packets awaiting a decision.
+
+    TracedValue<uint32_t> m_pendingSize;              ///< Traced size of the pending queue.
+    TracedCallback<Ptr<const Packet>> m_discardTrace; ///< Fired for each discarded packet.
 };
 
 } // namespace ns3

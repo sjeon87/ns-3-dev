@@ -99,12 +99,15 @@ The available forwarding policies are:
 * ``SixLowPanSimpleFlooding`` (default): every non-duplicate packet is re-broadcast after a uniform random jitter, set by its ``MeshUnderJitter`` attribute. This preserves the historical behavior, and existing simulations are unaffected.
 * ``SixLowPanTrickleForwarding``: applies the Trickle algorithm (:rfc:`6206`) to suppress redundant re-broadcasts, in the spirit of MPL (:rfc:`7731`).
 
-In the Trickle suppression policy, a single Trickle timer governs how often the node transmits its pending forwards:
+In the Trickle forwarding policy, a single Trickle timer governs how often the node transmits its pending forwards:
 
-* Packets accepted for forwarding join a pending set. The first packet starts the timer; later arrivals join the set without restarting it, so an earlier packet is never starved.
-* Overhearing a neighbour re-broadcast a packet the node has also seen is a *consistent event*: it increments the Trickle counter and, as consistency accumulates, grows the interval, so a well-covered neighbourhood transmits less often.
-* When the timer fires, the pending set is forwarded only if fewer than ``RedundancyConstant`` (k) copies were heard during the interval; otherwise the node stays silent.
-* The timer is reset only when the pending work is resolved: after a successful forward, or after a packet waits longer than ``MaxForwardingDelay`` without being sent (suppressed). Arrivals never reset the timer.
+* Packets accepted for forwarding join a FIFO pending queue. The first packet (empty queue) starts the timer from the minimum interval, since a new packet is new information to spread; later arrivals join the queue without restarting it, so an earlier packet is never starved.
+* Overhearing a neighbour re-broadcast a packet the node has also seen is a *consistent event*: it increments the Trickle counter and, as consistency accumulates, grows the interval, so a well-covered neighbourhood transmits less often. With ``HeadOfLineConsistency`` enabled only duplicates of the packet at the head of the queue count; by default any duplicate counts (channel-level consistency).
+* When the timer fires, the node forwards only if fewer than ``RedundancyConstant`` (k) copies were heard during the interval; otherwise it stays silent. By default a firing forwards the whole queue at once; with ``ForwardOnePerFiring`` enabled it forwards only the head of the queue and the timer keeps running (its interval doubling as usual) until the queue drains.
+* Each packet has its own deadline: a packet still pending ``MaxForwardingDelay`` after its arrival (suppression won) is discarded individually, without affecting later arrivals.
+* The timer stops when the queue drains (everything forwarded or discarded), so the next arrival restarts it from the minimum interval. Arrivals never reset a running timer.
+
+The policy exposes a ``PendingQueueSize`` traced value and a ``PacketDiscarded`` trace source to observe the queue occupancy and the deadline discards.
 
 The interval bounds are set with ``MinInterval`` (Imin) and ``Doublings`` (Imax = MinInterval times 2 to the power Doublings). Setting ``RedundancyConstant`` to zero disables suppression, reducing the behaviour to jittered flooding.
 
@@ -338,7 +341,9 @@ The mesh-under forwarding policies provide further attributes:
 * ``MinInterval``: (Time, default 10ms), the minimum Trickle interval Imin (``SixLowPanTrickleForwarding``).
 * ``Doublings``: (unsigned 8 bits integer, default 4), the number of interval doublings, Imax = Imin * 2^Doublings (``SixLowPanTrickleForwarding``).
 * ``RedundancyConstant``: (unsigned 16 bits integer, default 1), the Trickle redundancy constant k; zero disables suppression (``SixLowPanTrickleForwarding``).
-* ``MaxForwardingDelay``: (Time, default 500ms), pending packets older than this are dropped as suppressed (``SixLowPanTrickleForwarding``).
+* ``MaxForwardingDelay``: (Time, default 500ms), per-packet deadline: a packet not forwarded within this time of its arrival is dropped as suppressed (``SixLowPanTrickleForwarding``).
+* ``ForwardOnePerFiring``: (boolean, default false), forward only the head of the pending queue at each firing instead of the whole queue (``SixLowPanTrickleForwarding``).
+* ``HeadOfLineConsistency``: (boolean, default false), count only duplicates of the head-of-queue packet as consistent events instead of any duplicate (``SixLowPanTrickleForwarding``).
 
 The CompressionThreshold attribute is similar to Contiki's SICSLOWPAN_CONF_MIN_MAC_PAYLOAD
 option. If a compressed packet size is less than the threshold, the uncompressed version is
