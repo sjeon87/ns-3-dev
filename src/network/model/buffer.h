@@ -267,35 +267,35 @@ class Buffer
          */
         void Write(const uint8_t* buffer, uint32_t size);
         /**
-         * @param start the start of the data to copy
-         * @param end the end of the data to copy
+         * @param begin the start of the data to copy
+         * @param end one-past-the-end of the data to copy
          *
-         * Write the data delimited by start and end in internal buffer
+         * Write the data delimited by begin and end in internal buffer
          * and advance the iterator position by the number of bytes
          * copied.
          * The input iterators _must_ not point to the same Buffer as
          * we do to avoid overlapping copies. This is enforced
          * in debug builds by asserts.
          */
-        void Write(Iterator start, Iterator end);
+        void Write(Iterator begin, Iterator end);
 
         /**
          * @brief Write a range of uint8_t values into the buffer.
          *
          * @tparam Iter a forward iterator with value type uint8_t
-         * @param first start of the range to copy in
-         * @param last one-past-the-end of the range to copy in
+         * @param begin start of the range to copy in
+         * @param end one-past-the-end of the range to copy in
          *
-         * Advances the iterator position by std::distance(first, last) bytes.
+         * Advances the iterator position by std::distance(begin, end) bytes.
          * Supports both forward and reverse iterators (rbegin/rend), since
          * iteration is performed element-by-element.
          */
         template <Uint8tForwardIterator Iter>
-        void Write(Iter first, Iter last)
+        void Write(Iter begin, Iter end)
         {
-            for (; first != last; ++first)
+            for (; begin != end; ++begin)
             {
-                WriteU8(*first);
+                WriteU8(*begin);
             }
         }
 
@@ -405,20 +405,20 @@ class Buffer
         /**
          * @brief Read into a range of uint8_t storage from the buffer.
          *
- * @tparam Iter a forward iterator with value type uint8_t
-         * @param first start of the destination range
-         * @param last one-past-the-end of the destination range
+         * @tparam Iter a forward iterator with value type uint8_t
+         * @param begin start of the destination range
+         * @param end one-past-the-end of the destination range
          *
- * Advances the iterator position by std::distance(first, last) bytes.
+         * Advances the iterator position by std::distance(begin, end) bytes.
          * Supports both forward and reverse iterators (rbegin/rend), since
          * iteration is performed element-by-element.
          */
         template <Uint8tForwardIterator Iter>
-        void Read(Iter first, Iter last)
+        void Read(Iter begin, Iter end)
         {
-            for (; first != last; ++first)
+            for (; begin != end; ++begin)
             {
-                *first = ReadU8();
+                *begin = ReadU8();
             }
         }
 

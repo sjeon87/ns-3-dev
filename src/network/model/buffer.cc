@@ -809,34 +809,34 @@ Buffer::Iterator::Check(uint32_t i) const
 }
 
 void
-Buffer::Iterator::Write(Iterator start, Iterator end)
+Buffer::Iterator::Write(Iterator begin, Iterator end)
 {
-    NS_LOG_FUNCTION(this << &start << &end);
-    NS_ASSERT(start.m_data == end.m_data);
-    NS_ASSERT(start.m_current <= end.m_current);
-    NS_ASSERT(start.m_zeroStart == end.m_zeroStart);
-    NS_ASSERT(start.m_zeroEnd == end.m_zeroEnd);
-    NS_ASSERT(m_data != start.m_data);
-    uint32_t size = end.m_current - start.m_current;
+    NS_LOG_FUNCTION(this << &begin << &end);
+    NS_ASSERT(begin.m_data == end.m_data);
+    NS_ASSERT(begin.m_current <= end.m_current);
+    NS_ASSERT(begin.m_zeroStart == end.m_zeroStart);
+    NS_ASSERT(begin.m_zeroEnd == end.m_zeroEnd);
+    NS_ASSERT(m_data != begin.m_data);
+    uint32_t size = end.m_current - begin.m_current;
     NS_ASSERT_MSG(CheckNoZero(m_current, m_current + size), GetWriteErrorMessage());
-    if (start.m_current <= start.m_zeroStart)
+    if (begin.m_current <= begin.m_zeroStart)
     {
-        uint32_t toCopy = std::min(size, start.m_zeroStart - start.m_current);
-        memcpy(&m_data[m_current], &start.m_data[start.m_current], toCopy);
-        start.m_current += toCopy;
+        uint32_t toCopy = std::min(size, begin.m_zeroStart - begin.m_current);
+        memcpy(&m_data[m_current], &begin.m_data[begin.m_current], toCopy);
+        begin.m_current += toCopy;
         m_current += toCopy;
         size -= toCopy;
     }
-    if (start.m_current <= start.m_zeroEnd)
+    if (begin.m_current <= begin.m_zeroEnd)
     {
-        uint32_t toCopy = std::min(size, start.m_zeroEnd - start.m_current);
+        uint32_t toCopy = std::min(size, begin.m_zeroEnd - begin.m_current);
         memset(&m_data[m_current], 0, toCopy);
-        start.m_current += toCopy;
+        begin.m_current += toCopy;
         m_current += toCopy;
         size -= toCopy;
     }
-    uint32_t toCopy = std::min(size, start.m_dataEnd - start.m_current);
-    uint8_t* from = &start.m_data[start.m_current - (start.m_zeroEnd - start.m_zeroStart)];
+    uint32_t toCopy = std::min(size, begin.m_dataEnd - begin.m_current);
+    uint8_t* from = &begin.m_data[begin.m_current - (begin.m_zeroEnd - begin.m_zeroStart)];
     uint8_t* to = &m_data[m_current];
     memcpy(to, from, toCopy);
     m_current += toCopy;
