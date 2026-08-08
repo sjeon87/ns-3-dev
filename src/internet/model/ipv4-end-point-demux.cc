@@ -234,53 +234,50 @@ Ipv4EndPointDemux::Lookup(Ipv4Address daddr,
             }
         }
 
-        bool localAddressMatchesExact = false;
-        bool localAddressIsAny = false;
-        bool localAddressIsSubnetAny = false;
-
         // We have 3 cases:
         // 1) Exact local / destination address match
         // 2) Local endpoint bound to Any -> matches anything
         // 3) Local endpoint bound to x.y.z.0 -> matches Subnet-directed broadcast packet (e.g.,
         // x.y.z.255 in a /24 net) and direct destination match.
 
-        if (endP->GetLocalAddress() == daddr)
+        const Ipv4Address localAddress = endP->GetLocalAddress();
+
+        const bool localAddressMatchesExact = localAddress == daddr;
+        bool localAddressMatchesWildCard = !localAddressMatchesExact && localAddress.IsAny();
+
+        if (!localAddressMatchesExact && !localAddressMatchesWildCard)
         {
-            // Case 1:
-            localAddressMatchesExact = true;
-        }
-        else if (endP->GetLocalAddress() == Ipv4Address::GetAny())
-        {
-            // Case 2:
-            localAddressIsAny = true;
-        }
-        else
-        {
-            // Case 3:
-            for (uint32_t i = 0; i < incomingInterface->GetNAddresses(); i++)
+            const Ipv4NetworkAddress destination{daddr}; // /32
+
+            for (uint32_t i = 0; i < incomingInterface->GetNAddresses(); ++i)
             {
-                Ipv4InterfaceAddress addr = incomingInterface->GetAddress(i);
+                const auto interfaceAddress = incomingInterface->GetAddress(i);
+                const auto prefixLength =
+                    static_cast<uint8_t>(interfaceAddress.GetMask().GetPrefixLength());
 
-                Ipv4Address addrNetpart = addr.GetLocal().CombineMask(addr.GetMask());
-                if (endP->GetLocalAddress() == addrNetpart)
+                const auto interfaceNetwork =
+                    Ipv4NetworkAddress{interfaceAddress.GetLocal(), prefixLength}.GetNetwork();
+
+                const Ipv4NetworkAddress endpointNetwork{localAddress, prefixLength};
+
+                if (endpointNetwork != interfaceNetwork)
                 {
-                    NS_LOG_LOGIC("Endpoint is SubnetDirectedAny "
-                                 << endP->GetLocalAddress() << "/"
-                                 << addr.GetMask().GetPrefixLength());
+                    continue;
+                }
 
-                    Ipv4Address daddrNetPart = daddr.CombineMask(addr.GetMask());
-                    if (addrNetpart == daddrNetPart)
-                    {
-                        localAddressIsSubnetAny = true;
-                    }
+                NS_LOG_LOGIC("Endpoint is SubnetDirectedAny " << interfaceNetwork);
+
+                if (interfaceNetwork.Includes(destination))
+                {
+                    localAddressMatchesWildCard = true;
+                    break;
                 }
             }
+        }
 
-            // if no match here, keep looking
-            if (!localAddressIsSubnetAny)
-            {
-                continue;
-            }
+        if (!localAddressMatchesExact && !localAddressMatchesWildCard)
+        {
+            continue;
         }
 
         bool remotePortMatchesExact = endP->GetPeerPort() == sport;
@@ -298,8 +295,6 @@ Ipv4EndPointDemux::Lookup(Ipv4Address daddr,
         {
             continue;
         }
-
-        bool localAddressMatchesWildCard = localAddressIsAny || localAddressIsSubnetAny;
 
         if (localAddressMatchesExact && remoteAddressMatchesExact && remotePortMatchesExact)
         { // All 4 match - this is the case of an open TCP connection, for example.

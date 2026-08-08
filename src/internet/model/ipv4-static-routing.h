@@ -30,6 +30,7 @@ class NetDevice;
 class Ipv4Interface;
 class Ipv4Address;
 class Ipv4Header;
+class Ipv4NetworkAddress;
 class Ipv4RoutingTableEntry;
 class Ipv4MulticastRoutingTableEntry;
 class Node;
@@ -146,6 +147,23 @@ class Ipv4StaticRouting : public Ipv4RoutingProtocol
      * @see Ipv4Address
      */
     void AddHostRouteTo(Ipv4Address dest, uint32_t interface, uint32_t metric = 0);
+
+    /**
+     * @brief Add a route to the static routing table.
+     *
+     * @param destination The Ipv4NetworkAddress network for this route.
+     * @param interface The network interface index used to send packets to the
+     * destination.
+     * @param metric Metric of route in case of multiple routes to same destination
+     * @param nextHop The next hop in the route to the destination network.
+     *
+     * @see Ipv4NetworkAddress
+     */
+    void AddRouteTo(Ipv4NetworkAddress destination,
+                    uint32_t interface,
+                    Ipv4Address nextHop = Ipv4Address::GetAny(),
+                    uint32_t metric = 0);
+
     /**
      * @brief Add a default route to the static routing table.
      *
