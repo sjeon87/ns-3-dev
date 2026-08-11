@@ -105,6 +105,7 @@ In the Trickle forwarding policy, a single Trickle timer governs how often the n
 * Overhearing a neighbour re-broadcast a packet the node has also seen is a *consistent event*: it increments the Trickle counter and, as consistency accumulates, grows the interval, so a well-covered neighbourhood transmits less often. With ``HeadOfLineConsistency`` enabled only duplicates of the packet at the head of the queue count; by default any duplicate counts (channel-level consistency).
 * When the timer fires, the node forwards only if fewer than ``RedundancyConstant`` (k) copies were heard during the interval; otherwise it stays silent. By default a firing forwards the whole queue at once; with ``ForwardOnePerFiring`` enabled it forwards only the head of the queue and the timer keeps running (its interval doubling as usual) until the queue drains.
 * Each packet has its own deadline: a packet still pending ``MaxForwardingDelay`` after its arrival (suppression won) is discarded individually, without affecting later arrivals.
+* With a non-zero ``DuplicateThreshold``, a pending packet that has been received that many times in total is discarded at transmit time instead of being forwarded: enough neighbours already covered it, so this discard reacts to the observed redundancy itself rather than to the clock.
 * The timer stops when the queue drains (everything forwarded or discarded), so the next arrival restarts it from the minimum interval. Arrivals never reset a running timer.
 
 The policy exposes a ``PendingQueueSize`` traced value and a ``PacketDiscarded`` trace source to observe the queue occupancy and the deadline discards.
@@ -130,9 +131,17 @@ A new forwarding policy is created by subclassing ``SixLowPanMeshUnderRouting`` 
 
 The mesh-under forwarding could be further improved by providing the following:
 
-* Adaptive forwarding jitter (density-aware transmit timing),
 * Adaptive hop-limit calculation,
 * Use of direct (non mesh) transmission for packets directed to 1-hop neighbors.
+
+Note that density-aware transmit timing (an adaptive forwarding jitter) is already provided by the Trickle policy: the interval growth under consistent events IS the adaptation, so no separate jitter mechanism is needed.
+
+Some further directions were considered and deliberately left as future work, to keep the forwarding policies simple. A mesh-under flooding policy that accumulates features stops being simpler than a full routing protocol, at which point a routing protocol serves the user better:
+
+* Priority-aware discarding. The DuplicateThreshold could depend on the packet's DSCP class (which 6LoWPAN already parses for header compression): a high-priority packet would tolerate more observed duplicates before being discarded than a low-priority one. The forwarding policy would only honor a priority set by the upper layers, never set one itself. This mirrors the DiffServ Assured Forwarding structure (:rfc:`2597`), where the class carries the priority and the drop precedence the discard aggressiveness.
+* Per-priority queues. Going further, each DSCP class could have its own pending queue and its own policy instance (even with different Trickle parameters), drained by a weighted round-robin scheduler. This removes the head-of-line coupling between priorities but adds scheduler complexity that is out of proportion for a flooding mechanism, so it is documented here rather than implemented.
+
+Also note that in particularly crowded networks the duplicate-detection cache may need enlarging (``MeshCacheLength``): the cache is the memory that both the duplicate suppression and the seen-count logic rely on.
 
 A more efficient flooding based on Multipoint Relays (MPRs), as used by OLSRv2, was considered and deliberately left out. Selecting MPRs requires every node to maintain an up-to-date view of its two-hop neighbourhood, which needs a background protocol such as NHDP (:rfc:`6130`) exchanging periodic control messages. In the low-datarate or high-mobility regimes typical of 6LoWPAN, that control overhead can cost more energy than the data traffic itself, and the topology may change faster than the updates can track it. It is therefore a known and understood option that was evaluated and discarded for this module.
 
@@ -344,6 +353,7 @@ The mesh-under forwarding policies provide further attributes:
 * ``MaxForwardingDelay``: (Time, default 500ms), per-packet deadline: a packet not forwarded within this time of its arrival is dropped as suppressed (``SixLowPanTrickleForwarding``).
 * ``ForwardOnePerFiring``: (boolean, default false), forward only the head of the pending queue at each firing instead of the whole queue (``SixLowPanTrickleForwarding``).
 * ``HeadOfLineConsistency``: (boolean, default false), count only duplicates of the head-of-queue packet as consistent events instead of any duplicate (``SixLowPanTrickleForwarding``).
+* ``DuplicateThreshold``: (unsigned 16 bits integer, default 0), discard a pending packet at transmit time once it has been received this many times in total; zero disables the check (``SixLowPanTrickleForwarding``).
 
 The CompressionThreshold attribute is similar to Contiki's SICSLOWPAN_CONF_MIN_MAC_PAYLOAD
 option. If a compressed packet size is less than the threshold, the uncompressed version is
