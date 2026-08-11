@@ -66,6 +66,13 @@ namespace ns3
  *    deadline (suppression won) is discarded individually; packets that
  *    arrived later are unaffected until their own deadlines.
  *
+ *  - Count-based suppression. Every overheard duplicate of a pending
+ *    packet increments that packet's seen count. With a non-zero
+ *    DuplicateThreshold, a packet that reaches the threshold is discarded
+ *    at transmit time instead of being forwarded: enough neighbours have
+ *    already covered it, so the discard reacts to the observed redundancy
+ *    itself rather than to the clock.
+ *
  *  - Reset on empty. The timer stops when the pending queue drains
  *    (everything forwarded or discarded), so the next arrival restarts
  *    it from the minimum interval. This is the adaptive backoff: react
@@ -110,10 +117,18 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     {
         Ptr<Packet> packet;        ///< The packet to forward.
         ForwardCallback forwardCb; ///< Callback that performs the rebroadcast.
-        Address originator;        ///< Mesh originator (for head-of-line consistency).
-        uint8_t seqNo;             ///< Mesh sequence number (for head-of-line consistency).
+        Address originator;        ///< Mesh originator (identifies the packet).
+        uint8_t seqNo;             ///< Mesh sequence number (identifies the packet).
         Time deadline;             ///< Discard time: arrival + MaxForwardingDelay.
+        uint16_t seenCount;        ///< Receptions so far: the enqueueing one plus duplicates.
     };
+
+    /**
+     * @brief Check whether a pending packet reached the duplicate threshold.
+     * @param entry The pending packet.
+     * @return True if the packet must be suppressed instead of forwarded.
+     */
+    bool ReachedDuplicateThreshold(const PendingPacket& entry) const;
 
     /**
      * @brief Start the Trickle timer for a fresh batch of pending packets.
@@ -161,6 +176,7 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     Time m_maxForwardingDelay; ///< Per-packet deadline: discard if not forwarded within this time.
     bool m_onePerFiring;       ///< Forward one packet per firing instead of the whole queue.
     bool m_headOfLine;         ///< Count only duplicates of the head-of-queue packet.
+    uint16_t m_duplicateThreshold; ///< Discard a packet received this many times; 0 disables.
 
     TrickleTimer m_timer;                ///< The single per-node Trickle timer.
     bool m_timerRunning;                 ///< True while m_timer is enabled.
@@ -168,7 +184,8 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     std::deque<PendingPacket> m_pending; ///< FIFO queue of packets awaiting a decision.
 
     TracedValue<uint32_t> m_pendingSize;              ///< Traced size of the pending queue.
-    TracedCallback<Ptr<const Packet>> m_discardTrace; ///< Fired for each discarded packet.
+    TracedCallback<Ptr<const Packet>> m_discardTrace; ///< Fired per packet dropped at its deadline.
+    TracedCallback<Ptr<const Packet>> m_suppressedTrace; ///< Fired per packet dropped by count.
 };
 
 } // namespace ns3

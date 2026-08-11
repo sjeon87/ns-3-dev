@@ -731,6 +731,160 @@ class TrickleRestartAfterDrainTestCase : public TestCase
 /**
  * @ingroup sixlowpan-tests
  *
+ * @brief Verify the duplicate threshold kills a covered packet at transmit.
+ *
+ * With ForwardOnePerFiring and DuplicateThreshold = 2, a pending packet
+ * whose duplicate was overheard is suppressed at the firing and the NEXT
+ * pending packet is forwarded in its place.
+ */
+class TrickleDuplicateThresholdKillsHeadTestCase : public TestCase
+{
+  public:
+    TrickleDuplicateThresholdKillsHeadTestCase()
+        : TestCase("Duplicate threshold kills the covered head, next packet goes out")
+    {
+    }
+
+  private:
+    /**
+     * @brief Forward callback.
+     * @param packet The forwarded packet.
+     */
+    void RecordForward(Ptr<Packet> packet)
+    {
+        m_forwardedUids.push_back(packet->GetUid());
+    }
+
+    /**
+     * @brief Suppressed-trace callback.
+     * @param packet The suppressed packet.
+     */
+    void RecordSuppressed(Ptr<const Packet> packet)
+    {
+        m_suppressedUids.push_back(packet->GetUid());
+    }
+
+    void DoRun() override
+    {
+        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
+        trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
+        trickle->SetAttribute("ForwardOnePerFiring", BooleanValue(true));
+        trickle->SetAttribute("DuplicateThreshold", UintegerValue(2));
+        trickle->AssignStreams(1);
+        trickle->TraceConnectWithoutContext(
+            "PacketSuppressed",
+            MakeCallback(&TrickleDuplicateThresholdKillsHeadTestCase::RecordSuppressed, this));
+
+        Mac16Address orig("00:01");
+        SixLowPanMeshUnderRouting::ForwardCallback cb =
+            MakeCallback(&TrickleDuplicateThresholdKillsHeadTestCase::RecordForward, this);
+
+        Ptr<Packet> covered = Create<Packet>(64);
+        Ptr<Packet> fresh = Create<Packet>(64);
+        trickle->OnPacketForward(covered, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
+        trickle->OnPacketForward(fresh, orig, /*seqNo=*/2, /*hopsLeft=*/5, cb);
+
+        // One overheard duplicate takes the first packet to the threshold
+        // before the first firing (which happens no earlier than 5 ms).
+        Simulator::Schedule(MilliSeconds(1),
+                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                            trickle,
+                            Address(orig),
+                            uint8_t(1));
+
+        Simulator::Stop(MilliSeconds(500));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_EQ(m_suppressedUids.size(), 1, "The covered packet is suppressed");
+        NS_TEST_ASSERT_MSG_EQ(m_suppressedUids[0], covered->GetUid(), "Suppressed = the covered");
+        NS_TEST_ASSERT_MSG_EQ(m_forwardedUids.size(), 1, "Only the fresh packet is forwarded");
+        NS_TEST_ASSERT_MSG_EQ(m_forwardedUids[0], fresh->GetUid(), "Forwarded = the fresh one");
+    }
+
+    std::vector<uint64_t> m_forwardedUids;  ///< UIDs handed to the forward callback.
+    std::vector<uint64_t> m_suppressedUids; ///< UIDs reported by the suppressed trace.
+};
+
+/**
+ * @ingroup sixlowpan-tests
+ *
+ * @brief Verify the duplicate threshold filters a burst the same way.
+ *
+ * In the default burst mode a firing forwards the whole queue; entries at
+ * the duplicate threshold must be suppressed instead of forwarded.
+ */
+class TrickleDuplicateThresholdFiltersBurstTestCase : public TestCase
+{
+  public:
+    TrickleDuplicateThresholdFiltersBurstTestCase()
+        : TestCase("Duplicate threshold filters covered packets out of a burst")
+    {
+    }
+
+  private:
+    /**
+     * @brief Forward callback.
+     * @param packet The forwarded packet.
+     */
+    void RecordForward(Ptr<Packet> packet)
+    {
+        m_forwardedUids.push_back(packet->GetUid());
+    }
+
+    /**
+     * @brief Suppressed-trace callback.
+     * @param packet The suppressed packet.
+     */
+    void RecordSuppressed(Ptr<const Packet> packet)
+    {
+        m_suppressedUids.push_back(packet->GetUid());
+    }
+
+    void DoRun() override
+    {
+        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
+        trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
+        trickle->SetAttribute("DuplicateThreshold", UintegerValue(2));
+        trickle->AssignStreams(1);
+        trickle->TraceConnectWithoutContext(
+            "PacketSuppressed",
+            MakeCallback(&TrickleDuplicateThresholdFiltersBurstTestCase::RecordSuppressed, this));
+
+        Mac16Address orig("00:01");
+        SixLowPanMeshUnderRouting::ForwardCallback cb =
+            MakeCallback(&TrickleDuplicateThresholdFiltersBurstTestCase::RecordForward, this);
+
+        Ptr<Packet> covered = Create<Packet>(64);
+        Ptr<Packet> fresh = Create<Packet>(64);
+        trickle->OnPacketForward(covered, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
+        trickle->OnPacketForward(fresh, orig, /*seqNo=*/2, /*hopsLeft=*/5, cb);
+
+        Simulator::Schedule(MilliSeconds(1),
+                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                            trickle,
+                            Address(orig),
+                            uint8_t(1));
+
+        Simulator::Stop(MilliSeconds(500));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_EQ(m_suppressedUids.size(), 1, "The covered packet is suppressed");
+        NS_TEST_ASSERT_MSG_EQ(m_suppressedUids[0], covered->GetUid(), "Suppressed = the covered");
+        NS_TEST_ASSERT_MSG_EQ(m_forwardedUids.size(), 1, "The rest of the burst still goes out");
+        NS_TEST_ASSERT_MSG_EQ(m_forwardedUids[0], fresh->GetUid(), "Forwarded = the fresh one");
+    }
+
+    std::vector<uint64_t> m_forwardedUids;  ///< UIDs handed to the forward callback.
+    std::vector<uint64_t> m_suppressedUids; ///< UIDs reported by the suppressed trace.
+};
+
+/**
+ * @ingroup sixlowpan-tests
+ *
  * @brief Verify each packet is discarded at its own deadline.
  *
  * Two packets arrive 50 ms apart while suppression holds. The first must
@@ -1414,6 +1568,8 @@ class SixLowPanMeshUnderTestSuite : public TestSuite
         AddTestCase(new TrickleHeadOfLineMatchingSuppressesTestCase, Duration::QUICK);
         AddTestCase(new TrickleAnyDuplicateSuppressesTestCase, Duration::QUICK);
         AddTestCase(new TrickleRestartAfterDrainTestCase, Duration::QUICK);
+        AddTestCase(new TrickleDuplicateThresholdKillsHeadTestCase, Duration::QUICK);
+        AddTestCase(new TrickleDuplicateThresholdFiltersBurstTestCase, Duration::QUICK);
         AddTestCase(new TricklePerPacketDeadlineTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceForwardTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceDeliveryTestCase, Duration::QUICK);

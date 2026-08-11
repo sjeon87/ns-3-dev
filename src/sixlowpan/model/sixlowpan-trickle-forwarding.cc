@@ -62,6 +62,13 @@ SixLowPanTrickleForwarding::GetTypeId()
                           BooleanValue(false),
                           MakeBooleanAccessor(&SixLowPanTrickleForwarding::m_headOfLine),
                           MakeBooleanChecker())
+            .AddAttribute("DuplicateThreshold",
+                          "Discard a pending packet at transmit time once it has been "
+                          "received this many times in total (the reception that queued "
+                          "it plus the overheard duplicates). Zero disables the check.",
+                          UintegerValue(0),
+                          MakeUintegerAccessor(&SixLowPanTrickleForwarding::m_duplicateThreshold),
+                          MakeUintegerChecker<uint16_t>())
             .AddTraceSource("PendingQueueSize",
                             "Number of packets in the pending queue.",
                             MakeTraceSourceAccessor(&SixLowPanTrickleForwarding::m_pendingSize),
@@ -70,6 +77,11 @@ SixLowPanTrickleForwarding::GetTypeId()
                             "A pending packet was discarded at its deadline "
                             "without being forwarded.",
                             MakeTraceSourceAccessor(&SixLowPanTrickleForwarding::m_discardTrace),
+                            "ns3::Packet::TracedCallback")
+            .AddTraceSource("PacketSuppressed",
+                            "A pending packet was discarded at transmit time because it "
+                            "was already received DuplicateThreshold times.",
+                            MakeTraceSourceAccessor(&SixLowPanTrickleForwarding::m_suppressedTrace),
                             "ns3::Packet::TracedCallback");
     return tid;
 }
@@ -108,7 +120,7 @@ SixLowPanTrickleForwarding::OnPacketForward(Ptr<Packet> packet,
     // A new packet joins the pending queue; it does not restart a running
     // timer, so an earlier pending packet is never starved.
     m_pending.push_back(
-        {packet, forwardCb, originator, seqNo, Simulator::Now() + m_maxForwardingDelay});
+        {packet, forwardCb, originator, seqNo, Simulator::Now() + m_maxForwardingDelay, 1});
     m_pendingSize = m_pending.size();
 
     if (!m_timerRunning)
@@ -127,6 +139,16 @@ SixLowPanTrickleForwarding::OnDuplicateReceived(const Address& originator, uint8
     if (!m_timerRunning)
     {
         return;
+    }
+    // Track how many times each pending packet has been received: the
+    // count feeds the DuplicateThreshold check at transmit time.
+    for (auto& entry : m_pending)
+    {
+        if (entry.originator == originator && entry.seqNo == seqNo)
+        {
+            entry.seenCount++;
+            break;
+        }
     }
     if (m_headOfLine)
     {
@@ -166,6 +188,12 @@ SixLowPanTrickleForwarding::StopTimer()
     m_discardEvent.Cancel();
 }
 
+bool
+SixLowPanTrickleForwarding::ReachedDuplicateThreshold(const PendingPacket& entry) const
+{
+    return m_duplicateThreshold > 0 && entry.seenCount >= m_duplicateThreshold;
+}
+
 void
 SixLowPanTrickleForwarding::Transmit()
 {
@@ -174,6 +202,23 @@ SixLowPanTrickleForwarding::Transmit()
     // Reached only when c < k (the TrickleTimer enforces this).
     if (m_onePerFiring)
     {
+        // Count-based suppression, checked right before transmission: a
+        // packet already received DuplicateThreshold times is covered by
+        // the neighbourhood, so kill it and try the next one.
+        while (!m_pending.empty() && ReachedDuplicateThreshold(m_pending.front()))
+        {
+            NS_LOG_LOGIC("Suppressing a packet received " << m_pending.front().seenCount
+                                                          << " times");
+            m_suppressedTrace(m_pending.front().packet);
+            m_pending.pop_front();
+        }
+        m_pendingSize = m_pending.size();
+        if (m_pending.empty())
+        {
+            StopTimer();
+            return;
+        }
+
         NS_LOG_LOGIC("Forwarding the head of " << m_pending.size() << " pending packet(s)");
         PendingPacket head = m_pending.front();
         m_pending.pop_front();
@@ -195,6 +240,11 @@ SixLowPanTrickleForwarding::Transmit()
     NS_LOG_LOGIC("Forwarding " << m_pending.size() << " pending packet(s)");
     for (auto& entry : m_pending)
     {
+        if (ReachedDuplicateThreshold(entry))
+        {
+            m_suppressedTrace(entry.packet);
+            continue;
+        }
         entry.forwardCb(entry.packet);
     }
     m_pending.clear();
