@@ -32,7 +32,11 @@
 #include <numeric>
 
 #undef NS_LOG_APPEND_CONTEXT
-#define NS_LOG_APPEND_CONTEXT WIFI_PHY_NS_LOG_APPEND_CONTEXT(Ptr(this, false))
+#define NS_LOG_APPEND_CONTEXT                                                                      \
+    WIFI_PHY_NS_LOG_APPEND_CONTEXT(                                                                \
+        (GetDevice() && (GetDevice()->GetNPhys() > m_phyId) && GetDevice()->GetPhy(m_phyId)        \
+             ? GetDevice()->GetPhy(m_phyId)                                                        \
+             : nullptr))
 
 namespace ns3
 {
@@ -57,6 +61,7 @@ SpectrumWifiPhy::GetTypeId()
             .AddAttribute(
                 "TrackSignalsFromInactiveInterfaces",
                 "Enable or disable tracking signals coming from inactive spectrum PHY interfaces",
+                TypeId::ATTR_GET | TypeId::ATTR_CONSTRUCT, // prevent setting after construction
                 BooleanValue(true),
                 MakeBooleanAccessor(&SpectrumWifiPhy::m_trackSignalsInactiveInterfaces),
                 MakeBooleanChecker())
