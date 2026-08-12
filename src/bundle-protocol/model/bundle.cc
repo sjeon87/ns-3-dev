@@ -201,6 +201,15 @@ Bundle::IsAdminRecord() const
     return (primary->GetHeader().GetProcFlags() & (1 << ADMIN_RECORD)) != 0;
 }
 
+uint32_t
+Bundle::GetHopCount() const
+{
+    NS_LOG_FUNCTION(this);
+    Ptr<PrimaryBlock> primary = GetPrimaryBlock();
+    NS_ASSERT_MSG(primary, "Bundle has no primary block");
+    return primary->GetHeader().GetHopCount();
+}
+
 std::vector<Ptr<Bundle>>
 Bundle::Fragment(Ptr<Bundle> original, uint32_t maxPayloadSize)
 {

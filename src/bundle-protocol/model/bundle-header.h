@@ -212,6 +212,18 @@ class PrimaryBlockHeader : public Header
      */
     uint32_t GetReceivedCrc() const;
 
+    /**
+     * @brief Set the number of hops the bundle has traversed so far.
+     * @param count the hop count
+     */
+    void SetHopCount(uint32_t count);
+
+    /**
+     * @brief Get the number of hops the bundle has traversed so far.
+     * @return the hop count
+     */
+    uint32_t GetHopCount() const;
+
   private:
     uint8_t m_version = 7;             //!< Bundle Protocol version (7 for RFC 9171)
     uint32_t m_procFlags = 0;          //!< Bundle processing control flags
@@ -224,6 +236,7 @@ class PrimaryBlockHeader : public Header
     Time m_lifetime;                   //!< Bundle Lifetime (formerly TTL in BPv6)
     uint32_t m_fragmentOffset = 0;     //!< Fragment offset (if fragmented)
     uint32_t m_totalAppDataLength = 0; //!< Total application data length
+    uint32_t m_hopCount = 0;           //!< Number of hops the bundle has traversed so far
     uint32_t m_receivedCrc = 0;        //!< CRC value read off the wire by Deserialize()
 };
 

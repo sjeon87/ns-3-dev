@@ -52,6 +52,7 @@ class MockBundleCla : public BundleCla
     {
         m_sentCount++;
         m_lastPacketSize = packet->GetSize();
+        m_lastPacket = packet;
 
         // Fire the success callback so the BundleAgent knows to delete the bundle from storage
         if (!m_txResultCb.IsNull() && bundleHandle != 0)
@@ -83,9 +84,19 @@ class MockBundleCla : public BundleCla
         return m_lastPacketSize;
     }
 
+    /**
+     * @brief Get the most recently sent packet.
+     * @return The last serialized bundle packet handed to Send().
+     */
+    Ptr<Packet> GetLastPacket() const
+    {
+        return m_lastPacket;
+    }
+
   private:
     uint32_t m_sentCount;      ///< Total number of packets sent
     uint32_t m_lastPacketSize; ///< Size of the most recently sent packet
+    Ptr<Packet> m_lastPacket;  ///< The most recently sent packet
 };
 
 /**
@@ -173,6 +184,9 @@ BundleAgentTestCase::LocalReceiveCallback(Ptr<Bundle> bundle)
 
     NS_TEST_ASSERT_MSG_NE(bundle->GetPrimaryBlock(), nullptr, "Primary block missing");
     NS_TEST_ASSERT_MSG_NE(bundle->GetPayloadBlock(), nullptr, "Payload block missing");
+    NS_TEST_ASSERT_MSG_EQ(bundle->GetHopCount(),
+                          0,
+                          "Bundle delivered to self should not have traversed any hops");
 }
 
 void
@@ -200,6 +214,12 @@ BundleAgentTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ(agent->GetStorageEngineSize(),
                           0,
                           "Storage should be empty after direct forward");
+
+    Ptr<Bundle> sentToB = CreateObject<Bundle>();
+    sentToB->Deserialize(claB->GetLastPacket());
+    NS_TEST_ASSERT_MSG_EQ(sentToB->GetHopCount(),
+                          1,
+                          "Hop count should be incremented once bundle is forwarded");
 
     agent->TransmitBundle("dtn:nodeC", "dtn:none", dummyPayload, payloadSize, Seconds(3600), 0);
     NS_TEST_ASSERT_MSG_EQ(agent->GetStorageEngineSize() > 0,

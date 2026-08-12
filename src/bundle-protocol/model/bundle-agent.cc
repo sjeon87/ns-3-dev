@@ -322,6 +322,9 @@ BundleAgent::ForwardBundle(uint32_t handle)
         return 1;
     }
 
+    PrimaryBlockHeader& primaryHeader = bundle->GetPrimaryBlock()->GetHeader();
+    primaryHeader.SetHopCount(primaryHeader.GetHopCount() + 1);
+
     Ptr<Packet> packet = bundle->Serialize();
     uint32_t bundleSize = packet->GetSize();
     m_inTransit.insert(handle);
@@ -330,7 +333,8 @@ BundleAgent::ForwardBundle(uint32_t handle)
     NS_LOG_INFO("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
                                << "s: ForwardBundle: sent bundle handle=" << handle
                                << " to final destination " << destination << " via next hop "
-                               << nextHopEID << " size=" << bundleSize << " bytes");
+                               << nextHopEID << " size=" << bundleSize
+                               << " bytes, hopCount=" << primaryHeader.GetHopCount());
     m_contactGraph->ReserveVolume(m_localEID, nextHopEID, bundleSize);
 
     return 0;
@@ -363,7 +367,8 @@ BundleAgent::RecvBundle(Ptr<Bundle> bundle)
         }
 
         NS_LOG_INFO("[BP:Agent - " << m_localEID << "] t=" << Simulator::Now().GetSeconds()
-                                   << "s: RecvBundle: delivering bundle locally");
+                                   << "s: RecvBundle: delivering bundle locally, hopCount="
+                                   << bundle->GetHopCount());
 
         if (!m_receiveCallback.IsNull())
         {

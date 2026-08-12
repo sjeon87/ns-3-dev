@@ -142,6 +142,12 @@ class Bundle : public Object
     bool IsAdminRecord() const;
 
     /**
+     * @brief Get the number of hops the bundle has traversed so far.
+     * @return the hop count, as recorded in the primary block
+     */
+    uint32_t GetHopCount() const;
+
+    /**
      * @brief Split a bundle's application data unit into fragment bundles.
      *
      * @param original the bundle to fragment

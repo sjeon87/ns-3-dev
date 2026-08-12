@@ -59,6 +59,7 @@ BundleHeaderTestCase::DoRun()
     pbb.SetDestinationEID("dtn:node1");
     pbb.SetSourceEID("dtn:node0");
     pbb.SetReportToEID("dtn:none");
+    pbb.SetHopCount(3);
     Ptr<Packet> p1 = Create<Packet>();
     p1->AddHeader(pbb);
 
@@ -89,6 +90,7 @@ BundleHeaderTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ(pbb2.GetReportToEID(),
                           "dtn:none",
                           "PrimaryBlockHeader ReportTo EID mismatch");
+    NS_TEST_ASSERT_MSG_EQ(pbb2.GetHopCount(), 3, "PrimaryBlockHeader HopCount mismatch");
 
     PayloadBlockHeader plb;
     plb.SetBlockType(1);
@@ -199,6 +201,7 @@ PrimaryBlockFragmentHeaderTestCase::DoRun()
     NS_TEST_ASSERT_MSG_EQ(frag2.GetProcFlags() & (1 << PBB_PROC_FLAGS::IS_FRG),
                           static_cast<uint32_t>(1 << PBB_PROC_FLAGS::IS_FRG),
                           "IS_FRG flag not preserved");
+    NS_TEST_ASSERT_MSG_EQ(frag2.GetHopCount(), 0, "HopCount should default to zero");
 
     PrimaryBlockHeader nonFrag;
     nonFrag.SetVersion(7);

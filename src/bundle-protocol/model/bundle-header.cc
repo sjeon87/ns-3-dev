@@ -59,7 +59,7 @@ PrimaryBlockHeader::Print(std::ostream& os) const
        << " sourceEID=" << m_sourceEID << " reportToEID=" << m_reportToEID
        << " creationTime=" << m_creationTime.As(Time::S) << " seq=" << m_seq
        << " lifetime=" << m_lifetime.As(Time::S) << " fragmentOffset=" << m_fragmentOffset
-       << " totalAppDataLength=" << m_totalAppDataLength << ")";
+       << " totalAppDataLength=" << m_totalAppDataLength << " hopCount=" << m_hopCount << ")";
 }
 
 uint32_t
@@ -70,7 +70,7 @@ PrimaryBlockHeader::GetSerializedSize() const
 
     bool hasCrc = (m_crcType != 0);
     bool isFragment = (m_procFlags & (1 << IS_FRG)) != 0;
-    uint32_t arrayLen = 8 + (hasCrc ? 1 : 0) + (isFragment ? 2 : 0);
+    uint32_t arrayLen = 9 + (hasCrc ? 1 : 0) + (isFragment ? 2 : 0);
 
     size += Cbor::GetArraySize(arrayLen);
     size += Cbor::GetUintSize(m_version);
@@ -85,6 +85,8 @@ PrimaryBlockHeader::GetSerializedSize() const
     size += Cbor::GetUintSize(m_creationTime.GetMilliSeconds());
     size += Cbor::GetUintSize(m_seq);
     size += Cbor::GetUintSize(m_lifetime.GetMilliSeconds());
+
+    size += Cbor::GetUintSize(m_hopCount);
 
     if (isFragment)
     {
@@ -115,7 +117,7 @@ PrimaryBlockHeader::Serialize(Buffer::Iterator start) const
 
     bool hasCrc = (m_crcType != 0);
     bool isFragment = (m_procFlags & (1 << IS_FRG)) != 0;
-    uint32_t arrayLen = 8 + (hasCrc ? 1 : 0) + (isFragment ? 2 : 0);
+    uint32_t arrayLen = 9 + (hasCrc ? 1 : 0) + (isFragment ? 2 : 0);
 
     Cbor::WriteArray(i, arrayLen);
     Cbor::WriteUint(i, m_version);
@@ -130,6 +132,8 @@ PrimaryBlockHeader::Serialize(Buffer::Iterator start) const
     Cbor::WriteUint(i, m_creationTime.GetMilliSeconds());
     Cbor::WriteUint(i, m_seq);
     Cbor::WriteUint(i, m_lifetime.GetMilliSeconds());
+
+    Cbor::WriteUint(i, m_hopCount);
 
     if (isFragment)
     {
@@ -171,6 +175,8 @@ PrimaryBlockHeader::Deserialize(Buffer::Iterator start)
     m_creationTime = MilliSeconds(Cbor::ReadUint(i));
     m_seq = Cbor::ReadUint(i);
     m_lifetime = MilliSeconds(Cbor::ReadUint(i));
+
+    m_hopCount = Cbor::ReadUint(i);
 
     if (m_procFlags & (1 << IS_FRG))
     {
@@ -333,6 +339,18 @@ uint32_t
 PrimaryBlockHeader::GetReceivedCrc() const
 {
     return m_receivedCrc;
+}
+
+void
+PrimaryBlockHeader::SetHopCount(uint32_t count)
+{
+    m_hopCount = count;
+}
+
+uint32_t
+PrimaryBlockHeader::GetHopCount() const
+{
+    return m_hopCount;
 }
 
 PayloadBlockHeader::PayloadBlockHeader()
