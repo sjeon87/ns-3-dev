@@ -113,7 +113,7 @@ entirely comfortable with the following code at this point in the tutorial.
   nCsma = nCsma == 0 ? 1 : nCsma;
 
 The next step is to create two nodes that we will connect via the
-point-to-point link.  The ``NodeContainer`` is used to do this just as was
+point-to-point link.  The :cpp:class:`NodeContainer` is used to do this just as was
 done in ``first.cc``.
 
 ::
@@ -121,7 +121,7 @@ done in ``first.cc``.
   NodeContainer p2pNodes;
   p2pNodes.Create(2);
 
-Next, we declare another ``NodeContainer`` to hold the nodes that will be
+Next, we declare another :cpp:class:`NodeContainer` to hold the nodes that will be
 part of the bus (CSMA) network.  First, we just instantiate the container
 object itself.
 
@@ -141,7 +141,7 @@ point-to-point and CSMA net device, the number of "extra" nodes means the
 number nodes you desire in the CSMA section minus one.
 
 The next bit of code should be quite familiar by now.  We instantiate a
-``PointToPointHelper`` and set the associated default ``Attributes`` so
+:cpp:class:`PointToPointHelper` and set the associated default ``Attributes`` so
 that we create a five megabit per second transmitter on devices created using
 the helper and a two millisecond delay on channels created by the helper.
 
@@ -154,13 +154,13 @@ the helper and a two millisecond delay on channels created by the helper.
   NetDeviceContainer p2pDevices;
   p2pDevices = pointToPoint.Install(p2pNodes);
 
-We then instantiate a ``NetDeviceContainer`` to keep track of the
+We then instantiate a :cpp:class:`NetDeviceContainer` to keep track of the
 point-to-point net devices and we ``Install`` devices on the
 point-to-point nodes.
 
 We mentioned above that you were going to see a helper for CSMA devices and
-channels, and the next lines introduce them.  The ``CsmaHelper`` works just
-like a ``PointToPointHelper``, but it creates and connects CSMA devices and
+channels, and the next lines introduce them.  The :cpp:class:`CsmaHelper` works just
+like a :cpp:class:`PointToPointHelper`, but it creates and connects CSMA devices and
 channels.  In the case of a CSMA device and channel pair, notice that the data
 rate is specified by a *channel* ``Attribute`` instead of a device
 ``Attribute``.  This is because a real CSMA network does not allow one to mix,
@@ -179,11 +179,11 @@ its native data type.
   NetDeviceContainer csmaDevices;
   csmaDevices = csma.Install(csmaNodes);
 
-Just as we created a ``NetDeviceContainer`` to hold the devices created by
-the ``PointToPointHelper`` we create a ``NetDeviceContainer`` to hold
-the devices created by our ``CsmaHelper``.  We call the ``Install``
-method of the ``CsmaHelper`` to install the devices into the nodes of the
-``csmaNodes NodeContainer``.
+Just as we created a :cpp:class:`NetDeviceContainer` to hold the devices created by
+the :cpp:class:`PointToPointHelper` we create a :cpp:class:`NetDeviceContainer` to hold
+the devices created by our :cpp:class:`CsmaHelper`.  We call the ``Install``
+method of the :cpp:class:`CsmaHelper` to install the devices into the nodes of the
+csmaNodes :cpp:class:`NodeContainer`.
 
 We now have our nodes, devices and channels created, but we have no protocol
 stacks present.  Just as in the ``first.cc`` script, we will use the
