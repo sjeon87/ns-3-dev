@@ -154,6 +154,13 @@ class MeshWifiInterfaceMac : public WifiMac
     bool CheckSupportedRates(AllSupportedRates rates) const;
 
     /**
+     * Return the Capability information.
+     *
+     * @return the capability information
+     */
+    CapabilityInformation GetCapabilities() const;
+
+    /**
      * Get supported rates.
      * @return list of supported bitrates
      */

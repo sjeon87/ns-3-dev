@@ -20,6 +20,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * Centralization of ``PPP`` and ``IEEE802`` numbers. These are now contained in network model in ``iana-ppp-numbers.h`` and ``iana-ieee802-numbers.h`` respectively.
 * (core) The new `NS_OBJECT_TEMPLATE_CLASS_WITH_NS_DEFINE`  macro enables the registration of template classes inside a namespace.
 * Added the `nlohmann/json` library to enable JSON parsing and serialization within ns-3.
+* (mesh) Added `MeshWifiInterfaceMac::GetCapabilities()`, which returns the Capability Information of the mesh station.
 
 ### Changes to existing API
 
@@ -29,10 +30,14 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (wifi) `WifiRemoteStationManager::GetCtsToSelfTxVector()` now takes the channel width of the data frame being protected, so that the returned TXVECTOR covers that bandwidth (using the non-HT duplicate format if wider than 20 MHz).
 * (network) `Buffer::Serialize`, `ByteTagList::Serialize`, `NixVector::Serialize`, `PacketMetadata::Serialize`, `PacketTagList::Serialize` and `Packet::Serialize` functions return now the number of serialized bytes instead of just `1` for a successful serialization.
 * (network) `Buffer::Deserialize`, `ByteTagList::Deserialize`, `PacketMetadata::Deserialize`, `PacketTagList::Deserialize` and `Packet::Deserialize` functions return now the number of deserialized bytes instead of just `1` for a successful deserialization.
+* (mesh) The mesh peering frame headers `PeerLinkOpenStart`, `PeerLinkConfirmStart` and `PeerLinkCloseStart` were replaced by `MeshPeeringOpenHeader`, `MeshPeeringConfirmHeader` and `MeshPeeringCloseHeader` and updated to comply with 802.11-2020.
+* (mesh) The outdated and unused `IePeeringProtocol` element was removed.
 
 ### Changes to build system
 
 ### Changed behavior
+
+* (mesh) Mesh Peering Confirm frames now carry the Mesh ID, and received confirm frames with mismatching Mesh ID are dropped.
 
 ## Changes from ns-3.47 to ns-3.48
 

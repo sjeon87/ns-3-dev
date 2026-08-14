@@ -11,11 +11,12 @@
 #define DOT11S_PEER_MAN_H
 
 #include "ie-dot11s-beacon-timing.h"
-#include "ie-dot11s-peer-management.h"
+#include "ie-dot11s-mesh-peering-management.h"
 #include "peer-link.h"
 
 #include "ns3/event-id.h"
 #include "ns3/mac48-address.h"
+#include "ns3/mgt-action-headers.h"
 #include "ns3/net-device.h"
 #include "ns3/nstime.h"
 #include "ns3/traced-value.h"
@@ -32,7 +33,7 @@ namespace dot11s
 class PeerManagementProtocolMac;
 class PeerLink;
 class IeMeshId;
-class IePeerManagement;
+class IeMeshPeeringManagement;
 class IeConfiguration;
 
 /**
@@ -105,6 +106,7 @@ class PeerManagementProtocol : public Object
      * @param peerMeshPointAddress is address of peer mesh point device (equal to peer address when
      * only one interface)
      * @param aid is association ID, which peer has assigned to us
+     * @param actionFrameType identifies open/confirm/close subtypes
      * @param peerManagementElement is peer link management element
      * @param meshConfig is mesh configuration element taken from the peer management frame
      */
@@ -112,7 +114,8 @@ class PeerManagementProtocol : public Object
                               Mac48Address peerAddress,
                               Mac48Address peerMeshPointAddress,
                               uint16_t aid,
-                              IePeerManagement peerManagementElement,
+                              WifiActionHeader::SelfProtectedActionValue actionFrameType,
+                              IeMeshPeeringManagement peerManagementElement,
                               IeConfiguration meshConfig);
     /**
      * @brief Cancels peer link due to broken configuration (Mesh ID or Supported

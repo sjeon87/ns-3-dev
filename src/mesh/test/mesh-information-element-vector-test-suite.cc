@@ -12,9 +12,8 @@
 #include "ns3/ie-dot11s-beacon-timing.h"
 #include "ns3/ie-dot11s-configuration.h"
 #include "ns3/ie-dot11s-id.h"
+#include "ns3/ie-dot11s-mesh-peering-management.h"
 #include "ns3/ie-dot11s-metric-report.h"
-#include "ns3/ie-dot11s-peer-management.h"
-#include "ns3/ie-dot11s-peering-protocol.h"
 #include "ns3/ie-dot11s-perr.h"
 #include "ns3/ie-dot11s-prep.h"
 #include "ns3/ie-dot11s-preq.h"
@@ -61,12 +60,18 @@ MeshInformationElementVectorBist::DoRun()
         vector.AddInformationElement(report);
     }
     {
-        Ptr<dot11s::IePeerManagement> peerMan1 = Create<dot11s::IePeerManagement>();
-        peerMan1->SetPeerOpen(1);
-        Ptr<dot11s::IePeerManagement> peerMan2 = Create<dot11s::IePeerManagement>();
-        peerMan2->SetPeerConfirm(1, 2);
-        Ptr<dot11s::IePeerManagement> peerMan3 = Create<dot11s::IePeerManagement>();
-        peerMan3->SetPeerClose(1, 2, dot11s::REASON11S_MESH_CAPABILITY_POLICY_VIOLATION);
+        // open
+        Ptr<dot11s::IeMeshPeeringManagement> peerMan1 = Create<dot11s::IeMeshPeeringManagement>();
+        peerMan1->SetLocalLinkId(123);
+        // confirm
+        Ptr<dot11s::IeMeshPeeringManagement> peerMan2 = Create<dot11s::IeMeshPeeringManagement>();
+        peerMan2->SetLocalLinkId(456);
+        peerMan2->SetPeerLinkId(789);
+        // close
+        Ptr<dot11s::IeMeshPeeringManagement> peerMan3 = Create<dot11s::IeMeshPeeringManagement>();
+        peerMan3->SetLocalLinkId(456);
+        peerMan3->SetPeerLinkId(789);
+        peerMan3->SetReasonCode(dot11s::REASON11S_MESH_CAPABILITY_POLICY_VIOLATION);
         vector.AddInformationElement(peerMan1);
         vector.AddInformationElement(peerMan2);
         vector.AddInformationElement(peerMan3);
