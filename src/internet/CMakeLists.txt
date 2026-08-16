@@ -108,6 +108,7 @@ set(source_files
     model/tcp-prr-recovery.cc
     model/tcp-rate-ops.cc
     model/tcp-recovery-ops.cc
+    model/tcp-retransmit-tag.cc
     model/tcp-rx-buffer.cc
     model/tcp-scalable.cc
     model/tcp-socket-base.cc
@@ -234,6 +235,7 @@ set(header_files
     model/tcp-prr-recovery.h
     model/tcp-rate-ops.h
     model/tcp-recovery-ops.h
+    model/tcp-retransmit-tag.h
     model/tcp-rx-buffer.h
     model/tcp-scalable.h
     model/tcp-socket-base.h
@@ -368,6 +370,7 @@ set(test_sources
     test/tcp-pkts-acked-test.cc
     test/tcp-prr-recovery-test.cc
     test/tcp-rate-ops-test.cc
+    test/tcp-retransmit-tag-test.cc
     test/tcp-rto-test.cc
     test/tcp-rtt-estimation.cc
     test/tcp-rx-buffer-test.cc
