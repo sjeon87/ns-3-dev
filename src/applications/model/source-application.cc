@@ -8,10 +8,14 @@
 
 #include "source-application.h"
 
+#include "ns3/boolean.h"
+#include "ns3/double.h"
+#include "ns3/enum.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/log.h"
 #include "ns3/packet-socket-address.h"
+#include "ns3/random-variable-stream.h"
 #include "ns3/socket.h"
 #include "ns3/uinteger.h"
 
@@ -48,10 +52,45 @@ SourceApplication::GetTypeId()
                           UintegerValue(0),
                           MakeUintegerAccessor(&SourceApplication::m_tos),
                           MakeUintegerChecker<uint8_t>())
+            .AddAttribute("EnableSeqTsSizeHeader",
+                          "Enable use of SeqTsHeader (for NS3_SOCK_DGRAM socket) or "
+                          "SeqTsSizeHeader (for NS3_SOCK_STREAM socket) for sequence number, "
+                          "timestamp and size (for NS3_SOCK_STREAM socket only)",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&SourceApplication::m_enableSeqTsSizeHeader),
+                          MakeBooleanChecker())
+            .AddAttribute("IncrementCounterIfTxFailed",
+                          "If enabled, the sequence number counter is incremented even if the "
+                          "transmission of the packet failed.",
+                          EnumValue(SourceApplication::IncrementCounterIfTxFailed::
+                                        UNDEFINED), // default value defined by the the child class
+                          MakeEnumAccessor<SourceApplication::IncrementCounterIfTxFailed>(
+                              &SourceApplication::SetIncrementCounterIfTxFailed,
+                              &SourceApplication::GetIncrementCounterIfTxFailed),
+                          MakeEnumChecker(SourceApplication::IncrementCounterIfTxFailed::UNDEFINED,
+                                          "Undefined",
+                                          SourceApplication::IncrementCounterIfTxFailed::ENABLED,
+                                          "Enabled",
+                                          SourceApplication::IncrementCounterIfTxFailed::DISABLED,
+                                          "Disabled"))
+            .AddAttribute("RandomPayload",
+                          "If true, the payload of created packets is filled with random bytes. "
+                          "If false, the payload is filled in with zeros.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&SourceApplication::m_randomPayload),
+                          MakeBooleanChecker())
             .AddTraceSource("Tx",
                             "A packet is sent",
                             MakeTraceSourceAccessor(&SourceApplication::m_txTrace),
                             "ns3::Packet::TracedCallback")
+            .AddTraceSource("TxWithSeqTsSize",
+                            "A new packet is created with SeqTsSizeHeader",
+                            MakeTraceSourceAccessor(&SourceApplication::m_txTraceWithSeqTsSize),
+                            "ns3::SinkApplication::SeqTsSizeCallback")
+            .AddTraceSource("TxWithSeqTs",
+                            "A new packet is created with SeqTsHeader",
+                            MakeTraceSourceAccessor(&SourceApplication::m_txTraceWithSeqTs),
+                            "ns3::SinkApplication::SeqTsCallback")
             .AddTraceSource("ConnectionSucceeded",
                             "Succeeded to establish connection",
                             MakeTraceSourceAccessor(&SourceApplication::m_connectionSuccess),
@@ -63,8 +102,10 @@ SourceApplication::GetTypeId()
     return tid;
 }
 
-SourceApplication::SourceApplication(bool allowPacketSocket)
-    : m_allowPacketSocket{allowPacketSocket}
+SourceApplication::SourceApplication(bool allowPacketSocket, bool incrementCounterIfTxFailed)
+    : m_allowPacketSocket{allowPacketSocket},
+      m_incrementCounterIfTxFailed{incrementCounterIfTxFailed},
+      m_bytesRng{CreateObject<UniformRandomVariable>()}
 {
     NS_LOG_FUNCTION(this);
 }
@@ -75,12 +116,31 @@ SourceApplication::~SourceApplication()
 }
 
 void
+SourceApplication::DoInitialize()
+{
+    NS_LOG_FUNCTION(this);
+    Application::DoInitialize();
+    m_bytesRng->SetAttribute("Min", DoubleValue(0));
+    m_bytesRng->SetAttribute("Max", DoubleValue(256));
+}
+
+void
 SourceApplication::DoDispose()
 {
     NS_LOG_FUNCTION(this);
     CancelEvents();
     m_socket = nullptr;
     Application::DoDispose();
+}
+
+int64_t
+SourceApplication::AssignStreams(int64_t stream)
+{
+    NS_LOG_FUNCTION(this << stream);
+    auto currentStream = stream;
+    m_bytesRng->SetStream(currentStream++);
+    currentStream += Application::AssignStreams(currentStream);
+    return (currentStream - stream);
 }
 
 void
@@ -103,6 +163,26 @@ Ptr<Socket>
 SourceApplication::GetSocket() const
 {
     return m_socket;
+}
+
+void
+SourceApplication::SetIncrementCounterIfTxFailed(
+    SourceApplication::IncrementCounterIfTxFailed option)
+{
+    NS_LOG_FUNCTION(this << static_cast<uint8_t>(option));
+    if (option == IncrementCounterIfTxFailed::UNDEFINED)
+    {
+        return;
+    }
+    m_incrementCounterIfTxFailed = (option == IncrementCounterIfTxFailed::ENABLED);
+}
+
+SourceApplication::IncrementCounterIfTxFailed
+SourceApplication::GetIncrementCounterIfTxFailed() const
+{
+    NS_LOG_FUNCTION(this);
+    return m_incrementCounterIfTxFailed ? IncrementCounterIfTxFailed::ENABLED
+                                        : IncrementCounterIfTxFailed::DISABLED;
 }
 
 void
@@ -221,6 +301,92 @@ void
 SourceApplication::DoConnectionFailed(Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION(this << socket);
+}
+
+Ptr<Packet>
+SourceApplication::CreatePacketWithSeqTsSizeHeader(uint32_t seq, uint64_t size)
+{
+    NS_LOG_FUNCTION(this << seq << size);
+    NS_ASSERT_MSG(m_enableSeqTsSizeHeader, "Use of SeqTsSizeHeader not enabled");
+
+    uint32_t headerSize{0};
+    SeqTsSizeHeader seqTsSizeHdr;
+    SeqTsHeader seqTsHdr;
+    if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+    {
+        seqTsSizeHdr.SetSeq(seq);
+        seqTsSizeHdr.SetSize(size);
+        headerSize = seqTsSizeHdr.GetSerializedSize();
+    }
+    else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+    {
+        seqTsHdr.SetSeq(seq);
+        headerSize = seqTsHdr.GetSerializedSize();
+    }
+
+    if (size < headerSize)
+    {
+        NS_LOG_WARN("Packet size " << size << " is smaller than SeqTsSizeHeader size " << headerSize
+                                   << ": no SeqTsSizeHeader will be added");
+        return CreatePacketWithPayload(size);
+    }
+
+    auto packet = CreatePacketWithPayload(size - headerSize);
+
+    // Trace before adding header, for consistency with sink applications
+    NS_ASSERT(m_socket);
+    Address from;
+    Address to;
+    m_socket->GetSockName(from);
+    m_socket->GetPeerName(to);
+    if (m_socket->GetSocketType() == Socket::NS3_SOCK_STREAM)
+    {
+        m_txTraceWithSeqTsSize(packet, from, to, seqTsSizeHdr);
+        packet->AddHeader(seqTsSizeHdr);
+    }
+    else if (m_socket->GetSocketType() == Socket::NS3_SOCK_DGRAM)
+    {
+        m_txTraceWithSeqTs(packet, from, to, seqTsHdr);
+        packet->AddHeader(seqTsHdr);
+    }
+
+    return packet;
+}
+
+Ptr<Packet>
+SourceApplication::CreatePacket(uint64_t size)
+{
+    NS_LOG_FUNCTION(this << size);
+    return m_enableSeqTsSizeHeader ? CreatePacketWithSeqTsSizeHeader(m_seq, size)
+                                   : CreatePacketWithPayload(size);
+}
+
+Ptr<Packet>
+SourceApplication::CreatePacketWithPayload(uint64_t size)
+{
+    NS_LOG_FUNCTION(this << size);
+    if (!m_randomPayload)
+    {
+        return Create<Packet>(size);
+    }
+    std::vector<uint8_t> data(size);
+    for (uint64_t i = 0; i < size; ++i)
+    {
+        data[i] = static_cast<uint8_t>(m_bytesRng->GetValue());
+    }
+    return Create<Packet>(data.data(), size);
+}
+
+int
+SourceApplication::SendPacket(Ptr<Packet> packet)
+{
+    NS_LOG_FUNCTION(this << packet);
+    auto ret = m_socket->Send(packet);
+    if (ret >= 0 || m_incrementCounterIfTxFailed)
+    {
+        ++m_seq;
+    }
+    return ret;
 }
 
 } // Namespace ns3

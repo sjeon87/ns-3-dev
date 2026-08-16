@@ -83,7 +83,7 @@ UdpEchoClient::GetTypeId()
 }
 
 UdpEchoClient::UdpEchoClient()
-    : SourceApplication(false)
+    : SourceApplication(false, true)
 {
     NS_LOG_FUNCTION(this);
     m_protocolTid = TypeId::LookupByName("ns3::UdpSocketFactory");
@@ -308,7 +308,7 @@ UdpEchoClient::Send()
         // this case, we don't worry about it either.  But we do allow m_size
         // to have a value different from the (zero) m_dataSize.
         //
-        p = Create<Packet>(m_size);
+        p = CreatePacket(m_size);
     }
     Address localAddress;
     m_socket->GetSockName(localAddress);
@@ -316,7 +316,7 @@ UdpEchoClient::Send()
     // so that tags added to the packet can be sent as well
     m_txTrace(p);
     m_txTraceWithAddresses(p, localAddress, m_peer);
-    m_socket->Send(p);
+    SendPacket(p);
     ++m_sent;
 
     if (InetSocketAddress::IsMatchingType(m_peer))

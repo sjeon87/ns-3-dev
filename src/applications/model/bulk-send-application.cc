@@ -8,7 +8,6 @@
 
 #include "bulk-send-application.h"
 
-#include "ns3/boolean.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/nstime.h"
@@ -54,15 +53,6 @@ BulkSendApplication::GetTypeId()
                           TypeIdValue(TcpSocketFactory::GetTypeId()),
                           MakeTypeIdAccessor(&BulkSendApplication::m_protocolTid),
                           MakeTypeIdChecker())
-            .AddAttribute("EnableSeqTsSizeHeader",
-                          "Add SeqTsSizeHeader to each packet",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&BulkSendApplication::m_enableSeqTsSizeHeader),
-                          MakeBooleanChecker())
-            .AddTraceSource("TxWithSeqTsSize",
-                            "A new packet is created with SeqTsSizeHeader",
-                            MakeTraceSourceAccessor(&BulkSendApplication::m_txTraceWithSeqTsSize),
-                            "ns3::PacketSink::SeqTsSizeCallback")
             .AddTraceSource("TcpRetransmission",
                             "The TCP socket retransmitted a packet",
                             MakeTraceSourceAccessor(&BulkSendApplication::m_retransmissionTrace),
@@ -101,13 +91,11 @@ BulkSendApplication::DoStartApplication() // Called at time specified by Start
 {
     NS_LOG_FUNCTION(this);
 
-    // Fatal error if socket type is not NS3_SOCK_STREAM or NS3_SOCK_SEQPACKET
-    if (m_socket->GetSocketType() != Socket::NS3_SOCK_STREAM &&
-        m_socket->GetSocketType() != Socket::NS3_SOCK_SEQPACKET)
+    // Fatal error if socket type is not NS3_SOCK_STREAM
+    if (m_socket->GetSocketType() != Socket::NS3_SOCK_STREAM)
     {
-        NS_FATAL_ERROR("Using BulkSend with an incompatible socket type. "
-                       "BulkSend requires SOCK_STREAM or SOCK_SEQPACKET. "
-                       "In other words, use TCP instead of UDP.");
+        NS_FATAL_ERROR("Using BulkSend with an incompatible socket type. BulkSend requires "
+                       "SOCK_STREAM. In other words, use TCP instead of UDP.");
     }
 
     m_socket->ShutdownRecv();
@@ -120,20 +108,21 @@ BulkSendApplication::DoStartApplication() // Called at time specified by Start
             MakeCallback(&BulkSendApplication::PacketRetransmitted, this));
     }
 
-    if (m_connected)
-    {
-        Address from;
-        m_socket->GetSockName(from);
-        SendData(from, m_peer);
-    }
+    SendData();
 }
 
 // Private helpers
 
 void
-BulkSendApplication::SendData(const Address& from, const Address& to)
+BulkSendApplication::SendData()
 {
     NS_LOG_FUNCTION(this);
+
+    if (!m_connected)
+    {
+        // We can only send data once the connection has completed
+        return;
+    }
 
     while (m_maxBytes == 0 || m_totBytes < m_maxBytes)
     { // Time to send more
@@ -150,29 +139,10 @@ BulkSendApplication::SendData(const Address& from, const Address& to)
 
         NS_LOG_LOGIC("sending packet at " << Simulator::Now());
 
-        Ptr<Packet> packet;
-        if (m_unsentPacket)
-        {
-            packet = m_unsentPacket;
-            toSend = packet->GetSize();
-        }
-        else if (m_enableSeqTsSizeHeader)
-        {
-            SeqTsSizeHeader header;
-            header.SetSeq(m_seq++);
-            header.SetSize(toSend);
-            NS_ABORT_IF(toSend < header.GetSerializedSize());
-            packet = Create<Packet>(toSend - header.GetSerializedSize());
-            // Trace before adding header, for consistency with PacketSink
-            m_txTraceWithSeqTsSize(packet, from, to, header);
-            packet->AddHeader(header);
-        }
-        else
-        {
-            packet = Create<Packet>(toSend);
-        }
+        auto packet = m_unsentPacket ? m_unsentPacket : CreatePacket(toSend);
+        toSend = packet->GetSize();
 
-        int actual = m_socket->Send(packet);
+        int actual = SendPacket(packet);
         if ((unsigned)actual == toSend)
         {
             m_totBytes += actual;
@@ -220,26 +190,14 @@ BulkSendApplication::DoConnectionSucceeded(Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION(this << socket);
     NS_LOG_LOGIC("BulkSendApplication Connection succeeded");
-    Address from;
-    Address to;
-    socket->GetSockName(from);
-    socket->GetPeerName(to);
-    SendData(from, to);
+    SendData();
 }
 
 void
 BulkSendApplication::DataSend(Ptr<Socket> socket, uint32_t)
 {
     NS_LOG_FUNCTION(this);
-
-    if (m_connected)
-    { // Only send new data if the connection has completed
-        Address from;
-        Address to;
-        socket->GetSockName(from);
-        socket->GetPeerName(to);
-        SendData(from, to);
-    }
+    SendData();
 }
 
 void

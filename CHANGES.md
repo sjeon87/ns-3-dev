@@ -30,6 +30,8 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (wifi) `WifiRemoteStationManager::GetCtsToSelfTxVector()` now takes the channel width of the data frame being protected, so that the returned TXVECTOR covers that bandwidth (using the non-HT duplicate format if wider than 20 MHz).
 * (network) `Buffer::Serialize`, `ByteTagList::Serialize`, `NixVector::Serialize`, `PacketMetadata::Serialize`, `PacketTagList::Serialize` and `Packet::Serialize` functions return now the number of serialized bytes instead of just `1` for a successful serialization.
 * (network) `Buffer::Deserialize`, `ByteTagList::Deserialize`, `PacketMetadata::Deserialize`, `PacketTagList::Deserialize` and `Packet::Deserialize` functions return now the number of deserialized bytes instead of just `1` for a successful deserialization.
+* (applications) `UdpServer` application does no longer trace a received packet whose size is zero.
+* (applications) `UdpClient` application no longer adds a TxWithSeqTs header, unless its `EnableSeqTsSizeHeader` attribute is enabled.  Also, the traces `UdpClient::Tx` and `UdpClient::TxWithAddresses` now report the packet with its TxWithSeqTs header. Client code interested in the packet separated from the TxWithSeqTs header can use the `UdpClient::TxWithSeqTs` trace instead.
 
 ### Changes to build system
 

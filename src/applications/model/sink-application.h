@@ -9,11 +9,16 @@
 #ifndef SINK_APPLICATION_H
 #define SINK_APPLICATION_H
 
+#include "seq-ts-size-header.h"
+
 #include "ns3/address.h"
 #include "ns3/application.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/inet6-socket-address.h"
 #include "ns3/traced-callback.h"
 
 #include <limits>
+#include <unordered_map>
 
 namespace ns3
 {
@@ -59,6 +64,19 @@ class SinkApplication : public Application
 
     static constexpr uint32_t INVALID_PORT{std::numeric_limits<uint32_t>::max()}; //!< invalid port
 
+    /**
+     * TracedCallback signature for a reception with addresses and SeqTsSizeHeader
+     *
+     * @param p The packet received (without the SeqTsSize header)
+     * @param from From address
+     * @param to Local address
+     * @param header The SeqTsSize header
+     */
+    typedef void (*SeqTsSizeCallback)(Ptr<const Packet> p,
+                                      const Address& from,
+                                      const Address& to,
+                                      const SeqTsSizeHeader& header);
+
   protected:
     void DoDispose() override;
 
@@ -82,9 +100,60 @@ class SinkApplication : public Application
     Address m_local; //!< Local address to bind to (address and port)
     uint32_t m_port; //!< Local port to bind to
 
+    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the export of SeqTsSize header
+
+    /// Callbacks for tracing the packet Rx events, includes source, destination addresses, and
+    /// SeqTsSizeHeader
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
+        m_rxTraceWithSeqTsSize;
+
+    /// Callbacks for tracing the packet Rx events, includes source, destination addresses, and
+    /// SeqTsHeader
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsHeader&>
+        m_rxTraceWithSeqTs;
+
+    /**
+     * @brief Handle a packet received by the application
+     * @param socket the receiving socket
+     */
+    void HandleRead(Ptr<Socket> socket);
+
+    /**
+     * @brief Validate and peek SeqTsHeader from a received packet.
+     *
+     * This performs size and timestamp validation and asserts metadata consistency
+     * between the payload and packet metadata when the payload looks like a valid
+     * SeqTsHeader.
+     *
+     * @param p received packet
+     * @param header output SeqTsHeader (only valid if the method returns true)
+     * @return true when a valid SeqTsHeader was decoded, false otherwise
+     */
+    bool TryPeekValidSeqTsHeader(Ptr<const Packet> p, SeqTsHeader& header) const;
+
+    /**
+     * @brief Validate and peek SeqTsSizeHeader from a received packet.
+     *
+     * This performs packet size, timestamp, and payload size validation for stream-based
+     * sockets before the header is removed from the assembled byte stream.
+     *
+     * @param p received packet
+     * @param header output SeqTsSizeHeader (only valid if the method returns true)
+     * @return true when a valid SeqTsSizeHeader was decoded, false otherwise
+     */
+    bool TryPeekValidSeqTsSizeHeader(Ptr<const Packet> p, SeqTsSizeHeader& header) const;
+
   private:
     void StartApplication() override;
     void StopApplication() override;
+
+    /**
+     * @brief Handle a packet received by the application (to be implemented by subclasses)
+     * @param socket the receiving socket
+     * @param packet the received packet
+     * @param from the source address
+     */
+    virtual void ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from) = 0;
 
     /**
      * @brief set the local address
@@ -126,6 +195,65 @@ class SinkApplication : public Application
      * @brief Application specific shutdown code for child subclasses
      */
     virtual void DoStopApplication();
+
+    /**
+     * @brief Extract SeqTsHeader from received packet if any
+     *
+     * @param p received packet
+     * @param from from address
+     * @param localAddress local address
+     */
+    void ProcessSeqTsHeader(const Ptr<Packet>& p, const Address& from, const Address& localAddress);
+
+    /**
+     * @brief Assemble byte stream to extract SeqTsSizeHeader
+     *
+     * @param p received packet
+     * @param from from address
+     * @param localAddress local address
+     *
+     * The method assembles a received byte stream and extracts SeqTsSizeHeader
+     * instances from the stream to export in a trace source.
+     */
+    void ProcessSeqTsSizeHeader(const Ptr<Packet>& p,
+                                const Address& from,
+                                const Address& localAddress);
+
+    /**
+     * @brief Hashing for the Address class
+     */
+    struct AddressHash
+    {
+        /**
+         * @brief operator ()
+         * @param x the address of which calculate the hash
+         * @return the hash of x
+         *
+         * Should this method go in address.h?
+         *
+         * It calculates the hash taking the uint32_t hash value of the IPv4 or IPv6 address.
+         * It works only for InetSocketAddresses (IPv4 version) or Inet6SocketAddresses (IPv6
+         * version)
+         */
+        size_t operator()(const Address& x) const
+        {
+            if (InetSocketAddress::IsMatchingType(x))
+            {
+                InetSocketAddress a = InetSocketAddress::ConvertFrom(x);
+                return std::hash<Ipv4Address>{}(a.GetIpv4());
+            }
+            else if (Inet6SocketAddress::IsMatchingType(x))
+            {
+                Inet6SocketAddress a = Inet6SocketAddress::ConvertFrom(x);
+                return std::hash<Ipv6Address>{}(a.GetIpv6());
+            }
+
+            NS_ABORT_MSG("PacketSink: unexpected address type, neither IPv4 nor IPv6");
+            return 0; // silence the warnings.
+        }
+    };
+
+    std::unordered_map<Address, Ptr<Packet>, AddressHash> m_buffer; //!< Buffer for received packets
 };
 
 } // namespace ns3

@@ -95,7 +95,6 @@ class Socket : public Object
     enum SocketType
     {
         NS3_SOCK_STREAM,
-        NS3_SOCK_SEQPACKET,
         NS3_SOCK_DGRAM,
         NS3_SOCK_RAW
     };

@@ -30,7 +30,7 @@ namespace ns3
 NS_OBJECT_ENSURE_REGISTERED(ThreeGppHttpClient);
 
 ThreeGppHttpClient::ThreeGppHttpClient()
-    : SourceApplication(false),
+    : SourceApplication(false, true),
       m_httpVariables{CreateObject<ThreeGppHttpVariables>()}
 {
     NS_LOG_FUNCTION(this);
@@ -381,12 +381,12 @@ ThreeGppHttpClient::RequestMainObject()
     header.SetClientTs(Simulator::Now());
 
     const auto requestSize = m_httpVariables->GetRequestSize();
-    auto packet = Create<Packet>(requestSize);
+    auto packet = CreatePacket(requestSize);
     packet->AddHeader(header);
     const auto packetSize = packet->GetSize();
     m_txMainObjectRequestTrace(packet);
     m_txTrace(packet);
-    const auto actualBytes = m_socket->Send(packet);
+    const auto actualBytes = SendPacket(packet);
     NS_LOG_DEBUG(this << " Send() packet " << packet << " of " << packet->GetSize() << " bytes,"
                       << " return value= " << actualBytes << ".");
     if (actualBytes != static_cast<int>(packetSize))
@@ -425,12 +425,12 @@ ThreeGppHttpClient::RequestEmbeddedObject()
     header.SetClientTs(Simulator::Now());
 
     const auto requestSize = m_httpVariables->GetRequestSize();
-    auto packet = Create<Packet>(requestSize);
+    auto packet = CreatePacket(requestSize);
     packet->AddHeader(header);
     const auto packetSize = packet->GetSize();
     m_txEmbeddedObjectRequestTrace(packet);
     m_txTrace(packet);
-    const auto actualBytes = m_socket->Send(packet);
+    const auto actualBytes = SendPacket(packet);
     NS_LOG_DEBUG(this << " Send() packet " << packet << " of " << packet->GetSize() << " bytes,"
                       << " return value= " << actualBytes << ".");
 

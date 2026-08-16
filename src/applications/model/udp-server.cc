@@ -116,7 +116,6 @@ UdpServer::DoStartApplication()
     {
         NS_FATAL_ERROR("Failed to bind socket");
     }
-    m_socket->SetRecvCallback(MakeCallback(&UdpServer::HandleRead, this));
 
     if (m_local.IsInvalid())
     {
@@ -125,51 +124,51 @@ UdpServer::DoStartApplication()
         {
             NS_FATAL_ERROR("Failed to bind socket");
         }
-        m_socket6->SetRecvCallback(MakeCallback(&UdpServer::HandleRead, this));
     }
 }
 
 void
-UdpServer::HandleRead(Ptr<Socket> socket)
+UdpServer::ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from)
 {
-    NS_LOG_FUNCTION(this << socket);
-    Address from;
-    while (auto packet = socket->RecvFrom(from))
-    {
-        Address localAddress;
-        socket->GetSockName(localAddress);
-        m_rxTraceWithoutAddress(packet);
-        m_rxTrace(packet, from);
-        m_rxTraceWithAddresses(packet, from, localAddress);
-        if (packet->GetSize() > 0)
-        {
-            const auto receivedSize = packet->GetSize();
-            SeqTsHeader seqTs;
-            packet->RemoveHeader(seqTs);
-            const auto currentSequenceNumber = seqTs.GetSeq();
-            if (InetSocketAddress::IsMatchingType(from))
-            {
-                NS_LOG_INFO("TraceDelay: RX " << receivedSize << " bytes from "
-                                              << InetSocketAddress::ConvertFrom(from).GetIpv4()
-                                              << " Sequence Number: " << currentSequenceNumber
-                                              << " Uid: " << packet->GetUid() << " TXtime: "
-                                              << seqTs.GetTs() << " RXtime: " << Simulator::Now()
-                                              << " Delay: " << Simulator::Now() - seqTs.GetTs());
-            }
-            else if (Inet6SocketAddress::IsMatchingType(from))
-            {
-                NS_LOG_INFO("TraceDelay: RX " << receivedSize << " bytes from "
-                                              << Inet6SocketAddress::ConvertFrom(from).GetIpv6()
-                                              << " Sequence Number: " << currentSequenceNumber
-                                              << " Uid: " << packet->GetUid() << " TXtime: "
-                                              << seqTs.GetTs() << " RXtime: " << Simulator::Now()
-                                              << " Delay: " << Simulator::Now() - seqTs.GetTs());
-            }
+    NS_LOG_FUNCTION(this << socket << packet << from);
 
-            m_lossCounter.NotifyReceived(currentSequenceNumber);
-            m_received++;
-        }
+    Address localAddress;
+    socket->GetSockName(localAddress);
+    m_rxTraceWithoutAddress(packet);
+    m_rxTrace(packet, from);
+    m_rxTraceWithAddresses(packet, from, localAddress);
+
+    NS_ASSERT_MSG(packet->GetSize() != 0, "Received empty packet.");
+    const auto receivedSize = packet->GetSize();
+    m_received++;
+
+    SeqTsHeader seqTs;
+    if (!TryPeekValidSeqTsHeader(packet, seqTs))
+    {
+        return;
     }
+
+    const auto currentSequenceNumber = seqTs.GetSeq();
+    if (InetSocketAddress::IsMatchingType(from))
+    {
+        NS_LOG_INFO("TraceDelay: RX "
+                    << receivedSize << " bytes from "
+                    << InetSocketAddress::ConvertFrom(from).GetIpv4()
+                    << " Sequence Number: " << currentSequenceNumber << " Uid: " << packet->GetUid()
+                    << " TXtime: " << seqTs.GetTs() << " RXtime: " << Simulator::Now()
+                    << " Delay: " << Simulator::Now() - seqTs.GetTs());
+    }
+    else if (Inet6SocketAddress::IsMatchingType(from))
+    {
+        NS_LOG_INFO("TraceDelay: RX "
+                    << receivedSize << " bytes from "
+                    << Inet6SocketAddress::ConvertFrom(from).GetIpv6()
+                    << " Sequence Number: " << currentSequenceNumber << " Uid: " << packet->GetUid()
+                    << " TXtime: " << seqTs.GetTs() << " RXtime: " << Simulator::Now()
+                    << " Delay: " << Simulator::Now() - seqTs.GetTs());
+    }
+
+    m_lossCounter.NotifyReceived(currentSequenceNumber);
 }
 
 } // Namespace ns3

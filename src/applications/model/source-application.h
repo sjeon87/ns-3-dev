@@ -9,15 +9,20 @@
 #ifndef SOURCE_APPLICATION_H
 #define SOURCE_APPLICATION_H
 
+#include "seq-ts-size-header.h"
+
 #include "ns3/address.h"
 #include "ns3/application.h"
 #include "ns3/traced-callback.h"
+
+#include <optional>
 
 namespace ns3
 {
 
 class Packet;
 class Socket;
+class UniformRandomVariable;
 
 /**
  * @ingroup applications
@@ -34,6 +39,12 @@ class Socket;
  * Instead, the port values are embedded in the Local and Remote address attributes, which should be
  * configured to an InetSocketAddress or Inet6SocketAddress value that contains the desired port
  * number.
+ *
+ * If the attribute "EnableSeqTsSizeHeader" is enabled, the application will use some bytes of the
+ * payload to store an header with a sequence number, a timestamp, and the size of the packet sent
+ * (the latter is only present for NS3_SOCK_STREAM socket). Support for extracting statistics from
+ * this header have been added to \c ns3::SinkApplication (enable its "EnableSeqTsSizeHeader"
+ * attribute), or users may extract the header via trace sources.
  */
 class SourceApplication : public Application
 {
@@ -47,9 +58,14 @@ class SourceApplication : public Application
     /**
      * @brief Constructor
      * @param allowPacketSocket flag whether the application should allow the use of packet sockets
+     * (enabled if not specified)
+     * @param incrementCounterIfTxFailed flag whether to increment the sequence number counter if
+     * the transmission of the packet failed (disabled if not specified)
      */
-    explicit SourceApplication(bool allowPacketSocket = true);
+    SourceApplication(bool allowPacketSocket = true, bool incrementCounterIfTxFailed = false);
     ~SourceApplication() override;
+
+    int64_t AssignStreams(int64_t stream) override;
 
     /**
      * @brief set the remote address
@@ -69,7 +85,17 @@ class SourceApplication : public Application
      */
     Ptr<Socket> GetSocket() const;
 
+    /// Enumeration to specify whether to increment the sequence number counter if the transmission
+    /// of the packet failed.
+    enum class IncrementCounterIfTxFailed : uint8_t
+    {
+        UNDEFINED = 0, //!< Undefined: use the default behavior defined by the child class
+        ENABLED,       //!< Always increment the counter even if the transmission failed
+        DISABLED       //!< Do not increment the counter if the transmission failed
+    };
+
   protected:
+    void DoInitialize() override;
     void DoDispose() override;
 
     /**
@@ -77,6 +103,25 @@ class SourceApplication : public Application
      * @return true if the socket was closed, false if there was no socket to close
      */
     bool CloseSocket();
+
+    /**
+     * @brief This method creates a packet of the given size. If the SeqTsSizeHeader attribute is
+     * enabled, it adds the header to the packet, unless the size of the packet is less than the
+     * size of the header.
+     *
+     * @param size the size of the packet to create in bytes
+     * @return the created packet
+     */
+    virtual Ptr<Packet> CreatePacket(uint64_t size);
+
+    /**
+     * @brief Send a packet through the socket and increments the sequence number counter if the
+     * transmission was successful or if the IncrementCounterIfTxFailed attribute is enabled.
+     *
+     * @param packet the packet to send
+     * @return the number of bytes sent, or -1 if the transmission failed
+     */
+    int SendPacket(Ptr<Packet> packet);
 
     /// Traced Callback: transmitted packets.
     TracedCallback<Ptr<const Packet>> m_txTrace;
@@ -92,6 +137,16 @@ class SourceApplication : public Application
                                             const Address& local,
                                             const Address& remote);
 
+    /// Callback for tracing the packet Tx events, includes source, destination, the packet sent,
+    /// and header if EnableSeqTsSizeHeader is enabled (for NS3_SOCK_STREAM sockets only)
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
+        m_txTraceWithSeqTsSize;
+
+    /// Callback for tracing the packet Tx events, includes source, destination, the packet sent,
+    /// and header if EnableSeqTsSizeHeader is enabled (for NS3_SOCK_DGRAM sockets only)
+    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsHeader&>
+        m_txTraceWithSeqTs;
+
     /// Traced Callback: connection success event.
     TracedCallback<Ptr<Socket>, const Address&, const Address&> m_connectionSuccess;
 
@@ -106,11 +161,29 @@ class SourceApplication : public Application
     Address m_local; //!< Local address to bind to
     uint8_t m_tos;   //!< The packets Type of Service
 
+    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the use of SeqTsSizeHeader
+    bool m_randomPayload{false};         //!< Fill packet payload with random bytes
+
     bool m_connected{false}; //!< flag whether socket is connected
 
   private:
     void StartApplication() override;
     void StopApplication() override;
+
+    /**
+     * @brief Set the flag whether to increment the sequence number counter if the transmission of
+     * the packet failed. If the option is set to UNDEFINED, it is ignored to ensure default
+     * behavior defined by the child class is used.
+     * @param option the option value to set
+     */
+    void SetIncrementCounterIfTxFailed(IncrementCounterIfTxFailed option);
+
+    /**
+     * @brief Get the flag whether to increment the sequence number counter if the transmission of
+     * the packet failed.
+     * @return the option value
+     */
+    IncrementCounterIfTxFailed GetIncrementCounterIfTxFailed() const;
 
     /**
      * @brief Handle a Connection Succeed event
@@ -151,7 +224,28 @@ class SourceApplication : public Application
      */
     virtual void CancelEvents() = 0;
 
-    bool m_allowPacketSocket; //!< Allow use of packet socket
+    /**
+     * @brief Create a packet with a SeqTsSizeHeader
+     * @param seq the sequence number to set in the header
+     * @param size the size to set in the header
+     * @return the created packet
+     */
+    Ptr<Packet> CreatePacketWithSeqTsSizeHeader(uint32_t seq, uint64_t size);
+
+    /**
+     * @brief Create a packet with a payload, either filled in with zeros or random bytes depending
+     * on the setting of the RandomPayload attribute
+     * @param size the size of the payload
+     * @return the created packet
+     */
+    Ptr<Packet> CreatePacketWithPayload(uint64_t size);
+
+    bool m_allowPacketSocket;          //!< Allow use of packet socket
+    bool m_incrementCounterIfTxFailed; //!< Flag whether to increment the sequence number counter if
+                                       //!< the transmission of the packet failed
+    Ptr<UniformRandomVariable> m_bytesRng; //!< Random variable for random payload generation
+
+    uint32_t m_seq{0}; //!< Sequence number for created packets
 };
 
 } // namespace ns3

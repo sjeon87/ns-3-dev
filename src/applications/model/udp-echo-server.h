@@ -45,15 +45,7 @@ class UdpEchoServer : public SinkApplication
 
   private:
     void DoStartApplication() override;
-
-    /**
-     * @brief Handle a packet reception.
-     *
-     * This function is called by lower layers.
-     *
-     * @param socket the socket the packet was received to.
-     */
-    void HandleRead(Ptr<Socket> socket);
+    void ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from) override;
 
     uint8_t m_tos; //!< The packets Type of Service
 

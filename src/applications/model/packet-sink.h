@@ -9,12 +9,9 @@
 #ifndef PACKET_SINK_H
 #define PACKET_SINK_H
 
-#include "seq-ts-size-header.h"
 #include "sink-application.h"
 
 #include "ns3/event-id.h"
-#include "ns3/inet-socket-address.h"
-#include "ns3/inet6-socket-address.h"
 #include "ns3/ptr.h"
 #include "ns3/traced-callback.h"
 
@@ -84,31 +81,14 @@ class PacketSink : public SinkApplication
      */
     std::list<Ptr<Socket>> GetAcceptedSockets() const;
 
-    /**
-     * TracedCallback signature for a reception with addresses and SeqTsSizeHeader
-     *
-     * @param p The packet received (without the SeqTsSize header)
-     * @param from From address
-     * @param to Local address
-     * @param header The SeqTsSize header
-     */
-    typedef void (*SeqTsSizeCallback)(Ptr<const Packet> p,
-                                      const Address& from,
-                                      const Address& to,
-                                      const SeqTsSizeHeader& header);
-
   protected:
     void DoDispose() override;
 
   private:
     void DoStartApplication() override;
     void DoStopApplication() override;
+    void ReceivePacket(Ptr<Socket> socket, Ptr<Packet> packet, const Address& from) override;
 
-    /**
-     * @brief Handle a packet received by the application
-     * @param socket the receiving socket
-     */
-    void HandleRead(Ptr<Socket> socket);
     /**
      * @brief Handle an incoming connection
      * @param socket the incoming connection socket
@@ -126,67 +106,14 @@ class PacketSink : public SinkApplication
      */
     void HandlePeerError(Ptr<Socket> socket);
 
-    /**
-     * @brief Packet received: assemble byte stream to extract SeqTsSizeHeader
-     * @param p received packet
-     * @param from from address
-     * @param localAddress local address
-     *
-     * The method assembles a received byte stream and extracts SeqTsSizeHeader
-     * instances from the stream to export in a trace source.
-     */
-    void PacketReceived(const Ptr<Packet>& p, const Address& from, const Address& localAddress);
-
-    /**
-     * @brief Hashing for the Address class
-     */
-    struct AddressHash
-    {
-        /**
-         * @brief operator ()
-         * @param x the address of which calculate the hash
-         * @return the hash of x
-         *
-         * Should this method go in address.h?
-         *
-         * It calculates the hash taking the uint32_t hash value of the IPv4 or IPv6 address.
-         * It works only for InetSocketAddresses (IPv4 version) or Inet6SocketAddresses (IPv6
-         * version)
-         */
-        size_t operator()(const Address& x) const
-        {
-            if (InetSocketAddress::IsMatchingType(x))
-            {
-                InetSocketAddress a = InetSocketAddress::ConvertFrom(x);
-                return std::hash<Ipv4Address>{}(a.GetIpv4());
-            }
-            else if (Inet6SocketAddress::IsMatchingType(x))
-            {
-                Inet6SocketAddress a = Inet6SocketAddress::ConvertFrom(x);
-                return std::hash<Ipv6Address>{}(a.GetIpv6());
-            }
-
-            NS_ABORT_MSG("PacketSink: unexpected address type, neither IPv4 nor IPv6");
-            return 0; // silence the warnings.
-        }
-    };
-
-    std::unordered_map<Address, Ptr<Packet>, AddressHash> m_buffer; //!< Buffer for received packets
-
     // In the case of TCP, each socket accept returns a new socket, so the
     // listening socket is stored separately from the accepted sockets
     std::list<Ptr<Socket>> m_socketList; //!< the accepted sockets
 
     uint64_t m_totalRx{0}; //!< Total bytes received
 
-    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the export of SeqTsSize header
-
     /// Callback for tracing the packet Rx events, includes source and destination addresses
     TracedCallback<Ptr<const Packet>, const Address&, const Address&> m_rxTraceWithAddresses;
-    /// Callbacks for tracing the packet Rx events, includes source, destination addresses, and
-    /// headers
-    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
-        m_rxTraceWithSeqTsSize;
 
     uint8_t m_tos{0}; //!< Type of Service for outbound packets
 };

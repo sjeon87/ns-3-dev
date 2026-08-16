@@ -98,7 +98,7 @@ class TgaxVirtualDesktop : public SourceApplication
     /**
      * Transmit the next VDI packet
      */
-    void SendPacket();
+    void TransmitPacket();
 
     /**
      * Handle a Data Sent event

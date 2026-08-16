@@ -218,27 +218,17 @@ TgaxVirtualDesktop::ScheduleNext()
 {
     NS_LOG_FUNCTION(this);
     NS_ASSERT(!m_txEvent.IsPending());
-    m_txEvent = Simulator::Schedule(GetInterArrival(), &TgaxVirtualDesktop::SendPacket, this);
+    m_txEvent = Simulator::Schedule(GetInterArrival(), &TgaxVirtualDesktop::TransmitPacket, this);
 }
 
 void
-TgaxVirtualDesktop::SendPacket()
+TgaxVirtualDesktop::TransmitPacket()
 {
     NS_LOG_FUNCTION(this);
 
     NS_ASSERT(m_txEvent.IsExpired());
-
-    Ptr<Packet> packet;
-    if (m_unsentPacket)
-    {
-        packet = m_unsentPacket;
-    }
-    else
-    {
-        packet = Create<Packet>(GetPacketSize());
-    }
-
-    unsigned int actualSize = m_socket->Send(packet);
+    auto packet = m_unsentPacket ? m_unsentPacket : CreatePacket(GetPacketSize());
+    unsigned int actualSize = SendPacket(packet);
     if (actualSize == packet->GetSize())
     {
         m_txTrace(packet);

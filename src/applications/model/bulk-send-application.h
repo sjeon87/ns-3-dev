@@ -9,7 +9,6 @@
 #ifndef BULK_SEND_APPLICATION_H
 #define BULK_SEND_APPLICATION_H
 
-#include "seq-ts-size-header.h"
 #include "source-application.h"
 
 #include "ns3/event-id.h"
@@ -53,13 +52,6 @@ class TcpSocketBase;
  * and SOCK_SEQPACKET sockets are supported.
  * For example, TCP sockets can be used, but
  * UDP sockets can not be used.
- *
- * If the attribute "EnableSeqTsSizeHeader" is enabled, the application will
- * use some bytes of the payload to store an header with a sequence number,
- * a timestamp, and the size of the packet sent. Support for extracting
- * statistics from this header have been added to \c ns3::PacketSink
- * (enable its "EnableSeqTsSizeHeader" attribute), or users may extract
- * the header via trace sources.
  */
 class BulkSendApplication : public SourceApplication
 {
@@ -95,17 +87,13 @@ class BulkSendApplication : public SourceApplication
 
     /**
      * @brief Send data until the L4 transmission buffer is full.
-     * @param from From address
-     * @param to To address
      */
-    void SendData(const Address& from, const Address& to);
+    void SendData();
 
-    uint32_t m_sendSize;                 //!< Size of data to send each time
-    uint64_t m_maxBytes;                 //!< Limit total number of bytes sent
-    uint64_t m_totBytes{0};              //!< Total bytes sent so far
-    uint32_t m_seq{0};                   //!< Sequence
-    Ptr<Packet> m_unsentPacket;          //!< Variable to cache unsent packet
-    bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the SeqTsSizeHeader
+    uint32_t m_sendSize;        //!< Size of data to send each time
+    uint64_t m_maxBytes;        //!< Limit total number of bytes sent
+    uint64_t m_totBytes{0};     //!< Total bytes sent so far
+    Ptr<Packet> m_unsentPacket; //!< Variable to cache unsent packet
 
     /// Traced Callback: retransmitted packets
     TracedCallback<Ptr<const Packet>,
@@ -114,11 +102,6 @@ class BulkSendApplication : public SourceApplication
                    const Address&,
                    Ptr<const TcpSocketBase>>
         m_retransmissionTrace;
-
-    /// Callback for tracing the packet Tx events, includes source, destination,  the packet sent,
-    /// and header
-    TracedCallback<Ptr<const Packet>, const Address&, const Address&, const SeqTsSizeHeader&>
-        m_txTraceWithSeqTsSize;
 
     /**
      * @brief Send more data as soon as some has been transmitted.
