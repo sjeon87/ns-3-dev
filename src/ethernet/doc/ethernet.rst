@@ -162,6 +162,8 @@ of the model.
 Scope and Limitations
 ---------------------
 - The model currently supports Ethernet over twisted-pair copper links operating in full-duplex mode; support for fiber-optic and other link types is planned for future work.
+- Link speed currently uses an almost auto-negotiation approach: each EthernetNetDevice specifies a maximum link speed, and once two devices are connected to the same channel,
+their operating speed is set to the minimum of the two maximum speeds; this implicitly assumes a copper medium.
 - Half-duplex Ethernet and CSMA/CD collision detection are not implemented and are planned for future work.
 - Ethernet Flow Control using IEEE 802.3 PAUSE frames is implemented for full-duplex Ethernet links.
 - The current implementation uses a simple queue-threshold policy for PAUSE frames. Priority-based PAUSE/advanced queue management is not currently supported and is considered future enhancement.
@@ -175,6 +177,10 @@ updating the mapping to ``DataRate`` in the NetDevice implementation. If the
 supported rate-selection rules change, the channel negotiation logic can be
 updated without affecting the MAC or higher protocol layers, because the PHY
 always derives timing from the device's negotiated data rate.
+
+- Future work may allow each device to specify a list of allowed link modes,
+such as copper or fiber, enabling the channel to negotiate a compatible medium
+and link speed between the connected devices.
 
 - The MAC layer is extensible. The transmit and receive queues are owned
 through attributes, so the queue implementation and queue limits can be changed

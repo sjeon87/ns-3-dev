@@ -112,6 +112,12 @@ class EthernetMac : public Object
     void SendPauseFrame(uint16_t pauseTime);
 
     /**
+     * @brief Send an unpause frame if the receive queue occupancy is below a certain threshold.
+     * @param packet The packet that triggered the check.
+     */
+    void SendUnpauseFrame(Ptr<const Packet> packet);
+
+    /**
      * @brief Accept a frame from the PHY.
      *
      * The frame is validated before it is enqueued in the receive queue. If the
@@ -253,10 +259,10 @@ class EthernetMac : public Object
     virtual bool ShouldSendPauseFrame() const;
 
     /**
-     * @brief send an unpause frame when the receive queue occupancy is below a certain threshold.
+     * @brief Determine whether an unpause frame should be sent.
      * @return True if an unpause frame should be sent, false otherwise.
      */
-    virtual bool SendUnpauseFrame() const;
+    virtual bool ShouldSendUnpauseFrame() const;
 
     /**
      * @brief The trace source fired when packets come into the "top" of the device
@@ -265,15 +271,6 @@ class EthernetMac : public Object
      * @see class CallBackTraceSource
      */
     TracedCallback<Ptr<const Packet>> m_macTxTrace;
-
-    /**
-     * The trace source fired when packets where successfully transmitted, that is
-     * an acknowledgment was received, if requested, or the packet was
-     * successfully sent by L1, if no ACK was requested.
-     *
-     * @see class CallBackTraceSource
-     */
-    TracedCallback<Ptr<const Packet>> m_macTxOkTrace;
 
     /**
      * @brief The trace source fired when packets coming into the "top" of the device
@@ -357,6 +354,49 @@ class EthernetMac : public Object
      */
     static uint32_t GetFrameSize(uint32_t payloadSize);
 
+    /**
+     * Callback used to notify the NetDevice that a packet is available
+     * in the MAC receive queue.
+     */
+    Callback<void> m_rxIndicationCallback;
+
+    /**
+     * Set the callback used to notify the NetDevice of a received packet.
+     * @param callback The callback to invoke when a packet is available
+     *                 in the MAC receive queue.
+     */
+    void SetRxIndicationCallback(Callback<void> callback);
+
+    /**
+     * Public method used to fire a MacRx trace. Implemented for encapsulation purposes.
+     * @param packet the packet we received
+     */
+    void NotifyRx(Ptr<const Packet> packet) const;
+
+    /**
+     * Public method used to fire a MacPromiscRx trace. Implemented for encapsulation purposes.
+     * @param packet the packet we received promiscuously
+     */
+    void NotifyPromiscRx(Ptr<const Packet> packet) const;
+
+    /**
+     * Public method used to fire a MacRxDrop trace. Implemented for encapsulation purposes.
+     * @param packet the packet we received but is not destined for us
+     */
+    void NotifyRxDrop(Ptr<const Packet> packet) const;
+
+    /**
+     * Public method used to fire a MacSniffer trace. Implemented for encapsulation purposes.
+     * @param packet The packet to pass to the sniffer trace.
+     */
+    void NotifySniffer(Ptr<const Packet> packet) const;
+
+    /**
+     * Public method used to fire a MacPromiscSniffer trace. Implemented for encapsulation purposes.
+     * @param packet The packet to pass to the promiscuous sniffer trace.
+     */
+    void NotifyPromiscSniffer(Ptr<const Packet> packet) const;
+
   protected:
     void DoDispose() override;
 
@@ -377,30 +417,6 @@ class EthernetMac : public Object
      * @brief Transmit the next queued frame, if the transmitter is free to do so.
      */
     void TxNext();
-
-    /**
-     * @brief Process a received frame and hand it to the netdevice receive callbacks.
-     * @param frame The frame to process.
-     */
-    void ProcessRxPacket(Ptr<Packet> frame);
-
-    /**
-     * @brief Release the receiver and process the next queued frame, if any.
-     */
-    void RxNext();
-
-    /**
-     * @brief Classify a received frame and hand it to the netdevice receive callbacks.
-     *
-     * The promiscuous callback, when set, is given every frame. The
-     * non-promiscuous callback is only given frames addressed to this device,
-     * to the broadcast address or to a multicast group.
-     *
-     * @param frame The complete received frame, including header and FCS.
-     * @param payload The decapsulated payload packet.
-     * @param header The parsed Ethernet header.
-     */
-    void ForwardUp(Ptr<const Packet> frame, Ptr<Packet> payload, const EthernetHeader& header);
 
     /**
      * @brief Apply a received IEEE 802.3x PAUSE frame to the transmit path.
