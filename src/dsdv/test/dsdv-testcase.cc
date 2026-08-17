@@ -26,9 +26,12 @@
 #include "ns3/mesh-helper.h"
 #include "ns3/mobility-helper.h"
 #include "ns3/pcap-file.h"
+#include "ns3/simple-net-device-helper.h"
 #include "ns3/simulator.h"
+#include "ns3/socket.h"
 #include "ns3/string.h"
 #include "ns3/test.h"
+#include "ns3/udp-socket-factory.h"
 #include "ns3/uinteger.h"
 
 using namespace ns3;
@@ -201,6 +204,118 @@ DsdvTableTestCase::DoRun()
 /**
  * @ingroup dsdv-test
  *
+ * @brief DSDV chain regression test: a multi-interface relay must deliver.
+ *
+ * Three nodes in a chain of two point-to-point links, so the middle node has
+ * two non-loopback interfaces. Verifies that the simulation completes (the
+ * unchecked LookupRoute () in LookForQueuedPackets () used to send on a route
+ * with a null output device and die in Ipv4L3Protocol::SendRealOut) and that
+ * data is delivered end to end (the node's own address used to be advertised
+ * from a hardcoded interface index, so next hops toward a multi-interface
+ * node never resolved). A two-node run guards single-interface behaviour.
+ */
+class DsdvChainTestCase : public TestCase
+{
+  public:
+    DsdvChainTestCase()
+        : TestCase("DSDV multi-interface chain delivers end to end")
+    {
+    }
+
+    /**
+     * Receive a packet on the sink socket
+     * @param socket the receiving socket
+     */
+    void Receive(Ptr<Socket> socket)
+    {
+        Ptr<Packet> p;
+        while ((p = socket->Recv()))
+        {
+            m_rxBytes += p->GetSize();
+        }
+    }
+
+    /**
+     * Send a packet toward the sink
+     * @param socket the sending socket
+     */
+    void Send(Ptr<Socket> socket)
+    {
+        socket->Send(Create<Packet>(64));
+    }
+
+    /**
+     * Run one chain of the given length and return the bytes delivered from
+     * the last node to the first
+     * @param nNodes chain length
+     * @return bytes received by the sink
+     */
+    uint32_t RunChain(uint32_t nNodes)
+    {
+        m_rxBytes = 0;
+        NodeContainer nodes;
+        nodes.Create(nNodes);
+
+        SimpleNetDeviceHelper devHelper;
+        devHelper.SetNetDevicePointToPointMode(true);
+        std::vector<NetDeviceContainer> links;
+        for (uint32_t i = 0; i + 1 < nNodes; ++i)
+        {
+            links.push_back(devHelper.Install(NodeContainer(nodes.Get(i), nodes.Get(i + 1))));
+        }
+
+        DsdvHelper dsdv;
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(dsdv);
+        internet.Install(nodes);
+
+        Ipv4AddressHelper ipv4;
+        Ipv4Address dst;
+        for (uint32_t i = 0; i + 1 < nNodes; ++i)
+        {
+            std::ostringstream base;
+            base << "10.1." << (i + 1) << ".0";
+            ipv4.SetBase(base.str().c_str(), "255.255.255.252");
+            Ipv4InterfaceContainer ic = ipv4.Assign(links[i]);
+            if (i == 0)
+            {
+                dst = ic.GetAddress(0); // first node
+            }
+        }
+
+        Ptr<Socket> sink = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
+        sink->Bind(InetSocketAddress(Ipv4Address::GetAny(), 9));
+        sink->SetRecvCallback(MakeCallback(&DsdvChainTestCase::Receive, this));
+
+        Ptr<Socket> source =
+            Socket::CreateSocket(nodes.Get(nNodes - 1), UdpSocketFactory::GetTypeId());
+        source->Connect(InetSocketAddress(dst, 9));
+        for (uint32_t s = 0; s < 10; ++s)
+        {
+            Simulator::Schedule(Seconds(5.0 + s), &DsdvChainTestCase::Send, this, source);
+        }
+
+        Simulator::Stop(Seconds(20));
+        Simulator::Run();
+        Simulator::Destroy();
+        return m_rxBytes;
+    }
+
+    void DoRun() override
+    {
+        uint32_t multi = RunChain(3);
+        NS_TEST_EXPECT_MSG_GT(multi, 0, "no data delivered across the multi-interface relay");
+        uint32_t single = RunChain(2);
+        NS_TEST_EXPECT_MSG_GT(single, 0, "no data delivered on the single-interface link");
+    }
+
+  private:
+    uint32_t m_rxBytes{0}; ///< bytes received by the sink
+};
+
+/**
+ * @ingroup dsdv-test
+ *
  * @brief DSDV test suite
  */
 class DsdvTestSuite : public TestSuite
@@ -211,5 +326,6 @@ class DsdvTestSuite : public TestSuite
     {
         AddTestCase(new DsdvHeaderTestCase(), TestCase::Duration::QUICK);
         AddTestCase(new DsdvTableTestCase(), TestCase::Duration::QUICK);
+        AddTestCase(new DsdvChainTestCase(), TestCase::Duration::QUICK);
     }
 } g_dsdvTestSuite; ///< the test suite
