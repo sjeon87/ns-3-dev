@@ -15,6 +15,7 @@
 #include "ns3/node.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
+#include "ns3/pointer.h"
 #include "ns3/simulator.h"
 #include "ns3/sixlowpan-header.h"
 #include "ns3/sixlowpan-mesh-under-routing.h"
@@ -1548,6 +1549,76 @@ class MeshUnderDeviceStreamsTestCase : public TestCase
 /**
  * @ingroup sixlowpan-tests
  *
+ * @brief The duplicate count reaches the Trickle policy through the device.
+ *
+ * A frame is injected twice (the second reception is a duplicate) followed
+ * by a second, distinct frame. With DuplicateThreshold = 2 and k = 0 the
+ * covered frame must be killed at the firing and only the fresh frame
+ * re-broadcast, proving the device wires the duplicate detections into the
+ * policy's per-packet counts.
+ */
+class MeshUnderDeviceDuplicateCountTestCase : public MeshUnderDeviceTestCase
+{
+  public:
+    MeshUnderDeviceDuplicateCountTestCase()
+        : MeshUnderDeviceTestCase("Device-level duplicate count kills the covered frame")
+    {
+    }
+
+  private:
+    /**
+     * @brief Suppressed-trace callback.
+     * @param packet The suppressed packet (unused).
+     */
+    void RecordSuppressed(Ptr<const Packet> packet [[maybe_unused]])
+    {
+        m_suppressedCount++;
+    }
+
+    void DoRun() override
+    {
+        SetupDevice();
+
+        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
+        trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
+        trickle->SetAttribute("ForwardOnePerFiring", BooleanValue(true));
+        trickle->SetAttribute("DuplicateThreshold", UintegerValue(2));
+        trickle->TraceConnectWithoutContext(
+            "PacketSuppressed",
+            MakeCallback(&MeshUnderDeviceDuplicateCountTestCase::RecordSuppressed, this));
+        m_dev->SetAttribute("MeshUnderRouting", PointerValue(trickle));
+        m_dev->AssignStreams(1);
+
+        Mac16Address orig("00:02");
+        Mac16Address dst("00:42"); // neither this node nor broadcast
+
+        // The same frame twice (the second reception is a duplicate), then a
+        // fresh frame; all before the first firing, no earlier than 6 ms.
+        ScheduleInject(MilliSeconds(1), BuildMeshFrame(orig, dst, 5, /*seqNo=*/1));
+        ScheduleInject(MilliSeconds(2), BuildMeshFrame(orig, dst, 5, /*seqNo=*/1));
+        ScheduleInject(MilliSeconds(3), BuildMeshFrame(orig, dst, 5, /*seqNo=*/2));
+
+        Simulator::Stop(MilliSeconds(500));
+        Simulator::Run();
+
+        NS_TEST_ASSERT_MSG_EQ(m_suppressedCount, 1, "The covered frame is killed at the firing");
+        NS_TEST_ASSERT_MSG_EQ(m_sentFrames.size(), 1, "Only the fresh frame is re-broadcast");
+
+        SixLowPanMesh meshHdr;
+        SixLowPanBc0 bc0Hdr;
+        Ptr<Packet> sent = m_sentFrames[0]->Copy();
+        sent->RemoveHeader(meshHdr);
+        sent->RemoveHeader(bc0Hdr);
+        NS_TEST_ASSERT_MSG_EQ(+bc0Hdr.GetSequenceNumber(), 2, "The re-broadcast frame is seq 2");
+    }
+
+    uint32_t m_suppressedCount{0}; ///< PacketSuppressed trace invocations.
+};
+
+/**
+ * @ingroup sixlowpan-tests
+ *
  * @brief 6LoWPAN mesh-under forwarding test suite.
  */
 class SixLowPanMeshUnderTestSuite : public TestSuite
@@ -1579,6 +1650,7 @@ class SixLowPanMeshUnderTestSuite : public TestSuite
         AddTestCase(new MeshUnderChainRelayTestCase(true), Duration::QUICK);
         AddTestCase(new MeshUnderChainRelayTestCase(false), Duration::QUICK);
         AddTestCase(new MeshUnderDeviceStreamsTestCase, Duration::QUICK);
+        AddTestCase(new MeshUnderDeviceDuplicateCountTestCase, Duration::QUICK);
     }
 };
 
