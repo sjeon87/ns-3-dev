@@ -170,8 +170,10 @@ void
 PacketQueue::Drop(QueueEntry en, std::string reason)
 {
     NS_LOG_LOGIC(reason << en.GetPacket()->GetUid() << " " << en.GetIpv4Header().GetDestination());
-    // en.GetErrorCallback () (en.GetPacket (), en.GetIpv4Header (),
-    //   Socket::ERROR_NOROUTETOHOST);
+    if (!en.GetErrorCallback().IsNull())
+    {
+        en.GetErrorCallback()(en.GetPacket(), en.GetIpv4Header(), Socket::ERROR_NOROUTETOHOST);
+    }
 }
 
 } // namespace dsdv
