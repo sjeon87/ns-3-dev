@@ -169,6 +169,7 @@ class EthernetNetDevice : public NetDevice
     Address GetAddress() const override;
     bool SetMtu(const uint16_t mtu) override;
     uint16_t GetMtu() const override;
+    uint16_t GetPaddingThreshold() const override;
     bool IsLinkUp() const override;
     void AddLinkChangeCallback(Callback<void> callback) override;
     bool IsBroadcast() const override;
@@ -197,19 +198,6 @@ class EthernetNetDevice : public NetDevice
     bool IsReceiveEnabled() const;
 
     /**
-     * @brief Get the callback to be used to notify higher layers when a packet has been received.
-     * @returns The callback to use to notify higher layers during reception.
-     */
-    NetDevice::ReceiveCallback GetReceiveCallback();
-
-    /**
-     * @brief Get the callback to be used to notify higher layers when a packet is received in
-     * promiscuous mode.
-     * @returns The callback to use to notify higher layers during promiscuous reception.
-     */
-    NetDevice::PromiscReceiveCallback GetPromiscReceiveCallback();
-
-    /**
      * @brief Notify the device that the link is up.
      */
     void LinkUp();
@@ -218,6 +206,12 @@ class EthernetNetDevice : public NetDevice
      * @brief Notify the device that the link is down.
      */
     void LinkDown();
+
+    /**
+     * @brief Handle a receive indication from the MAC that a packet is available
+     * in the receive queue.
+     */
+    void RxIndication();
 
   protected:
     void DoDispose() override;

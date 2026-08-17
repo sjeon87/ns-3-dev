@@ -15,6 +15,8 @@
 #include "ns3/boolean.h"
 #include "ns3/drop-tail-queue.h"
 #include "ns3/enum.h"
+#include "ns3/ethernet-header.h"
+#include "ns3/ethernet-trailer.h"
 #include "ns3/fatal-error.h"
 #include "ns3/log.h"
 #include "ns3/mac48-address.h"
@@ -147,11 +149,11 @@ EthernetNetDevice::EthernetNetDevice()
     m_mac->SetPhy(m_phy);
     m_mac->SetDevice(this);
 
+    m_mac->SetRxIndicationCallback(MakeCallback(&EthernetNetDevice::RxIndication, this));
+
     Ptr<NetDeviceQueueInterface> ndqi = CreateObject<NetDeviceQueueInterface>();
     ndqi->GetTxQueue(0)->ConnectQueueTraces(m_mac->GetTxQueue());
     AggregateObject(ndqi);
-
-    SetAddress(Mac48Address::Allocate());
 }
 
 EthernetNetDevice::~EthernetNetDevice()
@@ -181,6 +183,9 @@ EthernetNetDevice::DoDispose()
 
     m_node = nullptr;
     m_channel = nullptr;
+
+    m_rxCallback.Nullify();
+    m_promiscRxCallback.Nullify();
 
     NetDevice::DoDispose();
 }
@@ -327,6 +332,12 @@ EthernetNetDevice::GetMtu() const
     return m_mac->GetMtu();
 }
 
+uint16_t
+EthernetNetDevice::GetPaddingThreshold() const
+{
+    return 46;
+}
+
 bool
 EthernetNetDevice::IsLinkUp() const
 {
@@ -440,22 +451,10 @@ EthernetNetDevice::SetReceiveCallback(NetDevice::ReceiveCallback callBack)
     m_rxCallback = callBack;
 }
 
-NetDevice::ReceiveCallback
-EthernetNetDevice::GetReceiveCallback()
-{
-    return m_rxCallback;
-}
-
 void
 EthernetNetDevice::SetPromiscReceiveCallback(PromiscReceiveCallback callBack)
 {
     m_promiscRxCallback = callBack;
-}
-
-NetDevice::PromiscReceiveCallback
-EthernetNetDevice::GetPromiscReceiveCallback()
-{
-    return m_promiscRxCallback;
 }
 
 bool
@@ -476,6 +475,81 @@ EthernetNetDevice::LinkDown()
 {
     m_linkUp = false;
     m_linkChangeCallbacks();
+}
+
+void
+EthernetNetDevice::RxIndication()
+{
+    NS_LOG_FUNCTION(Simulator::Now());
+
+    auto rxQueue = m_mac->GetRxQueue();
+
+    while (!rxQueue->IsEmpty())
+    {
+        Ptr<Packet> frame = m_mac->GetRxQueue()->Dequeue();
+
+        EthernetHeader header(false);
+
+        Ptr<Packet> payload = frame->Copy();
+
+        EthernetTrailer trailer;
+        payload->RemoveTrailer(trailer);
+        payload->RemoveHeader(header);
+
+        NS_LOG_LOGIC("Received frame with length/type: " << header.GetLengthType());
+
+        NetDevice::PacketType packetType;
+
+        if (header.GetDestination().IsBroadcast())
+        {
+            packetType = NetDevice::PACKET_BROADCAST;
+        }
+        else if (header.GetDestination().IsGroup())
+        {
+            packetType = NetDevice::PACKET_MULTICAST;
+        }
+        else if (header.GetDestination() == m_mac->GetAddress())
+        {
+            packetType = NetDevice::PACKET_HOST;
+        }
+        else
+        {
+            packetType = NetDevice::PACKET_OTHERHOST;
+        }
+
+        m_mac->NotifyPromiscSniffer(frame);
+
+        if (!m_promiscRxCallback.IsNull())
+        {
+            m_mac->NotifyPromiscRx(payload);
+
+            m_promiscRxCallback(this,
+                                payload,
+                                header.GetLengthType(),
+                                header.GetSource(),
+                                header.GetDestination(),
+                                packetType);
+        }
+
+        if (packetType == NetDevice::PACKET_OTHERHOST)
+        {
+            NS_LOG_LOGIC("Frame is addressed to " << header.GetDestination()
+                                                  << ", not forwarding it up");
+            continue;
+        }
+
+        m_mac->NotifySniffer(frame);
+        m_mac->NotifyRx(payload);
+
+        if (m_rxCallback.IsNull())
+        {
+            NS_LOG_LOGIC("No receive callback set on the device, dropping frame");
+            m_mac->NotifyRxDrop(ETHERNET_MAC_DROP_NO_RX_CALLBACK, payload);
+            continue;
+        }
+
+        m_rxCallback(this, payload, header.GetLengthType(), header.GetSource());
+    }
 }
 
 } // namespace ethernet

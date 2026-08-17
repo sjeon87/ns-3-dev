@@ -75,7 +75,7 @@ EthernetMac::GetTypeId()
                             "Trace source indicating a packet has been dropped by the "
                             "device before transmission",
                             MakeTraceSourceAccessor(&EthernetMac::m_macTxDropTrace),
-                            "ns3::Packet::TracedCallback")
+                            "ns3::ethernet::EthernetMac::DroppedFrameCallback")
             .AddTraceSource("MacPromiscRx",
                             "A packet has been received by this device and is being "
                             "forwarded up the local protocol stack (promiscuous)",
@@ -90,7 +90,7 @@ EthernetMac::GetTypeId()
                             "Trace source indicating a packet was received, "
                             "but dropped before being forwarded up the stack",
                             MakeTraceSourceAccessor(&EthernetMac::m_macRxDropTrace),
-                            "ns3::Packet::TracedCallback")
+                            "ns3::ethernet::EthernetMac::DroppedFrameCallback")
             .AddTraceSource("Sniffer",
                             "Trace source simulating a non-promiscuous packet sniffer",
                             MakeTraceSourceAccessor(&EthernetMac::m_snifferTrace),
@@ -111,6 +111,9 @@ EthernetMac::EthernetMac()
 
     m_txQueue = CreateObject<DropTailQueue<Packet>>();
     m_rxQueue = CreateObject<DropTailQueue<Packet>>();
+
+    m_rxQueue->TraceConnectWithoutContext("Dequeue",
+                                          MakeCallback(&EthernetMac::SendUnpauseFrame, this));
 }
 
 EthernetMac::~EthernetMac()
@@ -198,7 +201,7 @@ EthernetMac::Send(Ptr<Packet> packet,
     if (!m_txQueue->Enqueue(frame))
     {
         NS_LOG_INFO("Transmit queue full, dropping packet " << packet->GetUid());
-        m_macTxDropTrace(packet);
+        m_macTxDropTrace(ETHERNET_MAC_DROP_TX_QUEUE_FULL, packet);
         return false;
     }
 
@@ -223,6 +226,17 @@ EthernetMac::SendPauseFrame(uint16_t pauseQuanta)
 }
 
 void
+EthernetMac::SendUnpauseFrame(Ptr<const Packet> packet)
+{
+    if (m_isPauseFrameSent && ShouldSendUnpauseFrame())
+    {
+        NS_LOG_LOGIC("Releasing peer transmission");
+        SendPauseFrame(0);
+        m_isPauseFrameSent = false;
+    }
+}
+
+void
 EthernetMac::Receive(Ptr<Packet> frame)
 {
     NS_LOG_FUNCTION(Simulator::Now() << frame->GetUid());
@@ -230,13 +244,14 @@ EthernetMac::Receive(Ptr<Packet> frame)
     if (!m_device->IsReceiveEnabled())
     {
         NS_LOG_LOGIC("Receive disabled on the NetDevice, dropping frame");
-        m_macRxDropTrace(frame);
+        m_macRxDropTrace(ETHERNET_MAC_DROP_RX_DISABLED, frame);
         return;
     }
 
     Ptr<Packet> validatedFrame = frame->Copy();
     EthernetTrailer trailer;
     validatedFrame->RemoveTrailer(trailer);
+
     if (Node::ChecksumEnabled())
     {
         trailer.EnableFcs(true);
@@ -245,7 +260,7 @@ EthernetMac::Receive(Ptr<Packet> frame)
     if (!trailer.CheckFcs(validatedFrame))
     {
         NS_LOG_LOGIC("Dropping frame " << frame->GetUid() << " that failed FCS validation");
-        m_macRxDropTrace(frame);
+        m_macRxDropTrace(ETHERNET_MAC_DROP_FCS_ERROR, frame);
         return;
     }
 
@@ -260,12 +275,6 @@ EthernetMac::Receive(Ptr<Packet> frame)
         return;
     }
 
-    if (m_rxQueue->IsEmpty())
-    {
-        ProcessRxPacket(frame);
-        return;
-    }
-
     if (ShouldSendPauseFrame() && !m_isPauseFrameSent)
     {
         NS_LOG_LOGIC("Asking the peer to pause, pauseQuanta=65535");
@@ -276,10 +285,16 @@ EthernetMac::Receive(Ptr<Packet> frame)
     if (!m_rxQueue->Enqueue(frame))
     {
         NS_LOG_LOGIC("Receive queue full, dropping frame " << frame->GetUid());
-        m_macRxDropTrace(frame);
+        m_macRxDropTrace(ETHERNET_MAC_DROP_RX_QUEUE_FULL, frame);
+        return;
     }
 
     NS_LOG_LOGIC("RX queue size after enqueue: " << m_rxQueue->GetNPackets());
+
+    if (!m_rxIndicationCallback.IsNull())
+    {
+        m_rxIndicationCallback();
+    }
 }
 
 void
@@ -409,47 +424,6 @@ EthernetMac::SetRxQueue(Ptr<Queue<Packet>> queue)
 }
 
 void
-EthernetMac::ProcessRxPacket(Ptr<Packet> frame)
-{
-    NS_LOG_FUNCTION(Simulator::Now() << frame->GetUid());
-
-    EthernetHeader header(false);
-    Ptr<Packet> payload = frame->Copy();
-    EthernetTrailer trailer;
-    payload->RemoveTrailer(trailer);
-    payload->RemoveHeader(header);
-
-    NS_LOG_LOGIC("Received frame with length/type: " << header.GetLengthType());
-    ForwardUp(frame, payload, header);
-
-    // Continue processing the receive queue after this frame.
-    RxNext();
-}
-
-void
-EthernetMac::RxNext()
-{
-    NS_LOG_FUNCTION(Simulator::Now());
-
-    Ptr<Packet> frame = m_rxQueue->Dequeue();
-
-    if (m_isPauseFrameSent && SendUnpauseFrame())
-    {
-        NS_LOG_LOGIC("Releasing peer transmission");
-        SendPauseFrame(0);
-        m_isPauseFrameSent = false;
-    }
-
-    if (frame)
-    {
-        ProcessRxPacket(frame);
-        return;
-    }
-
-    NS_LOG_INFO("Receive queue is empty");
-}
-
-void
 EthernetMac::ProcessPauseFrame(Ptr<Packet> payload)
 {
     NS_LOG_FUNCTION(this << payload->GetUid());
@@ -458,7 +432,7 @@ EthernetMac::ProcessPauseFrame(Ptr<Packet> payload)
     if (payload->RemoveHeader(controlHeader) == 0)
     {
         NS_LOG_LOGIC("Dropping MAC control frame carrying an unsupported opcode");
-        m_macRxDropTrace(payload);
+        m_macRxDropTrace(ETHERNET_MAC_DROP_INVALID_PAUSE_FRAME, payload);
         return;
     }
 
@@ -466,65 +440,6 @@ EthernetMac::ProcessPauseFrame(Ptr<Packet> payload)
     NS_LOG_INFO("Valid PAUSE frame received, time=" << pauseTime);
     PauseTransmission(pauseTime);
     NS_LOG_LOGIC("PAUSE applied at MAC, time = " << Simulator::Now());
-}
-
-void
-EthernetMac::ForwardUp(Ptr<const Packet> frame, Ptr<Packet> payload, const EthernetHeader& header)
-{
-    NS_LOG_FUNCTION(this << frame->GetUid() << header.GetSource() << header.GetDestination());
-
-    NetDevice::PacketType packetType;
-
-    if (header.GetDestination().IsBroadcast())
-    {
-        packetType = NetDevice::PACKET_BROADCAST;
-    }
-    else if (header.GetDestination().IsGroup())
-    {
-        packetType = NetDevice::PACKET_MULTICAST;
-    }
-    else if (header.GetDestination() == m_address)
-    {
-        packetType = NetDevice::PACKET_HOST;
-    }
-    else
-    {
-        packetType = NetDevice::PACKET_OTHERHOST;
-    }
-
-    m_promiscSnifferTrace(frame);
-
-    auto promiscCallback = m_device->GetPromiscReceiveCallback();
-    if (!promiscCallback.IsNull())
-    {
-        m_macPromiscRxTrace(payload);
-        promiscCallback(m_device,
-                        payload,
-                        header.GetLengthType(),
-                        header.GetSource(),
-                        header.GetDestination(),
-                        packetType);
-    }
-
-    if (packetType == NetDevice::PACKET_OTHERHOST)
-    {
-        NS_LOG_LOGIC("Frame is addressed to " << header.GetDestination()
-                                              << ", not forwarding it up");
-        return;
-    }
-
-    m_snifferTrace(frame);
-    m_macRxTrace(payload);
-
-    auto rxCallback = m_device->GetReceiveCallback();
-    if (rxCallback.IsNull())
-    {
-        NS_LOG_LOGIC("No receive callback set on the device, dropping frame");
-        m_macRxDropTrace(payload);
-        return;
-    }
-
-    rxCallback(m_device, payload, header.GetLengthType(), header.GetSource());
 }
 
 void
@@ -604,7 +519,7 @@ EthernetMac::ShouldSendPauseFrame() const
 }
 
 bool
-EthernetMac::SendUnpauseFrame() const
+EthernetMac::ShouldSendUnpauseFrame() const
 {
     uint32_t maxPackets = m_rxQueue->GetMaxSize().GetValue();
 
@@ -623,6 +538,42 @@ EthernetMac::GetFrameSize(uint32_t payloadSize)
 {
     return std::max(payloadSize, static_cast<uint32_t>(MIN_PAYLOAD_SIZE)) +
            EthernetHeader().GetSerializedSize() + EthernetTrailer().GetSerializedSize();
+}
+
+void
+EthernetMac::SetRxIndicationCallback(Callback<void> callback)
+{
+    m_rxIndicationCallback = callback;
+}
+
+void
+EthernetMac::NotifyRx(Ptr<const Packet> packet) const
+{
+    m_macRxTrace(packet);
+}
+
+void
+EthernetMac::NotifyPromiscRx(Ptr<const Packet> packet) const
+{
+    m_macPromiscRxTrace(packet);
+}
+
+void
+EthernetMac::NotifyRxDrop(EthernetMacDropReason reason, Ptr<const Packet> packet) const
+{
+    m_macRxDropTrace(reason, packet);
+}
+
+void
+EthernetMac::NotifySniffer(Ptr<const Packet> packet) const
+{
+    m_snifferTrace(packet);
+}
+
+void
+EthernetMac::NotifyPromiscSniffer(Ptr<const Packet> packet) const
+{
+    m_promiscSnifferTrace(packet);
 }
 
 } // namespace ethernet

@@ -214,6 +214,8 @@ EthernetHelper::InstallPriv(Ptr<Node> node, Ptr<EthernetChannel> channel) const
     device->GetMac()->SetTxQueue(txQueue);
     device->GetMac()->SetRxQueue(m_queueFactory.Create<Queue<Packet>>());
 
+    device->SetAddress(Mac48Address::Allocate());
+
     node->AddDevice(device);
     device->Attach(channel);
 
