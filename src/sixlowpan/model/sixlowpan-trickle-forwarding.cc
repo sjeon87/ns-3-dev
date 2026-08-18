@@ -87,7 +87,6 @@ SixLowPanTrickleForwarding::GetTypeId()
 }
 
 SixLowPanTrickleForwarding::SixLowPanTrickleForwarding()
-    : m_timerRunning(false)
 {
     NS_LOG_FUNCTION(this);
     m_timer.SetFunction(&SixLowPanTrickleForwarding::Transmit, this);
@@ -123,7 +122,7 @@ SixLowPanTrickleForwarding::OnPacketForward(Ptr<Packet> packet,
         {packet, forwardCb, originator, seqNo, Simulator::Now() + m_maxForwardingDelay, 1});
     m_pendingSize = m_pending.size();
 
-    if (!m_timerRunning)
+    if (!m_timer.IsRunning())
     {
         StartTimer();
     }
@@ -136,7 +135,7 @@ SixLowPanTrickleForwarding::OnDuplicateReceived(const Address& originator, uint8
 
     // Consistent event (Rule 3): a neighbour is spreading information we
     // have also seen. Count it; sustained consistency grows the interval.
-    if (!m_timerRunning)
+    if (!m_timer.IsRunning())
     {
         return;
     }
@@ -174,7 +173,6 @@ SixLowPanTrickleForwarding::StartTimer()
     // 4.2 step 1); the packet that starts the timer is new information, so
     // restart from Imin to react quickly and let consistency back it off.
     m_timer.Reset();
-    m_timerRunning = true;
     ScheduleDiscard();
 }
 
@@ -184,7 +182,6 @@ SixLowPanTrickleForwarding::StopTimer()
     NS_LOG_FUNCTION(this);
 
     m_timer.Stop();
-    m_timerRunning = false;
     m_discardEvent.Cancel();
 }
 

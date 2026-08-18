@@ -179,7 +179,6 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     uint16_t m_duplicateThreshold; ///< Discard a packet received this many times; 0 disables.
 
     TrickleTimer m_timer;                ///< The single per-node Trickle timer.
-    bool m_timerRunning;                 ///< True while m_timer is enabled.
     EventId m_discardEvent;              ///< Fires at the head-of-queue packet's deadline.
     std::deque<PendingPacket> m_pending; ///< FIFO queue of packets awaiting a decision.
 
