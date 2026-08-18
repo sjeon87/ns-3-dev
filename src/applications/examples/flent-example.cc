@@ -8,6 +8,37 @@
  *          Tom Henderson <tomh@tomh.org>
  */
 
+ /**
+ * @file flent-example.cc
+ * @brief A simple example demonstrating the FlentApplication
+ *
+ * This example demonstrates how to set up a basic ns-3 simulation using the
+ * FlentApplication to generate and measure network traffic. It configures
+ * a network topology, installs the Flent applications using the FlentHelper,
+ * and runs a specified network test.
+ *
+ * The simulation consists of the following topology:
+ * client <-> router1 <-> router2 <-> server
+ *
+ * The middle link (router1 <-> router2) acts as the bottleneck with
+ * configurable bandwidth and RTT, while the edge links have higher capacity.
+ * 
+ * Supported Flent tests:
+ * - rrul: Realtime Response Under Load (default)
+ * - tcp_upload: TCP upload throughput test
+ * - tcp_download: TCP download throughput test
+ * - ping: Simple ICMP ping test
+ *
+ * To run this example with default parameters (rrul test):
+ * ./ns3 run flent-example
+ *
+ * To run a specific test, e.g., tcp_upload:
+ * ./ns3 run "flent-example --test=tcp_upload"
+ *
+ * To modify the bottleneck bandwidth and rtt:
+ * ./ns3 run "flent-example --bw=20Mbps --rtt=20ms"
+ */
+
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
