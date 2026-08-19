@@ -217,17 +217,25 @@ class FlentApplication : public Application
     Address m_localBindAddress; //!< Local bind address
     std::string m_imageText;    //!< Text to be included in plot
     Time m_stepSize;            //!< Measurement data point step size
-    std::vector<uint32_t> m_bytesSent{std::vector<uint32_t>(4, 0)};     //!< sent data counters
-    std::vector<uint32_t> m_bytesReceived{std::vector<uint32_t>(4, 0)}; //!< receive data counters
+    std::array<uint32_t, 4> m_bytesSent{};     //!< sent data counters
+    std::array<uint32_t, 4> m_bytesReceived{}; //!< receive data counters
 
     /* Applications */
-    Ptr<Ping> m_ping;                           //!< Ping Application
-    Ptr<PacketSink> m_packetSinkUp[4];          //!< PacketSink Applications for Upload flows
-    Ptr<PacketSink> m_packetSinkDown[4];        //!< PacketSink Applications for Download flows
-    Ptr<BulkSendApplication> m_bulkSendUp[4];   //!< BulkSend Applications for Upload flows
-    Ptr<BulkSendApplication> m_bulkSendDown[4]; //!< BulkSend Applications for Download flows
-    Ptr<UdpEchoServer> m_udpserver[3];          //!< UdpEchoServer Applications
-    Ptr<UdpEchoClient> m_udpclient[3];          //!< UdpEchoClient Applications
+    Ptr<Ping> m_ping;                           //!< Ping Application for latency measurement (ping, rrul tests)
+
+    // The RRUL (Realtime Response Under Load) test specification (rrul.conf from real flent) defines 
+    // 4 concurrent TCP streams in each direction, assigned to different QoS markings (BE, BK, CS5, EF). 
+    // This helps test how different traffic classes are handled when the link is under heavy load
+    std::array<Ptr<PacketSink>, 4> m_packetSinkUp;          //!< PacketSink Applications for Upload flows (tcp_upload, rrul tests)
+    std::array<Ptr<PacketSink>, 4> m_packetSinkDown;        //!< PacketSink Applications for Download flows (tcp_download, rrul tests)
+    std::array<Ptr<BulkSendApplication>, 4> m_bulkSendUp;   //!< BulkSend Applications for Upload flows (tcp_upload, rrul tests)
+    std::array<Ptr<BulkSendApplication>, 4> m_bulkSendDown; //!< BulkSend Applications for Download flows (tcp_download, rrul tests)
+
+    // The RRUL specification defines 3 UDP ping streams marked with different QoS
+    // markings (EF, BK, and BE) to measure latency and jitter for different
+    // traffic classes under heavy load.
+    std::array<Ptr<UdpEchoServer>, 3> m_udpserver;          //!< UdpEchoServer Applications
+    std::array<Ptr<UdpEchoClient>, 3> m_udpclient;          //!< UdpEchoClient Applications
 };
 
 } // namespace ns3
