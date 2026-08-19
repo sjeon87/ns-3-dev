@@ -15,6 +15,7 @@
 #include "ns3/address.h"
 #include "ns3/application-container.h"
 #include "ns3/attribute.h"
+#include "ns3/nstime.h"
 #include "ns3/node-container.h"
 #include "ns3/object-factory.h"
 
@@ -48,6 +49,24 @@ class FlentHelper
     void SetAttribute(std::string name, const AttributeValue& value);
 
     /**
+     * @brief Set the test start time
+     * @param start Test start time
+     */
+    void SetTestStartTime(Time start);
+
+    /**
+     * @brief Set the length of the Flent test
+     * @param length Test length
+     */
+    void SetTestLength(Time length);
+
+    /**
+     * @brief Get the overall stop time of the simulation
+     * @returns Stop time (start + length + 10s cooldown)
+     */
+    Time GetStopTime() const;
+
+    /**
      * Install an ns3::FlentApplication on the node configured with all the
      * attributes set with SetAttribute.
      *
@@ -76,6 +95,8 @@ class FlentHelper
     Ptr<Application> InstallPriv(Ptr<Node> node) const;
 
     ObjectFactory m_factory; //!< Object factory.
+    Time m_startTime{Seconds(0)}; //!< The start time of the Flent test
+    Time m_length{Seconds(60)};   //!< The duration of the Flent test
 };
 
 } // namespace ns3

@@ -145,21 +145,14 @@ main(int argc, char* argv[])
 
     // Configure with the help of FlentHelper
     FlentHelper flentHelper(testName, interfaces2.GetAddress(1));
-    flentHelper.SetAttribute("StartTime", TimeValue(delay));
+    flentHelper.SetTestStartTime(delay);
+    flentHelper.SetTestLength(length);
     flentHelper.SetAttribute("StepSize", TimeValue(Seconds(0.2)));
-    flentHelper.SetAttribute("Length", TimeValue(length));
 
-    ApplicationContainer flent = flentHelper.Install(n.Get(0));
-    flent.Start(delay);
-    // Stop () function get overridden with the
-    // help of "Length" attribute of FlentApplication.
-    // Always use "Length" attribute to set the
-    // length of the Flent Test.
-    flent.Stop(delay + length + Seconds(10));
+    flentHelper.Install(n.Get(0));
 
     // Stop the simulation one second after flent ends
-    // Flent ends at 'delay + length + Seconds (10)'
-    Simulator::Stop(delay + length + Seconds(10) + Seconds(1));
+    Simulator::Stop(flentHelper.GetStopTime() + Seconds(1));
 
     Simulator::Run();
     Simulator::Destroy();

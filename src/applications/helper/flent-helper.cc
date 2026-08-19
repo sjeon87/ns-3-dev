@@ -32,6 +32,28 @@ FlentHelper::SetAttribute(std::string name, const AttributeValue& value)
     m_factory.Set(name, value);
 }
 
+void
+FlentHelper::SetTestStartTime(Time start)
+{
+    m_startTime = start;
+
+    m_factory.Set("StartTime", TimeValue(m_startTime));
+}
+
+void
+FlentHelper::SetTestLength(Time length)
+{
+    m_length = length;
+    
+    m_factory.Set("StopTime", TimeValue(m_startTime + m_length + Seconds(10)));
+}
+
+Time
+FlentHelper::GetStopTime() const
+{
+    return m_startTime + m_length + Seconds(10);
+}
+
 ApplicationContainer
 FlentHelper::Install(Ptr<Node> node) const
 {
