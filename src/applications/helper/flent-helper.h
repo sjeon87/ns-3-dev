@@ -12,11 +12,9 @@
 #ifndef FLENT_HELPER_H
 #define FLENT_HELPER_H
 
-#include "ns3/address.h"
 #include "ns3/application-container.h"
 #include "ns3/attribute.h"
 #include "ns3/nstime.h"
-#include "ns3/node-container.h"
 #include "ns3/object-factory.h"
 
 #include <string>
