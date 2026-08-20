@@ -40,22 +40,23 @@ using namespace ns3;
 /**
  * @ingroup sixlowpan-tests
  *
- * @brief Compare flooding and Trickle suppression on a dense mesh-under network.
+ * @brief Compare Simple and Adaptive Flooding on a dense mesh-under network.
  *
  * This is the regular-test-program counterpart of the
  * example-sixlowpan-mesh-benchmark.cc example. Rather than freezing the exact
  * output (which is fragile to maintain), it runs the same dense scenario twice,
- * once with plain flooding and once with Trickle suppression, and checks the
+ * once with Simple Flooding and once with Adaptive Flooding, and checks the
  * properties that matter with a tolerance:
- *   - suppression puts substantially fewer frames on the air than flooding;
- *   - suppression does not deliver fewer packets than flooding.
+ *   - Adaptive Flooding puts substantially fewer frames on the air than
+ *     Simple Flooding;
+ *   - Adaptive Flooding does not deliver fewer packets than Simple Flooding.
  * Exact counts are deliberately not asserted, only the relations above.
  */
 class MeshBenchmarkComparisonTestCase : public TestCase
 {
   public:
     MeshBenchmarkComparisonTestCase()
-        : TestCase("Trickle suppression cuts transmissions without losing delivery (dense)")
+        : TestCase("Adaptive Flooding cuts transmissions without losing delivery (dense)")
     {
     }
 
@@ -81,11 +82,11 @@ class MeshBenchmarkComparisonTestCase : public TestCase
 
     /**
      * @brief Build a dense network and run one source-to-sink ping flow.
-     * @param useSuppression Use Trickle suppression instead of plain flooding.
+     * @param useAdaptive Use Adaptive Flooding instead of Simple Flooding.
      *
      * Fills m_phyTx, m_pingSent and m_pingReceived for the run.
      */
-    void RunScenario(bool useSuppression)
+    void RunScenario(bool useAdaptive)
     {
         m_phyTx = 0;
         m_pingSent = 0;
@@ -98,28 +99,16 @@ class MeshBenchmarkComparisonTestCase : public TestCase
         nodes.Create(nNodes);
 
         // Dense layout: source and sink pinned at opposite corners, the relays
-        // scattered randomly but reproducibly (the streams below are fixed).
-        Ptr<UniformRandomVariable> jitterX = CreateObject<UniformRandomVariable>();
-        Ptr<UniformRandomVariable> jitterY = CreateObject<UniformRandomVariable>();
-        jitterX->SetStream(stream++);
-        jitterY->SetStream(stream++);
+        // scattered randomly but reproducibly (the stream below is fixed).
+        Ptr<UniformRandomVariable> jitter = CreateObject<UniformRandomVariable>();
+        jitter->SetStream(stream++);
         Ptr<ListPositionAllocator> positions = CreateObject<ListPositionAllocator>();
-        for (uint32_t i = 0; i < nNodes; ++i)
+        positions->Add(Vector(0.0, 0.0, 0.0));
+        for (uint32_t i = 1; i < nNodes - 1; ++i)
         {
-            if (i == 0)
-            {
-                positions->Add(Vector(0.0, 0.0, 0.0));
-            }
-            else if (i == nNodes - 1)
-            {
-                positions->Add(Vector(40.0, 40.0, 0.0));
-            }
-            else
-            {
-                positions->Add(
-                    Vector(jitterX->GetValue(0.0, 40.0), jitterY->GetValue(0.0, 40.0), 0.0));
-            }
+            positions->Add(Vector(jitter->GetValue(0.0, 40.0), jitter->GetValue(0.0, 40.0), 0.0));
         }
+        positions->Add(Vector(40.0, 40.0, 0.0));
         MobilityHelper mobility;
         mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
         mobility.SetPositionAllocator(positions);
@@ -138,17 +127,15 @@ class MeshBenchmarkComparisonTestCase : public TestCase
         stream += internetv6.AssignStreams(nodes, stream);
 
         SixLowPanHelper sixLowPanHelper;
-        if (useSuppression)
+        if (useAdaptive)
         {
-            sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanTrickleForwarding");
+            sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanAdaptiveFlooding");
         }
+        sixLowPanHelper.SetDeviceAttribute("UseMeshUnder", BooleanValue(true));
+        // Hops-left must cover the network diameter; nNodes is a safe bound.
+        sixLowPanHelper.SetDeviceAttribute("MeshUnderRadius", UintegerValue(nNodes));
         NetDeviceContainer sixLowPanDevices = sixLowPanHelper.Install(lrwpanDevices);
         stream += sixLowPanHelper.AssignStreams(sixLowPanDevices, stream);
-        for (uint32_t i = 0; i < sixLowPanDevices.GetN(); ++i)
-        {
-            sixLowPanDevices.Get(i)->SetAttribute("UseMeshUnder", BooleanValue(true));
-            sixLowPanDevices.Get(i)->SetAttribute("MeshUnderRadius", UintegerValue(nNodes));
-        }
 
         Ipv6AddressHelper ipv6;
         ipv6.SetBase(Ipv6Address("2001:f00d::"), Ipv6Prefix(64));
@@ -182,30 +169,31 @@ class MeshBenchmarkComparisonTestCase : public TestCase
     void DoRun() override
     {
         RunScenario(false);
-        uint64_t floodTx = m_phyTx;
-        uint32_t floodReceived = m_pingReceived;
+        uint64_t simpleTx = m_phyTx;
+        uint32_t simpleReceived = m_pingReceived;
         uint32_t sent = m_pingSent;
 
         RunScenario(true);
-        uint64_t suppressTx = m_phyTx;
-        uint32_t suppressReceived = m_pingReceived;
+        uint64_t adaptiveTx = m_phyTx;
+        uint32_t adaptiveReceived = m_pingReceived;
 
         NS_TEST_ASSERT_MSG_GT(sent, 0, "the source should have sent pings");
-        NS_TEST_ASSERT_MSG_GT(floodTx, 0, "flooding should put frames on the air");
+        NS_TEST_ASSERT_MSG_GT(simpleTx, 0, "Simple Flooding should put frames on the air");
 
         // Key claim, checked with a margin (not an exact count) so the test is
         // robust to small simulator changes. The observed ratio is around 0.5;
-        // we require at least a 20% reduction (suppressTx < 0.8 * floodTx).
+        // we require at least a 20% reduction (adaptiveTx < 0.8 * simpleTx).
         NS_TEST_ASSERT_MSG_LT(
-            suppressTx * 5,
-            floodTx * 4,
-            "suppression should transmit at least 20% fewer frames than flooding");
+            adaptiveTx * 5,
+            simpleTx * 4,
+            "Adaptive Flooding should transmit at least 20% fewer frames than Simple Flooding");
 
         // Suppressing redundant rebroadcasts must not cost delivery in a dense
-        // network: it should be at least as good as flooding.
-        NS_TEST_ASSERT_MSG_GT_OR_EQ(suppressReceived,
-                                    floodReceived,
-                                    "suppression delivery should be no worse than flooding");
+        // network: it should be at least as good as Simple Flooding.
+        NS_TEST_ASSERT_MSG_GT_OR_EQ(
+            adaptiveReceived,
+            simpleReceived,
+            "Adaptive Flooding delivery should be no worse than Simple Flooding");
     }
 
     uint64_t m_phyTx{0};        ///< PHY transmissions counted in the current run.

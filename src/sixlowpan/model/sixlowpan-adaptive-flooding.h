@@ -6,8 +6,8 @@
  * Author: Usham Roy <ushamroy80@gmail.com>
  */
 
-#ifndef SIXLOWPAN_TRICKLE_FORWARDING_H
-#define SIXLOWPAN_TRICKLE_FORWARDING_H
+#ifndef SIXLOWPAN_ADAPTIVE_FLOODING_H
+#define SIXLOWPAN_ADAPTIVE_FLOODING_H
 
 #include "sixlowpan-mesh-under-routing.h"
 
@@ -25,10 +25,11 @@ namespace ns3
 /**
  * @ingroup sixlowpan
  *
- * @brief Trickle-based mesh-under forwarding policy (\RFC{6206}).
+ * @brief Adaptive flooding mesh-under forwarding policy.
  *
  * Where SixLowPanSimpleFlooding rebroadcasts every received packet
- * unconditionally, this policy uses the Trickle algorithm to suppress
+ * unconditionally, this policy adapts the rebroadcast rate to the observed
+ * network activity using the Trickle algorithm (\RFC{6206}), suppressing
  * redundant rebroadcasts (the broadcast-storm problem) while preserving
  * coverage. A single Trickle timer governs how often a node transmits
  * its pending forwards. The duplicate cache in the base class still
@@ -49,17 +50,13 @@ namespace ns3
  *    information is spreading without us. It increments the Trickle
  *    counter c. As consistency accumulates, the Trickle interval grows
  *    (Rule 5), so a well-covered neighbourhood transmits less often.
- *    With HeadOfLineConsistency enabled only duplicates of the packet at
- *    the head of the pending queue count (the next packet this node would
- *    forward); otherwise any duplicate counts (channel-level consistency).
  *
  *  - Transmit decision (\RFC{6206} Rule 4). When the timer fires it
  *    forwards only if fewer than @c k consistent events were heard in the
- *    interval (c < k). Otherwise nothing is forwarded at this firing.
- *    With ForwardOnePerFiring enabled a firing forwards only the packet
- *    at the head of the queue and the timer keeps running (its interval
- *    doubling per \RFC{6206}) until the queue drains; otherwise a firing
- *    forwards the whole queue at once.
+ *    interval (c < k). A firing forwards only the packet at the head of
+ *    the queue, and the timer keeps running (its interval doubling per
+ *    \RFC{6206}) until the queue drains, so a loaded queue drains at the
+ *    Trickle pace instead of bursting.
  *
  *  - Per-packet deadline. Each packet records its own deadline on
  *    arrival (MaxForwardingDelay later). A packet still pending at its
@@ -67,11 +64,11 @@ namespace ns3
  *    arrived later are unaffected until their own deadlines.
  *
  *  - Count-based suppression. Every overheard duplicate of a pending
- *    packet increments that packet's seen count. With a non-zero
- *    DuplicateThreshold, a packet that reaches the threshold is discarded
- *    at transmit time instead of being forwarded: enough neighbours have
- *    already covered it, so the discard reacts to the observed redundancy
- *    itself rather than to the clock.
+ *    packet increments that packet's seen count. A packet that reaches
+ *    DuplicateThreshold receptions is discarded at transmit time instead
+ *    of being forwarded: enough neighbours have already covered it, so
+ *    the discard reacts to the observed redundancy itself rather than to
+ *    the clock. A zero threshold disables the check.
  *
  *  - Reset on empty. The timer stops when the pending queue drains
  *    (everything forwarded or discarded), so the next arrival restarts
@@ -81,8 +78,13 @@ namespace ns3
  *
  * A zero RedundancyConstant disables suppression: the node always forwards,
  * behaving like jittered flooding driven by the Trickle interval.
+ *
+ * The default attribute values come from a simulation study on dense,
+ * loaded networks (20 nodes, concurrent senders, pending queues holding
+ * several packets), where they maximised delivery while minimising
+ * transmissions and delay.
  */
-class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
+class SixLowPanAdaptiveFlooding : public SixLowPanMeshUnderRouting
 {
   public:
     /**
@@ -91,12 +93,12 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
      */
     static TypeId GetTypeId();
 
-    SixLowPanTrickleForwarding();
-    ~SixLowPanTrickleForwarding() override;
+    SixLowPanAdaptiveFlooding();
+    ~SixLowPanAdaptiveFlooding() override;
 
     // Delete copy constructor and assignment operator to avoid misuse.
-    SixLowPanTrickleForwarding(const SixLowPanTrickleForwarding&) = delete;
-    SixLowPanTrickleForwarding& operator=(const SixLowPanTrickleForwarding&) = delete;
+    SixLowPanAdaptiveFlooding(const SixLowPanAdaptiveFlooding&) = delete;
+    SixLowPanAdaptiveFlooding& operator=(const SixLowPanAdaptiveFlooding&) = delete;
 
     void OnPacketForward(Ptr<Packet> packet,
                          const Address& originator,
@@ -147,8 +149,8 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     /**
      * @brief Trickle transmit callback, invoked only when c < k.
      *
-     * Forwards the whole pending queue and stops the timer, or, with
-     * ForwardOnePerFiring, forwards only the head of the queue and keeps
+     * Discards the packets at the head of the queue that reached the
+     * duplicate threshold, forwards the first surviving one, and keeps
      * the timer running until the queue drains.
      */
     void Transmit();
@@ -174,8 +176,6 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
     uint8_t m_doublings;       ///< Imax = MinInterval * 2^Doublings.
     uint16_t m_redundancy;     ///< RFC 6206 k. Forward iff c < k; zero disables suppression.
     Time m_maxForwardingDelay; ///< Per-packet deadline: discard if not forwarded within this time.
-    bool m_onePerFiring;       ///< Forward one packet per firing instead of the whole queue.
-    bool m_headOfLine;         ///< Count only duplicates of the head-of-queue packet.
     uint16_t m_duplicateThreshold; ///< Discard a packet received this many times; 0 disables.
 
     TrickleTimer m_timer;                ///< The single per-node Trickle timer.
@@ -189,4 +189,4 @@ class SixLowPanTrickleForwarding : public SixLowPanMeshUnderRouting
 
 } // namespace ns3
 
-#endif /* SIXLOWPAN_TRICKLE_FORWARDING_H */
+#endif /* SIXLOWPAN_ADAPTIVE_FLOODING_H */

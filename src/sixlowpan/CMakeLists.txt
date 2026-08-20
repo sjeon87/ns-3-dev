@@ -18,7 +18,7 @@ build_lib(
     model/sixlowpan-nd-protocol.cc
     model/sixlowpan-net-device.cc
     model/sixlowpan-simple-flooding.cc
-    model/sixlowpan-trickle-forwarding.cc
+    model/sixlowpan-adaptive-flooding.cc
     model/sixlowpan-nd-binding-table.cc
   HEADER_FILES
     helper/sixlowpan-helper.h
@@ -31,7 +31,7 @@ build_lib(
     model/sixlowpan-nd-protocol.h
     model/sixlowpan-net-device.h
     model/sixlowpan-simple-flooding.h
-    model/sixlowpan-trickle-forwarding.h
+    model/sixlowpan-adaptive-flooding.h
     model/sixlowpan-nd-binding-table.h
   LIBRARIES_TO_LINK ${libinternet}
   TEST_SOURCES

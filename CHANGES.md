@@ -26,6 +26,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 
 * (sixlowpan) Added `SixLowPanMeshUnderRouting`, an abstract base class for pluggable mesh-under forwarding policies, and `SixLowPanSimpleFlooding`, the default policy preserving the historical flooding behavior. A policy can be selected per device through the new `SixLowPanNetDevice` attribute `MeshUnderRouting` or with `SixLowPanHelper::SetMeshUnderRouting()`.
 * (sixlowpan) Added the `SixLowPanNetDevice` attribute `ForwardMesh` (default true), controlling whether a node relays received mesh-under packets, and the drop reason `DROP_MESH_NOT_ENABLED`.
+* (sixlowpan) Added `SixLowPanAdaptiveFlooding`, a mesh-under forwarding policy that adapts the re-broadcast rate to the observed network activity using the Trickle algorithm (RFC 6206), with per-packet forwarding deadlines and redundancy-based discarding.
 
 ### Changes to existing API
 

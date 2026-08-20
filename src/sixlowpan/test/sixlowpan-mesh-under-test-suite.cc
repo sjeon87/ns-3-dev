@@ -17,11 +17,11 @@
 #include "ns3/packet.h"
 #include "ns3/pointer.h"
 #include "ns3/simulator.h"
+#include "ns3/sixlowpan-adaptive-flooding.h"
 #include "ns3/sixlowpan-header.h"
 #include "ns3/sixlowpan-mesh-under-routing.h"
 #include "ns3/sixlowpan-net-device.h"
 #include "ns3/sixlowpan-simple-flooding.h"
-#include "ns3/sixlowpan-trickle-forwarding.h"
 #include "ns3/test.h"
 #include "ns3/uinteger.h"
 
@@ -173,16 +173,16 @@ class SimpleFloodingForwardsTestCase : public TestCase
 /**
  * @ingroup sixlowpan-tests
  *
- * @brief Verify Trickle forwards a pending packet when no duplicates are heard.
+ * @brief Verify adaptive flooding forwards a packet on a quiet channel.
  *
  * With c staying below k, the timer fires once, forwards the packet, and
  * then resets (stops), so exactly one forward is expected.
  */
-class TrickleForwardsWhenQuietTestCase : public TestCase
+class AdaptiveFloodingForwardsWhenQuietTestCase : public TestCase
 {
   public:
-    TrickleForwardsWhenQuietTestCase()
-        : TestCase("Trickle forwards when no duplicates are heard")
+    AdaptiveFloodingForwardsWhenQuietTestCase()
+        : TestCase("Adaptive flooding forwards when no duplicates are heard")
     {
     }
 
@@ -199,7 +199,7 @@ class TrickleForwardsWhenQuietTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->AssignStreams(1);
@@ -208,7 +208,7 @@ class TrickleForwardsWhenQuietTestCase : public TestCase
         Mac16Address orig("00:01");
 
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleForwardsWhenQuietTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingForwardsWhenQuietTestCase::RecordForward, this);
 
         trickle->OnPacketForward(packet, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
 
@@ -231,16 +231,16 @@ class TrickleForwardsWhenQuietTestCase : public TestCase
 /**
  * @ingroup sixlowpan-tests
  *
- * @brief Verify Trickle suppresses while neighbours keep covering the packet.
+ * @brief Verify adaptive flooding suppresses while the packet is covered.
  *
  * A duplicate is heard every few milliseconds for the whole run, keeping
  * c >= k at every interval, so the packet is never forwarded.
  */
-class TrickleSuppressesWhileCoveredTestCase : public TestCase
+class AdaptiveFloodingSuppressesWhileCoveredTestCase : public TestCase
 {
   public:
-    TrickleSuppressesWhileCoveredTestCase()
-        : TestCase("Trickle suppresses while duplicates keep arriving")
+    AdaptiveFloodingSuppressesWhileCoveredTestCase()
+        : TestCase("Adaptive flooding suppresses while duplicates keep arriving")
     {
     }
 
@@ -256,7 +256,7 @@ class TrickleSuppressesWhileCoveredTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->SetAttribute("MaxForwardingDelay", TimeValue(MilliSeconds(1000)));
@@ -266,7 +266,7 @@ class TrickleSuppressesWhileCoveredTestCase : public TestCase
         Mac16Address orig("00:01");
 
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleSuppressesWhileCoveredTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingSuppressesWhileCoveredTestCase::RecordForward, this);
 
         trickle->OnPacketForward(packet, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
 
@@ -274,7 +274,7 @@ class TrickleSuppressesWhileCoveredTestCase : public TestCase
         for (uint32_t ms = 3; ms <= 395; ms += 5)
         {
             Simulator::Schedule(MilliSeconds(ms),
-                                &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                                &SixLowPanAdaptiveFlooding::OnDuplicateReceived,
                                 trickle,
                                 Address(orig),
                                 uint8_t(1));
@@ -295,11 +295,11 @@ class TrickleSuppressesWhileCoveredTestCase : public TestCase
  *
  * @brief Verify a zero redundancy constant disables suppression.
  */
-class TrickleZeroRedundancyAlwaysForwardsTestCase : public TestCase
+class AdaptiveFloodingZeroRedundancyAlwaysForwardsTestCase : public TestCase
 {
   public:
-    TrickleZeroRedundancyAlwaysForwardsTestCase()
-        : TestCase("Trickle with k = 0 always forwards")
+    AdaptiveFloodingZeroRedundancyAlwaysForwardsTestCase()
+        : TestCase("Adaptive flooding with k = 0 always forwards")
     {
     }
 
@@ -315,27 +315,29 @@ class TrickleZeroRedundancyAlwaysForwardsTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
+        trickle->SetAttribute("DuplicateThreshold", UintegerValue(0));
         trickle->AssignStreams(1);
 
         Ptr<Packet> packet = Create<Packet>(64);
         Mac16Address orig("00:01");
 
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleZeroRedundancyAlwaysForwardsTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingZeroRedundancyAlwaysForwardsTestCase::RecordForward,
+                         this);
 
         trickle->OnPacketForward(packet, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
 
         // Even with duplicates, k = 0 means suppression is disabled.
         Simulator::Schedule(MilliSeconds(1),
-                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                            &SixLowPanAdaptiveFlooding::OnDuplicateReceived,
                             trickle,
                             Address(orig),
                             uint8_t(1));
         Simulator::Schedule(MilliSeconds(2),
-                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                            &SixLowPanAdaptiveFlooding::OnDuplicateReceived,
                             trickle,
                             Address(orig),
                             uint8_t(1));
@@ -353,67 +355,16 @@ class TrickleZeroRedundancyAlwaysForwardsTestCase : public TestCase
 /**
  * @ingroup sixlowpan-tests
  *
- * @brief Verify all pending packets are flushed together when the timer fires.
- */
-class TrickleFlushesAllPendingTestCase : public TestCase
-{
-  public:
-    TrickleFlushesAllPendingTestCase()
-        : TestCase("Trickle forwards every pending packet on a single fire")
-    {
-    }
-
-  private:
-    /**
-     * @brief Forward callback.
-     * @param packet The forwarded packet (unused).
-     */
-    void RecordForward(Ptr<Packet> packet [[maybe_unused]])
-    {
-        m_times.push_back(Simulator::Now());
-    }
-
-    void DoRun() override
-    {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
-        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
-        trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
-        trickle->AssignStreams(1);
-
-        Mac16Address orig("00:01");
-        SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleFlushesAllPendingTestCase::RecordForward, this);
-
-        // Two packets arrive before the timer fires; both should be flushed.
-        trickle->OnPacketForward(Create<Packet>(64), orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
-        trickle->OnPacketForward(Create<Packet>(64), orig, /*seqNo=*/2, /*hopsLeft=*/5, cb);
-
-        Simulator::Stop(MilliSeconds(500));
-        Simulator::Run();
-        Simulator::Destroy();
-
-        NS_TEST_ASSERT_MSG_EQ(m_times.size(), 2, "Both pending packets should be forwarded");
-        NS_TEST_ASSERT_MSG_EQ(m_times[0],
-                              m_times[1],
-                              "The whole queue should be flushed at one firing");
-    }
-
-    std::vector<Time> m_times; ///< Forward times.
-};
-
-/**
- * @ingroup sixlowpan-tests
+ * @brief Verify pending packets are forwarded on separate firings.
  *
- * @brief Verify one-per-firing forwards pending packets on separate firings.
- *
- * With ForwardOnePerFiring enabled and two packets pending, each Trickle
+ * With two packets pending, each Trickle
  * firing forwards exactly one packet, in arrival order, at distinct times.
  */
-class TrickleOnePerFiringTestCase : public TestCase
+class AdaptiveFloodingOnePerFiringTestCase : public TestCase
 {
   public:
-    TrickleOnePerFiringTestCase()
-        : TestCase("Trickle one-per-firing forwards one packet per firing, in order")
+    AdaptiveFloodingOnePerFiringTestCase()
+        : TestCase("Adaptive flooding forwards one packet per firing, in order")
     {
     }
 
@@ -430,15 +381,14 @@ class TrickleOnePerFiringTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
-        trickle->SetAttribute("ForwardOnePerFiring", BooleanValue(true));
         trickle->AssignStreams(1);
 
         Mac16Address orig("00:01");
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleOnePerFiringTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingOnePerFiringTestCase::RecordForward, this);
 
         Ptr<Packet> first = Create<Packet>(64);
         Ptr<Packet> second = Create<Packet>(64);
@@ -466,153 +416,16 @@ class TrickleOnePerFiringTestCase : public TestCase
 /**
  * @ingroup sixlowpan-tests
  *
- * @brief Verify head-of-line consistency ignores duplicates of other packets.
- *
- * With HeadOfLineConsistency enabled, a stream of duplicates of a packet
- * that is NOT at the head of the pending queue must not suppress the head:
- * the pending packet is still forwarded.
- */
-class TrickleHeadOfLineIgnoresForeignDuplicatesTestCase : public TestCase
-{
-  public:
-    TrickleHeadOfLineIgnoresForeignDuplicatesTestCase()
-        : TestCase("Head-of-line consistency ignores duplicates of other packets")
-    {
-    }
-
-  private:
-    /**
-     * @brief Forward callback.
-     * @param packet The forwarded packet (unused).
-     */
-    void RecordForward(Ptr<Packet> packet [[maybe_unused]])
-    {
-        m_forwardCount++;
-    }
-
-    void DoRun() override
-    {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
-        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
-        trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
-        trickle->SetAttribute("HeadOfLineConsistency", BooleanValue(true));
-        trickle->SetAttribute("MaxForwardingDelay", TimeValue(MilliSeconds(1000)));
-        trickle->AssignStreams(1);
-
-        Mac16Address pendingOrig("00:01");
-        Mac16Address otherOrig("00:02");
-
-        SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleHeadOfLineIgnoresForeignDuplicatesTestCase::RecordForward, this);
-
-        trickle->OnPacketForward(Create<Packet>(64), pendingOrig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
-
-        // Neighbours keep rebroadcasting DIFFERENT packets: not evidence
-        // that our pending packet is covered, so no suppression. Both kinds
-        // of partial match are fed before every possible firing, so a
-        // head-of-line comparison of only one key field (originator-only or
-        // seqNo-only) would wrongly count one of them and suppress.
-        for (uint32_t ms = 2; ms <= 392; ms += 10)
-        {
-            Simulator::Schedule(MilliSeconds(ms),
-                                &SixLowPanTrickleForwarding::OnDuplicateReceived,
-                                trickle,
-                                Address(otherOrig),
-                                uint8_t(1)); // different originator, same seqNo
-            Simulator::Schedule(MilliSeconds(ms + 1),
-                                &SixLowPanTrickleForwarding::OnDuplicateReceived,
-                                trickle,
-                                Address(pendingOrig),
-                                uint8_t(9)); // same originator, different seqNo
-        }
-
-        Simulator::Stop(MilliSeconds(400));
-        Simulator::Run();
-        Simulator::Destroy();
-
-        NS_TEST_ASSERT_MSG_EQ(m_forwardCount,
-                              1,
-                              "Foreign duplicates must not suppress the head of the queue");
-    }
-
-    int m_forwardCount{0}; ///< Number of forward-callback invocations.
-};
-
-/**
- * @ingroup sixlowpan-tests
- *
- * @brief Verify head-of-line consistency still counts matching duplicates.
- *
- * With HeadOfLineConsistency enabled, duplicates of the packet at the head
- * of the pending queue keep c >= k, so the packet is suppressed exactly as
- * in the any-duplicate mode.
- */
-class TrickleHeadOfLineMatchingSuppressesTestCase : public TestCase
-{
-  public:
-    TrickleHeadOfLineMatchingSuppressesTestCase()
-        : TestCase("Head-of-line consistency suppresses on matching duplicates")
-    {
-    }
-
-  private:
-    /**
-     * @brief Forward callback.
-     * @param packet The forwarded packet (unused).
-     */
-    void RecordForward(Ptr<Packet> packet [[maybe_unused]])
-    {
-        m_forwardCount++;
-    }
-
-    void DoRun() override
-    {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
-        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
-        trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
-        trickle->SetAttribute("HeadOfLineConsistency", BooleanValue(true));
-        trickle->SetAttribute("MaxForwardingDelay", TimeValue(MilliSeconds(1000)));
-        trickle->AssignStreams(1);
-
-        Mac16Address orig("00:01");
-        SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleHeadOfLineMatchingSuppressesTestCase::RecordForward, this);
-
-        trickle->OnPacketForward(Create<Packet>(64), orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
-
-        // The SAME packet is rebroadcast by a neighbour every 5 ms.
-        for (uint32_t ms = 3; ms <= 395; ms += 5)
-        {
-            Simulator::Schedule(MilliSeconds(ms),
-                                &SixLowPanTrickleForwarding::OnDuplicateReceived,
-                                trickle,
-                                Address(orig),
-                                uint8_t(1));
-        }
-
-        Simulator::Stop(MilliSeconds(400));
-        Simulator::Run();
-        Simulator::Destroy();
-
-        NS_TEST_ASSERT_MSG_EQ(m_forwardCount, 0, "Matching duplicates must suppress the head");
-    }
-
-    int m_forwardCount{0}; ///< Number of forward-callback invocations.
-};
-
-/**
- * @ingroup sixlowpan-tests
- *
  * @brief Verify the default consistency mode counts ANY duplicate.
  *
  * With HeadOfLineConsistency disabled (the default), duplicates of a packet
  * unrelated to the head of the pending queue are still channel-level
  * evidence of coverage, so they must suppress.
  */
-class TrickleAnyDuplicateSuppressesTestCase : public TestCase
+class AdaptiveFloodingAnyDuplicateSuppressesTestCase : public TestCase
 {
   public:
-    TrickleAnyDuplicateSuppressesTestCase()
+    AdaptiveFloodingAnyDuplicateSuppressesTestCase()
         : TestCase("Default consistency mode suppresses on any duplicate")
     {
     }
@@ -629,7 +442,7 @@ class TrickleAnyDuplicateSuppressesTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->SetAttribute("MaxForwardingDelay", TimeValue(MilliSeconds(1000)));
@@ -639,7 +452,7 @@ class TrickleAnyDuplicateSuppressesTestCase : public TestCase
         Mac16Address otherOrig("00:02");
 
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleAnyDuplicateSuppressesTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingAnyDuplicateSuppressesTestCase::RecordForward, this);
 
         trickle->OnPacketForward(Create<Packet>(64), pendingOrig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
 
@@ -648,7 +461,7 @@ class TrickleAnyDuplicateSuppressesTestCase : public TestCase
         for (uint32_t ms = 3; ms <= 395; ms += 5)
         {
             Simulator::Schedule(MilliSeconds(ms),
-                                &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                                &SixLowPanAdaptiveFlooding::OnDuplicateReceived,
                                 trickle,
                                 Address(otherOrig),
                                 uint8_t(9));
@@ -673,10 +486,10 @@ class TrickleAnyDuplicateSuppressesTestCase : public TestCase
  * a second packet arriving much later must restart the timer from the
  * minimum interval and be forwarded within MinInterval of ITS arrival.
  */
-class TrickleRestartAfterDrainTestCase : public TestCase
+class AdaptiveFloodingRestartAfterDrainTestCase : public TestCase
 {
   public:
-    TrickleRestartAfterDrainTestCase()
+    AdaptiveFloodingRestartAfterDrainTestCase()
         : TestCase("Timer stops on drain and restarts at Imin for a later packet")
     {
     }
@@ -693,20 +506,20 @@ class TrickleRestartAfterDrainTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->AssignStreams(1);
 
         Mac16Address orig("00:01");
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleRestartAfterDrainTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingRestartAfterDrainTestCase::RecordForward, this);
 
         // First packet at t = 0 drains the queue; second arrives at 300 ms,
         // long after every interval a still-running timer could be in.
         trickle->OnPacketForward(Create<Packet>(64), orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
         Simulator::Schedule(MilliSeconds(300),
-                            &SixLowPanTrickleForwarding::OnPacketForward,
+                            &SixLowPanAdaptiveFlooding::OnPacketForward,
                             trickle,
                             Create<Packet>(64),
                             Address(orig),
@@ -734,14 +547,14 @@ class TrickleRestartAfterDrainTestCase : public TestCase
  *
  * @brief Verify the duplicate threshold kills a covered packet at transmit.
  *
- * With ForwardOnePerFiring and DuplicateThreshold = 2, a pending packet
+ * With DuplicateThreshold = 2, a pending packet
  * whose duplicate was overheard is suppressed at the firing and the NEXT
  * pending packet is forwarded in its place.
  */
-class TrickleDuplicateThresholdKillsHeadTestCase : public TestCase
+class AdaptiveFloodingDuplicateThresholdKillsHeadTestCase : public TestCase
 {
   public:
-    TrickleDuplicateThresholdKillsHeadTestCase()
+    AdaptiveFloodingDuplicateThresholdKillsHeadTestCase()
         : TestCase("Duplicate threshold kills the covered head, next packet goes out")
     {
     }
@@ -767,19 +580,19 @@ class TrickleDuplicateThresholdKillsHeadTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
-        trickle->SetAttribute("ForwardOnePerFiring", BooleanValue(true));
         trickle->SetAttribute("DuplicateThreshold", UintegerValue(2));
         trickle->AssignStreams(1);
         trickle->TraceConnectWithoutContext(
             "PacketSuppressed",
-            MakeCallback(&TrickleDuplicateThresholdKillsHeadTestCase::RecordSuppressed, this));
+            MakeCallback(&AdaptiveFloodingDuplicateThresholdKillsHeadTestCase::RecordSuppressed,
+                         this));
 
         Mac16Address orig("00:01");
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleDuplicateThresholdKillsHeadTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingDuplicateThresholdKillsHeadTestCase::RecordForward, this);
 
         Ptr<Packet> covered = Create<Packet>(64);
         Ptr<Packet> fresh = Create<Packet>(64);
@@ -789,7 +602,7 @@ class TrickleDuplicateThresholdKillsHeadTestCase : public TestCase
         // One overheard duplicate takes the first packet to the threshold
         // before the first firing (which happens no earlier than 5 ms).
         Simulator::Schedule(MilliSeconds(1),
-                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                            &SixLowPanAdaptiveFlooding::OnDuplicateReceived,
                             trickle,
                             Address(orig),
                             uint8_t(1));
@@ -811,91 +624,16 @@ class TrickleDuplicateThresholdKillsHeadTestCase : public TestCase
 /**
  * @ingroup sixlowpan-tests
  *
- * @brief Verify the duplicate threshold filters a burst the same way.
- *
- * In the default burst mode a firing forwards the whole queue; entries at
- * the duplicate threshold must be suppressed instead of forwarded.
- */
-class TrickleDuplicateThresholdFiltersBurstTestCase : public TestCase
-{
-  public:
-    TrickleDuplicateThresholdFiltersBurstTestCase()
-        : TestCase("Duplicate threshold filters covered packets out of a burst")
-    {
-    }
-
-  private:
-    /**
-     * @brief Forward callback.
-     * @param packet The forwarded packet.
-     */
-    void RecordForward(Ptr<Packet> packet)
-    {
-        m_forwardedUids.push_back(packet->GetUid());
-    }
-
-    /**
-     * @brief Suppressed-trace callback.
-     * @param packet The suppressed packet.
-     */
-    void RecordSuppressed(Ptr<const Packet> packet)
-    {
-        m_suppressedUids.push_back(packet->GetUid());
-    }
-
-    void DoRun() override
-    {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
-        trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
-        trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
-        trickle->SetAttribute("DuplicateThreshold", UintegerValue(2));
-        trickle->AssignStreams(1);
-        trickle->TraceConnectWithoutContext(
-            "PacketSuppressed",
-            MakeCallback(&TrickleDuplicateThresholdFiltersBurstTestCase::RecordSuppressed, this));
-
-        Mac16Address orig("00:01");
-        SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TrickleDuplicateThresholdFiltersBurstTestCase::RecordForward, this);
-
-        Ptr<Packet> covered = Create<Packet>(64);
-        Ptr<Packet> fresh = Create<Packet>(64);
-        trickle->OnPacketForward(covered, orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
-        trickle->OnPacketForward(fresh, orig, /*seqNo=*/2, /*hopsLeft=*/5, cb);
-
-        Simulator::Schedule(MilliSeconds(1),
-                            &SixLowPanTrickleForwarding::OnDuplicateReceived,
-                            trickle,
-                            Address(orig),
-                            uint8_t(1));
-
-        Simulator::Stop(MilliSeconds(500));
-        Simulator::Run();
-        Simulator::Destroy();
-
-        NS_TEST_ASSERT_MSG_EQ(m_suppressedUids.size(), 1, "The covered packet is suppressed");
-        NS_TEST_ASSERT_MSG_EQ(m_suppressedUids[0], covered->GetUid(), "Suppressed = the covered");
-        NS_TEST_ASSERT_MSG_EQ(m_forwardedUids.size(), 1, "The rest of the burst still goes out");
-        NS_TEST_ASSERT_MSG_EQ(m_forwardedUids[0], fresh->GetUid(), "Forwarded = the fresh one");
-    }
-
-    std::vector<uint64_t> m_forwardedUids;  ///< UIDs handed to the forward callback.
-    std::vector<uint64_t> m_suppressedUids; ///< UIDs reported by the suppressed trace.
-};
-
-/**
- * @ingroup sixlowpan-tests
- *
  * @brief Verify each packet is discarded at its own deadline.
  *
  * Two packets arrive 50 ms apart while suppression holds. The first must
  * be discarded exactly MaxForwardingDelay after ITS arrival, the second
  * exactly MaxForwardingDelay after its own, later arrival.
  */
-class TricklePerPacketDeadlineTestCase : public TestCase
+class AdaptiveFloodingPerPacketDeadlineTestCase : public TestCase
 {
   public:
-    TricklePerPacketDeadlineTestCase()
+    AdaptiveFloodingPerPacketDeadlineTestCase()
         : TestCase("Suppressed packets are discarded at per-packet deadlines")
     {
     }
@@ -931,26 +669,26 @@ class TricklePerPacketDeadlineTestCase : public TestCase
 
     void DoRun() override
     {
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(1));
         trickle->SetAttribute("MaxForwardingDelay", TimeValue(MilliSeconds(100)));
         trickle->AssignStreams(1);
         trickle->TraceConnectWithoutContext(
             "PacketDiscarded",
-            MakeCallback(&TricklePerPacketDeadlineTestCase::RecordDiscard, this));
+            MakeCallback(&AdaptiveFloodingPerPacketDeadlineTestCase::RecordDiscard, this));
         trickle->TraceConnectWithoutContext(
             "PendingQueueSize",
-            MakeCallback(&TricklePerPacketDeadlineTestCase::RecordQueueSize, this));
+            MakeCallback(&AdaptiveFloodingPerPacketDeadlineTestCase::RecordQueueSize, this));
 
         Mac16Address orig("00:01");
         SixLowPanMeshUnderRouting::ForwardCallback cb =
-            MakeCallback(&TricklePerPacketDeadlineTestCase::RecordForward, this);
+            MakeCallback(&AdaptiveFloodingPerPacketDeadlineTestCase::RecordForward, this);
 
         // First packet at t = 0, second at t = 50 ms.
         trickle->OnPacketForward(Create<Packet>(64), orig, /*seqNo=*/1, /*hopsLeft=*/5, cb);
         Simulator::Schedule(MilliSeconds(50),
-                            &SixLowPanTrickleForwarding::OnPacketForward,
+                            &SixLowPanAdaptiveFlooding::OnPacketForward,
                             trickle,
                             Create<Packet>(64),
                             Address(orig),
@@ -962,7 +700,7 @@ class TricklePerPacketDeadlineTestCase : public TestCase
         for (uint32_t ms = 3; ms <= 395; ms += 5)
         {
             Simulator::Schedule(MilliSeconds(ms),
-                                &SixLowPanTrickleForwarding::OnDuplicateReceived,
+                                &SixLowPanAdaptiveFlooding::OnDuplicateReceived,
                                 trickle,
                                 Address(orig),
                                 uint8_t(1));
@@ -1579,10 +1317,9 @@ class MeshUnderDeviceDuplicateCountTestCase : public MeshUnderDeviceTestCase
     {
         SetupDevice();
 
-        Ptr<SixLowPanTrickleForwarding> trickle = CreateObject<SixLowPanTrickleForwarding>();
+        Ptr<SixLowPanAdaptiveFlooding> trickle = CreateObject<SixLowPanAdaptiveFlooding>();
         trickle->SetAttribute("MinInterval", TimeValue(MilliSeconds(10)));
         trickle->SetAttribute("RedundancyConstant", UintegerValue(0));
-        trickle->SetAttribute("ForwardOnePerFiring", BooleanValue(true));
         trickle->SetAttribute("DuplicateThreshold", UintegerValue(2));
         trickle->TraceConnectWithoutContext(
             "PacketSuppressed",
@@ -1630,18 +1367,14 @@ class SixLowPanMeshUnderTestSuite : public TestSuite
         AddTestCase(new DuplicateCacheFifoDropTestCase, Duration::QUICK);
         AddTestCase(new DuplicateCachePerOriginatorTestCase, Duration::QUICK);
         AddTestCase(new SimpleFloodingForwardsTestCase, Duration::QUICK);
-        AddTestCase(new TrickleForwardsWhenQuietTestCase, Duration::QUICK);
-        AddTestCase(new TrickleSuppressesWhileCoveredTestCase, Duration::QUICK);
-        AddTestCase(new TrickleZeroRedundancyAlwaysForwardsTestCase, Duration::QUICK);
-        AddTestCase(new TrickleFlushesAllPendingTestCase, Duration::QUICK);
-        AddTestCase(new TrickleOnePerFiringTestCase, Duration::QUICK);
-        AddTestCase(new TrickleHeadOfLineIgnoresForeignDuplicatesTestCase, Duration::QUICK);
-        AddTestCase(new TrickleHeadOfLineMatchingSuppressesTestCase, Duration::QUICK);
-        AddTestCase(new TrickleAnyDuplicateSuppressesTestCase, Duration::QUICK);
-        AddTestCase(new TrickleRestartAfterDrainTestCase, Duration::QUICK);
-        AddTestCase(new TrickleDuplicateThresholdKillsHeadTestCase, Duration::QUICK);
-        AddTestCase(new TrickleDuplicateThresholdFiltersBurstTestCase, Duration::QUICK);
-        AddTestCase(new TricklePerPacketDeadlineTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingForwardsWhenQuietTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingSuppressesWhileCoveredTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingZeroRedundancyAlwaysForwardsTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingOnePerFiringTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingAnyDuplicateSuppressesTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingRestartAfterDrainTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingDuplicateThresholdKillsHeadTestCase, Duration::QUICK);
+        AddTestCase(new AdaptiveFloodingPerPacketDeadlineTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceForwardTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceDeliveryTestCase, Duration::QUICK);
         AddTestCase(new MeshUnderDeviceHopLimitTestCase, Duration::QUICK);

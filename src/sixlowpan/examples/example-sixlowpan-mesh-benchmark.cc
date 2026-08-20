@@ -11,8 +11,8 @@
  * @ingroup sixlowpan
  *
  * Benchmark comparing the two 6LoWPAN mesh-under forwarding policies:
- * plain flooding (SixLowPanSimpleFlooding, the default) against Trickle
- * suppression (SixLowPanTrickleForwarding).
+ * Simple Flooding (SixLowPanSimpleFlooding, the default) against Adaptive
+ * Flooding (SixLowPanAdaptiveFlooding, based on the Trickle algorithm).
  *
  * Unlike example-ping-lr-wpan-mesh-under.cc, which shows basic mesh-under
  * reachability through a CSMA gateway, this example quantitatively compares
@@ -35,8 +35,8 @@
    dense: N nodes in a small square, roughly in mutual range. The source
           and the sink are pinned at opposite corners (a consistent
           worst-case pair); the relays in between are placed randomly and
-          maximise redundancy -> shows where Trickle wins by collapsing
-          the storm.
+          maximise redundancy -> shows where Adaptive Flooding wins by
+          collapsing the storm.
 
           S . o   o
             o   o  o               src  = node 0 (fixed corner)
@@ -45,8 +45,8 @@
 
    bridge: two clusters joined ONLY through a single bridge node. The
            clusters are out of mutual range, so every packet from A to B
-           must traverse the bridge (a cut vertex) -> stresses Trickle's
-           suppression on a single thin path, where over-suppression can
+           must traverse the bridge (a cut vertex) -> stresses Adaptive
+           Flooding on a single thin path, where over-suppression can
            reduce delivery. Source and sink are pinned at the far edges
            of their clusters (worst case); the other nodes are random.
 
@@ -57,14 +57,14 @@
            src = node 0 (far edge)        sink = node N-1 (far edge)
    @endverbatim
  *
- * The policy is toggled with --trickle-forwarding (false = flooding, true = on),
- * the traffic with --traffic (icmp | udp), and the node count with --nodes, so a
- * driver script can sweep them and collect the "CSV," line printed at the end.
- * Results are reproducible for a given --RngRun; pass --RngRun=2,3,... to obtain
- * independent replications.
+ * The policy is toggled with --adaptive-flooding (false = Simple Flooding,
+ * true = Adaptive Flooding), the traffic with --traffic (icmp | udp), and the
+ * node count with --nodes, so a driver script can sweep them and collect the
+ * "CSV," line printed at the end. Results are reproducible for a given
+ * --RngRun; pass --RngRun=2,3,... to obtain independent replications.
  *
  * Example:
- *   ./ns3 run "example-sixlowpan-mesh-benchmark --trickle-forwarding=1 --topology=dense"
+ *   ./ns3 run "example-sixlowpan-mesh-benchmark --adaptive-flooding=1 --topology=dense"
  */
 
 #include "ns3/applications-module.h"
@@ -125,7 +125,7 @@ CapturePingReport(const Ping::PingReport& report)
 int
 main(int argc, char** argv)
 {
-    bool trickleForwarding = false;
+    bool adaptiveFlooding = false;
     uint32_t nNodes = 10;
     std::string topology = "dense";
     std::string traffic = "icmp";
@@ -134,9 +134,9 @@ main(int argc, char** argv)
     bool verbose = false;
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("trickle-forwarding",
-                 "Use Trickle-based suppression (true) instead of plain flooding (false)",
-                 trickleForwarding);
+    cmd.AddValue("adaptive-flooding",
+                 "Use Adaptive Flooding (true) instead of Simple Flooding (false)",
+                 adaptiveFlooding);
     cmd.AddValue("nodes", "Number of WSN nodes", nNodes);
     cmd.AddValue("topology", "Node layout: dense | bridge", topology);
     cmd.AddValue("traffic", "Traffic type: icmp (ping) | udp", traffic);
@@ -158,7 +158,7 @@ main(int argc, char** argv)
     if (verbose)
     {
         LogComponentEnable("SixLowPanNetDevice", LOG_LEVEL_INFO);
-        LogComponentEnable("SixLowPanTrickleForwarding", LOG_LEVEL_INFO);
+        LogComponentEnable("SixLowPanAdaptiveFlooding", LOG_LEVEL_INFO);
         LogComponentEnable("SixLowPanSimpleFlooding", LOG_LEVEL_INFO);
     }
 
@@ -172,15 +172,13 @@ main(int argc, char** argv)
     // deployment area, so every run measures the same worst-case pair and
     // sweeping --nodes only changes the relay population, not the
     // source-sink geometry. The relay nodes are scattered randomly,
-    // reproducibly for a given --RngRun (the streams below are pinned).
+    // reproducibly for a given --RngRun (the stream below is pinned).
     // The chosen distances keep intra-cluster and cluster-to-bridge links
     // within the LR-WPAN range under the default LogDistance loss model,
     // while the two clusters (~120 m apart) are out of mutual range, so
     // the bridge is the only path.
-    Ptr<UniformRandomVariable> jitterX = CreateObject<UniformRandomVariable>();
-    Ptr<UniformRandomVariable> jitterY = CreateObject<UniformRandomVariable>();
-    jitterX->SetStream(streamNumber++);
-    jitterY->SetStream(streamNumber++);
+    Ptr<UniformRandomVariable> jitter = CreateObject<UniformRandomVariable>();
+    jitter->SetStream(streamNumber++);
 
     Ptr<ListPositionAllocator> positions = CreateObject<ListPositionAllocator>();
     uint32_t sourceIdx = 0;
@@ -189,47 +187,27 @@ main(int argc, char** argv)
     if (bridge)
     {
         const uint32_t bridgeIdx = nNodes / 2; // a single node bridges the two clusters
-        for (uint32_t i = 0; i < nNodes; ++i)
+        positions->Add(Vector(0.0, 7.0, 0.0)); // source at the far edge of cluster A
+        for (uint32_t i = 1; i < bridgeIdx; ++i)
         {
-            if (i == sourceIdx)
-            {
-                positions->Add(Vector(0.0, 7.0, 0.0)); // source at the far edge of cluster A
-            }
-            else if (i == bridgeIdx)
-            {
-                positions->Add(Vector(60.0, 7.0, 0.0)); // bridge, between the clusters
-            }
-            else if (i == sinkIdx)
-            {
-                positions->Add(Vector(135.0, 7.0, 0.0)); // sink at the far edge of cluster B
-            }
-            else
-            {
-                double baseX = (i < bridgeIdx) ? 0.0 : 120.0; // cluster A near 0, B near 120
-                positions->Add(Vector(baseX + jitterX->GetValue(0.0, 15.0),
-                                      jitterY->GetValue(0.0, 15.0),
-                                      0.0));
-            }
+            positions->Add(Vector(jitter->GetValue(0.0, 15.0), jitter->GetValue(0.0, 15.0), 0.0));
         }
+        positions->Add(Vector(60.0, 7.0, 0.0)); // bridge, between the clusters
+        for (uint32_t i = bridgeIdx + 1; i < nNodes - 1; ++i)
+        {
+            positions->Add(
+                Vector(120.0 + jitter->GetValue(0.0, 15.0), jitter->GetValue(0.0, 15.0), 0.0));
+        }
+        positions->Add(Vector(135.0, 7.0, 0.0)); // sink at the far edge of cluster B
     }
     else // dense
     {
-        for (uint32_t i = 0; i < nNodes; ++i)
+        positions->Add(Vector(0.0, 0.0, 0.0)); // source at one corner
+        for (uint32_t i = 1; i < nNodes - 1; ++i)
         {
-            if (i == sourceIdx)
-            {
-                positions->Add(Vector(0.0, 0.0, 0.0)); // source at one corner
-            }
-            else if (i == sinkIdx)
-            {
-                positions->Add(Vector(40.0, 40.0, 0.0)); // sink at the opposite corner
-            }
-            else
-            {
-                positions->Add(
-                    Vector(jitterX->GetValue(0.0, 40.0), jitterY->GetValue(0.0, 40.0), 0.0));
-            }
+            positions->Add(Vector(jitter->GetValue(0.0, 40.0), jitter->GetValue(0.0, 40.0), 0.0));
         }
+        positions->Add(Vector(40.0, 40.0, 0.0)); // sink at the opposite corner
     }
 
     MobilityHelper mobility;
@@ -252,20 +230,15 @@ main(int argc, char** argv)
     streamNumber += internetv6.AssignStreams(wsnNodes, streamNumber);
 
     SixLowPanHelper sixLowPanHelper;
-    if (trickleForwarding)
+    if (adaptiveFlooding)
     {
-        sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanTrickleForwarding");
+        sixLowPanHelper.SetMeshUnderRouting("ns3::SixLowPanAdaptiveFlooding");
     }
+    sixLowPanHelper.SetDeviceAttribute("UseMeshUnder", BooleanValue(true));
+    // Hops-left must cover the network diameter; nNodes is a safe bound.
+    sixLowPanHelper.SetDeviceAttribute("MeshUnderRadius", UintegerValue(nNodes));
     NetDeviceContainer sixLowPanDevices = sixLowPanHelper.Install(lrwpanDevices);
     streamNumber += sixLowPanHelper.AssignStreams(sixLowPanDevices, streamNumber);
-
-    for (uint32_t i = 0; i < sixLowPanDevices.GetN(); ++i)
-    {
-        Ptr<NetDevice> dev = sixLowPanDevices.Get(i);
-        dev->SetAttribute("UseMeshUnder", BooleanValue(true));
-        // Hops-left must cover the network diameter; nNodes is a safe bound.
-        dev->SetAttribute("MeshUnderRadius", UintegerValue(nNodes));
-    }
 
     Ipv6AddressHelper ipv6;
     ipv6.SetBase(Ipv6Address("2001:f00d::"), Ipv6Prefix(64));
@@ -322,7 +295,7 @@ main(int argc, char** argv)
     Simulator::Destroy();
 
     // ---- Report ----------------------------------------------------------
-    const std::string policy = trickleForwarding ? "trickle" : "flooding";
+    const std::string policy = adaptiveFlooding ? "adaptive" : "simple";
     std::cout << "\n=== 6LoWPAN mesh-under benchmark ===\n"
               << "  policy         : " << policy << "\n"
               << "  topology         : " << topology << "\n"
