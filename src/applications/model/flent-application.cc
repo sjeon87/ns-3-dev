@@ -398,7 +398,10 @@ FlentApplication::FillXValues()
     NS_LOG_DEBUG("Filling x values");
     double stepSize = m_stepSize.GetSeconds();
     NS_LOG_DEBUG(stepSize);
-    for (int step = 0; step < int(std::ceil(m_stopTime.GetSeconds() / m_stepSize.GetSeconds()));
+
+    int totalSteps = int(std::ceil(m_stopTime.GetSeconds() / stepSize));
+
+    for (int step = 0; step < totalSteps;
          step += 1)
     {
         NS_LOG_DEBUG(step);
