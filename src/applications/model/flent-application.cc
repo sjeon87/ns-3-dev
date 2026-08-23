@@ -218,69 +218,88 @@ FlentApplication::GetUtcFormatTime() const
 void
 FlentApplication::AddMetadata(nlohmann::json& j)
 {
-    j["metadata"]["BATCH_NAME"] = nullptr;
-    j["metadata"]["BATCH_TIME"] = nullptr;
-    j["metadata"]["BATCH_TITLE"] = nullptr;
-    j["metadata"]["BATCH_UUID"] = nullptr;
     std::string outputPath = m_outputFilename.empty() ? m_testName + ".flent" : m_outputFilename;
-    j["metadata"]["DATA_FILENAME"] = std::filesystem::path(outputPath).filename().string();
-    j["metadata"]["EGRESS_INFO"]["bql"]["tx-0"] = "";
-    j["metadata"]["classes"] = nullptr;
-    j["metadata"]["driver"] = nullptr;
-    j["metadata"]["iface"] = nullptr;
-    j["metadata"]["link_params"]["qlen"] = nullptr;
-    j["metadata"]["offloads"]["generic-receive-offload"] = nullptr;
-    j["metadata"]["offloads"]["generic-segmentation-offload"] = nullptr;
-    j["metadata"]["offloads"]["large-receive-offload"] = nullptr;
-    j["metadata"]["offloads"]["tcp-segmentation"] = nullptr;
-    j["metadata"]["offloads"]["udp-fragmentation"] = nullptr;
-    j["metadata"]["qdiscs"]["id"] = nullptr;
-    j["metadata"]["qdiscs"]["name"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["ecn"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["flows"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["interval"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["limit"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["memory_limit"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["quantum"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["refcnt"] = nullptr;
-    j["metadata"]["qdiscs"]["params"]["target"] = nullptr;
-    j["metadata"]["qdiscs"]["parent"] = nullptr;
-    j["metadata"]["FAILED_RUNNERS"] = nullptr;
-    j["metadata"]["FLENT_VERSION"] = nullptr;
+    std::string dataFilename = std::filesystem::path(outputPath).filename().string();
+
     std::ostringstream oss;
     oss << Ipv4Address::ConvertFrom(m_hostAddress);
     std::string hostName = oss.str();
-    j["metadata"]["HOST"] = hostName;
-    j["metadata"]["HOSTS"] = nlohmann::json::array();
-    j["metadata"]["HOSTS"].push_back(hostName);
-    j["metadata"]["HTTP_GETTER_DNS"] = nullptr;
-    j["metadata"]["HTTP_GETTER_URLLIST"] = nullptr;
-    j["metadata"]["HTTP_GETTER_WORKERS"] = nullptr;
-    j["metadata"]["IP_VERSION"] = 4;
-    j["metadata"]["KERNEL_NAME"] = "ns-3";
-    j["metadata"]["KERNEL_RELEASE"] = "ns-3";
-    j["metadata"]["LENGTH"] = m_length.GetSeconds();
+
     std::ostringstream ossLocal;
     ossLocal << Ipv4Address::ConvertFrom(m_localBindAddress);
-    j["metadata"]["LOCAL_HOST"] = ossLocal.str();
-    j["metadata"]["MODULE_VERSIONS"] = nullptr;
-    j["metadata"]["NAME"] = m_testName;
-    j["metadata"]["NOTE"] = nullptr;
-    j["metadata"]["REMOTE_METADATA"] = nullptr;
-    j["metadata"]["STEP_SIZE"] = m_stepSize.GetSeconds();
+    std::string localHost = ossLocal.str();
+
     std::string timeStr = GetUtcFormatTime();
-    j["metadata"]["TIME"] = timeStr;
-    j["metadata"]["T0"] = timeStr;
-    j["metadata"]["TEST_PARAMETERS"] = nlohmann::json::object();
-    if (m_imageText.empty())
+
+    nlohmann::json title = nullptr;
+    if (!m_imageText.empty())
     {
-        j["metadata"]["TITLE"] = nullptr;
+        title = m_imageText;
     }
-    else
-    {
-        j["metadata"]["TITLE"] = m_imageText;
-    }
-    j["metadata"]["TOTAL_LENGTH"] = m_stopTime.GetSeconds();
+
+    j["metadata"] = {
+        {"BATCH_NAME", nullptr},
+        {"BATCH_TIME", nullptr},
+        {"BATCH_TITLE", nullptr},
+        {"BATCH_UUID", nullptr},
+        {"DATA_FILENAME", dataFilename},
+        {"EGRESS_INFO", {
+            {"bql", {
+                {"tx-0", ""}
+            }}
+        }},
+        {"classes", nullptr},
+        {"driver", nullptr},
+        {"iface", nullptr},
+        {"link_params", {
+            {"qlen", nullptr}
+        }},
+        {"offloads", {
+            {"generic-receive-offload", nullptr},
+            {"generic-segmentation-offload", nullptr},
+            {"large-receive-offload", nullptr},
+            {"tcp-segmentation", nullptr},
+            {"udp-fragmentation", nullptr}
+        }},
+        {"qdiscs", {
+            {"id", nullptr},
+            {"name", nullptr},
+            {"params", {
+                {"ecn", nullptr},
+                {"flows", nullptr},
+                {"interval", nullptr},
+                {"limit", nullptr},
+                {"memory_limit", nullptr},
+                {"quantum", nullptr},
+                {"refcnt", nullptr},
+                {"target", nullptr}
+            }},
+            {"parent", nullptr}
+        }},
+        {"FAILED_RUNNERS", nullptr},
+        {"FLENT_VERSION", nullptr},
+        {"HOST", hostName},
+        {"HOSTS", nlohmann::json::array({hostName})},
+        {"HTTP_GETTER_DNS", nullptr},
+        {"HTTP_GETTER_URLLIST", nullptr},
+        {"HTTP_GETTER_WORKERS", nullptr},
+        {"IP_VERSION", 4},
+        {"KERNEL_NAME", "ns-3"},
+        {"KERNEL_RELEASE", "ns-3"},
+        {"LENGTH", m_length.GetSeconds()},
+        {"LOCAL_HOST", localHost},
+        {"MODULE_VERSIONS", nullptr},
+        {"NAME", m_testName},
+        {"NOTE", nullptr},
+        {"REMOTE_METADATA", nullptr},
+        {"STEP_SIZE", m_stepSize.GetSeconds()},
+        {"TIME", timeStr},
+        {"T0", timeStr},
+        {"TEST_PARAMETERS", nlohmann::json::object()},
+        {"TITLE", title},
+        {"TOTAL_LENGTH", m_stopTime.GetSeconds()}
+    };
+
     j["version"] = 4;
 }
 
