@@ -51,7 +51,6 @@ and :ref:`fig-http-embedded-object-size`.
 
    3GPP HTTP embedded object size histogram
 
-\
 
 A major portion of the traffic pattern is *reading time*, which does not
 generate any traffic. Because of this, one may need to simulate a good
@@ -161,31 +160,26 @@ A separate instance of this object is used by the HTTP server and client applica
 These characteristics are based on a legacy 3GPP specification. The description
 can be found in the following references:
 
-\
 
 .. _`[1]`:
 
 [1] 3GPP TR 25.892, "Feasibility Study for Orthogonal Frequency Division Multiplexing (OFDM) for UTRAN enhancement"
 
-\
 
 .. _`[2]`:
 
 [2] IEEE 802.16m, "Evaluation Methodology Document (EMD)", IEEE 802.16m-08/004r5, July 2008.
 
-\
 
 .. _`[3]`:
 
 [3] NGMN Alliance, "NGMN Radio Access Performance Evaluation Methodology", v1.0, January 2008.
 
-\
 
 .. _`[4]`:
 
 [4] 3GPP2-TSGC5, "HTTP, FTP and TCP models for 1xEV-DV simulations", 2001.
 
-\
 
 Usage
 *****
@@ -218,7 +212,7 @@ Examples
 For an example demonstrating HTTP applications
 run::
 
-  $ ./ns3 --run 'three-gpp-http-example'
+  $ ./ns3 --run "three-gpp-http-example"
 
 By default, the example will print out the web page requests of the client and responses of the
 server and client receiving content packets by using LOG_INFO of ``ThreeGppHttpServer`` and ``ThreeGppHttpClient``.
@@ -237,6 +231,3 @@ these parameters is run multiple times to verify functionality with different ra
 
 Test cases themselves are rather simple: test verifies that HTTP object packet bytes sent match
 total bytes received by the client, and that ``ThreeGppHttpHeader`` matches the expected packet.
-
-
-

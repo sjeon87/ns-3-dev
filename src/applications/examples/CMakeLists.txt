@@ -57,10 +57,10 @@ build_lib_example(
   SOURCE_FILES flent-example.cc
   LIBRARIES_TO_LINK
     ${libapplications}
-    ${libpoint-to-point}
-    ${libinternet}
-    ${libnetwork}
     ${libcore}
-    ${libtraffic-control}
+    ${libinternet}
     ${libinternet-apps}
+    ${libnetwork}
+    ${libpoint-to-point}
+    ${libtraffic-control}
 )

@@ -539,7 +539,7 @@ FlentApplication::ProcessRawValues()
 
 // Application Methods
 void
-FlentApplication::StartApplication() // Called at time specified by Start
+FlentApplication::StartApplication() 
 {
     NS_LOG_FUNCTION(this);
     if (m_useWallClockT0)

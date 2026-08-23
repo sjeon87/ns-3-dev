@@ -4,8 +4,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- *
- *
  * This file is adapted from bulk-send-helper.cc.
  *
  * Author: Ameya Deshpande <ameyanrd@outlook.com>
