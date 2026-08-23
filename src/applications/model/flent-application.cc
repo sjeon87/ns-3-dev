@@ -309,7 +309,6 @@ FlentApplication::GetHostNode(Ipv4Address hostAddress) const
         }
     }
 
-    NS_LOG_ERROR("Couldn't find dest node given the IP" << hostAddress);
     return nullptr;
 }
 
@@ -549,6 +548,11 @@ FlentApplication::StartApplication() // Called at time specified by Start
     AddMetadata(m_output);
 
     Ptr<Node> hostNode = GetHostNode(Ipv4Address::ConvertFrom(m_hostAddress));
+
+    if (!hostNode) 
+    {
+        NS_FATAL_ERROR("Couldn't find dest node given the IP" << m_hostAddress);
+    }
 
     if (m_testName == "ping")
     {
