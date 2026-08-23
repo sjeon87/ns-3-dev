@@ -130,15 +130,9 @@ FlentApplication::GetTypeId()
     return tid;
 }
 
-FlentApplication::FlentApplication()
-{
-    NS_LOG_FUNCTION(this);
-}
+FlentApplication::FlentApplication() = default;
 
-FlentApplication::~FlentApplication()
-{
-    NS_LOG_FUNCTION(this);
-}
+FlentApplication::~FlentApplication() = default;
 
 void
 FlentApplication::DoInitialize()
