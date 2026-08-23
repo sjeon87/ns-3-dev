@@ -541,10 +541,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
-        ApplicationContainer pingContainer;
-        pingContainer.Add(m_ping);
-        pingContainer.Start(m_startTime);
-        pingContainer.Stop(m_stopTime);
+        m_ping->SetStartTime(m_startTime);
+        m_ping->SetStopTime(m_stopTime);
 
         m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
         m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
@@ -562,10 +560,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
-        ApplicationContainer pingContainer;
-        pingContainer.Add(m_ping);
-        pingContainer.Start(m_startTime);
-        pingContainer.Stop(m_stopTime);
+        m_ping->SetStartTime(m_startTime);
+        m_ping->SetStopTime(m_stopTime);
 
         m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
         m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
@@ -581,10 +577,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendUp[0]->SetAttribute("Remote", AddressValue(clientAddress));
         m_bulkSendUp[0]->SetAttribute("MaxBytes", UintegerValue(0));
         m_node->AddApplication(m_bulkSendUp[0]);
-        ApplicationContainer sourceApp;
-        sourceApp.Add(m_bulkSendUp[0]);
-        sourceApp.Start(m_startTime + Seconds(5));
-        sourceApp.Stop(m_stopTime - Seconds(5));
+        m_bulkSendUp[0]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendUp[0]->SetStopTime(m_stopTime - Seconds(5));
         m_output["results"]["TCP upload"] = nlohmann::json::array();
         m_output["raw_values"]["TCP upload"] = nlohmann::json::array();
         nlohmann::json data;
@@ -606,10 +600,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[0]->SetAttribute("Local", AddressValue(sinkAddress));
         hostNode->AddApplication(m_packetSinkUp[0]);
-        ApplicationContainer sinkApp;
-        sinkApp.Add(m_packetSinkUp[0]);
-        sinkApp.Start(m_startTime + Seconds(5));
-        sinkApp.Stop(m_stopTime - Seconds(5));
+        m_packetSinkUp[0]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkUp[0]->SetStopTime(m_stopTime - Seconds(5));
     }
     else if (m_testName == "tcp_download")
     {
@@ -619,10 +611,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         hostNode->AddApplication(m_ping);
-        ApplicationContainer pingContainer;
-        pingContainer.Add(m_ping);
-        pingContainer.Start(m_startTime);
-        pingContainer.Stop(m_stopTime);
+        m_ping->SetStartTime(m_startTime);
+        m_ping->SetStopTime(m_stopTime);
 
         m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
         m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
@@ -636,10 +626,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkDown[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkDown[0]->SetAttribute("Local", AddressValue(sinkAddress));
         m_node->AddApplication(m_packetSinkDown[0]);
-        ApplicationContainer sinkApp;
-        sinkApp.Add(m_packetSinkDown[0]);
-        sinkApp.Start(m_startTime + Seconds(5));
-        sinkApp.Stop(m_stopTime - Seconds(5));
+        m_packetSinkDown[0]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkDown[0]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[0]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[0]));
@@ -662,10 +650,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[0]->SetAttribute("Remote", AddressValue(localBindAddress));
         m_bulkSendDown[0]->SetAttribute("MaxBytes", UintegerValue(0));
         hostNode->AddApplication(m_bulkSendDown[0]);
-        ApplicationContainer sourceApp;
-        sourceApp.Add(m_bulkSendDown[0]);
-        sourceApp.Start(m_startTime + Seconds(5));
-        sourceApp.Stop(m_stopTime - Seconds(5));
+        m_bulkSendDown[0]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendDown[0]->SetStopTime(m_stopTime - Seconds(5));
     }
     else if (m_testName == "rrul")
     {
@@ -677,10 +663,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
-        ApplicationContainer pingContainer;
-        pingContainer.Add(m_ping);
-        pingContainer.Start(m_startTime);
-        pingContainer.Stop(m_stopTime);
+        m_ping->SetStartTime(m_startTime);
+        m_ping->SetStopTime(m_stopTime);
 
         m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
         m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
@@ -694,10 +678,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpserver[0]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[0]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
         hostNode->AddApplication(m_udpserver[0]);
-        ApplicationContainer apps;
-        apps.Add(m_udpserver[0]);
-        apps.Start(m_startTime);
-        apps.Stop(m_stopTime);
+        m_udpserver[0]->SetStartTime(m_startTime);
+        m_udpserver[0]->SetStopTime(m_stopTime);
         uint32_t packetSize = 1024;
         uint32_t maxPacketCount = 10000;
         m_udpclient[0] = CreateObject<UdpEchoClient>();
@@ -709,10 +691,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpclient[0]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
         m_udpclient[0]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DscpDefault << 2));
         m_node->AddApplication(m_udpclient[0]);
-        ApplicationContainer apps2;
-        apps2.Add(m_udpclient[0]);
-        apps2.Start(m_startTime);
-        apps2.Stop(m_stopTime);
+        m_udpclient[0]->SetStartTime(m_startTime);
+        m_udpclient[0]->SetStopTime(m_stopTime);
         m_output["raw_values"]["Ping (ms) UDP BE"] = nlohmann::json::array();
         m_output["results"]["Ping (ms) UDP BE"] = nlohmann::json::array();
         m_udpclient[0]->TraceConnectWithoutContext(
@@ -724,10 +704,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpserver[1]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[1]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
         hostNode->AddApplication(m_udpserver[1]);
-        ApplicationContainer apps3;
-        apps3.Add(m_udpserver[1]);
-        apps3.Start(m_startTime);
-        apps3.Stop(m_stopTime);
+        m_udpserver[1]->SetStartTime(m_startTime);
+        m_udpserver[1]->SetStopTime(m_stopTime);
         m_udpclient[1] = CreateObject<UdpEchoClient>();
         m_udpclient[1]->SetAttribute("Remote",
                                      AddressValue(InetSocketAddress(hostIpv4Address, port)));
@@ -737,10 +715,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpclient[1]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
         m_udpclient[1]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS1 << 2));
         m_node->AddApplication(m_udpclient[1]);
-        ApplicationContainer apps4;
-        apps4.Add(m_udpclient[1]);
-        apps4.Start(m_startTime);
-        apps4.Stop(m_stopTime);
+        m_udpclient[1]->SetStartTime(m_startTime);
+        m_udpclient[1]->SetStopTime(m_stopTime);
         m_output["raw_values"]["Ping (ms) UDP BK"] = nlohmann::json::array();
         m_output["results"]["Ping (ms) UDP BK"] = nlohmann::json::array();
         m_udpclient[1]->TraceConnectWithoutContext(
@@ -752,10 +728,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpserver[2]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[2]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
         hostNode->AddApplication(m_udpserver[2]);
-        ApplicationContainer apps5;
-        apps5.Add(m_udpserver[2]);
-        apps5.Start(m_startTime);
-        apps5.Stop(m_stopTime);
+        m_udpserver[2]->SetStartTime(m_startTime);
+        m_udpserver[2]->SetStopTime(m_stopTime);
         m_udpclient[2] = CreateObject<UdpEchoClient>();
         m_udpclient[2]->SetAttribute("Remote",
                                      AddressValue(InetSocketAddress(hostIpv4Address, port)));
@@ -765,10 +739,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpclient[2]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
         m_udpclient[2]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_EF << 2));
         m_node->AddApplication(m_udpclient[2]);
-        ApplicationContainer apps6;
-        apps6.Add(m_udpclient[2]);
-        apps6.Start(m_startTime);
-        apps6.Stop(m_stopTime);
+        m_udpclient[2]->SetStartTime(m_startTime);
+        m_udpclient[2]->SetStopTime(m_stopTime);
         m_output["raw_values"]["Ping (ms) UDP EF"] = nlohmann::json::array();
         m_output["results"]["Ping (ms) UDP EF"] = nlohmann::json::array();
         m_udpclient[2]->TraceConnectWithoutContext(
@@ -783,10 +755,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkDown[0]->SetAttribute("Tos",
                                           UintegerValue(Ipv4Header::DscpType::DscpDefault << 2));
         m_node->AddApplication(m_packetSinkDown[0]);
-        ApplicationContainer sinkApp;
-        sinkApp.Add(m_packetSinkDown[0]);
-        sinkApp.Start(m_startTime + Seconds(5));
-        sinkApp.Stop(m_stopTime - Seconds(5));
+        m_packetSinkDown[0]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkDown[0]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[0]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[0]));
@@ -810,10 +780,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[0]->SetAttribute("Tos",
                                         UintegerValue(Ipv4Header::DscpType::DscpDefault << 2));
         hostNode->AddApplication(m_bulkSendDown[0]);
-        ApplicationContainer sourceApp;
-        sourceApp.Add(m_bulkSendDown[0]);
-        sourceApp.Start(m_startTime + Seconds(5));
-        sourceApp.Stop(m_stopTime - Seconds(5));
+        m_bulkSendDown[0]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendDown[0]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload BE
         InetSocketAddress hostAddress = InetSocketAddress(hostIpv4Address, 9020);
@@ -823,10 +791,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendUp[0]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendUp[0]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DscpDefault << 2));
         m_node->AddApplication(m_bulkSendUp[0]);
-        ApplicationContainer sourceAppUp;
-        sourceAppUp.Add(m_bulkSendUp[0]);
-        sourceAppUp.Start(m_startTime + Seconds(5));
-        sourceAppUp.Stop(m_stopTime - Seconds(5));
+        m_bulkSendUp[0]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendUp[0]->SetStopTime(m_stopTime - Seconds(5));
         m_output["results"]["TCP upload BE"] = nlohmann::json::array();
         m_output["raw_values"]["TCP upload BE"] = nlohmann::json::array();
         nlohmann::json data_up;
@@ -849,10 +815,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[0]->SetAttribute("Tos",
                                         UintegerValue(Ipv4Header::DscpType::DscpDefault << 2));
         hostNode->AddApplication(m_packetSinkUp[0]);
-        ApplicationContainer sinkAppUp;
-        sinkAppUp.Add(m_packetSinkUp[0]);
-        sinkAppUp.Start(m_startTime + Seconds(5));
-        sinkAppUp.Stop(m_stopTime - Seconds(5));
+        m_packetSinkUp[0]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkUp[0]->SetStopTime(m_stopTime - Seconds(5));
 
         // Download BK
         Address sinkAddress2(InetSocketAddress(Ipv4Address::GetAny(), 9011));
@@ -862,10 +826,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkDown[1]->SetAttribute("Tos",
                                           UintegerValue(Ipv4Header::DscpType::DSCP_CS1 << 2));
         m_node->AddApplication(m_packetSinkDown[1]);
-        ApplicationContainer sinkApp2;
-        sinkApp2.Add(m_packetSinkDown[1]);
-        sinkApp2.Start(m_startTime + Seconds(5));
-        sinkApp2.Stop(m_stopTime - Seconds(5));
+        m_packetSinkDown[1]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkDown[1]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[1]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[1]));
@@ -888,10 +850,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[1]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendDown[1]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS1 << 2));
         hostNode->AddApplication(m_bulkSendDown[1]);
-        ApplicationContainer sourceApp2;
-        sourceApp2.Add(m_bulkSendDown[1]);
-        sourceApp2.Start(m_startTime + Seconds(5));
-        sourceApp2.Stop(m_stopTime - Seconds(5));
+        m_bulkSendDown[1]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendDown[1]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload BK
         hostAddress = InetSocketAddress(hostIpv4Address, 9021);
@@ -901,10 +861,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendUp[1]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendUp[1]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS1 << 2));
         m_node->AddApplication(m_bulkSendUp[1]);
-        ApplicationContainer sourceAppUp2;
-        sourceAppUp2.Add(m_bulkSendUp[1]);
-        sourceAppUp2.Start(m_startTime + Seconds(5));
-        sourceAppUp2.Stop(m_stopTime - Seconds(5));
+        m_bulkSendUp[1]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendUp[1]->SetStopTime(m_stopTime - Seconds(5));
         m_output["results"]["TCP upload BK"] = nlohmann::json::array();
         m_output["raw_values"]["TCP upload BK"] = nlohmann::json::array();
         nlohmann::json data_up2;
@@ -926,10 +884,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[1]->SetAttribute("Local", AddressValue(sinkAddressUp2));
         m_packetSinkUp[1]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS1 << 2));
         hostNode->AddApplication(m_packetSinkUp[1]);
-        ApplicationContainer sinkAppUp2;
-        sinkAppUp2.Add(m_packetSinkUp[1]);
-        sinkAppUp2.Start(m_startTime + Seconds(5));
-        sinkAppUp2.Stop(m_stopTime - Seconds(5));
+        m_packetSinkUp[1]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkUp[1]->SetStopTime(m_stopTime - Seconds(5));
 
         // Download CS5
         Address sinkAddress3(InetSocketAddress(Ipv4Address::GetAny(), 9012));
@@ -939,10 +895,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkDown[2]->SetAttribute("Tos",
                                           UintegerValue(Ipv4Header::DscpType::DSCP_CS5 << 2));
         m_node->AddApplication(m_packetSinkDown[2]);
-        ApplicationContainer sinkApp3;
-        sinkApp3.Add(m_packetSinkDown[2]);
-        sinkApp3.Start(m_startTime + Seconds(5));
-        sinkApp3.Stop(m_stopTime - Seconds(5));
+        m_packetSinkDown[2]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkDown[2]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[2]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[2]));
@@ -965,10 +919,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[2]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendDown[2]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS5 << 2));
         hostNode->AddApplication(m_bulkSendDown[2]);
-        ApplicationContainer sourceApp3;
-        sourceApp3.Add(m_bulkSendDown[2]);
-        sourceApp3.Start(m_startTime + Seconds(5));
-        sourceApp3.Stop(m_stopTime - Seconds(5));
+        m_bulkSendDown[2]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendDown[2]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload CS5
         hostAddress = InetSocketAddress(hostIpv4Address, 9022);
@@ -978,10 +930,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendUp[2]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendUp[2]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS5 << 2));
         m_node->AddApplication(m_bulkSendUp[2]);
-        ApplicationContainer sourceAppUp3;
-        sourceAppUp3.Add(m_bulkSendUp[2]);
-        sourceAppUp3.Start(m_startTime + Seconds(5));
-        sourceAppUp3.Stop(m_stopTime - Seconds(5));
+        m_bulkSendUp[2]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendUp[2]->SetStopTime(m_stopTime - Seconds(5));
         m_output["results"]["TCP upload CS5"] = nlohmann::json::array();
         m_output["raw_values"]["TCP upload CS5"] = nlohmann::json::array();
         nlohmann::json data_up3;
@@ -1003,10 +953,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[2]->SetAttribute("Local", AddressValue(sinkAddressUp3));
         m_packetSinkUp[2]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS5 << 2));
         hostNode->AddApplication(m_packetSinkUp[2]);
-        ApplicationContainer sinkAppUp3;
-        sinkAppUp3.Add(m_packetSinkUp[2]);
-        sinkAppUp3.Start(m_startTime + Seconds(5));
-        sinkAppUp3.Stop(m_stopTime - Seconds(5));
+        m_packetSinkUp[2]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkUp[2]->SetStopTime(m_stopTime - Seconds(5));
 
         // Download EF
         Address sinkAddress4(InetSocketAddress(Ipv4Address::GetAny(), 9013));
@@ -1015,10 +963,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkDown[3]->SetAttribute("Local", AddressValue(sinkAddress4));
         m_packetSinkDown[3]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_EF << 2));
         m_node->AddApplication(m_packetSinkDown[3]);
-        ApplicationContainer sinkApp4;
-        sinkApp4.Add(m_packetSinkDown[3]);
-        sinkApp4.Start(m_startTime + Seconds(5));
-        sinkApp4.Stop(m_stopTime - Seconds(5));
+        m_packetSinkDown[3]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkDown[3]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[3]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[3]));
@@ -1041,10 +987,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[3]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendDown[3]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_EF << 2));
         hostNode->AddApplication(m_bulkSendDown[3]);
-        ApplicationContainer sourceApp4;
-        sourceApp4.Add(m_bulkSendDown[3]);
-        sourceApp4.Start(m_startTime + Seconds(5));
-        sourceApp4.Stop(m_stopTime - Seconds(5));
+        m_bulkSendDown[3]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendDown[3]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload EF
         hostAddress = InetSocketAddress(hostIpv4Address, 9023);
@@ -1054,10 +998,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendUp[3]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendUp[3]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_EF << 2));
         m_node->AddApplication(m_bulkSendUp[3]);
-        ApplicationContainer sourceAppUp4;
-        sourceAppUp4.Add(m_bulkSendUp[3]);
-        sourceAppUp4.Start(m_startTime + Seconds(5));
-        sourceAppUp4.Stop(m_stopTime - Seconds(5));
+        m_bulkSendUp[3]->SetStartTime(m_startTime + Seconds(5));
+        m_bulkSendUp[3]->SetStopTime(m_stopTime - Seconds(5));
         m_output["results"]["TCP upload EF"] = nlohmann::json::array();
         m_output["raw_values"]["TCP upload EF"] = nlohmann::json::array();
         nlohmann::json data_up4;
@@ -1079,10 +1021,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[3]->SetAttribute("Local", AddressValue(sinkAddressUp4));
         m_packetSinkUp[3]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_EF << 2));
         hostNode->AddApplication(m_packetSinkUp[3]);
-        ApplicationContainer sinkAppUp4;
-        sinkAppUp4.Add(m_packetSinkUp[3]);
-        sinkAppUp4.Start(m_startTime + Seconds(5));
-        sinkAppUp4.Stop(m_stopTime - Seconds(5));
+        m_packetSinkUp[3]->SetStartTime(m_startTime + Seconds(5));
+        m_packetSinkUp[3]->SetStopTime(m_stopTime - Seconds(5));
     }
 }
 
