@@ -536,9 +536,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
 
     if (m_testName == "ping")
     {
-        Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_ping = CreateObjectWithAttributes<Ping>("Destination",
-                                                  AddressValue(hostAddr),
+                                                  AddressValue(m_hostAddress),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
@@ -559,7 +558,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_ping = CreateObjectWithAttributes<Ping>("Destination",
-                                                  AddressValue(hostAddr),
+                                                  AddressValue(m_hostAddress),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
@@ -616,7 +615,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
     {
         Ipv4Address localBindAddr = Ipv4Address::ConvertFrom(m_localBindAddress);
         m_ping = CreateObjectWithAttributes<Ping>("Destination",
-                                                  AddressValue(localBindAddr),
+                                                  AddressValue(m_localBindAddress),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         hostNode->AddApplication(m_ping);
@@ -674,7 +673,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
 
         m_ping = CreateObjectWithAttributes<Ping>("Destination",
-                                                  AddressValue(hostIpv4Address),
+                                                  AddressValue(m_hostAddress),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
