@@ -87,6 +87,11 @@ DefaultSimulatorImpl::Destroy()
             ev->Invoke();
         }
     }
+
+    while (!m_events->IsEmpty()) {
+      Scheduler::Event next = m_events->RemoveNext();
+      next.impl->Unref();
+    }
 }
 
 void
