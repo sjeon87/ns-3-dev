@@ -147,15 +147,19 @@ FlentApplication::DoInitialize()
             for (uint32_t deviceId = 0; deviceId < m_node->GetNDevices(); deviceId++)
             {
                 Ptr<NetDevice> device = m_node->GetDevice(deviceId);
-                // If this is not a loopback device add the IP address to the map
-                if (!DynamicCast<LoopbackNetDevice>(device))
+                
+                if (DynamicCast<LoopbackNetDevice>(device))
                 {
-                    int32_t interfaceIndex = (ip)->GetInterfaceForDevice(device);
-                    if (interfaceIndex != -1)
-                    {
-                        m_localBindAddress = ip->GetAddress(interfaceIndex, 0).GetLocal();
-                        break;
-                    }
+                    continue;
+                }
+
+                // If this is not a loopback device add the IP address to the map
+                int32_t interfaceIndex = (ip)->GetInterfaceForDevice(device);
+
+                if (interfaceIndex != -1)
+                {
+                    m_localBindAddress = ip->GetAddress(interfaceIndex, 0).GetLocal();
+                    break;
                 }
             }
         }
@@ -285,24 +289,26 @@ FlentApplication::GetHostNode(Ipv4Address hostAddress) const
         Ptr<Node> node = *it;
         Ptr<Ipv4L3Protocol> ip = node->GetObject<Ipv4L3Protocol>();
 
-        if (ip)
+        if (!ip)
         {
-            for (uint32_t deviceId = 0; deviceId < node->GetNDevices(); deviceId++)
-            {
-                int32_t interfaceIndex = (ip)->GetInterfaceForDevice(node->GetDevice(deviceId));
-                if (interfaceIndex != -1)
-                {
-                    uint32_t numberOfAddresses = ip->GetNAddresses(interfaceIndex);
-                    for (uint32_t addressIndex = 0; addressIndex < numberOfAddresses;
-                         addressIndex++)
-                    {
-                        Ipv4InterfaceAddress ifAddr = ip->GetAddress(interfaceIndex, addressIndex);
-                        Ipv4Address addr = ifAddr.GetAddress();
+            continue;
+        }
 
-                        if (addr == hostAddress)
-                        {
-                            return node;
-                        }
+        for (uint32_t deviceId = 0; deviceId < node->GetNDevices(); deviceId++)
+        {
+            int32_t interfaceIndex = (ip)->GetInterfaceForDevice(node->GetDevice(deviceId));
+            if (interfaceIndex != -1)
+            {
+                uint32_t numberOfAddresses = ip->GetNAddresses(interfaceIndex);
+                for (uint32_t addressIndex = 0; addressIndex < numberOfAddresses;
+                        addressIndex++)
+                {
+                    Ipv4InterfaceAddress ifAddr = ip->GetAddress(interfaceIndex, addressIndex);
+                    Ipv4Address addr = ifAddr.GetAddress();
+
+                    if (addr == hostAddress)
+                    {
+                        return node;
                     }
                 }
             }
