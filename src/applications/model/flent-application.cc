@@ -172,6 +172,22 @@ FlentApplication::DoDispose()
 {
     NS_LOG_FUNCTION(this);
 
+    m_ping = nullptr;
+
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        m_packetSinkUp[i] = nullptr;
+        m_packetSinkDown[i] = nullptr;
+        m_bulkSendUp[i] = nullptr;
+        m_bulkSendDown[i] = nullptr;
+    }
+
+    for (uint32_t i = 0; i < 3; ++i)
+    {
+        m_udpserver[i] = nullptr;
+        m_udpclient[i] = nullptr;
+    }
+
     // chain up
     Application::DoDispose();
 }
