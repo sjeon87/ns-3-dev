@@ -28,7 +28,9 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 namespace ns3
 {
@@ -199,15 +201,18 @@ FlentApplication::DoDispose()
 std::string
 FlentApplication::GetUtcFormatTime() const
 {
-    auto wholeSeconds = static_cast<time_t>(m_currTime);
-    auto microseconds = static_cast<long>((m_currTime - wholeSeconds) * 1e6);
-    struct tm tstruct = *gmtime(&wholeSeconds);
-    char buf[64];
-    strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tstruct);
+    std::chrono::duration<double> duration(m_currTime);
+    auto wholeSeconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration - wholeSeconds);
 
-    char fullBuf[128];
-    snprintf(fullBuf, sizeof(fullBuf), "%s.%06ldZ", buf, microseconds);
-    return std::string(fullBuf);
+    std::chrono::system_clock::time_point tp(wholeSeconds);
+    std::time_t t = std::chrono::system_clock::to_time_t(tp);
+
+    std::ostringstream oss;
+    oss << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%S")
+        << "." << std::setfill('0') << std::setw(6) << microseconds.count() << "Z";
+
+    return oss.str();
 }
 
 void
