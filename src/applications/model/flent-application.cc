@@ -145,8 +145,6 @@ FlentApplication::DoInitialize()
 {
     NS_LOG_FUNCTION(this);
 
-    m_hostNode = GetHostNode(Ipv4Address::ConvertFrom(m_hostAddress));
-
     if (m_localBindAddress.IsInvalid())
     {
         Ptr<Ipv4L3Protocol> ip = m_node->GetObject<Ipv4L3Protocol>();
@@ -540,6 +538,8 @@ FlentApplication::StartApplication() // Called at time specified by Start
     }
     AddMetadata(m_output);
 
+    Ptr<Node> hostNode = GetHostNode(Ipv4Address::ConvertFrom(m_hostAddress));
+
     if (m_testName == "ping")
     {
         Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
@@ -612,7 +612,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[0] = CreateObject<PacketSink>();
         m_packetSinkUp[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[0]->SetAttribute("Local", AddressValue(sinkAddress));
-        m_hostNode->AddApplication(m_packetSinkUp[0]);
+        hostNode->AddApplication(m_packetSinkUp[0]);
         ApplicationContainer sinkApp;
         sinkApp.Add(m_packetSinkUp[0]);
         sinkApp.Start(m_startTime + Seconds(5));
@@ -625,7 +625,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
                                                   AddressValue(localBindAddr),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
-        m_hostNode->AddApplication(m_ping);
+        hostNode->AddApplication(m_ping);
         ApplicationContainer pingContainer;
         pingContainer.Add(m_ping);
         pingContainer.Start(m_startTime);
@@ -668,7 +668,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendDown[0]->SetAttribute("Remote", AddressValue(localBindAddress));
         m_bulkSendDown[0]->SetAttribute("MaxBytes", UintegerValue(0));
-        m_hostNode->AddApplication(m_bulkSendDown[0]);
+        hostNode->AddApplication(m_bulkSendDown[0]);
         ApplicationContainer sourceApp;
         sourceApp.Add(m_bulkSendDown[0]);
         sourceApp.Start(m_startTime + Seconds(5));
@@ -700,7 +700,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpserver[0] = CreateObject<UdpEchoServer>();
         m_udpserver[0]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[0]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
-        m_hostNode->AddApplication(m_udpserver[0]);
+        hostNode->AddApplication(m_udpserver[0]);
         ApplicationContainer apps;
         apps.Add(m_udpserver[0]);
         apps.Start(m_startTime);
@@ -730,7 +730,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpserver[1] = CreateObject<UdpEchoServer>();
         m_udpserver[1]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[1]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
-        m_hostNode->AddApplication(m_udpserver[1]);
+        hostNode->AddApplication(m_udpserver[1]);
         ApplicationContainer apps3;
         apps3.Add(m_udpserver[1]);
         apps3.Start(m_startTime);
@@ -758,7 +758,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_udpserver[2] = CreateObject<UdpEchoServer>();
         m_udpserver[2]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[2]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
-        m_hostNode->AddApplication(m_udpserver[2]);
+        hostNode->AddApplication(m_udpserver[2]);
         ApplicationContainer apps5;
         apps5.Add(m_udpserver[2]);
         apps5.Start(m_startTime);
@@ -816,7 +816,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[0]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendDown[0]->SetAttribute("Tos",
                                         UintegerValue(Ipv4Header::DscpType::DscpDefault << 2));
-        m_hostNode->AddApplication(m_bulkSendDown[0]);
+        hostNode->AddApplication(m_bulkSendDown[0]);
         ApplicationContainer sourceApp;
         sourceApp.Add(m_bulkSendDown[0]);
         sourceApp.Start(m_startTime + Seconds(5));
@@ -855,7 +855,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[0]->SetAttribute("Local", AddressValue(sinkAddressUp));
         m_packetSinkUp[0]->SetAttribute("Tos",
                                         UintegerValue(Ipv4Header::DscpType::DscpDefault << 2));
-        m_hostNode->AddApplication(m_packetSinkUp[0]);
+        hostNode->AddApplication(m_packetSinkUp[0]);
         ApplicationContainer sinkAppUp;
         sinkAppUp.Add(m_packetSinkUp[0]);
         sinkAppUp.Start(m_startTime + Seconds(5));
@@ -894,7 +894,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[1]->SetAttribute("Remote", AddressValue(localBindAddress2));
         m_bulkSendDown[1]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendDown[1]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS1 << 2));
-        m_hostNode->AddApplication(m_bulkSendDown[1]);
+        hostNode->AddApplication(m_bulkSendDown[1]);
         ApplicationContainer sourceApp2;
         sourceApp2.Add(m_bulkSendDown[1]);
         sourceApp2.Start(m_startTime + Seconds(5));
@@ -932,7 +932,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[1]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[1]->SetAttribute("Local", AddressValue(sinkAddressUp2));
         m_packetSinkUp[1]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS1 << 2));
-        m_hostNode->AddApplication(m_packetSinkUp[1]);
+        hostNode->AddApplication(m_packetSinkUp[1]);
         ApplicationContainer sinkAppUp2;
         sinkAppUp2.Add(m_packetSinkUp[1]);
         sinkAppUp2.Start(m_startTime + Seconds(5));
@@ -971,7 +971,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[2]->SetAttribute("Remote", AddressValue(localBindAddress3));
         m_bulkSendDown[2]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendDown[2]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS5 << 2));
-        m_hostNode->AddApplication(m_bulkSendDown[2]);
+        hostNode->AddApplication(m_bulkSendDown[2]);
         ApplicationContainer sourceApp3;
         sourceApp3.Add(m_bulkSendDown[2]);
         sourceApp3.Start(m_startTime + Seconds(5));
@@ -1009,7 +1009,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[2]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[2]->SetAttribute("Local", AddressValue(sinkAddressUp3));
         m_packetSinkUp[2]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_CS5 << 2));
-        m_hostNode->AddApplication(m_packetSinkUp[2]);
+        hostNode->AddApplication(m_packetSinkUp[2]);
         ApplicationContainer sinkAppUp3;
         sinkAppUp3.Add(m_packetSinkUp[2]);
         sinkAppUp3.Start(m_startTime + Seconds(5));
@@ -1047,7 +1047,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_bulkSendDown[3]->SetAttribute("Remote", AddressValue(localBindAddress4));
         m_bulkSendDown[3]->SetAttribute("MaxBytes", UintegerValue(0));
         m_bulkSendDown[3]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_EF << 2));
-        m_hostNode->AddApplication(m_bulkSendDown[3]);
+        hostNode->AddApplication(m_bulkSendDown[3]);
         ApplicationContainer sourceApp4;
         sourceApp4.Add(m_bulkSendDown[3]);
         sourceApp4.Start(m_startTime + Seconds(5));
@@ -1085,7 +1085,7 @@ FlentApplication::StartApplication() // Called at time specified by Start
         m_packetSinkUp[3]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[3]->SetAttribute("Local", AddressValue(sinkAddressUp4));
         m_packetSinkUp[3]->SetAttribute("Tos", UintegerValue(Ipv4Header::DscpType::DSCP_EF << 2));
-        m_hostNode->AddApplication(m_packetSinkUp[3]);
+        hostNode->AddApplication(m_packetSinkUp[3]);
         ApplicationContainer sinkAppUp4;
         sinkAppUp4.Add(m_packetSinkUp[3]);
         sinkAppUp4.Start(m_startTime + Seconds(5));

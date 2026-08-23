@@ -40,14 +40,10 @@ class SeqTsEchoHeader;
  * @ingroup applications
  * @defgroup flent FlentApplication
  *
- * This application provides a basic model of
- * the flent traffic generator. In practice,
- * Flent is a wrapper around three traffic
- * generation tools: netperf(for TCP),
- * iperf (for UDP) and ping (for ICMP).
- * Flent also provides output in a
- * JSON-formatted data file, and plotting
- * support via matplotlib.
+ * This application provides a basic model of the flent traffic generator. In practice,
+ * Flent is a wrapper around three traffic generation tools: netperf(for TCP),
+ * iperf (for UDP) and ping (for ICMP). Flent also provides output in a JSON-formatted
+ * data file, and plotting support via matplotlib.
  */
 
 /**
@@ -55,14 +51,20 @@ class SeqTsEchoHeader;
  *
  * @brief Flent is a network benchmarking tool
  *
- * This application provides a basic model of
- * the flent traffic generator. In practice,
- * Flent is a wrapper around three traffic
- * generation tools: netperf(for TCP),
- * iperf (for UDP) and ping (for ICMP).
- * Flent also provides output in a
- * JSON-formatted data file, and plotting
- * support via matplotlib.
+ * This application provides a basic model of the flent traffic generator. In practice,
+ * Flent is a wrapper around three traffic generation tools: netperf(for TCP),
+ * iperf (for UDP) and ping (for ICMP). Flent also provides output in a JSON-formatted 
+ * data file, and plotting support via matplotlib.
+ * 
+ * @warning  Note:
+ * Unlike standard ns-3 applications, FlentApplication automatically configures peer
+ * applications on the target host node during initialization. 
+ * 
+ * Because FlentApplication binds these peer applications to specific, 
+ * predefined socket ports (e.g., port 9020 for TCP uploads), you cannot target 
+ * the same host node with multiple Flent applications at the same time. Doing so 
+ * will cause the newly installed sinks to clash over the same ports, resulting in 
+ * socket binding conflicts and simulation failures.
  */
 
 class FlentApplication : public Application
@@ -88,13 +90,10 @@ class FlentApplication : public Application
   protected:
     /**
      * In this method, the following tasks are performed:
-     * 1) set the host node, which is derived from
-     *    the host address,
-     * 2) put the local bind address as the first
-     *    address of the first non-loopback interface
+     * 1) set the host node, which is derived from the host address.
+     * 2) put the local bind address as the first address of the first non-loopback interface
      *    (if not set by the user explicitly), and
-     * 3) override the application stop time from the
-     *    Length attribute set by the user.
+     * 3) override the application stop time from the Length attribute set by the user.
      *
      * @sa Application::DoInitialize
      */
@@ -212,7 +211,6 @@ class FlentApplication : public Application
     std::string m_testName;       //!< Flent test name
     Time m_t0;                    ///< Epoch anchor for output timestamps (see T0 attribute)
     bool m_useWallClockT0; ///< Use the wall clock instead of m_t0 (see UseWallClockT0 attribute)
-    Ptr<Node> m_hostNode;  //!< Host Node
     Address m_hostAddress; //!< Host address
     Address m_localBindAddress; //!< Local bind address
     std::string m_imageText;    //!< Text to be included in plot
