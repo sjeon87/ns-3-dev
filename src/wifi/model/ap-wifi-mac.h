@@ -394,6 +394,15 @@ class ApWifiMac : public WifiMac
     void ParseReportedStaInfo(const AssocReqRefVariant& assoc, Mac48Address from, uint8_t linkId);
 
     /**
+     * Take actions required when receiving a Disassociation frame or a (Re)Association frame from
+     * a STA that is already associated.
+     *
+     * @param aid the AID of the STA that sent a frame to disassociate or (re)associate
+     * @param isDisassoc true/false if a Disassociation/(Re)Association frame was received
+     */
+    void HandleDisassociationOrReassociation(uint16_t aid, bool isDisassoc);
+
+    /**
      * Process the EML Operating Mode Notification frame received from the given station on the
      * given link.
      *
@@ -775,6 +784,9 @@ class ApWifiMac : public WifiMac
     Time m_fdBeaconIntervalNon6GHz; //!< Time elapsing between a beacon and FILS Discovery (FD)
                                     //!< frame or between two FD frames on 2.4GHz and 5GHz links
     bool m_sendUnsolProbeResp;      //!< send unsolicited Probe Response instead of FILS Discovery
+
+    bool m_forwardFrameOnAssoc; //!< whether to forward a synthetic broadcast frame up when a STA
+                                //!< completes association, to update a learning bridge
 
     /// store value and timestamp for each Buffer Status Report
     struct BsrType

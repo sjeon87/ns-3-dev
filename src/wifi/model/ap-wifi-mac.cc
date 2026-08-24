@@ -30,6 +30,8 @@
 #include "ns3/eht-frame-exchange-manager.h"
 #include "ns3/he-configuration.h"
 #include "ns3/ht-configuration.h"
+#include "ns3/iana-ieee802-numbers.h"
+#include "ns3/llc-snap-header.h"
 #include "ns3/log.h"
 #include "ns3/packet.h"
 #include "ns3/pointer.h"
@@ -185,6 +187,16 @@ ApWifiMac::GetTypeId()
                           PointerValue(),
                           MakePointerAccessor(&ApWifiMac::GetGcrManager, &ApWifiMac::SetGcrManager),
                           MakePointerChecker<GcrManager>())
+            .AddAttribute(
+                "ForwardFrameOnAssoc",
+                "Whether the AP forwards a synthetic broadcast frame up when a STA completes "
+                "association. The frame has the STA address as source and causes a learning "
+                "bridge or switched distribution system connecting multiple APs to learn that "
+                "the STA is reachable through this AP. Enable this when such a distribution "
+                "system is used and immediate bridge learning after roaming is needed.",
+                BooleanValue(false),
+                MakeBooleanAccessor(&ApWifiMac::m_forwardFrameOnAssoc),
+                MakeBooleanChecker())
             .AddTraceSource("AssociatedSta",
                             "A station associated with this access point.",
                             MakeTraceSourceAccessor(&ApWifiMac::m_assocLogger),
@@ -1470,28 +1482,8 @@ ApWifiMac::EnqueueProbeResp(const MgtProbeResponseHeader& probeResp,
     hdr.SetAddr3(GetLink(linkId).feManager->GetAddress());
     hdr.SetDsNotFrom();
     hdr.SetDsNotTo();
-    Ptr<Packet> packet = Create<Packet>();
-    packet->AddHeader(probeResp);
 
-    if (!GetQosSupported())
-    {
-        GetTxop()->Queue(Create<WifiMpdu>(packet, hdr));
-    }
-    // "A QoS STA that transmits a Management frame determines access category used
-    // for medium access in transmission of the Management frame as follows
-    // (If dot11QMFActivated is false or not present)
-    // — If the Management frame is individually addressed to a non-QoS STA, category
-    //   AC_BE should be selected.
-    // — If category AC_BE was not selected by the previous step, category AC_VO
-    //   shall be selected." (Sec. 10.2.3.2 of 802.11-2020)
-    else if (!GetWifiRemoteStationManager(linkId)->GetQosSupported(to))
-    {
-        GetBEQueue()->Queue(Create<WifiMpdu>(packet, hdr));
-    }
-    else
-    {
-        GetVOQueue()->Queue(Create<WifiMpdu>(packet, hdr));
-    }
+    EnqueueMgt(hdr, {probeResp}, linkId);
 }
 
 MgtProbeResponseHeader
@@ -1807,28 +1799,7 @@ ApWifiMac::SendAssocResp(Mac48Address to, bool isReassoc, uint8_t linkId)
     auto linkIdStaAddrMap = GetLinkIdStaAddrMap(assoc, to, linkId);
     SetAid(assoc, linkIdStaAddrMap);
 
-    Ptr<Packet> packet = Create<Packet>();
-    packet->AddHeader(assoc);
-
-    if (!GetQosSupported())
-    {
-        GetTxop()->Queue(Create<WifiMpdu>(packet, hdr));
-    }
-    // "A QoS STA that transmits a Management frame determines access category used
-    // for medium access in transmission of the Management frame as follows
-    // (If dot11QMFActivated is false or not present)
-    // — If the Management frame is individually addressed to a non-QoS STA, category
-    //   AC_BE should be selected.
-    // — If category AC_BE was not selected by the previous step, category AC_VO
-    //   shall be selected." (Sec. 10.2.3.2 of 802.11-2020)
-    else if (!GetWifiRemoteStationManager(linkId)->GetQosSupported(to))
-    {
-        GetBEQueue()->Queue(Create<WifiMpdu>(packet, hdr));
-    }
-    else
-    {
-        GetVOQueue()->Queue(Create<WifiMpdu>(packet, hdr));
-    }
+    EnqueueMgt(hdr, {assoc}, linkId);
 }
 
 void
@@ -2190,10 +2161,12 @@ ApWifiMac::TxOk(Ptr<const WifiMpdu> mpdu)
             m_assocLogger(aid, hdr.GetAddr1());
         }
 
-        if (auto staMldAddress =
-                GetWifiRemoteStationManager(*linkId)->GetMldAddress(hdr.GetAddr1());
-            staMldAddress.has_value())
+        const auto staMldAddress =
+            GetWifiRemoteStationManager(*linkId)->GetMldAddress(hdr.GetAddr1());
+        if (staMldAddress.has_value())
         {
+            RestoreQueuesAfterReassoc(*staMldAddress);
+
             /**
              * The STA is affiliated with an MLD. From Sec. 35.3.7.1.4 of 802.11be D3.0:
              * When a link becomes enabled for a non-AP STA that is affiliated with a non-AP MLD
@@ -2222,6 +2195,33 @@ ApWifiMac::TxOk(Ptr<const WifiMpdu> mpdu)
 
             // Apply the negotiated TID-to-Link Mapping (if any) for DL direction
             ApplyTidLinkMapping(*staMldAddress, WifiDirection::DOWNLINK);
+        }
+        else
+        {
+            RestoreQueuesAfterReassoc(hdr.GetAddr1());
+        }
+
+        const auto acList = GetQosSupported() ? edcaAcIndices : std::list<AcIndex>{AC_BE_NQOS};
+        for (const auto& [id, link] : GetLinks())
+        {
+            for (const auto aci : acList)
+            {
+                GetTxopFor(aci)->StartAccessAfterEvent(id,
+                                                       Txop::DIDNT_HAVE_FRAMES_TO_TRANSMIT,
+                                                       Txop::CHECK_MEDIUM_BUSY);
+            }
+        }
+
+        if (m_forwardFrameOnAssoc)
+        {
+            LlcSnapHeader llc;
+            llc.SetType(iana::ieee802numbers::BRIDGE_LEARNING_ETHERTYPE);
+            auto packet = Create<Packet>();
+            packet->AddHeader(llc);
+
+            const auto from = staMldAddress.value_or(hdr.GetAddr1());
+            NS_LOG_DEBUG("Forwarding up broadcast packet with src address " << from);
+            ForwardUp(packet, from, Mac48Address::GetBroadcast());
         }
 
         if (auto extendedCapabilities =
@@ -2573,57 +2573,51 @@ ApWifiMac::Receive(Ptr<const WifiMpdu> mpdu, uint8_t linkId)
                     packet->PeekHeader(reassocReq);
                     frame = reassocReq;
                 }
+                // perform required actions in case the (Re)Association frame is sent by a STA that
+                // is already associated (to this end, also lookup the STA MLD address because an
+                // MLD may be reassociating with a distinct set of links)
+                auto addr = from;
+                auto id = linkId;
+                auto isAssoc = IsAssociated(from).has_value();
+
+                if (const auto& mle = hdr->IsAssocReq()
+                                          ? assocReq.template Get<MultiLinkElement>()
+                                          : reassocReq.template Get<MultiLinkElement>())
+                {
+                    // the STA performed an ML setup
+                    isAssoc = isAssoc ||
+                              IsAssociated(mle->GetCommonInfoBasic().m_mldMacAddress).has_value();
+                    for (const auto& [lId, link] : GetLinks())
+                    {
+                        if (const auto remoteAddr = link->stationManager->GetAffiliatedStaAddress(
+                                mle->GetCommonInfoBasic().m_mldMacAddress))
+                        {
+                            addr = *remoteAddr;
+                            id = lId;
+                            break;
+                        }
+                    }
+                }
+
+                if (isAssoc)
+                {
+                    HandleDisassociationOrReassociation(GetAssociationId(addr, id), false);
+                }
+
+                // reset remote station manager info
+                ResetRemoteInfo(addr, id);
+
                 if (ReceiveAssocRequest(frame, from, linkId) && GetNLinks() > 1)
                 {
                     ParseReportedStaInfo(frame, from, linkId);
                 }
+
                 SendAssocResp(hdr->GetAddr2(), hdr->IsReassocReq(), linkId);
                 return;
             }
             case WIFI_MAC_MGT_DISASSOCIATION: {
-                NS_LOG_DEBUG("Disassociation received from " << from);
-                const auto aid = GetAssociationId(from, linkId);
-                if (aid == SU_STA_ID)
-                {
-                    NS_LOG_DEBUG("Station " << from << " is not associated");
-                    return;
-                }
-                const auto address =
-                    GetWifiRemoteStationManager(linkId)->GetMldAddress(from).value_or(from);
-                m_deAssocLogger(aid, address);
-                if (m_gcrManager)
-                {
-                    m_gcrManager->NotifyStaDeassociated(address);
-                }
-
-                for (const auto& [id, lnk] : GetLinks())
-                {
-                    auto& link = GetLink(id);
-                    auto it = link.staList.find(aid);
-
-                    if (it == link.staList.cend())
-                    {
-                        continue; // STA has not setup this link
-                    }
-
-                    // a STA operating on this link is associated with the AP
-                    StaSwitchingToActiveModeOrDeassociated(address, id);
-                    link.staList.erase(it);
-                    m_aidToMldOrLinkAddress.erase(aid);
-                    GetWifiRemoteStationManager(id)->RecordDisassociated(address);
-                    if (GetWifiRemoteStationManager(id)->GetDsssSupported(address) &&
-                        !GetWifiRemoteStationManager(id)->GetErpOfdmSupported(address))
-                    {
-                        link.numNonErpStations--;
-                    }
-                    if (!GetWifiRemoteStationManager(id)->GetHtSupported(address) &&
-                        !GetWifiRemoteStationManager(id)->GetStationHe6GhzCapabilities(address))
-                    {
-                        link.numNonHtStations--;
-                    }
-                    UpdateShortSlotTimeEnabled(id);
-                    UpdateShortPreambleEnabled(id);
-                }
+                NS_LOG_INFO("Disassociation received from " << from);
+                HandleDisassociationOrReassociation(GetAssociationId(from, linkId), true);
                 return;
             }
             case WIFI_MAC_MGT_ACTION: {
@@ -2837,6 +2831,8 @@ ApWifiMac::ReceiveAssocRequest(const AssocReqRefVariant& assoc,
                 auto mldAddr = mle->GetMldMacAddress();
 
                 // The requested link mappings are valid and can be accepted; store them.
+                UpdateTidToLinkMapping(mldAddr, WifiDirection::DOWNLINK, {});
+                UpdateTidToLinkMapping(mldAddr, WifiDirection::UPLINK, {});
                 UpdateTidToLinkMapping(mldAddr, WifiDirection::DOWNLINK, dlMapping);
                 UpdateTidToLinkMapping(mldAddr, WifiDirection::UPLINK, ulMapping);
             }
@@ -2976,6 +2972,77 @@ ApWifiMac::ParseReportedStaInfo(const AssocReqRefVariant& assoc, Mac48Address fr
     };
 
     std::visit(recvMle, assoc);
+}
+
+void
+ApWifiMac::HandleDisassociationOrReassociation(uint16_t aid, bool isDisassoc)
+{
+    NS_LOG_FUNCTION(this << aid << (isDisassoc ? "Disassociation" : "(Re)Association"));
+
+    const auto address = GetMldOrLinkAddressByAid(aid);
+
+    if (!address.has_value())
+    {
+        NS_LOG_DEBUG("Station with AID=" << aid << " is not associated");
+        return;
+    }
+
+    if (isDisassoc)
+    {
+        m_deAssocLogger(aid, *address);
+        if (m_gcrManager)
+        {
+            m_gcrManager->NotifyStaDeassociated(*address);
+        }
+    }
+
+    const auto acList = GetQosSupported() ? edcaAcIndices : std::list<AcIndex>{AC_BE_NQOS};
+
+    std::set<uint8_t> setupLinks;
+
+    for (const auto& [id, lnk] : GetLinks())
+    {
+        auto& link = GetLink(id);
+        auto it = link.staList.find(aid);
+
+        if (it == link.staList.cend())
+        {
+            continue; // STA has not setup this link
+        }
+
+        setupLinks.insert(id);
+
+        // a STA operating on this link is associated with the AP
+        StaSwitchingToActiveModeOrDeassociated(*address, id);
+
+        if (GetWifiRemoteStationManager(id)->GetDsssSupported(*address) &&
+            !GetWifiRemoteStationManager(id)->GetErpOfdmSupported(*address))
+        {
+            link.numNonErpStations--;
+        }
+        if (!GetWifiRemoteStationManager(id)->GetHtSupported(*address) &&
+            !GetWifiRemoteStationManager(id)->GetStationHe6GhzCapabilities(*address))
+        {
+            link.numNonHtStations--;
+        }
+        UpdateShortSlotTimeEnabled(id);
+        UpdateShortPreambleEnabled(id);
+
+        link.staList.erase(it);
+        m_aidToMldOrLinkAddress.erase(aid);
+    }
+
+    HandleQueuesUponAssocStateChanged(*address, setupLinks, isDisassoc);
+
+    if (isDisassoc)
+    {
+        for (const auto id : setupLinks)
+        {
+            GetWifiRemoteStationManager(id)->RecordDisassociated(*address);
+        }
+
+        DestroyAllBlockAckAgreements(*address);
+    }
 }
 
 void
