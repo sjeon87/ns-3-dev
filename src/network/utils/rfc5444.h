@@ -6,7 +6,9 @@
 #define RFC5444_H
 
 #include "ipv4-address.h"
+#include "ipv4-network-address.h"
 #include "ipv6-address.h"
+#include "ipv6-network-address.h"
 
 #include "ns3/buffer.h"
 #include "ns3/header.h"
@@ -30,7 +32,7 @@ namespace ns3
  * Packet/Message Format, RFC 5444: a packet contains zero or more packet
  * TLVs and zero or more messages; a message contains zero or more message
  * TLVs and zero or more address blocks; an address block contains addresses,
- * optional prefix lengths, and zero or more address TLVs.
+ * each carrying a prefix length, and zero or more address TLVs.
  *
  * These classes supersede the PacketBB (Pbb*) classes, which carry the
  * pre-publication draft name of RFC 5444 and a 2009-era API.
@@ -264,20 +266,14 @@ class Rfc5444AddressTlv : public Rfc5444Tlv
     std::optional<uint8_t> GetIndexStop() const;
 
     /**
-     * Set or clear the multivalue flag (RFC 5444 Section 5.4.2).
+     * Whether this TLV is multivalue (RFC 5444 Section 5.4.2).
      *
      * If set, the value carries one equal-length entry for each covered
-     * address, and an index range must be present at serialization time. If
-     * cleared, the single value applies to each covered address in its
-     * entirety. Most users should use SetValues()
-     * instead, which manages the flag, index range, and value layout
-     * together.
+     * address; if cleared, the single value applies to each covered address
+     * in its entirety. The flag is not set directly: SetValues() sets it,
+     * ClearIndexRange() clears it, and deserialization takes it from the
+     * wire.
      *
-     * @param multivalue Whether this TLV is multivalue.
-     */
-    void SetMultivalue(bool multivalue);
-
-    /**
      * @return Whether this TLV is multivalue.
      */
     bool IsMultivalue() const;
@@ -369,9 +365,17 @@ class Rfc5444AddressTlv : public Rfc5444Tlv
  *
  * An address block and its associated address TLVs (RFC 5444 Section 5.3).
  *
+ * Each address is stored together with its prefix length as an
+ * Ipv4NetworkAddress or Ipv6NetworkAddress; a plain Ipv4Address or
+ * Ipv6Address converts implicitly, taking the full address length as its
+ * prefix length.
+ *
  * Head/tail/zero-tail address compression and single/multiple prefix-length
- * encoding are wire-format details handled transparently during
- * serialization; this class always presents fully expanded addresses.
+ * encoding are wire-format details handled transparently: serialization
+ * emits no prefix-length octets when every prefix length is the full address
+ * length, a single one when all are equal, and one per address otherwise;
+ * deserialization presents an absent prefix length as the full address
+ * length. This class always presents fully expanded addresses.
  *
  * @tparam AddrT The address family of this block: Ipv4Address or Ipv6Address.
  */
@@ -382,37 +386,25 @@ class Rfc5444AddressBlock
                   "Rfc5444AddressBlock supports Ipv4Address and Ipv6Address only");
 
   public:
+    /// The element type of Addresses(): an address paired with its prefix length.
+    using NetworkAddress = std::
+        conditional_t<std::is_same_v<AddrT, Ipv4Address>, Ipv4NetworkAddress, Ipv6NetworkAddress>;
+
     /**
      * Access the addresses in this block.
      *
-     * @return A reference to the vector of addresses.
+     * @return A reference to the vector of addresses, each paired with its
+     *         prefix length.
      */
-    std::vector<AddrT>& Addresses();
+    std::vector<NetworkAddress>& Addresses();
 
     /**
      * Access the addresses in this block (const version).
      *
-     * @return A const reference to the vector of addresses.
+     * @return A const reference to the vector of addresses, each paired with
+     *         its prefix length.
      */
-    const std::vector<AddrT>& Addresses() const;
-
-    /**
-     * Access the prefix lengths in this block.
-     *
-     * The vector must either be empty (no prefix lengths) or contain exactly
-     * one prefix length per address at serialization time. If all entries are
-     * equal, the single-prefix-length wire encoding is chosen automatically.
-     *
-     * @return A reference to the vector of prefix lengths.
-     */
-    std::vector<uint8_t>& PrefixLengths();
-
-    /**
-     * Access the prefix lengths in this block (const version).
-     *
-     * @return A const reference to the vector of prefix lengths.
-     */
-    const std::vector<uint8_t>& PrefixLengths() const;
+    const std::vector<NetworkAddress>& Addresses() const;
 
     /**
      * Access the address TLVs associated with this block.
@@ -474,9 +466,8 @@ class Rfc5444AddressBlock
     bool operator==(const Rfc5444AddressBlock& other) const = default;
 
   private:
-    std::vector<AddrT> m_addresses;        //!< Addresses
-    std::vector<uint8_t> m_prefixLengths;  //!< Prefix lengths
-    std::vector<Rfc5444AddressTlv> m_tlvs; //!< Address TLVs
+    std::vector<NetworkAddress> m_addresses; //!< Addresses with prefix lengths
+    std::vector<Rfc5444AddressTlv> m_tlvs;   //!< Address TLVs
 };
 
 /**
