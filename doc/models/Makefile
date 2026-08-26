@@ -59,6 +59,7 @@ SOURCES = \
 	$(SRC)/network/doc/simple.rst \
 	$(SRC)/network/doc/queue.rst \
 	$(SRC)/network/doc/queue-limits.rst \
+	$(SRC)/network/doc/rfc5444.rst \
 	$(SRC)/nix-vector-routing/doc/nix-vector-routing.rst \
 	$(SRC)/internet/doc/internet-stack.rst \
 	$(SRC)/internet/doc/ipv4.rst \

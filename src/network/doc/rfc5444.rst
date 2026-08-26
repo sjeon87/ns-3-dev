@@ -1,0 +1,106 @@
+.. include:: replace.txt
+.. highlight:: cpp
+
+RFC 5444 MANET Packet/Message Format
+------------------------------------
+
+This chapter describes the |ns3| implementation of RFC 5444, the Generalized
+Mobile Ad Hoc Network (MANET) Packet/Message Format, found in
+``src/network/utils/rfc5444.{h,cc}``.
+
+Model Description
+*****************
+
+RFC 5444 defines a common wire format shared by MANET routing protocols such
+as NHDP (RFC 6130), OLSRv2 (RFC 7181), and AODVv2.  A packet contains zero or
+more packet TLVs and zero or more messages; a message contains zero or more
+message TLVs and zero or more address blocks; an address block contains
+addresses, each carrying a prefix length, and zero or more address TLVs.
+
+The implementation provides one class per element of that grammar:
+
+* ``Rfc5444Packet``, an ``ns3::Header`` used by value with
+  ``Packet::AddHeader()`` and ``Packet::RemoveHeader()``;
+* ``Rfc5444Message<AddrT>``, a class template over the address family, with
+  aliases ``Rfc5444MessageIpv4`` and ``Rfc5444MessageIpv6``; a packet may
+  carry messages of both families, held as a ``std::variant``;
+* ``Rfc5444AddressBlock<AddrT>``, holding ``Ipv4NetworkAddress`` or
+  ``Ipv6NetworkAddress`` elements (an address paired with its prefix
+  length); head/tail address compression and prefix-length encoding are
+  handled transparently during serialization;
+* ``Rfc5444Tlv`` and ``Rfc5444AddressTlv``, where the latter adds the index
+  range and multivalue machinery of RFC 5444 Section 5.4.2 (one value per
+  covered address), the workhorse of per-neighbor protocol state.
+
+All of these are value types: aggregates expose their contents as
+``std::vector`` through accessors (``Tlvs()``, ``Messages()``,
+``Addresses()``, ``AddressBlocks()``), and every optional protocol field is a
+``std::optional``.  ``Rfc5444Packet::Deserialize()`` validates every length
+field against the remaining buffer and rejects malformed input (RFC 5444
+Section 5.5) by returning zero rather than asserting.
+
+These classes supersede the PacketBB (``Pbb*``) classes of
+``src/network/utils/packetbb.h``, which carry the pre-publication draft name
+of RFC 5444.
+
+Scope and Limitations
+=====================
+
+The model is a codec: it produces and consumes the RFC 5444 octet format.
+The multiplexing architecture of RFC 5498 (several protocols sharing one
+packet stream on the MANET port) is left to users of the classes.
+
+References
+==========
+
+* :rfc:`5444`
+* :rfc:`5498`
+* :rfc:`6130`
+* :rfc:`7181`
+
+Usage
+*****
+
+Include ``ns3/rfc5444.h`` and build messages bottom-up::
+
+    Rfc5444AddressBlockIpv4 neighbors;
+    neighbors.Addresses() = {Ipv4Address("10.0.0.2"), Ipv4Address("10.0.0.3")};
+
+    Rfc5444AddressTlv linkStatus;
+    linkStatus.SetType(3);            // LINK_STATUS (RFC 6130)
+    linkStatus.SetValues(0, {{2},     // one octet per address: HEARD
+                             {1}});   //                        SYMMETRIC
+    neighbors.Tlvs().push_back(linkStatus);
+
+    Rfc5444MessageIpv4 hello;
+    hello.SetType(1);                 // HELLO (RFC 6130)
+    hello.SetHopLimit(1);
+    hello.AddressBlocks().push_back(neighbors);
+
+    Rfc5444Packet packet;
+    packet.Messages().push_back(hello);
+
+    Ptr<Packet> p = Create<Packet>();
+    p->AddHeader(packet);
+
+On reception, remove the header and inspect the message variants with
+``std::get_if``; per-address TLV values are read back with
+``Rfc5444AddressTlv::GetValueForIndex()``.
+
+Examples
+========
+
+``src/network/examples/rfc5444-example.cc`` builds a complete AODVv2 Route
+Request (RREQ) message following draft-perkins-manet-aodvv2-06, prints its
+serialized octets, and parses it back, illustrating the steps a MANET
+routing protocol implementation performs on both the sending and receiving
+side.
+
+Validation
+**********
+
+The ``rfc5444`` test suite serializes and deserializes each element of the
+grammar against reference byte vectors, including the full vector corpus
+carried over from the PacketBB test suite, and checks the rejection of
+malformed input (truncations and every flag combination that RFC 5444
+forbids).

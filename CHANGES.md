@@ -22,6 +22,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (wifi) Added a new `ForceDisassociation` attribute to `StaWifiMac` to force a non-AP STA to disassociate from the current AP, which can be optionally notified through a Disassociation frame.
 
 * Added the `nlohmann/json` library to enable JSON parsing and serialization within ns-3.
+* (network) Added an implementation of RFC 5444, the Generalized MANET Packet/Message Format: `Rfc5444Packet`, `Rfc5444Message`, `Rfc5444AddressBlock`, `Rfc5444Tlv`, and `Rfc5444AddressTlv` in `rfc5444.h`.
 * (network) `NetDevice` gained a `GetPaddingThreshold()` virtual method with a default implementation (returning 0) suitable for almost all existing devices. Payloads below this length may be padded by the link, with the padding delivered to the receiver as data. `CsmaNetDevice` and `FdNetDevice` override it (46 octets for Ethernet framing), and `SixLowPanNetDevice` uses it as a floor for its `CompressionThreshold` attribute so that small packets are sent uncompressed on padding links.
 * (zigbee) It is now possible to send ZDO commands. The inclusion of ZDO in the Zigbee stack is optional and can be removed via helper configuration.
 

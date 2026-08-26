@@ -37,6 +37,7 @@ been tested on Linux. As of this release, the latest known version to work with 
 ### New user-visible features
 
 - (network) IANA protocol and link types are now centralized in network module headers.
+- (network) !2975 Added an implementation of RFC 5444, the Generalized MANET Packet/Message Format, with model documentation and an AODVv2-flavored example program.
 
 - Added support for `nlohmann/json`, a header-only C++ third-party library for JSON parsing and serialization.
 - (zigbee) !2964 Added basic support for Zigbee Device Object (ZDO)
