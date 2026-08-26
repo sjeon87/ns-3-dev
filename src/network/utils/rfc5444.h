@@ -1,5 +1,10 @@
 /*
- * SPDX-License-Identifier: NIST-Software
+ * Copyright (c) 2009 Drexel University
+ *
+ * SPDX-License-Identifier: GPL-2.0-only AND NIST-Software
+ *
+ * Authors: Tom Wambold <tom5760@gmail.com> (original ns-3 PacketBB implementation and tests)
+ *          Tom Henderson <tomh@tomh.org> (rewrite assisted by Claude Fable 5)
  */
 
 #ifndef RFC5444_H
@@ -123,7 +128,10 @@ class Rfc5444Tlv
     /**
      * Set the value of this TLV.
      *
-     * @param value The value octets; ownership is taken by this TLV.
+     * The octets are serialized verbatim; the encoding of any multi-octet
+     * quantities within is defined by the protocol using the TLV.
+     *
+     * @param value The value octets.
      */
     void SetValue(std::vector<uint8_t> value);
 
@@ -135,9 +143,10 @@ class Rfc5444Tlv
     void SetValue(uint8_t value);
 
     /**
-     * Set a two-octet value on this TLV, in network byte order.
+     * Set a two-octet value on this TLV.
      *
-     * @param value The value.
+     * @param value The value, in host byte order; it is serialized in
+     *        network byte order.
      */
     void SetValue(uint16_t value);
 
@@ -164,9 +173,10 @@ class Rfc5444Tlv
     std::optional<uint8_t> GetValueAsUint8() const;
 
     /**
-     * Get the value of this TLV as a two-octet quantity in network byte order.
+     * Get the value of this TLV as a two-octet quantity.
      *
-     * @return The value, if a value of exactly two octets is present.
+     * @return The value, in host byte order, if a value of exactly two
+     *         octets is present.
      */
     std::optional<uint16_t> GetValueAsUint16() const;
 

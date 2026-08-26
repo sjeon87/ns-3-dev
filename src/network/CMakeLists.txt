@@ -68,6 +68,7 @@ set(source_files
     utils/queue-size.cc
     utils/queue.cc
     utils/radiotap-header.cc
+    utils/rfc5444.cc
     utils/simple-channel.cc
     utils/simple-net-device.cc
     utils/sll-header.cc
@@ -153,6 +154,7 @@ set(header_files
     utils/queue-size.h
     utils/queue.h
     utils/radiotap-header.h
+    utils/rfc5444.h
     utils/sequence-number.h
     utils/simple-channel.h
     utils/simple-net-device.h
@@ -181,6 +183,7 @@ build_lib(
     test/packetbb-test-suite.cc
     test/pcap-explicit-filename-test-suite.cc
     test/pcap-file-test-suite.cc
+    test/rfc5444-test-suite.cc
     test/sequence-number-test-suite.cc
     test/simple-net-device-test.cc
     test/test-data-rate.cc
