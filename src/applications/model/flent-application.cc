@@ -39,34 +39,6 @@ NS_LOG_COMPONENT_DEFINE("FlentApplication");
 
 NS_OBJECT_ENSURE_REGISTERED(FlentApplication);
 
-namespace
-{
-
-/**
- * @brief sink for packet transmissions.
- * @param counter counter of bytes sent
- * @param packet Pointer to packet sent
- */
-void
-TraceSentPacket(uint32_t* counter, Ptr<const Packet> packet)
-{
-    *counter += packet->GetSize();
-}
-
-/**
- * @brief sink for packet received.
- * @param counter counter of bytes received
- * @param packet Pointer to packet received
- * @param address Address of the sender
- */
-void
-TraceReceivedPacket(uint32_t* counter, Ptr<const Packet> packet, const Address& address)
-{
-    *counter += packet->GetSize();
-}
-
-} // anonymous namespace
-
 TypeId
 FlentApplication::GetTypeId()
 {
@@ -340,6 +312,18 @@ FlentApplication::GetHostNode(Ipv4Address hostAddress) const
     }
 
     return nullptr;
+}
+
+void
+FlentApplication::TraceSentPacket(uint32_t* counter, Ptr<const Packet> packet)
+{
+    *counter += packet->GetSize();
+}
+
+void
+FlentApplication::TraceReceivedPacket(uint32_t* counter, Ptr<const Packet> packet, const Address& address)
+{
+    *counter += packet->GetSize();
 }
 
 void
@@ -638,7 +622,7 @@ FlentApplication::StartApplication()
         m_output["raw_values"]["TCP upload"].push_back(data);
         m_bulkSendUp[0]->TraceConnectWithoutContext(
             "Tx",
-            MakeBoundCallback(&TraceSentPacket, &m_bytesSent[0]));
+            MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[0]));
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingUpload,
                             this,
@@ -680,7 +664,7 @@ FlentApplication::StartApplication()
         m_packetSinkDown[0]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[0]->TraceConnectWithoutContext(
             "Rx",
-            MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[0]));
+            MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[0]));
         m_output["results"]["TCP download"] = nlohmann::json::array();
         m_output["raw_values"]["TCP download"] = nlohmann::json::array();
         nlohmann::json data;
@@ -809,7 +793,7 @@ FlentApplication::StartApplication()
         m_packetSinkDown[0]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[0]->TraceConnectWithoutContext(
             "Rx",
-            MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[0]));
+            MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[0]));
         m_output["results"]["TCP download BE"] = nlohmann::json::array();
         m_output["raw_values"]["TCP download BE"] = nlohmann::json::array();
         nlohmann::json data;
@@ -852,7 +836,7 @@ FlentApplication::StartApplication()
         m_output["raw_values"]["TCP upload BE"].push_back(data_up);
         m_bulkSendUp[0]->TraceConnectWithoutContext(
             "Tx",
-            MakeBoundCallback(&TraceSentPacket, &m_bytesSent[0]));
+            MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[0]));
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingUpload,
                             this,
@@ -880,7 +864,7 @@ FlentApplication::StartApplication()
         m_packetSinkDown[1]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[1]->TraceConnectWithoutContext(
             "Rx",
-            MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[1]));
+            MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[1]));
         m_output["results"]["TCP download BK"] = nlohmann::json::array();
         m_output["raw_values"]["TCP download BK"] = nlohmann::json::array();
         nlohmann::json data2;
@@ -922,7 +906,7 @@ FlentApplication::StartApplication()
         m_output["raw_values"]["TCP upload BK"].push_back(data_up2);
         m_bulkSendUp[1]->TraceConnectWithoutContext(
             "Tx",
-            MakeBoundCallback(&TraceSentPacket, &m_bytesSent[1]));
+            MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[1]));
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingUpload,
                             this,
@@ -949,7 +933,7 @@ FlentApplication::StartApplication()
         m_packetSinkDown[2]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[2]->TraceConnectWithoutContext(
             "Rx",
-            MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[2]));
+            MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[2]));
         m_output["results"]["TCP download CS5"] = nlohmann::json::array();
         m_output["raw_values"]["TCP download CS5"] = nlohmann::json::array();
         nlohmann::json data3;
@@ -991,7 +975,7 @@ FlentApplication::StartApplication()
         m_output["raw_values"]["TCP upload CS5"].push_back(data_up3);
         m_bulkSendUp[2]->TraceConnectWithoutContext(
             "Tx",
-            MakeBoundCallback(&TraceSentPacket, &m_bytesSent[2]));
+            MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[2]));
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingUpload,
                             this,
@@ -1017,7 +1001,7 @@ FlentApplication::StartApplication()
         m_packetSinkDown[3]->SetStopTime(m_stopTime - Seconds(5));
         m_packetSinkDown[3]->TraceConnectWithoutContext(
             "Rx",
-            MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[3]));
+            MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[3]));
         m_output["results"]["TCP download EF"] = nlohmann::json::array();
         m_output["raw_values"]["TCP download EF"] = nlohmann::json::array();
         nlohmann::json data4;
@@ -1059,7 +1043,7 @@ FlentApplication::StartApplication()
         m_output["raw_values"]["TCP upload EF"].push_back(data_up4);
         m_bulkSendUp[3]->TraceConnectWithoutContext(
             "Tx",
-            MakeBoundCallback(&TraceSentPacket, &m_bytesSent[3]));
+            MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[3]));
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingUpload,
                             this,
@@ -1095,7 +1079,7 @@ FlentApplication::StopApplication() // Called at time specified by Stop
             MakeCallback(&FlentApplication::TraceReceivedPing, this));
         m_bulkSendUp[0]->TraceDisconnectWithoutContext(
             "Tx",
-            MakeBoundCallback(&TraceSentPacket, &m_bytesSent[0]));
+            MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[0]));
     }
     else if (m_testName == "tcp_download")
     {
@@ -1104,7 +1088,7 @@ FlentApplication::StopApplication() // Called at time specified by Stop
             MakeCallback(&FlentApplication::TraceReceivedPing, this));
         m_packetSinkDown[0]->TraceDisconnectWithoutContext(
             "Rx",
-            MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[0]));
+            MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[0]));
     }
     else if (m_testName == "rrul")
     {
@@ -1124,10 +1108,10 @@ FlentApplication::StopApplication() // Called at time specified by Stop
         {
             m_packetSinkDown[i]->TraceDisconnectWithoutContext(
                 "Rx",
-                MakeBoundCallback(&TraceReceivedPacket, &m_bytesReceived[i]));
+                MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[i]));
             m_bulkSendUp[i]->TraceDisconnectWithoutContext(
                 "Tx",
-                MakeBoundCallback(&TraceSentPacket, &m_bytesSent[i]));
+                MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[i]));
         }
     }
 

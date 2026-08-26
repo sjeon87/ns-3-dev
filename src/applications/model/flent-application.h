@@ -110,6 +110,21 @@ class FlentApplication : public Application
     void StopApplication() override;  // Called at time specified by Stop
 
     /**
+     * @brief sink for packet transmissions.
+     * @param counter counter of bytes sent
+     * @param packet Pointer to packet sent
+     */
+    static void TraceSentPacket(uint32_t* counter, Ptr<const Packet> packet);
+
+    /**
+     * @brief sink for packet received.
+     * @param counter counter of bytes received
+     * @param packet Pointer to packet received
+     * @param address Address of the sender
+     */
+    static void TraceReceivedPacket(uint32_t* counter, Ptr<const Packet> packet, const Address& address);
+
+    /**
      * @brief Iterates through the node list and finds the node
      * pointer for the given hostAddress
      * @param [in] hostAddress host node IP
