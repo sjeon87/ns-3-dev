@@ -300,6 +300,23 @@ class SixLowPanNetDevice : public NetDevice
                            PacketType packetType);
 
     /**
+     * @brief Receives plain (non-6LoWPAN) IPv6 packets from the underlying NetDevice
+     * and forwards them unmodified to the upper layer, allowing 6LoWPAN and plain
+     * IPv6 to coexist on the same link (e.g., Ethernet or WiFi).
+     * @param [in] device The NetDevice the packet was received from.
+     * @param [in] packet The received packet.
+     * @param [in] protocol The protocol (should be IPv6 EtherType).
+     * @param [in] source The source address.
+     * @param [in] destination The destination address.
+     * @param [in] packetType The packet kind (e.g., HOST, BROADCAST, etc.).
+     */
+    void ReceivePlainIpv6FromDevice(Ptr<NetDevice> device,
+                                    Ptr<const Packet> packet,
+                                    uint16_t protocol,
+                                    const Address& source,
+                                    const Address& destination,
+                                    PacketType packetType);
+    /**
      * @param [in] packet Packet sent from above down to Network Device.
      * @param [in] source Source mac address (only used if doSendFrom is true, i.e., "MAC
      * spoofing").
@@ -792,6 +809,8 @@ class SixLowPanNetDevice : public NetDevice
     bool m_omitUdpChecksum; //!< Omit UDP checksum in NC1 encoding.
 
     uint32_t m_compressionThreshold; //!< Minimum L2 payload size.
+    bool m_allowPlainIpv6; //!< Send below-threshold packets as genuine plain IPv6 (0x86DD)
+                           //!< instead of 6LoWPAN-framed uncompressed IPv6.
 
     Ptr<UniformRandomVariable> m_rng; //!< Rng for the fragments tag.
 
