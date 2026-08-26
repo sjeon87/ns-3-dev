@@ -158,7 +158,7 @@ Adaptive Flooding adapts the re-broadcast rate to the observed network activity 
 * A pending packet that has been received ``DuplicateThreshold`` times in total is discarded at transmit time instead of being forwarded: enough neighbours already covered it, so this discard reacts to the observed redundancy itself rather than to the clock. A zero threshold disables the check.
 * The timer stops when the queue drains (everything forwarded or discarded), so the next arrival restarts it from the minimum interval. Arrivals never reset a running timer.
 
-The policy exposes a ``PendingQueueSize`` traced value and ``PacketDiscarded`` / ``PacketSuppressed`` trace sources to observe the queue occupancy, the deadline discards and the redundancy discards.
+The adaptive flooding policy exposes a ``PendingQueueSize`` traced value and ``PacketDiscarded`` / ``PacketSuppressed`` trace sources to observe the queue occupancy, the deadline discards and the redundancy discards.
 
 The interval bounds are set with ``MinInterval`` (Imin) and ``Doublings`` (Imax = MinInterval times 2 to the power Doublings). Setting ``RedundancyConstant`` to zero disables suppression, reducing the behaviour to jittered flooding.
 
