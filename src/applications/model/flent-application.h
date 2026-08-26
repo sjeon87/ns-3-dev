@@ -53,17 +53,17 @@ class SeqTsEchoHeader;
  *
  * This application provides a basic model of the flent traffic generator. In practice,
  * Flent is a wrapper around three traffic generation tools: netperf(for TCP),
- * iperf (for UDP) and ping (for ICMP). Flent also provides output in a JSON-formatted 
+ * iperf (for UDP) and ping (for ICMP). Flent also provides output in a JSON-formatted
  * data file, and plotting support via matplotlib.
- * 
+ *
  * @warning  Note:
  * Unlike standard ns-3 applications, FlentApplication automatically configures peer
- * applications on the target host node during initialization. 
- * 
- * Because FlentApplication binds these peer applications to specific, 
- * predefined socket ports (e.g., port 9020 for TCP uploads), you cannot target 
- * the same host node with multiple Flent applications at the same time. Doing so 
- * will cause the newly installed sinks to clash over the same ports, resulting in 
+ * applications on the target host node during initialization.
+ *
+ * Because FlentApplication binds these peer applications to specific,
+ * predefined socket ports (e.g., port 9020 for TCP uploads), you cannot target
+ * the same host node with multiple Flent applications at the same time. Doing so
+ * will cause the newly installed sinks to clash over the same ports, resulting in
  * socket binding conflicts and simulation failures.
  */
 
@@ -122,7 +122,9 @@ class FlentApplication : public Application
      * @param packet Pointer to packet received
      * @param address Address of the sender
      */
-    static void TraceReceivedPacket(uint32_t* counter, Ptr<const Packet> packet, const Address& address);
+    static void TraceReceivedPacket(uint32_t* counter,
+                                    Ptr<const Packet> packet,
+                                    const Address& address);
 
     /**
      * @brief Iterates through the node list and finds the node
@@ -227,28 +229,33 @@ class FlentApplication : public Application
     Time m_t0;                    ///< Epoch anchor for output timestamps (see T0 attribute)
     bool m_useWallClockT0; ///< Use the wall clock instead of m_t0 (see UseWallClockT0 attribute)
     Address m_hostAddress; //!< Host address
-    Address m_localBindAddress; //!< Local bind address
-    std::string m_imageText;    //!< Text to be included in plot
-    Time m_stepSize;            //!< Measurement data point step size
+    Address m_localBindAddress;                //!< Local bind address
+    std::string m_imageText;                   //!< Text to be included in plot
+    Time m_stepSize;                           //!< Measurement data point step size
     std::array<uint32_t, 4> m_bytesSent{};     //!< sent data counters
     std::array<uint32_t, 4> m_bytesReceived{}; //!< receive data counters
 
     /* Applications */
-    Ptr<Ping> m_ping;                           //!< Ping Application for latency measurement (ping, rrul tests)
+    Ptr<Ping> m_ping; //!< Ping Application for latency measurement (ping, rrul tests)
 
-    // The RRUL (Realtime Response Under Load) test specification (rrul.conf from real flent) defines 
-    // 4 concurrent TCP streams in each direction, assigned to different QoS markings (BE, BK, CS5, EF). 
-    // This helps test how different traffic classes are handled when the link is under heavy load
-    std::array<Ptr<PacketSink>, 4> m_packetSinkUp;          //!< PacketSink Applications for Upload flows (tcp_upload, rrul tests)
-    std::array<Ptr<PacketSink>, 4> m_packetSinkDown;        //!< PacketSink Applications for Download flows (tcp_download, rrul tests)
-    std::array<Ptr<BulkSendApplication>, 4> m_bulkSendUp;   //!< BulkSend Applications for Upload flows (tcp_upload, rrul tests)
-    std::array<Ptr<BulkSendApplication>, 4> m_bulkSendDown; //!< BulkSend Applications for Download flows (tcp_download, rrul tests)
+    // The RRUL (Realtime Response Under Load) test specification (rrul.conf from real flent)
+    // defines 4 concurrent TCP streams in each direction, assigned to different QoS markings (BE,
+    // BK, CS5, EF). This helps test how different traffic classes are handled when the link is
+    // under heavy load
+    std::array<Ptr<PacketSink>, 4>
+        m_packetSinkUp; //!< PacketSink Applications for Upload flows (tcp_upload, rrul tests)
+    std::array<Ptr<PacketSink>, 4>
+        m_packetSinkDown; //!< PacketSink Applications for Download flows (tcp_download, rrul tests)
+    std::array<Ptr<BulkSendApplication>, 4>
+        m_bulkSendUp; //!< BulkSend Applications for Upload flows (tcp_upload, rrul tests)
+    std::array<Ptr<BulkSendApplication>, 4>
+        m_bulkSendDown; //!< BulkSend Applications for Download flows (tcp_download, rrul tests)
 
     // The RRUL specification defines 3 UDP ping streams marked with different QoS
     // markings (EF, BK, and BE) to measure latency and jitter for different
     // traffic classes under heavy load.
-    std::array<Ptr<UdpEchoServer>, 3> m_udpserver;          //!< UdpEchoServer Applications
-    std::array<Ptr<UdpEchoClient>, 3> m_udpclient;          //!< UdpEchoClient Applications
+    std::array<Ptr<UdpEchoServer>, 3> m_udpserver; //!< UdpEchoServer Applications
+    std::array<Ptr<UdpEchoClient>, 3> m_udpclient; //!< UdpEchoClient Applications
 };
 
 } // namespace ns3

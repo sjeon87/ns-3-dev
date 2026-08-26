@@ -121,7 +121,7 @@ FlentApplication::DoInitialize()
             for (uint32_t deviceId = 0; deviceId < m_node->GetNDevices(); deviceId++)
             {
                 Ptr<NetDevice> device = m_node->GetDevice(deviceId);
-                
+
                 if (DynamicCast<LoopbackNetDevice>(device))
                 {
                     continue;
@@ -175,14 +175,15 @@ FlentApplication::GetUtcFormatTime() const
 {
     std::chrono::duration<double> duration(m_currTime);
     auto wholeSeconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration - wholeSeconds);
+    auto microseconds =
+        std::chrono::duration_cast<std::chrono::microseconds>(duration - wholeSeconds);
 
     std::chrono::system_clock::time_point tp(wholeSeconds);
     std::time_t t = std::chrono::system_clock::to_time_t(tp);
 
     std::ostringstream oss;
-    oss << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%S")
-        << "." << std::setfill('0') << std::setw(6) << microseconds.count() << "Z";
+    oss << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%S") << "." << std::setfill('0')
+        << std::setw(6) << microseconds.count() << "Z";
 
     return oss.str();
 }
@@ -209,68 +210,57 @@ FlentApplication::AddMetadata(nlohmann::json& j)
         title = m_imageText;
     }
 
-    j["metadata"] = {
-        {"BATCH_NAME", nullptr},
-        {"BATCH_TIME", nullptr},
-        {"BATCH_TITLE", nullptr},
-        {"BATCH_UUID", nullptr},
-        {"DATA_FILENAME", dataFilename},
-        {"EGRESS_INFO", {
-            {"bql", {
-                {"tx-0", ""}
-            }}
-        }},
-        {"classes", nullptr},
-        {"driver", nullptr},
-        {"iface", nullptr},
-        {"link_params", {
-            {"qlen", nullptr}
-        }},
-        {"offloads", {
-            {"generic-receive-offload", nullptr},
-            {"generic-segmentation-offload", nullptr},
-            {"large-receive-offload", nullptr},
-            {"tcp-segmentation", nullptr},
-            {"udp-fragmentation", nullptr}
-        }},
-        {"qdiscs", {
-            {"id", nullptr},
-            {"name", nullptr},
-            {"params", {
-                {"ecn", nullptr},
-                {"flows", nullptr},
-                {"interval", nullptr},
-                {"limit", nullptr},
-                {"memory_limit", nullptr},
-                {"quantum", nullptr},
-                {"refcnt", nullptr},
-                {"target", nullptr}
-            }},
-            {"parent", nullptr}
-        }},
-        {"FAILED_RUNNERS", nullptr},
-        {"FLENT_VERSION", nullptr},
-        {"HOST", hostName},
-        {"HOSTS", nlohmann::json::array({hostName})},
-        {"HTTP_GETTER_DNS", nullptr},
-        {"HTTP_GETTER_URLLIST", nullptr},
-        {"HTTP_GETTER_WORKERS", nullptr},
-        {"IP_VERSION", 4},
-        {"KERNEL_NAME", "ns-3"},
-        {"KERNEL_RELEASE", "ns-3"},
-        {"LENGTH", m_length.GetSeconds()},
-        {"LOCAL_HOST", localHost},
-        {"MODULE_VERSIONS", nullptr},
-        {"NAME", m_testName},
-        {"NOTE", nullptr},
-        {"REMOTE_METADATA", nullptr},
-        {"STEP_SIZE", m_stepSize.GetSeconds()},
-        {"TIME", timeStr},
-        {"T0", timeStr},
-        {"TEST_PARAMETERS", nlohmann::json::object()},
-        {"TITLE", title},
-        {"TOTAL_LENGTH", m_stopTime.GetSeconds()}
-    };
+    j["metadata"] = {{"BATCH_NAME", nullptr},
+                     {"BATCH_TIME", nullptr},
+                     {"BATCH_TITLE", nullptr},
+                     {"BATCH_UUID", nullptr},
+                     {"DATA_FILENAME", dataFilename},
+                     {"EGRESS_INFO", {{"bql", {{"tx-0", ""}}}}},
+                     {"classes", nullptr},
+                     {"driver", nullptr},
+                     {"iface", nullptr},
+                     {"link_params", {{"qlen", nullptr}}},
+                     {"offloads",
+                      {{"generic-receive-offload", nullptr},
+                       {"generic-segmentation-offload", nullptr},
+                       {"large-receive-offload", nullptr},
+                       {"tcp-segmentation", nullptr},
+                       {"udp-fragmentation", nullptr}}},
+                     {"qdiscs",
+                      {{"id", nullptr},
+                       {"name", nullptr},
+                       {"params",
+                        {{"ecn", nullptr},
+                         {"flows", nullptr},
+                         {"interval", nullptr},
+                         {"limit", nullptr},
+                         {"memory_limit", nullptr},
+                         {"quantum", nullptr},
+                         {"refcnt", nullptr},
+                         {"target", nullptr}}},
+                       {"parent", nullptr}}},
+                     {"FAILED_RUNNERS", nullptr},
+                     {"FLENT_VERSION", nullptr},
+                     {"HOST", hostName},
+                     {"HOSTS", nlohmann::json::array({hostName})},
+                     {"HTTP_GETTER_DNS", nullptr},
+                     {"HTTP_GETTER_URLLIST", nullptr},
+                     {"HTTP_GETTER_WORKERS", nullptr},
+                     {"IP_VERSION", 4},
+                     {"KERNEL_NAME", "ns-3"},
+                     {"KERNEL_RELEASE", "ns-3"},
+                     {"LENGTH", m_length.GetSeconds()},
+                     {"LOCAL_HOST", localHost},
+                     {"MODULE_VERSIONS", nullptr},
+                     {"NAME", m_testName},
+                     {"NOTE", nullptr},
+                     {"REMOTE_METADATA", nullptr},
+                     {"STEP_SIZE", m_stepSize.GetSeconds()},
+                     {"TIME", timeStr},
+                     {"T0", timeStr},
+                     {"TEST_PARAMETERS", nlohmann::json::object()},
+                     {"TITLE", title},
+                     {"TOTAL_LENGTH", m_stopTime.GetSeconds()}};
 
     j["version"] = 4;
 }
@@ -296,8 +286,7 @@ FlentApplication::GetHostNode(Ipv4Address hostAddress) const
             if (interfaceIndex != -1)
             {
                 uint32_t numberOfAddresses = ip->GetNAddresses(interfaceIndex);
-                for (uint32_t addressIndex = 0; addressIndex < numberOfAddresses;
-                        addressIndex++)
+                for (uint32_t addressIndex = 0; addressIndex < numberOfAddresses; addressIndex++)
                 {
                     Ipv4InterfaceAddress ifAddr = ip->GetAddress(interfaceIndex, addressIndex);
                     Ipv4Address addr = ifAddr.GetAddress();
@@ -321,7 +310,9 @@ FlentApplication::TraceSentPacket(uint32_t* counter, Ptr<const Packet> packet)
 }
 
 void
-FlentApplication::TraceReceivedPacket(uint32_t* counter, Ptr<const Packet> packet, const Address& address)
+FlentApplication::TraceReceivedPacket(uint32_t* counter,
+                                      Ptr<const Packet> packet,
+                                      const Address& address)
 {
     *counter += packet->GetSize();
 }
@@ -422,8 +413,7 @@ FlentApplication::FillXValues()
 
     int totalSteps = int(std::ceil(m_stopTime.GetSeconds() / stepSize));
 
-    for (int step = 0; step < totalSteps;
-         step += 1)
+    for (int step = 0; step < totalSteps; step += 1)
     {
         NS_LOG_DEBUG(step);
         m_output["x_values"].push_back(step * stepSize);
@@ -547,7 +537,7 @@ FlentApplication::ProcessRawValues()
 
 // Application Methods
 void
-FlentApplication::StartApplication() 
+FlentApplication::StartApplication()
 {
     NS_LOG_FUNCTION(this);
     if (m_useWallClockT0)
@@ -563,7 +553,7 @@ FlentApplication::StartApplication()
 
     Ptr<Node> hostNode = GetHostNode(Ipv4Address::ConvertFrom(m_hostAddress));
 
-    if (!hostNode) 
+    if (!hostNode)
     {
         NS_FATAL_ERROR("Couldn't find dest node given the IP" << m_hostAddress);
     }

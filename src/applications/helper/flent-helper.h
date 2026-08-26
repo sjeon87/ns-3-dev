@@ -92,7 +92,7 @@ class FlentHelper
      */
     Ptr<Application> InstallPriv(Ptr<Node> node) const;
 
-    ObjectFactory m_factory; //!< Object factory.
+    ObjectFactory m_factory;      //!< Object factory.
     Time m_startTime{Seconds(0)}; //!< The start time of the Flent test
     Time m_length{Seconds(60)};   //!< The duration of the Flent test
 };
