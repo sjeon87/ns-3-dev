@@ -29,8 +29,8 @@ In both cases this is completely transparent to the upper layers.
 
 6LoWPAN provides two different approaches for routing IPv6 packets within a 6LoWPAN network:
 
-1. Mesh-under routing, where packets are forwarded below IP, using layer 2 addresses.
-2. Route-over routing, where packets are routed at the IP layer, using IPv6 addresses.
+1. Mesh-under routing, where packets are forwarded below the network layer, using layer 2 addresses.
+2. Route-over routing, where packets are routed at the network layer, using IPv6 addresses.
 
 Both approaches are described in their respective sections below.
 
@@ -59,12 +59,12 @@ Compression
 Three header compression schemes are supported, selected through the ``CompressionType``
 attribute of ``SixLowPanNetDevice``:
 
-* ``HC1`` compression, defined in :rfc:`4944`.
-* ``IPHC`` compression, defined in :rfc:`6282` (the default).
-* ``GHC`` compression, defined in :rfc:`7400`, which extends IPHC.
+* ``HC1`` (Header Compression 1), defined in :rfc:`4944`.
+* ``IPHC`` (IP Header Compression), defined in :rfc:`6282` (the default).
+* ``GHC`` (Generic Header Compression), defined in :rfc:`7400`, which extends IPHC.
 
 The IPv6/MAC addressing schemes defined in :rfc:`6282` and :rfc:`4944` are different.
-One adds the PanId in the pseudo-MAC address (4944) and the other doesn't (6282).
+One adds the PAN Id in the pseudo-MAC address (4944) and the other doesn't (6282).
 
 The expected use case (confirmed by the RFC editor) is to *never* have a mixed environment
 where part of the nodes are using HC1 and part IPHC because this would lead to confusion on
@@ -93,8 +93,8 @@ compressed with the Next Header Compression (NHC) format.
 When using the IPHC stateful compression, nodes need to be aware of the context. To manually set the context,
 it is possible to use the  ``SixLowPanHelper::AddContext`` function. Please be aware that installing different contexts for different nodes will lead to decompression failures. Contexts can also be distributed automatically by 6LoWPAN-ND (see the Usage section).
 
-Generic Header Compression (GHC)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+GHC compression
+~~~~~~~~~~~~~~~
 
 GHC compresses payloads and headers for which no dedicated :rfc:`6282` NHC format exists:
 ICMPv6 messages, UDP payloads, and IPv6 extension headers.
@@ -110,7 +110,7 @@ through the ``SixLowPan6Cio`` option class to signal GHC support to peers.
 Mesh-under routing
 ------------------
 
-A mesh-under routing approach indicates that a routing system is implemented below IP, and 6lowPAN makes the packet forwarding decisions based on layer 2 addresses.
+A mesh-under routing approach indicates that a routing system is implemented below the network layer, and 6lowPAN makes the packet forwarding decisions based on layer 2 addresses.
 
 A node takes part in a mesh-under network when its ``UseMeshUnder`` attribute is enabled: MESH and BC0 headers are added to sent packets (with the initial hop limit set by ``MeshUnderRadius``), and received mesh-under packets are decoded and delivered. Whether the node also relays received mesh-under packets is controlled by the ``ForwardMesh`` attribute (enabled by default): encoding and decoding the MESH and BC0 headers is a simple operation, while forwarding requires per-packet state, so constrained nodes can take part in the mesh without relaying. The forwarding decision itself is delegated to a pluggable forwarding policy derived from ``SixLowPanMeshUnderRouting``, so the forwarding policy can be changed without modifying ``SixLowPanNetDevice``.
 
@@ -195,7 +195,7 @@ Note that static routing is a feasible option, if the network dynamics allows it
 6lowPAN Optimized Neighbor Discovery (6lowPAN-ND)
 -------------------------------------------------
 
-IPv6 Neighbor Discovery (ND) as defined in :rfc`4861` assumes always on, multicast friendly links, which are not possible for low-power and lossy networks (LLNs) such as those using IEEE 802.15.4.
+IPv6 Neighbor Discovery (ND) as defined in :rfc:`4861` assumes always on, multicast friendly links, which are not possible for low-power and lossy networks (LLNs) such as those using IEEE 802.15.4.
 
 :rfc:`6775` and :rfc:`8505` define 6LoWPAN Neighbor Discovery (6LoWPAN-ND) to address these limitations. Some key optimizations include:
 
