@@ -29,7 +29,7 @@ TypeId
 EthernetChannel::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::EthernetChannel")
+        TypeId("ns3::ethernet::EthernetChannel")
             .SetParent<Channel>()
             .SetGroupName("Ethernet")
             .AddConstructor<EthernetChannel>()
@@ -40,7 +40,7 @@ EthernetChannel::GetTypeId()
                 "packets are being transmitted is not supported.",
                 DoubleValue(20),
                 MakeDoubleAccessor(&EthernetChannel::SetLength, &EthernetChannel::GetLength),
-                MakeDoubleChecker<double>())
+                MakeDoubleChecker<double>(0.0, 100.0))
             .AddAttribute(
                 "Speed",
                 "The propagation speed (m/s) in the propagation medium"
@@ -48,7 +48,7 @@ EthernetChannel::GetTypeId()
                 "are being transmitted is not supported.",
                 DoubleValue(200000000),
                 MakeDoubleAccessor(&EthernetChannel::SetSpeed, &EthernetChannel::GetSpeed),
-                MakeDoubleChecker<double>());
+                MakeDoubleChecker<double>(0.0, 3e8));
     return tid;
 }
 
@@ -115,6 +115,8 @@ EthernetChannel::Detach(Ptr<EthernetNetDevice> device)
     {
         if (*it == device)
         {
+            device->GetPhy()->LinkDown();
+
             *it = nullptr;
             m_deviceCount--;
 

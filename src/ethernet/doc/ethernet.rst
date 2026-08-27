@@ -23,17 +23,19 @@ instances. The channel is responsible for connecting two devices, modeling packe
 propagation delay, and delivering packets between attached devices.
 
 The channel maintains a list of connected devices in ``m_deviceList``.
-There is a ``PropagationStart`` which starts the propagation of data on the wire and
-a ``TxEnd`` method which is called when PHY layer has finished transmitting
+The ``PropagationStart`` method starts the propagation of a frame on the channel,
+while ``TxEnd`` method is called when PHY layer has finished transmitting
 packet on the channel.
 
 The channel models the cable, and the only cable property it enforces is length:
 the ``Length`` attribute cannot exceed the 100 m maximum defined for Ethernet over
-twisted-pair copper. The propagation delay is computed from ``Length`` and
-``Speed``.
+twisted-pair copper. The default ``Length`` is 20 m, chosen as a representative
+cable length for typical Ethernet links. The propagation delay is computed from ``Length`` and
+``Speed``. The default ``Speed`` is 2 x 10^8 m/s, chosen as a representative propagation
+velocity for signals traveling through twisted-pair copper cable.
 
-Utility methods such as GetNDevices(), GetDevice() and GetDelay() provide access to device information and
-channel configuration parameters.
+Utility methods such as ``GetNDevices()``, ``GetDevice()`` and ``GetDelay()`` provide access
+to device information and channel configuration parameters.
 
 When the first device is attached, it operates at its own maximum supported link
 type. When the second device is attached, or when the maximum supported link type
@@ -67,17 +69,17 @@ link type.
 The PHY does not hold a rate of its own; it carries whatever rate the device has
 settled on, and uses it to compute frame transmission times and the inter-frame gap.
 
-Ethernet PHY
-------------
+EthernetPhy
+-----------
 
 The EthernetPhy layer provides the physical transmission behavior and exposes transmit and receive callbacks
 to interact with the channel. It handles transmission timing, link state management, and error modeling,
 but does not interpret packet contents. The PHY is agnostic to the link speed: it carries whichever data rate
 the device it belongs to has settled on with its peer.
 
-The PHY maintains internal state information for both transmission and reception paths using an ``EthernetPHYState`` enum,
-which includes idle, transmitting, and receiving states. These states ensure proper coordination of operations and prevent
-conflicts such as simultaneous transmission and reception.
+The PHY maintains internal state information for both transmission and reception paths using an ``EthernetPhyState`` enum,
+which includes idle, transmitting, and receiving states. These states track the current activity of the PHY and are
+used to manage the timing and sequencing of transmission and reception events.
 
 The PHY stores pointers to its device, MAC, and channel. ``TxStart()`` verifies that
 those pointers are available and that the link is up before starting transmission.
@@ -94,7 +96,7 @@ Ethernet NetDevice
 ------------------
 
 The EthernetNetDevice provides the interface to higher protocol layers. It is a
-thin wrapper around the Ethernet MAC, PHY, and Channel objects, exposing the
+thin wrapper around the EthernetMac, EthernetPhy, and Channel objects, exposing the
 standard ``NetDevice`` API expected by the rest of |ns3|.
 
 The ``Send()`` method is used by higher layers to transmit packets using the
@@ -113,10 +115,10 @@ attached yet, the device runs at its configured maximum supported link type.
 Support for full-duplex mode is provided. The device simply hands packets down to
 the MAC and is called back when a frame is to be delivered up.
 
-Ethernet MAC
+EthernetMac
 ------------
 
-The EthernetMAC class represents the Medium Access Control (MAC) sublayer of an Ethernet network interface.
+The EthernetMac class represents the Medium Access Control (MAC) sublayer of an Ethernet network interface.
 It is responsible for providing frame-level communication services between the higher network layers (via the NetDevice)
 and the physical transmission medium (via the PHY layer).
 
@@ -129,12 +131,10 @@ drive them. A packet handed down by the device is encapsulated into a complete f
 and, if the transmitter is idle and not paused, given straight to the PHY; otherwise
 it waits in the tx queue, which is drained as each transmission and the following
 inter-frame gap complete. On the receive side, a frame arriving from the PHY is
-processed immediately if the receiver is idle, and queued otherwise; the receiver
-is released after a configurable processing delay, at which point the next queued
-frame is taken. A frame that arrives when the receive queue is full is dropped, and
-makes the MAC ask the peer to pause.
+processed immediately if the receiver is idle, and queued otherwise. Once the current
+frame has been processed, the next queued frame is taken.
 
-The MAC layer also maintains internal state information ``EthernetMACState``. Additionally, EthernetMAC supports promiscuous
+The MAC layer also maintains internal state information ``EthernetMacState``. Additionally, EthernetMac supports promiscuous
 and non-promiscuous reception modes, enabling both standard packet delivery to upper layers and packet sniffing functionality
 for monitoring purposes.
 
@@ -142,9 +142,12 @@ Flow Control
 ~~~~~~~~~~~~
 
 The MAC layer implements IEEE 802.3x Ethernet Flow Control for full-duplex links.
-Flow control messages are carried using the ``FlowControlHeader``. For PAUSE
-operation, the FlowControlHeader carries a PAUSE message containing the requested
-pause time encoded as a 16-bit pause quanta value, where one pause quantum corresponds
+Flow control messages are carried using the ``FlowControlHeader``. PAUSE frames
+are generated at switch ports when receive-buffer congestion is detected. Endpoint
+receive queues do not become congested and therefore do not generate PAUSE frames.
+
+For PAUSE operation, the ``FlowControlHeader`` carries a PAUSE message containing the
+requested pause time encoded as a 16-bit pause quanta value, where one pause quantum corresponds
 to 512 bit times. When receive-buffer congestion is detected, the MAC transmits a
 PAUSE frame to the remote peer. Upon receiving a PAUSE frame, the MAC pauses normal
 frame transmission and automatically resumes transmission after the pause interval
@@ -163,7 +166,7 @@ Scope and Limitations
 ---------------------
 - The model currently supports Ethernet over twisted-pair copper links operating in full-duplex mode; support for fiber-optic and other link types is planned for future work.
 - Link speed currently uses an almost auto-negotiation approach: each EthernetNetDevice specifies a maximum link speed, and once two devices are connected to the same channel,
-their operating speed is set to the minimum of the two maximum speeds; this implicitly assumes a copper medium.
+  their operating speed is set to the minimum of the two maximum speeds; this implicitly assumes a copper medium.
 - Half-duplex Ethernet and CSMA/CD collision detection are not implemented and are planned for future work.
 - Ethernet Flow Control using IEEE 802.3 PAUSE frames is implemented for full-duplex Ethernet links.
 - The current implementation uses a simple queue-threshold policy for PAUSE frames. Priority-based PAUSE/advanced queue management is not currently supported and is considered future enhancement.
@@ -172,28 +175,28 @@ Extensibility and Future Enhancements
 -------------------------------------
 
 - The current architecture is intentionally layered so that extensions can be added
-locally. New link speeds can be introduced by extending ``EthernetLinkType`` and
-updating the mapping to ``DataRate`` in the NetDevice implementation. If the
-supported rate-selection rules change, the channel negotiation logic can be
-updated without affecting the MAC or higher protocol layers, because the PHY
-always derives timing from the device's negotiated data rate.
+  locally. New link speeds can be introduced by extending ``EthernetLinkType`` and
+  updating the mapping to ``DataRate`` in the NetDevice implementation. If the
+  supported rate-selection rules change, the channel negotiation logic can be
+  updated without affecting the MAC or higher protocol layers, because the PHY
+  always derives timing from the device's negotiated data rate.
 
 - Future work may allow each device to specify a list of allowed link modes,
-such as copper or fiber, enabling the channel to negotiate a compatible medium
-and link speed between the connected devices.
+  such as copper or fiber, enabling the channel to negotiate a compatible medium
+  and link speed between the connected devices.
 
 - The MAC layer is extensible. The transmit and receive queues are owned
-through attributes, so the queue implementation and queue limits can be changed
-without rewriting the frame-processing logic.
+  through attributes, so the queue implementation and queue limits can be changed
+  without rewriting the frame-processing logic.
 
 - The flow-control code is isolated in the MAC, which makes it possible to replace
-the current threshold-based PAUSE policy with priority-based flow control,
-different pause-release criteria, or additional MAC Control opcodes in the future.
+  the current threshold-based PAUSE policy with priority-based flow control,
+  different pause-release criteria, or additional MAC Control opcodes in the future.
 
 - Future work can also extend the PHY layer independently by adding new error
-models, alternative link-state behavior, or richer receive timing models. Because
-the PHY already interacts with the channel and MAC through explicit callbacks,
-those changes can remain local to the PHY implementation.
+  models, alternative link-state behavior, or richer receive timing models. Because
+  the PHY already interacts with the channel and MAC through explicit callbacks,
+  those changes can remain local to the PHY implementation.
 
 Usage
 -----
@@ -214,14 +217,13 @@ installation:
 
 The helper also integrates with the standard ns-3 tracing support. PCAP tracing
 records Ethernet packets using the Ethernet link type, and ASCII tracing hooks the
-MAC receive path together with the transmit and receive queues and PHY receive
-tracing (ASCII and PCAP) is enabled in a manner consistent with other network
+MAC receive path together with the transmit and receive queues. PHY receive
+tracing (ASCII and PCAP) is enabled in a manner consistent with other network device
+helpers through the inherited tracing interfaces.
 
 Use of the helper is demonstrated in the example provided in ``src/ethernet/examples``.
-device helpers through the inherited tracing interfaces. The helper is
-responsible for creating and configuring ``EthernetNetDevice`` instances,
+The helper is responsible for creating and configuring ``EthernetNetDevice`` instances,
 attaching them to an ``EthernetChannel``, and installing them on the specified nodes.
-Use of the helper is demonstrated in the example provided in ``src/ethernet/examples``.
 
 ::
 
@@ -249,8 +251,8 @@ The EthernetPhy provides following attributes:
 
 The EthernetNetDevice provides following attributes:
 
-* ``Mac``: Ethernet MAC associated with the device
-* ``Phy``: Ethernet PHY associated with the device.
+* ``Mac``: EthernetMac associated with the device
+* ``Phy``: EthernetPhy associated with the device.
 * ``Channel``: The channel to which the device is attached.
 * ``MaxSupportedEthernetLinkType``: The fastest Ethernet link type the device may run at, one of ``10Base-T``, ``100Base-TX``, ``1000Base-T`` or ``10GBase-T``.
 * ``SendEnable``: A boolean attribute indicating whether the device is enabled to send packets.
@@ -296,8 +298,9 @@ The following unit-tests have been written in ``src/ethernet/test``.
 
 * ``ethernet-full-duplex-test.cc``: A test for verifying that the EthernetChannel can transmit simultaneously in opposite directions and successfully receive each other's packets.
 * ``ethernet-ifg-test.cc``: A test for the inter-frame gap functionality in Ethernet.
-* ``ethernet-link-speed-test.cc``: A test for verifying the Ethernet PHY transmission and packet reception timing for supported link speeds. .
+* ``ethernet-link-speed-test.cc``: A test for verifying the EthernetPhy transmission and packet reception timing for supported link speeds. .
 * ``ethernet-flow-control-test.cc``: Unit test for Ethernet flow control functionality.
+* ``ethernet-performance-test.cc``: A performance test for comparing the performance of different Ethernet link technologies.
 
 References
 ----------

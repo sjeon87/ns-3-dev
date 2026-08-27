@@ -20,7 +20,6 @@
 #include "ns3/fatal-error.h"
 #include "ns3/log.h"
 #include "ns3/mac48-address.h"
-#include "ns3/net-device-queue-interface.h"
 #include "ns3/node.h"
 #include "ns3/pointer.h"
 #include "ns3/queue.h"
@@ -84,7 +83,7 @@ TypeId
 EthernetNetDevice::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::EthernetNetDevice")
+        TypeId("ns3::ethernet::EthernetNetDevice")
             .SetParent<NetDevice>()
             .SetGroupName("Ethernet")
             .AddConstructor<EthernetNetDevice>()
@@ -150,10 +149,6 @@ EthernetNetDevice::EthernetNetDevice()
     m_mac->SetDevice(this);
 
     m_mac->SetRxIndicationCallback(MakeCallback(&EthernetNetDevice::RxIndication, this));
-
-    Ptr<NetDeviceQueueInterface> ndqi = CreateObject<NetDeviceQueueInterface>();
-    ndqi->GetTxQueue(0)->ConnectQueueTraces(m_mac->GetTxQueue());
-    AggregateObject(ndqi);
 }
 
 EthernetNetDevice::~EthernetNetDevice()
@@ -207,6 +202,8 @@ EthernetNetDevice::SetMac(Ptr<EthernetMac> mac)
     m_mac = mac;
     m_mac->SetDevice(this);
     m_mac->SetPhy(m_phy);
+    m_mac->SetRxIndicationCallback(MakeCallback(&EthernetNetDevice::RxIndication, this));
+
     if (m_phy)
     {
         m_phy->SetMac(m_mac);
@@ -467,6 +464,7 @@ void
 EthernetNetDevice::LinkUp()
 {
     m_linkUp = true;
+    m_mac->NotifyLinkUp();
     m_linkChangeCallbacks();
 }
 

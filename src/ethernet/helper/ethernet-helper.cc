@@ -16,6 +16,7 @@
 #include "ns3/iana-link-type-numbers.h"
 #include "ns3/log.h"
 #include "ns3/names.h"
+#include "ns3/net-device-queue-interface.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 #include "ns3/trace-helper.h"
@@ -30,8 +31,8 @@ NS_LOG_COMPONENT_DEFINE("EthernetHelper");
 EthernetHelper::EthernetHelper()
 {
     m_queueFactory.SetTypeId("ns3::DropTailQueue<Packet>");
-    m_deviceFactory.SetTypeId("ns3::EthernetNetDevice");
-    m_channelFactory.SetTypeId("ns3::EthernetChannel");
+    m_deviceFactory.SetTypeId("ns3::ethernet::EthernetNetDevice");
+    m_channelFactory.SetTypeId("ns3::ethernet::EthernetChannel");
 }
 
 void
@@ -213,6 +214,10 @@ EthernetHelper::InstallPriv(Ptr<Node> node, Ptr<EthernetChannel> channel) const
     Ptr<Queue<Packet>> txQueue = m_queueFactory.Create<Queue<Packet>>();
     device->GetMac()->SetTxQueue(txQueue);
     device->GetMac()->SetRxQueue(m_queueFactory.Create<Queue<Packet>>());
+
+    Ptr<NetDeviceQueueInterface> ndqi = CreateObject<NetDeviceQueueInterface>();
+    ndqi->GetTxQueue(0)->ConnectQueueTraces(txQueue);
+    device->AggregateObject(ndqi);
 
     device->SetAddress(Mac48Address::Allocate());
 

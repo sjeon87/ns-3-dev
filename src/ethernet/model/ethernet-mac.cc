@@ -42,7 +42,7 @@ TypeId
 EthernetMac::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::EthernetMac")
+        TypeId("ns3::ethernet::EthernetMac")
             .SetParent<Object>()
             .SetGroupName("Ethernet")
             .AddConstructor<EthernetMac>()
@@ -111,9 +111,6 @@ EthernetMac::EthernetMac()
 
     m_txQueue = CreateObject<DropTailQueue<Packet>>();
     m_rxQueue = CreateObject<DropTailQueue<Packet>>();
-
-    m_rxQueue->TraceConnectWithoutContext("Dequeue",
-                                          MakeCallback(&EthernetMac::SendUnpauseFrame, this));
 }
 
 EthernetMac::~EthernetMac()
@@ -131,6 +128,17 @@ EthernetMac::DoDispose()
     m_txQueue = nullptr;
     m_rxQueue = nullptr;
     Object::DoDispose();
+}
+
+void
+EthernetMac::DoInitialize()
+{
+    NS_LOG_FUNCTION(this);
+
+    m_rxQueue->TraceConnectWithoutContext("Dequeue",
+                                          MakeCallback(&EthernetMac::SendUnpauseFrame, this));
+
+    Object::DoInitialize();
 }
 
 void
@@ -313,13 +321,21 @@ EthernetMac::TxStart(Ptr<Packet> frame)
 
     SetTxMacState(EthernetMacState::MAC_TRANSMITTING);
 
+    if (!m_phy->TxStart(frame))
+    {
+        NS_LOG_LOGIC("PHY could not start transmission of frame " << frame->GetUid()
+                                                                  << ", dropping it");
+        m_macTxDropTrace(ETHERNET_MAC_DROP_LINK_DOWN, frame);
+        SetTxMacState(EthernetMacState::MAC_IDLE);
+        return;
+    }
+
     m_snifferTrace(frame);
     m_promiscSnifferTrace(frame);
 
     m_macTxTrace(frame);
 
     NS_LOG_INFO("Transmitting frame " << frame->GetUid());
-    m_phy->TxStart(frame);
 }
 
 void
@@ -407,6 +423,7 @@ void
 EthernetMac::SetTxQueue(Ptr<Queue<Packet>> queue)
 {
     NS_ASSERT_MSG(queue, "Cannot set a null transmit queue");
+    NS_ABORT_MSG_IF(IsInitialized(), "Cannot replace the transmit queue after initialization");
     m_txQueue = queue;
 }
 
@@ -420,6 +437,7 @@ void
 EthernetMac::SetRxQueue(Ptr<Queue<Packet>> queue)
 {
     NS_ASSERT_MSG(queue, "Cannot set a null receive queue");
+    NS_ABORT_MSG_IF(IsInitialized(), "Cannot replace the receive queue after initialization");
     m_rxQueue = queue;
 }
 
@@ -574,6 +592,17 @@ void
 EthernetMac::NotifyPromiscSniffer(Ptr<const Packet> packet) const
 {
     m_promiscSnifferTrace(packet);
+}
+
+void
+EthernetMac::NotifyLinkUp()
+{
+    NS_LOG_FUNCTION(this);
+
+    if (m_macTxState == EthernetMacState::MAC_IDLE)
+    {
+        TxNext();
+    }
 }
 
 } // namespace ethernet

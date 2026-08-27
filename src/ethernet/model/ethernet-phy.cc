@@ -39,7 +39,7 @@ TypeId
 EthernetPhy::GetTypeId()
 {
     static TypeId tid =
-        TypeId("ns3::EthernetPhy")
+        TypeId("ns3::ethernet::EthernetPhy")
             .SetParent<Object>()
             .SetGroupName("Ethernet")
             .AddConstructor<EthernetPhy>()

@@ -52,7 +52,8 @@ enum EthernetMacDropReason : uint8_t
     ETHERNET_MAC_DROP_FCS_ERROR,
     ETHERNET_MAC_DROP_RX_QUEUE_FULL,
     ETHERNET_MAC_DROP_INVALID_PAUSE_FRAME,
-    ETHERNET_MAC_DROP_NO_RX_CALLBACK
+    ETHERNET_MAC_DROP_NO_RX_CALLBACK,
+    ETHERNET_MAC_DROP_LINK_DOWN
 };
 
 /**
@@ -425,8 +426,15 @@ class EthernetMac : public Object
      */
     void NotifyPromiscSniffer(Ptr<const Packet> packet) const;
 
+    /**
+     * Notify the MAC that the link has become operational.
+     * If the MAC is idle, transmit the next packet queued for transmission.
+     */
+    void NotifyLinkUp();
+
   protected:
     void DoDispose() override;
+    void DoInitialize() override;
 
   private:
     /**
