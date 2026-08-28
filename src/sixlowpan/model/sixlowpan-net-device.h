@@ -813,8 +813,8 @@ class SixLowPanNetDevice : public NetDevice
     /**
      * @brief Finds if the given unicast address matches a context for compression
      *
-     * @param[in] address the address to check
-     * @param[out] contextId the context found
+     * @param [in] address the address to check
+     * @param [out] contextId the context found
      * @return true if a valid context has been found
      */
     bool FindUnicastCompressionContext(Ipv6Address address, uint8_t& contextId);
@@ -822,8 +822,8 @@ class SixLowPanNetDevice : public NetDevice
     /**
      * @brief Finds if the given multicast address matches a context for compression
      *
-     * @param[in] address the address to check
-     * @param[out] contextId the context found
+     * @param [in] address the address to check
+     * @param [out] contextId the context found
      * @return true if a valid context has been found
      */
     bool FindMulticastCompressionContext(Ipv6Address address, uint8_t& contextId);

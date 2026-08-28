@@ -123,8 +123,8 @@ class PairChecker : public AttributeChecker
     /**
      * Set the individual AttributeChecker for each pair entry.
      *
-     * \param[in] firstchecker AttributeChecker for abscissa.
-     * \param[in] secondchecker AttributeChecker for ordinate.
+     * \param [in] firstchecker AttributeChecker for abscissa.
+     * \param [in] secondchecker AttributeChecker for ordinate.
      */
     virtual void SetCheckers(Ptr<const AttributeChecker> firstchecker,
                              Ptr<const AttributeChecker> secondchecker) = 0;
@@ -144,7 +144,7 @@ class PairChecker : public AttributeChecker
  *
  * This function returns a Pointer to a non-const instance to
  * allow subsequent setting of the underlying AttributeCheckers.
- * \param[in] value PairValue from which to derive abscissa and ordinate types.
+ * \param [in] value PairValue from which to derive abscissa and ordinate types.
  * @return Pointer to PairChecker instance.
  */
 template <class A, class B>
@@ -158,8 +158,8 @@ Ptr<AttributeChecker> MakePairChecker(const PairValue<A, B>& value);
  * This function returns a Pointer to a const instance since both
  * underlying AttributeCheckers are set.
  *
- * \param[in] firstchecker AttributeChecker for abscissa.
- * \param[in] secondchecker AttributeChecker for ordinate.
+ * \param [in] firstchecker AttributeChecker for abscissa.
+ * \param [in] secondchecker AttributeChecker for ordinate.
  * @return Pointer to PairChecker instance.
  */
 template <class A, class B>
