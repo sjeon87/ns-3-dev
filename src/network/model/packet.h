@@ -575,11 +575,11 @@ class Packet : public SimpleRefCount<Packet>
      * As example, if you want to tag the first 10 bytes, you have to call
      * the method in this way:
      *
-     * \code{.cpp}
+     * @code{.cpp}
          Ptr<Packet> p = ... ;
          SomeTag tag;
          p->AddByteTag (tag, 1, 10);
-       \endcode
+       @endcode
      *
      * @param tag the new tag to add to this packet
      * @param start the position of the first byte tagged by this tag

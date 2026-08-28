@@ -503,7 +503,8 @@ class WifiHelper
      * Config::Set() on any objects that this helper creates, such as:
      * @code
      * Config::Set ("/NodeList/0/DeviceList/0/$ns3::WifiNetDevice/Mac/Slot", TimeValue (MicroSeconds
-     * (slot))); \endcode
+     * (slot)));
+     * @endcode
      *
      * @sa WifiMac::ConfigureStandard
      * @sa Config::Set
