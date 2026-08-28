@@ -336,7 +336,7 @@ class Object : public SimpleRefCount<Object, ObjectBase, ObjectDeleter>
     /**
      * Copy an Object.
      *
-     * @tparam T \deduced The type of the Object being copied.
+     * @tparam T @deduced The type of the Object being copied.
      * @param [in] object A pointer to the object to copy.
      * @returns A copy of the input object.
      *
@@ -353,7 +353,7 @@ class Object : public SimpleRefCount<Object, ObjectBase, ObjectDeleter>
     /**
      * Set the TypeId and construct all Attributes of an Object.
      *
-     * @tparam T \deduced The type of the Object to complete.
+     * @tparam T @deduced The type of the Object to complete.
      * @param [in] object The uninitialized object pointer.
      * @return The derived object.
      */

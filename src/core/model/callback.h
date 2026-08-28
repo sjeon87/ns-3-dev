@@ -447,7 +447,7 @@ class Callback : public CallbackBase
     /**
      * Construct from another callback and bind some arguments (if any)
      *
-     * @tparam BArgs \deduced The types of the bound arguments
+     * @tparam BArgs @deduced The types of the bound arguments
      * @param [in] cb The existing callback
      * @param [in] bargs The values of the bound arguments
      */
@@ -470,8 +470,8 @@ class Callback : public CallbackBase
     /**
      * Construct from a function and bind some arguments (if any)
      *
-     * @tparam T \deduced The type of the function
-     * @tparam BArgs \deduced The types of the bound arguments
+     * @tparam T @deduced The type of the function
+     * @tparam BArgs @deduced The types of the bound arguments
      * @param [in] func The function
      * @param [in] bargs The values of the bound arguments
      *
@@ -541,7 +541,7 @@ class Callback : public CallbackBase
     /**
      * Bind a variable number of arguments
      *
-     * @tparam BoundArgs \deduced The types of the arguments to bind
+     * @tparam BoundArgs @deduced The types of the arguments to bind
      * @param [in] bargs The values of the arguments to bind
      * @return The bound callback
      */
@@ -675,10 +675,10 @@ operator!=(Callback<R, Args...> a, Callback<R, Args...> b)
 /**
  * Build Callbacks for class method members
  *
- * @tparam T   \deduced Type of the class having the member function.
- * @tparam OBJ \deduced Type of the class instance.
- * @tparam R   \deduced Return type of the callback.
- * @tparam Args \deduced Type list of any arguments to the member function.
+ * @tparam T   @deduced Type of the class having the member function.
+ * @tparam OBJ @deduced Type of the class instance.
+ * @tparam R   @deduced Return type of the callback.
+ * @tparam Args @deduced Type list of any arguments to the member function.
  *
  * @param [in] memPtr Class method member pointer
  * @param [in] objPtr Class instance
@@ -706,8 +706,8 @@ MakeCallback(R (T::*memPtr)(Args...) const, OBJ objPtr)
  * Build Callbacks for functions which take varying numbers of arguments
  * and potentially returning a value.
  *
- * @tparam R   \deduced Return type of the callback function..
- * @tparam Args  \deduced Type list of any arguments to the member function.
+ * @tparam R   @deduced Return type of the callback function..
+ * @tparam Args  @deduced Type list of any arguments to the member function.
  * @param [in] fnPtr Function pointer
  * @return A wrapper Callback
  * @hidecaller
@@ -724,8 +724,8 @@ MakeCallback(R (*fnPtr)(Args...))
  * Build null Callbacks which take no arguments,
  * for varying number of template arguments,
  * and potentially returning a value.
- * @tparam R   \deduced Return type of the callback function..
- * @tparam Args  \deduced Type list of any arguments to the member function.
+ * @tparam R   @deduced Return type of the callback function..
+ * @tparam Args  @deduced Type list of any arguments to the member function.
  * @return A wrapper Callback
  * @hidecaller
  */
@@ -740,9 +740,9 @@ MakeNullCallback()
  * @ingroup makeboundcallback
  * @{
  * Make Callbacks with varying number of bound arguments.
- * @tparam R   \deduced Return type of the callback function..
- * @tparam Args \deduced Type list of any arguments to the member function.
- * @tparam BArgs \deduced Type list of bound arguments.
+ * @tparam R   @deduced Return type of the callback function..
+ * @tparam Args @deduced Type list of any arguments to the member function.
+ * @tparam BArgs @deduced Type list of bound arguments.
  * @param [in] fnPtr Function pointer
  * @param [in] bargs Bound arguments
  * @return A bound Callback
@@ -756,11 +756,11 @@ MakeBoundCallback(R (*fnPtr)(Args...), BArgs&&... bargs)
 }
 
 /**
- * @tparam T   \deduced Type of the class having the member function.
- * @tparam OBJ \deduced Type of the class instance.
- * @tparam R   \deduced Return type of the callback.
- * @tparam Args \deduced Type list of any arguments to the member function.
- * @tparam BArgs \deduced Type list of bound arguments.
+ * @tparam T   @deduced Type of the class having the member function.
+ * @tparam OBJ @deduced Type of the class instance.
+ * @tparam R   @deduced Return type of the callback.
+ * @tparam Args @deduced Type list of any arguments to the member function.
+ * @tparam BArgs @deduced Type list of bound arguments.
  * @param [in] memPtr Class method member pointer
  * @param [in] objPtr Class instance
  * @param [in] bargs Bound arguments

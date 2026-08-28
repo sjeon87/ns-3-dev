@@ -78,7 +78,7 @@ class TracedCallback
     void Disconnect(const CallbackBase& callback, std::string path);
     /**
      * @brief Functor which invokes the chain of Callbacks.
-     * @tparam Ts \deduced Types of the functor arguments.
+     * @tparam Ts @deduced Types of the functor arguments.
      * @param [in] args The arguments to the functor
      */
     void operator()(Ts... args) const;
@@ -103,7 +103,7 @@ class TracedCallback
     /**
      * Container type for holding the chain of Callbacks.
      *
-     * @tparam Ts \deduced Types of the functor arguments.
+     * @tparam Ts @deduced Types of the functor arguments.
      */
     typedef std::list<Callback<void, Ts...>> CallbackList;
     /** The chain of Callbacks. */

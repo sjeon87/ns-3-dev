@@ -80,7 +80,7 @@ class LollipopCounter
      * The Sequence Window is set to the default value.
      *
      * @param val the initial value of the Lollipop Counter
-     * @tparam T \deduced The type being used for the counter.
+     * @tparam T @deduced The type being used for the counter.
      */
     LollipopCounter(T val)
     {

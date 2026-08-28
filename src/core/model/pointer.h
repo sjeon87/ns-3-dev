@@ -61,7 +61,7 @@ class PointerValue : public AttributeValue
     /**
      * Construct this PointerValue by referencing an explicit Object.
      *
-     * @tparam T \deduced The type of the object.
+     * @tparam T @deduced The type of the object.
      * @param [in] object The object to begin with.
      */
     template <typename T>

@@ -48,7 +48,7 @@ namespace ns3
  *            to use to represent the Attribute.  (If not present,
  *            the type \pname{V} is implicit in the name of this function,
  *            as "Make<V>Accessor"
- * @tparam T1 \deduced The type of the class data member,
+ * @tparam T1 @deduced The type of the class data member,
  *            or the type of the class get functor or set method.
  * @param [in] a1 The address of the data member,
  *            or the get or set method.
@@ -88,10 +88,10 @@ inline Ptr<const AttributeAccessor> MakeAccessorHelper(T1 a1);
  * @tparam V  \explicit (If present) The specific AttributeValue type to use to represent
  *            the Attribute.  (If not present, the type \pname{V} is implicit
  *            in the name of this function as "Make<V>Accessor"
- * @tparam T1 \deduced The type of the class data member,
+ * @tparam T1 @deduced The type of the class data member,
  *            or the type of the class get functor or set method.
  *
- * @tparam T2 \deduced The type of the getter class functor method.
+ * @tparam T2 @deduced The type of the getter class functor method.
  * @param [in] a2 The address of the class method to set the attribute.
  * @param [in] a1 The address of the data member,
  *            or the get or set method.
@@ -228,8 +228,8 @@ class AccessorHelper : public AttributeAccessor
  *
  * @tparam V  \explicit The specific AttributeValue type to use to represent
  *            the Attribute.
- * @tparam T  \deduced The class holding the data member.
- * @tparam U  \deduced The type of the data member.
+ * @tparam T  @deduced The class holding the data member.
+ * @tparam U  @deduced The type of the data member.
  * @param [in]  memberVariable  The address of the data member.
  * @returns The AttributeAccessor.
  */
@@ -293,8 +293,8 @@ DoMakeAccessorHelperOne(U T::* memberVariable)
  *
  * @tparam V  \explicit The specific AttributeValue type to use to represent
  *            the Attribute.
- * @tparam T  \deduced The class holding the get functor method.
- * @tparam U  \deduced The return type of the get functor method.
+ * @tparam T  @deduced The class holding the get functor method.
+ * @tparam U  @deduced The return type of the get functor method.
  * @param [in] getter  The address of the class get functor method.
  * @returns The AttributeAccessor.
  */
@@ -352,8 +352,8 @@ DoMakeAccessorHelperOne(U (T::*getter)() const)
  *
  * @tparam V  \explicit The specific AttributeValue type to use to represent
  *            the Attribute.
- * @tparam T  \deduced The class holding the set method.
- * @tparam U  \deduced The argument type of the set method.
+ * @tparam T  @deduced The class holding the set method.
+ * @tparam U  @deduced The argument type of the set method.
  * @param [in] setter  The address of the class set method, returning void.
  * @returns The AttributeAccessor.
  */
@@ -419,9 +419,9 @@ DoMakeAccessorHelperOne(void (T::*setter)(U))
  *
  * @tparam W  \explicit The specific AttributeValue type to use to represent
  *            the Attribute.
- * @tparam T  \deduced The class holding the functor methods.
- * @tparam U  \deduced The argument type of the set method.
- * @tparam V  \deduced The return type of the get functor method.
+ * @tparam T  @deduced The class holding the functor methods.
+ * @tparam U  @deduced The argument type of the set method.
+ * @tparam V  @deduced The return type of the get functor method.
  * @param [in] setter The address of the class set method, returning void.
  * @param [in] getter The address of the class get functor method.
  * @returns The AttributeAccessor.
@@ -506,9 +506,9 @@ DoMakeAccessorHelperTwo(V (T::*getter)() const, void (T::*setter)(U))
  *
  * @tparam W  \explicit The specific AttributeValue type to use to represent
  *            the Attribute.
- * @tparam T  \deduced The class holding the functor methods.
- * @tparam U  \deduced The argument type of the set method.
- * @tparam V  \deduced The return type of the get functor method.
+ * @tparam T  @deduced The class holding the functor methods.
+ * @tparam U  @deduced The argument type of the set method.
+ * @tparam V  @deduced The return type of the get functor method.
  * @param [in] setter The address of the class set method, returning bool.
  * @param [in] getter The address of the class get functor method.
  * @returns The AttributeAccessor.

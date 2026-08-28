@@ -714,7 +714,7 @@ namespace CommandLineHelper
  *
  * @param [in] value The argument name
  * @param [out] dest The argument location
- * @tparam T \deduced The type being specialized
+ * @tparam T @deduced The type being specialized
  * @return \c true if parsing was successful
  */
 template <typename T>

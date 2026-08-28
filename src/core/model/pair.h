@@ -22,8 +22,8 @@ namespace ns3
 
 /**
  * Output streamer for a std::pair.
- * @tparam A \deduced Type of the `pair.first`.
- * @tparam B \deduced Type of the `pair.second`.
+ * @tparam A @deduced Type of the `pair.first`.
+ * @tparam B @deduced Type of the `pair.second`.
  * @param [in,out] os The output stream.
  * @param [in] p The pair.
  * @returns The output stream.
@@ -182,7 +182,7 @@ Ptr<AttributeChecker> MakePairChecker();
  * Create an AttributeAccessor for std::pair<>.
  * @tparam A \explicit The type of pair.first.
  * @tparam B \explicit The type of pair.second.
- * @tparam T1 \deduced The argument pair type.
+ * @tparam T1 @deduced The argument pair type.
  * @param [in] a1 The std::pair to be accessed.
  * @returns The AttributeAccessor.
  */

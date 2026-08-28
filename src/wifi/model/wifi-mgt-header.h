@@ -144,7 +144,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
 
   protected:
     /**
-     * @tparam IE \deduced the type of the Information Element to initialize for deserialization
+     * @tparam IE @deduced the type of the Information Element to initialize for deserialization
      * @param optElem the object to initialize for deserializing the information element into
      *
      * The Information Element object is constructed by calling the object's default constructor.
@@ -168,7 +168,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
     uint32_t DeserializeImpl(Buffer::Iterator start);
 
     /**
-     * @tparam T \deduced the type of the Information Element
+     * @tparam T @deduced the type of the Information Element
      * @param elem the optional Information Element
      * @param start the buffer iterator pointing to where deserialization starts
      * @return an iterator pointing to where deserialization terminated
@@ -177,7 +177,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
     Buffer::Iterator DoDeserialize(std::optional<T>& elem, Buffer::Iterator start);
 
     /**
-     * @tparam T \deduced the type of the Information Elements
+     * @tparam T @deduced the type of the Information Elements
      * @param elems a vector of Information Elements
      * @param start the buffer iterator pointing to where deserialization starts
      * @return an iterator pointing to where deserialization terminated
@@ -391,7 +391,7 @@ namespace internal
 {
 
 /**
- * @tparam T \deduced the type of the Information Element
+ * @tparam T @deduced the type of the Information Element
  * @param elem the optional Information Element
  * @return the serialized size of the Information Element, if present, or 0, otherwise
  */
@@ -403,7 +403,7 @@ DoGetSerializedSize(const std::optional<T>& elem)
 }
 
 /**
- * @tparam T \deduced the type of the Information Elements
+ * @tparam T @deduced the type of the Information Elements
  * @param elems a vector of Information Elements
  * @return the serialized size of the Information Elements
  */
@@ -437,7 +437,7 @@ namespace internal
 {
 
 /**
- * @tparam T \deduced the type of the Information Element
+ * @tparam T @deduced the type of the Information Element
  * @param elem the optional Information Element
  * @param start the buffer iterator pointing to where serialization starts
  * @return an iterator pointing to where serialization terminated
@@ -450,7 +450,7 @@ DoSerialize(const std::optional<T>& elem, Buffer::Iterator start)
 }
 
 /**
- * @tparam T \deduced the type of the Information Elements
+ * @tparam T @deduced the type of the Information Elements
  * @param elems a vector of Information Elements
  * @param start the buffer iterator pointing to where serialization starts
  * @return an iterator pointing to where serialization terminated
@@ -562,7 +562,7 @@ namespace internal
 {
 
 /**
- * @tparam T \deduced the type of the Information Element
+ * @tparam T @deduced the type of the Information Element
  * @param elem the optional Information Element
  * @param os the output stream
  */
@@ -577,7 +577,7 @@ DoPrint(const std::optional<T>& elem, std::ostream& os)
 }
 
 /**
- * @tparam T \deduced the type of the Information Elements
+ * @tparam T @deduced the type of the Information Elements
  * @param elems a vector of Information Elements
  * @param os the output stream
  */
@@ -608,8 +608,8 @@ namespace internal
 {
 
 /**
- * @tparam T \deduced the type of the given Information Element
- * @tparam Derived \deduced the type of the containing management frame
+ * @tparam T @deduced the type of the given Information Element
+ * @tparam Derived @deduced the type of the containing management frame
  * @param elem the given Information Element
  * @param frame the containing management frame
  * @return whether the given Information Element shall be serialized in a Per-STA Profile
@@ -643,8 +643,8 @@ MustBeSerializedInPerStaProfile(const std::optional<T>& elem, const Derived& fra
 }
 
 /**
- * @tparam T \deduced the type of the given vector of Information Elements
- * @tparam Derived \deduced the type of the containing management frame
+ * @tparam T @deduced the type of the given vector of Information Elements
+ * @tparam Derived @deduced the type of the containing management frame
  * @param elems the given vector of Information Elements
  * @param frame the containing management frame
  * @return whether the given Information Elements shall be serialized in a Per-STA Profile
@@ -678,8 +678,8 @@ MustBeSerializedInPerStaProfile(const std::vector<T>& elems, const Derived& fram
 }
 
 /**
- * @tparam T \deduced the type of the given Information Element
- * @tparam Derived \deduced the type of the containing management frame
+ * @tparam T @deduced the type of the given Information Element
+ * @tparam Derived @deduced the type of the containing management frame
  * @param elem the given Information Element
  * @param frame the containing management frame
  * @return a pair (Element ID, Element ID Extension) if the given Information Element shall be
@@ -699,8 +699,8 @@ MustBeListedInNonInheritance(const std::optional<T>& elem, const Derived& frame)
 }
 
 /**
- * @tparam T \deduced the type of the given vector of Information Elements
- * @tparam Derived \deduced the type of the containing management frame
+ * @tparam T @deduced the type of the given vector of Information Elements
+ * @tparam Derived @deduced the type of the containing management frame
  * @param elems the given Information Elements
  * @param frame the containing management frame
  * @return a pair (Element ID, Element ID Extension) if the given Information Element shall be
@@ -814,8 +814,8 @@ namespace internal
 {
 
 /**
- * @tparam T \deduced the type of the given Information Element
- * @tparam Derived \deduced the type of the containing management frame
+ * @tparam T @deduced the type of the given Information Element
+ * @tparam Derived @deduced the type of the containing management frame
  * @param elem the given Information Element
  * @param frame the containing management frame
  *
@@ -835,8 +835,8 @@ DoCopyIeFromContainingFrame(std::optional<T>& elem, const Derived& frame)
 }
 
 /**
- * @tparam T \deduced the type of the given vector of Information Elements
- * @tparam Derived \deduced the type of the containing management frame
+ * @tparam T @deduced the type of the given vector of Information Elements
+ * @tparam Derived @deduced the type of the containing management frame
  * @param elems the given vector of Information Elements
  * @param frame the containing management frame
  *
@@ -906,7 +906,7 @@ namespace internal
 {
 
 /**
- * @tparam T \deduced the type of the given Information Element
+ * @tparam T @deduced the type of the given Information Element
  * @param elem the given Information Element
  * @param nonInheritance the Non-Inheritance information element
  *
@@ -924,7 +924,7 @@ RemoveIfNotInherited(std::optional<T>& elem, const NonInheritance& nonInheritanc
 }
 
 /**
- * @tparam T \deduced the type of the given vector of Information Elements
+ * @tparam T @deduced the type of the given vector of Information Elements
  * @param elem the given Information Elements
  * @param nonInheritance the Non-Inheritance information element
  *
