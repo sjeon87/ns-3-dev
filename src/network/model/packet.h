@@ -500,7 +500,7 @@ class Packet : public SimpleRefCount<Packet>
      *
      * @returns an iterator
      *
-     * \sa EnablePrinting EnableChecking
+     * @sa EnablePrinting EnableChecking
      */
     PacketMetadata::ItemIterator BeginItem() const;
 
@@ -664,7 +664,7 @@ class Packet : public SimpleRefCount<Packet>
      *
      * @param os the stream on which to print the tags.
      *
-     * \sa Packet::AddPacketTag, Packet::RemovePacketTag, Packet::PeekPacketTag,
+     * @sa Packet::AddPacketTag, Packet::RemovePacketTag, Packet::PeekPacketTag,
      *  Packet::RemoveAllPacketTags
      */
     void PrintPacketTags(std::ostream& os) const;

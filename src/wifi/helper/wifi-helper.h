@@ -505,8 +505,8 @@ class WifiHelper
      * Config::Set ("/NodeList/0/DeviceList/0/$ns3::WifiNetDevice/Mac/Slot", TimeValue (MicroSeconds
      * (slot))); \endcode
      *
-     * \sa WifiMac::ConfigureStandard
-     * \sa Config::Set
+     * @sa WifiMac::ConfigureStandard
+     * @sa Config::Set
      */
     virtual void SetStandard(WifiStandard standard);
 
@@ -517,7 +517,7 @@ class WifiHelper
      * selected string names. For example, the strings "802.11ax", "11ax", and "HE"
      * are equivalent and map to WIFI_STANDARD_80211ax. See the documentation of the specified
      * function to see how it interacts with attribute configuration.
-     * \sa WifiHelper::SetStandard(WifiStandard standard)
+     * @sa WifiHelper::SetStandard(WifiStandard standard)
      */
     void SetStandard(const std::string& standard);
 

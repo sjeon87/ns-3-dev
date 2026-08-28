@@ -26,7 +26,7 @@ namespace ns3
  *        disappears.
  *
  * @tparam T @deduced The object type being deleted.
- * \sa ns3::SimpleRefCount
+ * @sa ns3::SimpleRefCount
  */
 template <typename T>
 struct DefaultDeleter

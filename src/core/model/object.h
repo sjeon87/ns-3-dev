@@ -191,7 +191,7 @@ class Object : public SimpleRefCount<Object, ObjectBase, ObjectDeleter>
      * notify all aggregated Objects that they have been aggregated
      * together.
      *
-     * \sa NotifyNewAggregate()
+     * @sa NotifyNewAggregate()
      */
     void AggregateObject(Ptr<Object> other);
 
@@ -229,7 +229,7 @@ class Object : public SimpleRefCount<Object, ObjectBase, ObjectDeleter>
      *   - If B is forcefully destroyed, A1 and A2 are unaffected.
      *
      *
-     * \sa AggregateObject()
+     * @sa AggregateObject()
      */
     void UnidirectionalAggregateObject(Ptr<Object> other);
 
@@ -253,7 +253,7 @@ class Object : public SimpleRefCount<Object, ObjectBase, ObjectDeleter>
      * the lifetime of an Object, just like DoDispose() is called only
      * once.
      *
-     * \sa DoInitialize()
+     * @sa DoInitialize()
      */
     void Initialize();
 
