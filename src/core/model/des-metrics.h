@@ -68,7 +68,7 @@ namespace ns3
   ...
   ["0",0,"0",0]
  ]
-} \endverbatim
+} @endverbatim
  * The first few fields are self-explanatory. The \c event record consists of
  * the source context, the event send time, the destination context,
  * and the event execution time.  Times are given in the
@@ -78,7 +78,7 @@ namespace ns3
  *
  * Enable DES Metrics at configure time with
  * @verbatim
-   $ ns3 configure ... --enable-des-metrics \endverbatim
+   $ ns3 configure ... --enable-des-metrics @endverbatim
  *
  * <b> Working with DES Metrics </b>
  *

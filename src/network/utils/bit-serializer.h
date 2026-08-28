@@ -32,7 +32,7 @@ namespace ns3
    000: padding
 
    |aaaa abbb bbcc cdd0|
- \endverbatim
+ @endverbatim
  *
  *
  * Padding can be automatically added at the end or at the start
