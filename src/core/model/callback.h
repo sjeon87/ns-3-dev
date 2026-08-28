@@ -92,7 +92,7 @@ class CallbackImplBase : public SimpleRefCount<CallbackImplBase>
     /**
      * Helper to get the C++ typeid as a string.
      *
-     * @tparam T \explicit The type of the argument.
+     * @tparam T @explicit The type of the argument.
      * @returns The result of applying typeid to the template type \pname{T}.
      */
     template <typename T>
@@ -218,8 +218,8 @@ typedef std::vector<std::shared_ptr<CallbackComponentBase>> CallbackComponentVec
  * @ingroup callbackimpl
  * CallbackImpl class with varying numbers of argument types
  *
- * @tparam R \explicit The return type of the Callback.
- * @tparam UArgs \explicit The types of any arguments to the Callback.
+ * @tparam R @explicit The return type of the Callback.
+ * @tparam UArgs @explicit The types of any arguments to the Callback.
  */
 template <typename R, typename... UArgs>
 class CallbackImpl : public CallbackImplBase
@@ -417,8 +417,8 @@ class CallbackBase
  *
  * @see attribute_Callback
  *
- * @tparam R \explicit The return type of the Callback.
- * @tparam UArgs \explicit The types of any arguments to the Callback.
+ * @tparam R @explicit The return type of the Callback.
+ * @tparam UArgs @explicit The types of any arguments to the Callback.
  *
  * Inheritance graph was not generated because of its size.
  * @hideinheritancegraph
@@ -652,8 +652,8 @@ class Callback : public CallbackBase
 /**
  * Inequality test.
  *
- * @tparam R \explicit The return type of the Callbacks
- * @tparam UArgs \explicit The types of any arguments to the Callbacks
+ * @tparam R @explicit The return type of the Callbacks
+ * @tparam UArgs @explicit The types of any arguments to the Callbacks
  * @param [in] a Callback
  * @param [in] b Callback
  *

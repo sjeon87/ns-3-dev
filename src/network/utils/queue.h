@@ -249,8 +249,8 @@ class QueueBase : public Object
  * value for the template template parameter, instead of queue.h in your .h file.
  * Then, include queue.h in the corresponding .cc file.
  *
- * @tparam Item \explicit Type of the objects stored within the queue
- * @tparam Container \explicit Type of the container that stores queue items
+ * @tparam Item @explicit Type of the objects stored within the queue
+ * @tparam Container @explicit Type of the container that stores queue items
  */
 template <typename Item, typename Container>
 class Queue : public QueueBase

@@ -44,7 +44,7 @@ namespace ns3
  * In the case of a \pname{setter} returning \pname{bool,} the return value
  * should be \c true if the value could be set successfully.
  *
- * @tparam V  \explicit (If present) The specific AttributeValue type
+ * @tparam V  @explicit (If present) The specific AttributeValue type
  *            to use to represent the Attribute.  (If not present,
  *            the type \pname{V} is implicit in the name of this function,
  *            as "Make<V>Accessor"
@@ -85,7 +85,7 @@ inline Ptr<const AttributeAccessor> MakeAccessorHelper(T1 a1);
  * In practice the setter and getter arguments can appear in either order,
  * but setter first is preferred.
  *
- * @tparam V  \explicit (If present) The specific AttributeValue type to use to represent
+ * @tparam V  @explicit (If present) The specific AttributeValue type to use to represent
  *            the Attribute.  (If not present, the type \pname{V} is implicit
  *            in the name of this function as "Make<V>Accessor"
  * @tparam T1 @deduced The type of the class data member,
@@ -116,7 +116,7 @@ namespace ns3
  *
  * The non-const and non-reference type equivalent to \pname{T}.
  *
- * @tparam T \explicit The original (possibly qualified) type.
+ * @tparam T @explicit The original (possibly qualified) type.
  */
 template <typename T>
 struct AccessorTrait
@@ -131,8 +131,8 @@ struct AccessorTrait
  * Basic functionality for accessing class attributes via
  * class data members, or get functor/set methods.
  *
- * @tparam T \explicit Class of object holding the attribute.
- * @tparam U \explicit AttributeValue type for the underlying class member
+ * @tparam T @explicit Class of object holding the attribute.
+ * @tparam U @explicit AttributeValue type for the underlying class member
  *           which is an attribute.
  */
 template <typename T, typename U>
@@ -226,7 +226,7 @@ class AccessorHelper : public AttributeAccessor
  *
  * MakeAccessorHelper implementation for a class data member.
  *
- * @tparam V  \explicit The specific AttributeValue type to use to represent
+ * @tparam V  @explicit The specific AttributeValue type to use to represent
  *            the Attribute.
  * @tparam T  @deduced The class holding the data member.
  * @tparam U  @deduced The type of the data member.
@@ -291,7 +291,7 @@ DoMakeAccessorHelperOne(U T::* memberVariable)
  *
  * MakeAccessorHelper implementation for a class get functor method.
  *
- * @tparam V  \explicit The specific AttributeValue type to use to represent
+ * @tparam V  @explicit The specific AttributeValue type to use to represent
  *            the Attribute.
  * @tparam T  @deduced The class holding the get functor method.
  * @tparam U  @deduced The return type of the get functor method.
@@ -350,7 +350,7 @@ DoMakeAccessorHelperOne(U (T::*getter)() const)
  * MakeAccessorHelper implementation for a class set method
  * returning void.
  *
- * @tparam V  \explicit The specific AttributeValue type to use to represent
+ * @tparam V  @explicit The specific AttributeValue type to use to represent
  *            the Attribute.
  * @tparam T  @deduced The class holding the set method.
  * @tparam U  @deduced The argument type of the set method.
@@ -417,7 +417,7 @@ DoMakeAccessorHelperOne(void (T::*setter)(U))
  *
  * The two versions of this function differ only in argument order.
  *
- * @tparam W  \explicit The specific AttributeValue type to use to represent
+ * @tparam W  @explicit The specific AttributeValue type to use to represent
  *            the Attribute.
  * @tparam T  @deduced The class holding the functor methods.
  * @tparam U  @deduced The argument type of the set method.
@@ -504,7 +504,7 @@ DoMakeAccessorHelperTwo(V (T::*getter)() const, void (T::*setter)(U))
  *
  * The two versions of this function differ only in argument order.
  *
- * @tparam W  \explicit The specific AttributeValue type to use to represent
+ * @tparam W  @explicit The specific AttributeValue type to use to represent
  *            the Attribute.
  * @tparam T  @deduced The class holding the functor methods.
  * @tparam U  @deduced The argument type of the set method.

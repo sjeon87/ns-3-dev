@@ -114,7 +114,7 @@ class ObjectFactory
      * returning a pointer of the requested type to the user. This method
      * is really syntactical sugar.
      *
-     * @tparam T \explicit The requested Object type.
+     * @tparam T @explicit The requested Object type.
      * @returns A new object instance.
      */
     template <typename T>
@@ -167,7 +167,7 @@ std::istream& operator>>(std::istream& is, ObjectFactory& factory);
  * @ingroup object
  * Allocate an Object on the heap and initialize with a set of attributes.
  *
- * @tparam T \explicit The requested Object type.
+ * @tparam T @explicit The requested Object type.
  * @tparam Args @deduced The type of the sequence of name-value pairs.
  * @param [in] args A sequence of name-value pairs of the attributes to set.
  * @returns A pointer to a newly allocated object.

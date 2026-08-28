@@ -98,7 +98,7 @@ namespace internal
  *
  * This is the generic template declaration (with empty body).
  *
- * @tparam T \explicit The class type.
+ * @tparam T @explicit The class type.
  */
 template <typename T>
 struct EventMemberImplObjTraits;
@@ -111,7 +111,7 @@ struct EventMemberImplObjTraits;
  *
  * This is the specialization for pointer types.
  *
- * @tparam T \explicit The class type.
+ * @tparam T @explicit The class type.
  */
 template <typename T>
 struct EventMemberImplObjTraits<T*>

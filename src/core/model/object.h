@@ -144,7 +144,7 @@ class Object : public SimpleRefCount<Object, ObjectBase, ObjectDeleter>
      * Get a pointer to the requested aggregated Object.  If the type of object
      * requested is ns3::Object, a Ptr to the calling object is returned.
      *
-     * @tparam T \explicit The type of the aggregated Object to retrieve.
+     * @tparam T @explicit The type of the aggregated Object to retrieve.
      * @returns A pointer to the requested Object, or zero
      *          if it could not be found.
      * @hidecaller
@@ -155,7 +155,7 @@ class Object : public SimpleRefCount<Object, ObjectBase, ObjectDeleter>
      * Get a pointer to the requested aggregated Object by TypeId.  If the
      * TypeId argument is ns3::Object, a Ptr to the calling object is returned.
      *
-     * @tparam T \explicit The type of the aggregated Object to retrieve.
+     * @tparam T @explicit The type of the aggregated Object to retrieve.
      * @param [in] tid The TypeId of the requested Object.
      * @returns A pointer to the requested Object with the specified TypeId,
      *          or zero if it could not be found.
@@ -617,7 +617,7 @@ CompleteConstruct(T* object)
 /**
  * Create an object by type, with varying number of constructor parameters.
  *
- * @tparam T \explicit The type of the derived object to construct.
+ * @tparam T @explicit The type of the derived object to construct.
  * @param [in] args Arguments to pass to the constructor.
  * @return The derived object.
  * @hidecaller

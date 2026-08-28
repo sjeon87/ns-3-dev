@@ -60,7 +60,7 @@ namespace ns3
  * bit of typing.  If the Object does not inherit from Object
  * (or ObjectBase) there is also a convenience wrapper Create<>()
  *
- * @tparam T \explicit The type of the underlying object.
+ * @tparam T @explicit The type of the underlying object.
  *
  * Inheritance graph was not generated because of its size.
  * @hideinheritancegraph
@@ -272,7 +272,7 @@ class Ptr
  */
 /** @{ */
 /**
- * @tparam T  \explicit The type of class object to create.
+ * @tparam T  @explicit The type of class object to create.
  * @tparam Ts @deduced Types of the constructor arguments.
  * @param  [in] args Constructor arguments.
  * @return A Ptr to the newly created \c T.

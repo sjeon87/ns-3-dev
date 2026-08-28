@@ -98,7 +98,7 @@ class PairValue : public AttributeValue
 
     /**
      * Access the Pair value as type \p T.
-     * @tparam T \explicit The type to cast to.
+     * @tparam T @explicit The type to cast to.
      * @param [out] value The Pair value, as type \p T.
      * @returns true.
      */
@@ -180,8 +180,8 @@ Ptr<AttributeChecker> MakePairChecker();
  * @ingroup attribute_Pair
  *
  * Create an AttributeAccessor for std::pair<>.
- * @tparam A \explicit The type of pair.first.
- * @tparam B \explicit The type of pair.second.
+ * @tparam A @explicit The type of pair.first.
+ * @tparam B @explicit The type of pair.second.
  * @tparam T1 @deduced The argument pair type.
  * @param [in] a1 The std::pair to be accessed.
  * @returns The AttributeAccessor.

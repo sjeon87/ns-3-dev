@@ -33,7 +33,7 @@ namespace internal
 
 /**
  * @ingroup object
- * @tparam T \explicit An Information Element type
+ * @tparam T @explicit An Information Element type
  *
  * Provides the type used to store Information Elements in the tuple held by WifiMgtHeader:
  * - a mandatory Information Element of type T is stored as std::optional\<T\>
@@ -72,8 +72,8 @@ using GetStoredIeT = typename GetStoredIe<T>::type;
 /**
  * @ingroup wifi
  * Implement the header for management frames.
- * @tparam Derived \explicit the type of derived management frame
- * @tparam Tuple \explicit A tuple of the types of Information Elements included in the mgt frame
+ * @tparam Derived @explicit the type of derived management frame
+ * @tparam Tuple @explicit A tuple of the types of Information Elements included in the mgt frame
  */
 template <typename Derived, typename Tuple>
 class WifiMgtHeader;
@@ -90,8 +90,8 @@ class WifiMgtHeader;
  * - the type of an optional Information Element IE is std::optional\<IE\>
  * - the type of an Information Element IE that can appear zero or more times is std::vector\<IE\>
  *
- * @tparam Derived \explicit the type of derived management frame
- * @tparam Elems \explicit sorted list of Information Elements that can be included in mgt frame
+ * @tparam Derived @explicit the type of derived management frame
+ * @tparam Elems @explicit sorted list of Information Elements that can be included in mgt frame
  */
 template <typename Derived, typename... Elems>
 class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
@@ -100,7 +100,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
     /**
      * Access a (mandatory or optional) Information Element.
      *
-     * @tparam T \explicit the type of the Information Element to return
+     * @tparam T @explicit the type of the Information Element to return
      * @return a reference to the Information Element of the given type
      */
     template <typename T,
@@ -110,7 +110,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
     /**
      * Access a (mandatory or optional) Information Element.
      *
-     * @tparam T \explicit the type of the Information Element to return
+     * @tparam T @explicit the type of the Information Element to return
      * @return a const reference to the Information Element of the given type
      */
     template <typename T,
@@ -120,7 +120,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
     /**
      * Access an Information Element that can be present zero or more times.
      *
-     * @tparam T \explicit the type of the Information Element to return
+     * @tparam T @explicit the type of the Information Element to return
      * @return a reference to the Information Element of the given type
      */
     template <typename T,
@@ -130,7 +130,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
     /**
      * Access an Information Element that can be present zero or more times.
      *
-     * @tparam T \explicit the type of the Information Element to return
+     * @tparam T @explicit the type of the Information Element to return
      * @return a reference to the Information Element of the given type
      */
     template <typename T,
@@ -195,7 +195,7 @@ class WifiMgtHeader<Derived, std::tuple<Elems...>> : public Header
  * @ingroup wifi
  *  Inspect a type to deduce whether it is an Information Element that can be included in a
  *  Per-STA Profile subelement of a Multi-Link Element.
- *  @tparam T \explicit The type to inspect.
+ *  @tparam T @explicit The type to inspect.
  */
 template <class T>
 struct CanBeInPerStaProfile : std::true_type
@@ -210,8 +210,8 @@ inline constexpr bool CanBeInPerStaProfileV = CanBeInPerStaProfile<T>::value;
  * @ingroup wifi
  * Implement the header for management frames that can be included in a Per-STA Profile
  * subelement of a Multi-Link Element.
- * @tparam Derived \explicit the type of derived management frame
- * @tparam Tuple \explicit A tuple of the types of Information Elements included in the mgt frame
+ * @tparam Derived @explicit the type of derived management frame
+ * @tparam Tuple @explicit A tuple of the types of Information Elements included in the mgt frame
  */
 template <typename Derived, typename Tuple>
 class MgtHeaderInPerStaProfile;
@@ -222,8 +222,8 @@ class MgtHeaderInPerStaProfile;
  * Add methods needed to serialize/deserialize a management header into a Per-STA Profile
  * subelement of a Multi-Link Element.
  *
- * @tparam Derived \explicit the type of derived management frame
- * @tparam Elems \explicit sorted list of Information Elements that can be included in mgt frame
+ * @tparam Derived @explicit the type of derived management frame
+ * @tparam Elems @explicit sorted list of Information Elements that can be included in mgt frame
  */
 template <typename Derived, typename... Elems>
 class MgtHeaderInPerStaProfile<Derived, std::tuple<Elems...>>

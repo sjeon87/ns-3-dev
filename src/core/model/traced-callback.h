@@ -36,7 +36,7 @@ namespace ns3
  * calling the \c operator() form with the appropriate
  * number of arguments.
  *
- * @tparam Ts \explicit Types of the functor arguments.
+ * @tparam Ts @explicit Types of the functor arguments.
  *
  * Inheritance graph was not generated because of its size.
  * @hideinheritancegraph

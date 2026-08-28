@@ -98,7 +98,7 @@ typedef void (*Void)();
  * and will define Connect/DisconnectWithoutContext methods to work
  * with MakeTraceSourceAccessor.
  *
- * @tparam T \explicit The type of the underlying value being traced.
+ * @tparam T @explicit The type of the underlying value being traced.
  */
 template <typename T>
 class TracedValue

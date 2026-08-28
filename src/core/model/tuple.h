@@ -58,7 +58,7 @@ operator<<(std::ostream& os, const std::tuple<Args...>& t)
  * AttributeValue implementation for Tuple.
  *
  * Hold objects of type std::tuple<Args...>.
- * @tparam Args \explicit The list of AttributeValues to be held by this TupleValue
+ * @tparam Args @explicit The list of AttributeValues to be held by this TupleValue
  *
  * @see AttributeValue
  */
@@ -143,7 +143,7 @@ class TupleValue : public AttributeValue
  * TupleValue<UintegerValue, DoubleValue> t = MakeTupleValue<Pack> (Tuple {10, 1.5});
  * @endcode
  *
- * @tparam T1 \explicit A std::tuple of the AttributeValue types included in TupleValue
+ * @tparam T1 @explicit A std::tuple of the AttributeValue types included in TupleValue
  * @tparam T2 @deduced A std::tuple of the type of elements stored by TupleValue
  * @param t the tuple of elements stored by TupleValue
  * @return a TupleValue object
@@ -172,7 +172,7 @@ class TupleChecker : public AttributeChecker
  *
  * Create a TupleChecker from AttributeCheckers associated with TupleValue elements.
  *
- * @tparam Args \explicit Attribute value types
+ * @tparam Args @explicit Attribute value types
  * @tparam Ts @deduced Attribute checker types
  * @param checkers attribute checkers
  * @return Pointer to TupleChecker instance.
@@ -186,7 +186,7 @@ Ptr<const AttributeChecker> MakeTupleChecker(Ts... checkers);
  * Create an AttributeAccessor for a class data member of type tuple,
  * or a lone class get functor or set method.
  *
- * @tparam Args \explicit Attribute value types
+ * @tparam Args @explicit Attribute value types
  * @tparam T1 @deduced The type of the class data member,
  *            or the type of the class get functor or set method.
  * @param a1 The address of the data member,
@@ -202,7 +202,7 @@ Ptr<const AttributeAccessor> MakeTupleAccessor(T1 a1);
  * Create an AttributeAccessor using a pair of get functor
  * and set methods from a class.
  *
- * @tparam Args \explicit Attribute value types
+ * @tparam Args @explicit Attribute value types
  * @tparam T1 @deduced The type of the class data member,
  *            or the type of the class get functor or set method.
  * @tparam T2 @deduced The type of the getter class functor method.
