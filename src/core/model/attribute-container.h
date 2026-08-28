@@ -258,7 +258,7 @@ Ptr<AttributeChecker> MakeAttributeContainerChecker();
  * @tparam T1 \deduced The type of the class data member,
  *            or the type of the class get functor or set method.
  * @param [in] a1 The address of the data member,
- *            or the get or set method.
+ *                or the get or set method.
  * @return AttributeContainerAccessor.
  */
 template <typename A, char Sep = ',', template <typename...> class C = std::list, typename T1>
