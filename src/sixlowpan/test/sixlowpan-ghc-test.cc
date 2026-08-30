@@ -8,11 +8,15 @@
  * Tests for 6LoWPAN-GHC (RFC 7400) implementation.
  */
 
+#include "mock-net-device.h"
+
 #include "ns3/boolean.h"
 #include "ns3/enum.h"
+#include "ns3/iana-ieee802-numbers.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/log.h"
+#include "ns3/mac48-address.h"
 #include "ns3/node.h"
 #include "ns3/simple-channel.h"
 #include "ns3/simple-net-device.h"
@@ -468,7 +472,105 @@ SixlowpanGhcHeaderTest::DoRun()
 }
 
 // ============================================================================
-//  Test 3: End-to-End GHC UDP Compression Test
+//  Test 3: Malformed GHC extension packet
+// ============================================================================
+
+/**
+ * @ingroup sixlowpan-tests
+ * @brief Verify malformed GHC extension data is dropped rather than asserting.
+ */
+class SixlowpanGhcMalformedPacketTest : public TestCase
+{
+  public:
+    SixlowpanGhcMalformedPacketTest();
+
+  private:
+    /**
+     * Capture a 6LoWPAN drop event.
+     *
+     * @param reason Drop reason.
+     * @param packet Dropped packet.
+     * @param device Device that dropped the packet.
+     * @param ifindex Interface index.
+     */
+    void CaptureDrop(SixLowPanNetDevice::DropReason reason,
+                     Ptr<const Packet> packet [[maybe_unused]],
+                     Ptr<SixLowPanNetDevice> device [[maybe_unused]],
+                     uint32_t ifindex [[maybe_unused]]);
+
+    void DoRun() override;
+    void DoTeardown() override;
+
+    uint32_t m_dropCount{0}; ///< Number of observed drops.
+    SixLowPanNetDevice::DropReason m_dropReason{
+        SixLowPanNetDevice::DROP_FRAGMENT_TIMEOUT}; ///< Most recent drop reason.
+};
+
+SixlowpanGhcMalformedPacketTest::SixlowpanGhcMalformedPacketTest()
+    : TestCase("Malformed GHC extension data is reported and dropped")
+{
+}
+
+void
+SixlowpanGhcMalformedPacketTest::CaptureDrop(SixLowPanNetDevice::DropReason reason,
+                                             Ptr<const Packet> packet,
+                                             Ptr<SixLowPanNetDevice> device,
+                                             uint32_t ifindex)
+{
+    m_dropCount++;
+    m_dropReason = reason;
+}
+
+void
+SixlowpanGhcMalformedPacketTest::DoRun()
+{
+    Ptr<Node> node = CreateObject<Node>();
+    Ptr<MockNetDevice> mock = CreateObject<MockNetDevice>();
+    mock->SetAddress(Mac48Address("00:00:00:00:00:01"));
+    node->AddDevice(mock);
+
+    Ptr<SixLowPanNetDevice> device = CreateObject<SixLowPanNetDevice>();
+    node->AddDevice(device);
+    device->SetNetDevice(mock);
+    device->TraceConnectWithoutContext(
+        "Drop",
+        MakeCallback(&SixlowpanGhcMalformedPacketTest::CaptureDrop, this));
+
+    SixLowPanGhcExtension ghc;
+    ghc.SetEid(SixLowPanGhcExtension::EID_HOPBYHOP_OPTIONS_H);
+    ghc.SetNextHeader(Ipv6Header::IPV6_UDP);
+    const uint8_t malformedBytecode[] = {0x91};
+    ghc.SetBlob(malformedBytecode, sizeof(malformedBytecode));
+
+    SixLowPanIphc iphc;
+    iphc.SetNh(true);
+    iphc.SetHlim(SixLowPanIphc::HLIM_COMPR_64);
+    iphc.SetSam(SixLowPanIphc::HC_COMPR_0);
+    iphc.SetDam(SixLowPanIphc::HC_COMPR_0);
+
+    Ptr<Packet> packet = Create<Packet>();
+    packet->AddHeader(ghc);
+    packet->AddHeader(iphc);
+    mock->Receive(packet,
+                  iana::ieee802numbers::LoWPAN,
+                  mock->GetBroadcast(),
+                  Mac48Address("00:00:00:00:00:02"),
+                  NetDevice::PACKET_BROADCAST);
+
+    NS_TEST_ASSERT_MSG_EQ(m_dropCount, 1, "Malformed GHC packet must be dropped once");
+    NS_TEST_ASSERT_MSG_EQ(m_dropReason,
+                          SixLowPanNetDevice::DROP_MALFORMED_COMPRESSION,
+                          "Malformed GHC packet must report the malformed-compression reason");
+}
+
+void
+SixlowpanGhcMalformedPacketTest::DoTeardown()
+{
+    Simulator::Destroy();
+}
+
+// ============================================================================
+//  Test 4: End-to-End GHC UDP Compression Test
 // ============================================================================
 
 /**
@@ -938,6 +1040,7 @@ SixlowpanGhcTestSuite::SixlowpanGhcTestSuite()
 {
     AddTestCase(new SixlowpanGhcEngineTest(), TestCase::Duration::QUICK);
     AddTestCase(new SixlowpanGhcHeaderTest(), TestCase::Duration::QUICK);
+    AddTestCase(new SixlowpanGhcMalformedPacketTest(), TestCase::Duration::QUICK);
     AddTestCase(new SixlowpanGhcUdpImplTest(), TestCase::Duration::QUICK);
     AddTestCase(new SixlowpanGhcAppendixATest(), TestCase::Duration::QUICK);
 }

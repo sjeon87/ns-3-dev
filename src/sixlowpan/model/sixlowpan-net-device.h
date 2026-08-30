@@ -74,7 +74,8 @@ class SixLowPanNetDevice : public NetDevice
         DROP_DISALLOWED_COMPRESSION,         //!< HC1 while in IPHC mode or vice-versa
         DROP_SATETFUL_DECOMPRESSION_PROBLEM, //!< Decompression failed due to missing or expired
                                              //!< context
-        DROP_MESH_NOT_ENABLED, //!< Mesh-under packet received with UseMeshUnder disabled
+        DROP_MALFORMED_COMPRESSION, //!< Decompression failed due to malformed compressed data
+        DROP_MESH_NOT_ENABLED,      //!< Mesh-under packet received with UseMeshUnder disabled
     };
 
     /**
@@ -451,13 +452,25 @@ class SixLowPanNetDevice : public NetDevice
     bool CanCompressLowPanNhc(uint8_t headerType) const;
 
     /**
+     * Decompression failure category.
+     */
+    enum class DecompressionError
+    {
+        NONE,             //!< Decompression succeeded
+        STATEFUL_CONTEXT, //!< Decompression failed due to a missing or expired context
+        MALFORMED,        //!< Decompression failed due to malformed compressed data
+    };
+
+    /**
      * @brief Decompress the headers according to IPHC compression.
      * @param [in,out] packet The packet to be compressed.
      * @param [in] src The MAC source address.
      * @param [in] dst The MAC destination address.
-     * @return true if the packet can not be decompressed due to wrong context information.
+     * @return The reason decompression failed, or NONE on success.
      */
-    bool DecompressLowPanIphc(Ptr<Packet> packet, const Address& src, const Address& dst);
+    DecompressionError DecompressLowPanIphc(Ptr<Packet> packet,
+                                            const Address& src,
+                                            const Address& dst);
 
     /**
      * @brief Compress the headers according to NHC compression.
