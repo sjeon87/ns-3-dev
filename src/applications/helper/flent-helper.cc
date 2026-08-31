@@ -43,7 +43,7 @@ FlentHelper::SetTestLength(Time length)
 {
     m_length = length;
 
-    m_factory.Set("StopTime", TimeValue(m_startTime + m_length + Seconds(10)));
+    m_factory.Set("Length", TimeValue(length));
 }
 
 Time
