@@ -304,7 +304,20 @@ UdpEchoClient::Send()
         NS_ASSERT_MSG(m_dataSize == m_size,
                       "UdpEchoClient::Send(): m_size and m_dataSize inconsistent");
         NS_ASSERT_MSG(m_data, "UdpEchoClient::Send(): m_dataSize but no m_data");
-        p = Create<Packet>(m_data, m_dataSize);
+
+        if (m_enableSeqTsEchoHeader)
+        {
+            SeqTsEchoHeader header;
+            header.SetSeq(m_sent);
+            header.SetTsValue(Simulator::Now());
+            NS_ABORT_IF(m_size < header.GetSerializedSize());
+            p = Create<Packet>(m_data, m_size - header.GetSerializedSize());
+            p->AddHeader(header);
+        }
+        else
+        {
+            p = Create<Packet>(m_data, m_dataSize);
+        }
     }
     else
     {
