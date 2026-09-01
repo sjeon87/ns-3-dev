@@ -248,7 +248,11 @@ The following test cases have been added for regression testing:
 #. Test pinging to IPv4 broadcast address and IPv6 all nodes multicast address
 #. Test behavior of first reply lost in a count-limited configuration
 #. Test behavior of second reply lost in a count-limited configuration
-#. Test behavior of last reply lost in a count-limited configuration.
+#. Test behavior of last reply lost in a count-limited configuration
+#. Test pinging with a payload large enough to require fragmentation
+#. Test ping reaction to an ICMPv4 Destination Host Unreachable message
+#. Test ping reaction to an ICMPv4 Destination Network Unreachable message
+#. Test that ping ignores unsupported and non-matching ICMPv4 Destination Unreachable messages
 
 Radvd
 *****

@@ -252,14 +252,21 @@ Ping::Receive(Ptr<Socket> socket)
                 uint8_t quotedPayload[8];
                 destUnreach.GetData(quotedPayload);
 
-                // The quoted ICMP payload contains ICMPv4 header (bytes 0-3),
-                // then echo identifier (bytes 4-5) and sequence number (bytes 6-7).
-                const uint16_t recvId = (static_cast<uint16_t>(quotedPayload[4]) << 8) |
-                                        static_cast<uint16_t>(quotedPayload[5]);
-                const uint16_t recvSeq = (static_cast<uint16_t>(quotedPayload[6]) << 8) |
-                                         static_cast<uint16_t>(quotedPayload[7]);
+                // The quoted ICMP payload is the first 8 bytes of the original datagram,
+                // which for an ICMP Echo Request is an ICMP Echo header.  Decode it through
+                // the ICMP header classes and only act on errors that quote one of our own
+                // Echo Requests.
+                Ptr<Packet> quotedPacket = Create<Packet>(quotedPayload, sizeof(quotedPayload));
+                Icmpv4Header quotedIcmpHeader;
+                quotedPacket->RemoveHeader(quotedIcmpHeader);
+                Icmpv4Echo quotedEcho;
+                quotedPacket->RemoveHeader(quotedEcho);
 
-                if (recvId != PING_ID || recvSeq >= m_sent.size())
+                const bool isEcho = (quotedIcmpHeader.GetType() == Icmpv4Header::ICMPV4_ECHO);
+                const uint16_t recvId = quotedEcho.GetIdentifier();
+                const uint16_t recvSeq = quotedEcho.GetSequenceNumber();
+
+                if (!isEcho || recvId != PING_ID || recvSeq >= m_sent.size())
                 {
                     break;
                 }
@@ -288,11 +295,9 @@ Ping::Receive(Ptr<Socket> socket)
                                       << " Destination Network Unreachable\n";
                         }
                     }
-                    else
-                    {
-                        // Unsupported destination-unreachable codes are intentionally ignored
-                        // by phase-1 drop mapping.
-                    }
+                    // Unsupported destination-unreachable codes (e.g., port or protocol
+                    // unreachable) do not map to a drop reason; they remain silent, but the
+                    // received code is still logged below for diagnostics.
                 }
 
                 NS_LOG_INFO("Received Destination Unreachable (code="
