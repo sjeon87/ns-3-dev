@@ -768,10 +768,61 @@ class ThreeGppIndoorOfficePropagationLossModel : public ThreeGppPropagationLossM
 /**
  * @ingroup propagation
  *
- * @brief Implements the pathloss model defined in 3GPP TR 38.811, Table ????
+ * @brief Base class for the NTN pathloss models defined in 3GPP TR 38.811.
+ *
+ * This class holds the path loss computations common to all NTN scenarios.
+ * The scenario subclasses provide the scenario-specific channel condition
+ * model, shadow fading and clutter loss table, and shadowing correlation
+ * distances.
+ *
+ * The model is defined for satellite-to-ground links with elevation angles
+ * between 10 and 90 degrees. For links outside this domain, i.e., with a
+ * non-positive elevation angle (such as between two ground terminals, or
+ * with the satellite below the horizon) or an undefined elevation angle
+ * (coincident positions), the elevation-dependent terms are not evaluated
+ * and a fixed loss of 500 dB is returned instead.
+ */
+class ThreeGppNTNPropagationLossModel : public ThreeGppPropagationLossModel
+{
+  public:
+    /**
+     * @brief Get the type ID.
+     * @return the object TypeId
+     */
+    static TypeId GetTypeId();
+
+    /**
+     * @copydoc ThreeGppPropagationLossModel::GetO2iDistance2dIn
+     *  Does nothing in NTN scenarios.
+     */
+    double GetO2iDistance2dIn() const override;
+
+  protected:
+    /**
+     * @brief The nested map containing the Shadow Fading and Clutter Loss
+     *        values for the scenario, set by the subclass constructor
+     */
+    const std::map<int, std::vector<float>>* m_SFCL{nullptr};
+    double m_shadowingCorrDistanceLos{0};  //!< shadowing correlation distance for LOS, in meters
+    double m_shadowingCorrDistanceNlos{0}; //!< shadowing correlation distance for NLOS, in meters
+
+  private:
+    // Inherited
+    double GetLossLos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
+    double GetLossNlos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
+    double GetShadowingStd(Ptr<MobilityModel> a,
+                           Ptr<MobilityModel> b,
+                           ChannelCondition::LosConditionValue cond) const override;
+    double GetShadowingCorrelationDistance(ChannelCondition::LosConditionValue cond) const override;
+};
+
+/**
+ * @ingroup propagation
+ *
+ * @brief Implements the pathloss model defined in 3GPP TR 38.811, Sec. 6.6.2,
  *        for the NTN Dense Urban scenario.
  */
-class ThreeGppNTNDenseUrbanPropagationLossModel : public ThreeGppPropagationLossModel
+class ThreeGppNTNDenseUrbanPropagationLossModel : public ThreeGppNTNPropagationLossModel
 {
   public:
     /**
@@ -791,12 +842,6 @@ class ThreeGppNTNDenseUrbanPropagationLossModel : public ThreeGppPropagationLoss
     ~ThreeGppNTNDenseUrbanPropagationLossModel() override;
 
     /**
-     * @copydoc ThreeGppPropagationLossModel::GetO2iDistance2dIn
-     *  Does nothing in NTN scenarios.
-     */
-    double GetO2iDistance2dIn() const override;
-
-    /**
      * @brief Copy constructor
      *
      * Deleted in base class
@@ -812,30 +857,15 @@ class ThreeGppNTNDenseUrbanPropagationLossModel : public ThreeGppPropagationLoss
      */
     ThreeGppNTNDenseUrbanPropagationLossModel& operator=(
         const ThreeGppNTNDenseUrbanPropagationLossModel&) = delete;
-
-  private:
-    // Inherited
-    double GetLossLos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetLossNlos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetShadowingStd(Ptr<MobilityModel> a,
-                           Ptr<MobilityModel> b,
-                           ChannelCondition::LosConditionValue cond) const override;
-    double GetShadowingCorrelationDistance(ChannelCondition::LosConditionValue cond) const override;
-
-    /**
-     * @brief The nested map containing the Shadow Fading and
-     *        Clutter Loss values for the NTN Dense Urban scenario
-     */
-    const std::map<int, std::vector<float>>* m_SFCL_DenseUrban;
 };
 
 /**
  * @ingroup propagation
  *
- * @brief Implements the pathloss model defined in 3GPP TR 38.811, Table ????
+ * @brief Implements the pathloss model defined in 3GPP TR 38.811, Sec. 6.6.2,
  *        for the NTN Urban scenario.
  */
-class ThreeGppNTNUrbanPropagationLossModel : public ThreeGppPropagationLossModel
+class ThreeGppNTNUrbanPropagationLossModel : public ThreeGppNTNPropagationLossModel
 {
   public:
     /**
@@ -855,12 +885,6 @@ class ThreeGppNTNUrbanPropagationLossModel : public ThreeGppPropagationLossModel
     ~ThreeGppNTNUrbanPropagationLossModel() override;
 
     /**
-     * @copydoc ThreeGppPropagationLossModel::GetO2iDistance2dIn
-     *  Does nothing in NTN scenarios.
-     */
-    double GetO2iDistance2dIn() const override;
-
-    /**
      * @brief Copy constructor
      *
      * Deleted in base class
@@ -875,30 +899,15 @@ class ThreeGppNTNUrbanPropagationLossModel : public ThreeGppPropagationLossModel
      */
     ThreeGppNTNUrbanPropagationLossModel& operator=(const ThreeGppNTNUrbanPropagationLossModel&) =
         delete;
-
-  private:
-    // Inherited
-    double GetLossLos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetLossNlos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetShadowingStd(Ptr<MobilityModel> a,
-                           Ptr<MobilityModel> b,
-                           ChannelCondition::LosConditionValue cond) const override;
-    double GetShadowingCorrelationDistance(ChannelCondition::LosConditionValue cond) const override;
-
-    /**
-     * @brief The nested map containing the Shadow Fading and
-     *        Clutter Loss values for the NTN Urban scenario
-     */
-    const std::map<int, std::vector<float>>* m_SFCL_Urban;
 };
 
 /**
  * @ingroup propagation
  *
- * @brief Implements the pathloss model defined in 3GPP TR 38.811, Table ????
+ * @brief Implements the pathloss model defined in 3GPP TR 38.811, Sec. 6.6.2,
  *        for the NTN Suburban scenario.
  */
-class ThreeGppNTNSuburbanPropagationLossModel : public ThreeGppPropagationLossModel
+class ThreeGppNTNSuburbanPropagationLossModel : public ThreeGppNTNPropagationLossModel
 {
   public:
     /**
@@ -918,12 +927,6 @@ class ThreeGppNTNSuburbanPropagationLossModel : public ThreeGppPropagationLossMo
     ~ThreeGppNTNSuburbanPropagationLossModel() override;
 
     /**
-     * @copydoc ThreeGppPropagationLossModel::GetO2iDistance2dIn
-     *  Does nothing in NTN scenarios.
-     */
-    double GetO2iDistance2dIn() const override;
-
-    /**
      * @brief Copy constructor
      *
      * Deleted in base class
@@ -939,30 +942,15 @@ class ThreeGppNTNSuburbanPropagationLossModel : public ThreeGppPropagationLossMo
      */
     ThreeGppNTNSuburbanPropagationLossModel& operator=(
         const ThreeGppNTNSuburbanPropagationLossModel&) = delete;
-
-  private:
-    // Inherited
-    double GetLossLos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetLossNlos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetShadowingStd(Ptr<MobilityModel> a,
-                           Ptr<MobilityModel> b,
-                           ChannelCondition::LosConditionValue cond) const override;
-    double GetShadowingCorrelationDistance(ChannelCondition::LosConditionValue cond) const override;
-
-    /**
-     * @brief The nested map containing the Shadow Fading and
-     *        Clutter Loss values for the NTN Suburban and Rural scenario
-     */
-    const std::map<int, std::vector<float>>* m_SFCL_SuburbanRural;
 };
 
 /**
  * @ingroup propagation
  *
- * @brief Implements the pathloss model defined in 3GPP TR 38.811, Table ????
+ * @brief Implements the pathloss model defined in 3GPP TR 38.811, Sec. 6.6.2,
  *        for the NTN Rural scenario.
  */
-class ThreeGppNTNRuralPropagationLossModel : public ThreeGppPropagationLossModel
+class ThreeGppNTNRuralPropagationLossModel : public ThreeGppNTNPropagationLossModel
 {
   public:
     /**
@@ -982,12 +970,6 @@ class ThreeGppNTNRuralPropagationLossModel : public ThreeGppPropagationLossModel
     ~ThreeGppNTNRuralPropagationLossModel() override;
 
     /**
-     * @copydoc ThreeGppPropagationLossModel::GetO2iDistance2dIn
-     *  Does nothing in NTN scenarios.
-     */
-    double GetO2iDistance2dIn() const override;
-
-    /**
      * @brief Copy constructor
      *
      * Deleted in base class
@@ -1002,21 +984,6 @@ class ThreeGppNTNRuralPropagationLossModel : public ThreeGppPropagationLossModel
      */
     ThreeGppNTNRuralPropagationLossModel& operator=(const ThreeGppNTNRuralPropagationLossModel&) =
         delete;
-
-  private:
-    // Inherited
-    double GetLossLos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetLossNlos(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const override;
-    double GetShadowingStd(Ptr<MobilityModel> a,
-                           Ptr<MobilityModel> b,
-                           ChannelCondition::LosConditionValue cond) const override;
-    double GetShadowingCorrelationDistance(ChannelCondition::LosConditionValue cond) const override;
-
-    /**
-     * @brief The nested map containing the Shadow Fading and
-     *        Clutter Loss values for the NTN Suburban and Rural scenario
-     */
-    const std::map<int, std::vector<float>>* m_SFCL_SuburbanRural;
 };
 
 } // namespace ns3
