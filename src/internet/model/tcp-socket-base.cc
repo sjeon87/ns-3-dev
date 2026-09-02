@@ -322,6 +322,12 @@ TcpSocketBase::TcpSocketBase()
     m_pacingTimer.SetFunction(&TcpSocketBase::NotifyPacingPerformed, this);
 
     m_tcb->m_sendEmptyPacketCallback = MakeCallback(&TcpSocketBase::SendEmptyPacket, this);
+    m_maxSndWnd = 0;
+    m_challengeAckWindowStart = Seconds(0);
+    m_challengeAckCount = 0;
+    // Simple throttling to avoid challenge ACK storms (RFC 5961 guidance).
+    m_challengeAckInterval = Seconds(5);
+    m_challengeAckLimit = 10;
 
     bool ok;
 
@@ -414,9 +420,14 @@ TcpSocketBase::TcpSocketBase(const TcpSocketBase& sock)
       m_msl(sock.m_msl),
       m_maxWinSize(sock.m_maxWinSize),
       m_bytesAckedNotProcessed(sock.m_bytesAckedNotProcessed),
+      m_maxSndWnd(sock.m_maxSndWnd),
       m_rWnd(sock.m_rWnd),
       m_highRxMark(sock.m_highRxMark),
       m_highRxAckMark(sock.m_highRxAckMark),
+      m_challengeAckWindowStart(sock.m_challengeAckWindowStart),
+      m_challengeAckCount(sock.m_challengeAckCount),
+      m_challengeAckInterval(sock.m_challengeAckInterval),
+      m_challengeAckLimit(sock.m_challengeAckLimit),
       m_sackEnabled(sock.m_sackEnabled),
       m_winScalingEnabled(sock.m_winScalingEnabled),
       m_rcvWindShift(sock.m_rcvWindShift),
@@ -1288,7 +1299,15 @@ TcpSocketBase::ForwardUp(Ptr<Packet> packet,
         return;
     }
 
-    if (header.GetEcn() == Ipv4Header::ECN_CE && m_ecnCESeq < tcpHeader.GetSequenceNumber())
+    uint8_t ackOnlyFlags =
+        tcpHeader.GetFlags() & ~(TcpHeader::PSH | TcpHeader::URG | TcpHeader::CWR | TcpHeader::ECE);
+    bool isEstablishedPureAck = (m_state == ESTABLISHED && ackOnlyFlags == TcpHeader::ACK &&
+                                 packet->GetSize() == bytesRemoved);
+    bool allowAckSideEffects =
+        !isEstablishedPureAck || ClassifyEstablishedAck(tcpHeader.GetAckNumber()) == ACK_VALID;
+
+    if (allowAckSideEffects && header.GetEcn() == Ipv4Header::ECN_CE &&
+        m_ecnCESeq < tcpHeader.GetSequenceNumber())
     {
         NS_LOG_INFO("Received CE flag is valid");
         NS_LOG_DEBUG(TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_CE_RCVD");
@@ -1296,7 +1315,7 @@ TcpSocketBase::ForwardUp(Ptr<Packet> packet,
         m_tcb->m_ecnState = TcpSocketState::ECN_CE_RCVD;
         m_congestionControl->CwndEvent(m_tcb, TcpSocketState::CA_EVENT_ECN_IS_CE);
     }
-    else if (header.GetEcn() != Ipv4Header::ECN_NotECT &&
+    else if (allowAckSideEffects && header.GetEcn() != Ipv4Header::ECN_NotECT &&
              m_tcb->m_ecnState != TcpSocketState::ECN_DISABLED)
     {
         m_congestionControl->CwndEvent(m_tcb, TcpSocketState::CA_EVENT_ECN_NO_CE);
@@ -1328,7 +1347,15 @@ TcpSocketBase::ForwardUp6(Ptr<Packet> packet,
         return;
     }
 
-    if (header.GetEcn() == Ipv6Header::ECN_CE && m_ecnCESeq < tcpHeader.GetSequenceNumber())
+    uint8_t ackOnlyFlags =
+        tcpHeader.GetFlags() & ~(TcpHeader::PSH | TcpHeader::URG | TcpHeader::CWR | TcpHeader::ECE);
+    bool isEstablishedPureAck = (m_state == ESTABLISHED && ackOnlyFlags == TcpHeader::ACK &&
+                                 packet->GetSize() == bytesRemoved);
+    bool allowAckSideEffects =
+        !isEstablishedPureAck || ClassifyEstablishedAck(tcpHeader.GetAckNumber()) == ACK_VALID;
+
+    if (allowAckSideEffects && header.GetEcn() == Ipv6Header::ECN_CE &&
+        m_ecnCESeq < tcpHeader.GetSequenceNumber())
     {
         NS_LOG_INFO("Received CE flag is valid");
         NS_LOG_DEBUG(TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_CE_RCVD");
@@ -1336,7 +1363,7 @@ TcpSocketBase::ForwardUp6(Ptr<Packet> packet,
         m_tcb->m_ecnState = TcpSocketState::ECN_CE_RCVD;
         m_congestionControl->CwndEvent(m_tcb, TcpSocketState::CA_EVENT_ECN_IS_CE);
     }
-    else if (header.GetEcn() != Ipv6Header::ECN_NotECT &&
+    else if (allowAckSideEffects && header.GetEcn() != Ipv6Header::ECN_NotECT &&
              m_tcb->m_ecnState != TcpSocketState::ECN_DISABLED)
     {
         m_congestionControl->CwndEvent(m_tcb, TcpSocketState::CA_EVENT_ECN_NO_CE);
@@ -1412,8 +1439,20 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
     TcpHeader tcpHeader;
     packet->RemoveHeader(tcpHeader);
     SequenceNumber32 seq = tcpHeader.GetSequenceNumber();
+    uint8_t ackOnlyFlags =
+        tcpHeader.GetFlags() & ~(TcpHeader::PSH | TcpHeader::URG | TcpHeader::CWR | TcpHeader::ECE);
+    bool isEstablishedPureAck =
+        (m_state == ESTABLISHED && ackOnlyFlags == TcpHeader::ACK && packet->GetSize() == 0);
+    // NOTE:
+    // Side-effect gating (RTT/RTO updates, ECN handling, timestamp processing,
+    // window updates) is intentionally applied only to pure ACK segments.
+    // ACK-bearing segments with payload are not part of this RFC 5961 scope.
+    // RFC 5961: prevent invalid pure ACKs in ESTABLISHED from mutating
+    // TCP state (RTT, ECN, timestamps, window tracking) before validation.
+    bool allowAckSideEffects =
+        !isEstablishedPureAck || ClassifyEstablishedAck(tcpHeader.GetAckNumber()) == ACK_VALID;
 
-    if (m_state == ESTABLISHED && !(tcpHeader.GetFlags() & TcpHeader::RST))
+    if (allowAckSideEffects && m_state == ESTABLISHED && !(tcpHeader.GetFlags() & TcpHeader::RST))
     {
         // Check if the sender has responded to ECN echo by reducing the Congestion Window
         if (tcpHeader.GetFlags() & TcpHeader::CWR)
@@ -1439,6 +1478,7 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
          * saved anyway..
          */
         m_rWnd = tcpHeader.GetWindowSize();
+        m_maxSndWnd = std::max(m_maxSndWnd, m_rWnd.Get());
 
         if (tcpHeader.HasOption(TcpOption::WINSCALE) && m_winScalingEnabled)
         {
@@ -1500,13 +1540,19 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
             }
             else
             {
-                ProcessOptionTimestamp(tcpHeader.GetOption(TcpOption::TS),
-                                       tcpHeader.GetSequenceNumber());
+                if (allowAckSideEffects)
+                {
+                    ProcessOptionTimestamp(tcpHeader.GetOption(TcpOption::TS),
+                                           tcpHeader.GetSequenceNumber());
+                }
             }
         }
 
-        EstimateRtt(tcpHeader);
-        UpdateWindowSize(tcpHeader);
+        if (allowAckSideEffects)
+        {
+            EstimateRtt(tcpHeader);
+            UpdateWindowSize(tcpHeader);
+        }
     }
 
     if (m_rWnd.Get() == 0 && m_persistEvent.IsExpired())
@@ -1599,44 +1645,40 @@ TcpSocketBase::ProcessEstablished(Ptr<Packet> packet, const TcpHeader& tcpHeader
     // Different flags are different events
     if (tcpflags == TcpHeader::ACK)
     {
-        if (tcpHeader.GetAckNumber() < m_txBuffer->HeadSequence())
+        // RFC 5961 Section 5.2 handling is applied only to pure ACK segments
+        // (ACK flag set, no payload) in ESTABLISHED state.
+        // ACKs carrying payload (data+ACK) or control flags (e.g., FIN|ACK)
+        // follow existing ns-3 TCP processing and are not covered here.
+        // RFC 5961: Apply stricter ACK validation for pure ACKs in ESTABLISHED
+        // state. Invalid ACKs trigger a challenge ACK and are dropped without
+        // mutating congestion-control, RTT, or window-tracking state.
+        // After RemoveHeader(), packet size reflects payload bytes only; TCP options
+        // remain available through tcpHeader. A zero-sized packet here is a pure ACK.
+        if (packet->GetSize() == 0)
         {
-            // Case 1:  If the ACK is a duplicate (SEG.ACK < SND.UNA), it can be ignored.
-            // Pag. 72 RFC 793
-            NS_LOG_WARN("Ignored ack of " << tcpHeader.GetAckNumber()
-                                          << " SND.UNA = " << m_txBuffer->HeadSequence());
-
-            // TODO: RFC 5961 5.2 [Blind Data Injection Attack].[Mitigation]
-        }
-        else if (tcpHeader.GetAckNumber() > m_tcb->m_highTxMark)
-        {
-            // If the ACK acks something not yet sent (SEG.ACK > HighTxMark) then
-            // send an ACK, drop the segment, and return.
-            // Pag. 72 RFC 793
-            NS_LOG_WARN("Ignored ack of " << tcpHeader.GetAckNumber()
-                                          << " HighTxMark = " << m_tcb->m_highTxMark);
-
-            // Receiver sets ECE flags when it receives a packet with CE bit on or sender hasn't
-            // responded to ECN echo sent by receiver
-            if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD ||
-                m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE)
+            AckClassification_t ackClass = ClassifyEstablishedAck(tcpHeader.GetAckNumber());
+            if (ackClass == ACK_INVALID_OLD || ackClass == ACK_INVALID_FUTURE)
             {
-                SendEmptyPacket(TcpHeader::ACK | TcpHeader::ECE);
-                NS_LOG_DEBUG(TcpSocketState::EcnStateName[m_tcb->m_ecnState]
-                             << " -> ECN_SENDING_ECE");
-                m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_ECE;
+                NS_LOG_DEBUG("Ignored invalid ACK of " << tcpHeader.GetAckNumber() << " SND.UNA = "
+                                                       << m_txBuffer->HeadSequence()
+                                                       << " MAX.SND.WND = " << m_maxSndWnd
+                                                       << " SND.NXT = " << m_tcb->m_highTxMark);
+                bool addEce = (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD ||
+                               m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE);
+                // RFC 5961: invalid ACKs must not mutate connection state.
+                // Only reflect current ECN state in the response, do not transition.
+                SendChallengeAck(addEce);
+                return;
             }
-            else
+            if (ackClass == ACK_STALE)
             {
-                SendEmptyPacket(TcpHeader::ACK);
+                NS_LOG_DEBUG("Ignored stale ACK of " << tcpHeader.GetAckNumber()
+                                                     << " SND.UNA = " << m_txBuffer->HeadSequence()
+                                                     << " MAX.SND.WND = " << m_maxSndWnd);
+                return;
             }
         }
-        else
-        {
-            // SND.UNA < SEG.ACK =< HighTxMark
-            // Pag. 72 RFC 793
-            ReceivedAck(packet, tcpHeader);
-        }
+        ReceivedAck(packet, tcpHeader);
     }
     else if (tcpflags == TcpHeader::SYN || tcpflags == (TcpHeader::SYN | TcpHeader::ACK))
     {
@@ -2883,11 +2925,38 @@ TcpSocketBase::Destroy6()
     CancelAllTimers();
 }
 
-/* Send an empty packet with specified TCP flags */
-void
-TcpSocketBase::SendEmptyPacket(uint8_t flags)
+TcpSocketBase::AckClassification_t
+TcpSocketBase::ClassifyEstablishedAck(const SequenceNumber32& ackNumber) const
 {
-    NS_LOG_FUNCTION(this << static_cast<uint32_t>(flags));
+    NS_LOG_FUNCTION(this << ackNumber);
+
+    // RFC 5961 Section 5.2:
+    // Acceptable ACK range is:
+    // (SND.UNA - MAX.SND.WND) <= SEG.ACK <= SND.NXT
+    // Out-of-range ACKs must trigger a challenge ACK.
+    SequenceNumber32 sndUna = m_txBuffer->HeadSequence();
+    SequenceNumber32 sndNxt = m_tcb->m_highTxMark;
+    SequenceNumber32 lower = sndUna - m_maxSndWnd;
+
+    if (ackNumber < lower)
+    {
+        return ACK_INVALID_OLD;
+    }
+    if (ackNumber > sndNxt)
+    {
+        return ACK_INVALID_FUTURE;
+    }
+    if (ackNumber < sndUna)
+    {
+        return ACK_STALE;
+    }
+    return ACK_VALID;
+}
+
+void
+TcpSocketBase::SendEmptyPacketWithSequence(uint8_t flags, SequenceNumber32 s, bool updateRto)
+{
+    NS_LOG_FUNCTION(this << static_cast<uint32_t>(flags) << s << updateRto);
 
     if (m_endPoint == nullptr && m_endPoint6 == nullptr)
     {
@@ -2897,17 +2966,12 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
 
     Ptr<Packet> p = Create<Packet>();
     TcpHeader header;
-    SequenceNumber32 s = m_tcb->m_nextTxSequence;
     TcpPacketType_t packetType = INVALID;
 
     if (flags & TcpHeader::FIN)
     {
         packetType = TcpPacketType_t::FIN;
         flags |= TcpHeader::ACK;
-    }
-    else if (m_state == FIN_WAIT_1 || m_state == LAST_ACK || m_state == CLOSING)
-    {
-        ++s;
     }
 
     if (flags & TcpHeader::SYN)
@@ -2946,9 +3010,11 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
     }
     AddOptions(header);
 
-    // RFC 6298, clause 2.4
-    m_rto =
-        Max(m_rtt->GetEstimate() + Max(m_clockGranularity, m_rtt->GetVariation() * 4), m_minRto);
+    if (updateRto)
+    {
+        m_rto = Max(m_rtt->GetEstimate() + Max(m_clockGranularity, m_rtt->GetVariation() * 4),
+                    m_minRto);
+    }
 
     uint16_t windowSize = AdvertisedWindowSize();
     bool hasSyn = flags & TcpHeader::SYN;
@@ -2957,7 +3023,7 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
     if (hasSyn)
     {
         if (m_winScalingEnabled)
-        { // The window scaling option is set only on SYN packets
+        {
             AddOptionWScale(header);
         }
 
@@ -2967,16 +3033,16 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
         }
 
         if (m_synCount == 0)
-        { // No more connection retries, give up
+        {
             NS_LOG_LOGIC("Connection failed.");
-            m_rtt->Reset(); // According to recommendation -> RFC 6298
+            m_rtt->Reset();
             NotifyConnectionFailed();
             m_state = CLOSED;
             DeallocateEndPoint();
             return;
         }
         else
-        { // Exponential backoff of connection time out
+        {
             int backoffCount = 0x1 << (m_synRetries - m_synCount);
             m_rto = m_cnTimeout * backoffCount;
             m_synCount--;
@@ -2987,7 +3053,7 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
             UpdateRttHistory(s, 0, false);
         }
         else
-        { // This is SYN retransmission
+        {
             UpdateRttHistory(s, 0, true);
         }
 
@@ -2996,7 +3062,7 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
     header.SetWindowSize(windowSize);
 
     if (flags & TcpHeader::ACK)
-    { // If sending an ACK, cancel the delay ACK as well
+    {
         m_delAckEvent.Cancel();
         m_delAckCount = 0;
         if (m_highTxAck < header.GetAckNumber())
@@ -3030,12 +3096,73 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
     }
 
     if (m_retxEvent.IsExpired() && (hasSyn || hasFin) && !isAck)
-    { // Retransmit SYN / SYN+ACK / FIN / FIN+ACK to guard against lost
+    {
         NS_LOG_LOGIC("Schedule retransmission timeout at time "
                      << Simulator::Now().GetSeconds() << " to expire at time "
                      << (Simulator::Now() + m_rto.Get()).GetSeconds());
         m_retxEvent = Simulator::Schedule(m_rto, &TcpSocketBase::SendEmptyPacket, this, flags);
     }
+}
+
+void
+TcpSocketBase::SendChallengeAck(bool addEce)
+{
+    NS_LOG_FUNCTION(this << addEce);
+
+    Time now = Simulator::Now();
+    if ((now - m_challengeAckWindowStart) >= m_challengeAckInterval)
+    {
+        m_challengeAckWindowStart = now;
+        m_challengeAckCount = 0;
+    }
+
+    if (m_challengeAckCount >= m_challengeAckLimit)
+    {
+        NS_LOG_LOGIC("Suppressing challenge ACK due to throttling");
+        return;
+    }
+
+    if (m_endPoint == nullptr && m_endPoint6 == nullptr)
+    {
+        NS_LOG_WARN("Failed to send challenge ACK due to null endpoint");
+        return;
+    }
+
+    ++m_challengeAckCount;
+
+    // Use m_highTxMark as the logical SND.NXT. m_nextTxSequence may
+    // temporarily lag during retransmissions.
+    uint8_t flags = TcpHeader::ACK;
+    if (addEce)
+    {
+        flags |= TcpHeader::ECE;
+    }
+
+    // Preserve ECN state: RFC 5961 requires no connection state mutation
+    // when handling invalid ACKs.
+    auto oldEcn = m_tcb->m_ecnState;
+    SendEmptyPacketWithSequence(flags, m_tcb->m_highTxMark, false);
+    // Restore ECN state after sending the challenge ACK.
+    m_tcb->m_ecnState = oldEcn;
+}
+
+/* Send an empty packet with specified TCP flags */
+void
+TcpSocketBase::SendEmptyPacket(uint8_t flags)
+{
+    NS_LOG_FUNCTION(this << static_cast<uint32_t>(flags));
+
+    SequenceNumber32 s = m_tcb->m_nextTxSequence;
+
+    if (flags & TcpHeader::FIN)
+    {
+        flags |= TcpHeader::ACK;
+    }
+    else if (m_state == FIN_WAIT_1 || m_state == LAST_ACK || m_state == CLOSING)
+    {
+        ++s;
+    }
+    SendEmptyPacketWithSequence(flags, s);
 }
 
 /* This function closes the endpoint completely. Called upon RST_TX action. */
@@ -4679,6 +4806,7 @@ TcpSocketBase::UpdateWindowSize(const TcpHeader& header)
     if (m_state < ESTABLISHED)
     {
         m_rWnd = receivedWindow;
+        m_maxSndWnd = std::max(m_maxSndWnd, m_rWnd.Get());
         NS_LOG_LOGIC("State less than ESTABLISHED; updating rWnd to " << m_rWnd);
         return;
     }
@@ -4708,6 +4836,7 @@ TcpSocketBase::UpdateWindowSize(const TcpHeader& header)
     if (update)
     {
         m_rWnd = receivedWindow;
+        m_maxSndWnd = std::max(m_maxSndWnd, m_rWnd.Get());
         NS_LOG_LOGIC("updating rWnd to " << m_rWnd);
     }
 }
