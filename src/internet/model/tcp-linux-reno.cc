@@ -79,7 +79,7 @@ TcpLinuxReno::CongestionAvoidance(Ptr<TcpSocketState> tcb, uint32_t segmentsAcke
 {
     NS_LOG_FUNCTION(this << tcb << segmentsAcked);
 
-    if (m_suppressIncreaseIfCwndLimited && !tcb->m_isCwndLimited)
+    if (m_suppressIncreaseIfCwndLimited && !tcb->IsCwndLimited())
     {
         NS_LOG_DEBUG("No increase because current cwnd " << tcb->m_cWnd
                                                          << " is not limiting the flow");

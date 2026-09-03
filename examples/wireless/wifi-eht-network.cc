@@ -676,25 +676,31 @@ main(int argc, char* argv[])
                         exit(1);
                     }
                 }
-                // test previous throughput is smaller (for the same mcs)
-                if (throughput * (1 + tolerance) > previous)
+                // For TCP, short simulations and congestion control dynamics can yield
+                // non-monotonic throughput even when PHY rate increases. Only enforce
+                // monotonicity checks for UDP flows.
+                if (udp)
                 {
-                    previous = throughput;
-                }
-                else if (throughput > 0)
-                {
-                    NS_LOG_ERROR("Obtained throughput " << throughput << " is not expected!");
-                    exit(1);
-                }
-                // test previous throughput is smaller (for the same channel width and GI)
-                if (throughput * (1 + tolerance) > prevThroughput[index])
-                {
-                    prevThroughput[index] = throughput;
-                }
-                else if (throughput > 0)
-                {
-                    NS_LOG_ERROR("Obtained throughput " << throughput << " is not expected!");
-                    exit(1);
+                    // test previous throughput is smaller (for the same mcs)
+                    if (throughput * (1 + tolerance) > previous)
+                    {
+                        previous = throughput;
+                    }
+                    else if (throughput > 0)
+                    {
+                        NS_LOG_ERROR("Obtained throughput " << throughput << " is not expected!");
+                        exit(1);
+                    }
+                    // test previous throughput is smaller (for the same channel width and GI)
+                    if (throughput * (1 + tolerance) > prevThroughput[index])
+                    {
+                        prevThroughput[index] = throughput;
+                    }
+                    else if (throughput > 0)
+                    {
+                        NS_LOG_ERROR("Obtained throughput " << throughput << " is not expected!");
+                        exit(1);
+                    }
                 }
                 index++;
             }

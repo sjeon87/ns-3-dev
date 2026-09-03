@@ -201,9 +201,11 @@ class TcpSocketState : public Object
     TracedValue<uint32_t> m_bytesInFlight{0}; //!< Bytes in flight
     TracedValue<uint32_t> m_fackAwnd{0};      //!< inflight data by FACK
 
-    bool m_isCwndLimited{false}; //!< Whether throughput is limited by cwnd
-    TracedValue<Time> m_srtt;    //!< Smoothed RTT
-    TracedValue<Time> m_lastRtt; //!< RTT of the last (S)ACKed packet
+    bool m_isCwndLimited{false};    //!< Whether throughput is limited by cwnd
+    uint32_t m_maxBytesInFlight{0}; //!< Max in-flight bytes observed in the current usage window
+    SequenceNumber32 m_cwndUsageSeq{0}; //!< Sequence marking current cwnd usage window end
+    TracedValue<Time> m_srtt;           //!< Smoothed RTT
+    TracedValue<Time> m_lastRtt;        //!< RTT of the last (S)ACKed packet
 
     Ptr<TcpRxBuffer> m_rxBuffer; //!< Rx buffer (reordering buffer)
 
@@ -235,6 +237,37 @@ class TcpSocketState : public Object
     {
         return m_ssThresh / m_segmentSize;
     }
+
+    /**
+     * @brief Return whether the flow should be considered cwnd-limited
+     *
+     * This method follows the Linux behavior:
+     * - if cwnd-limited was observed in the current usage window, return true
+     * - otherwise, in slow start, allow growth if cwnd is lower than twice the
+     *   maximum in-flight bytes observed in the current usage window
+     *
+     * @returns true if the flow is cwnd-limited
+     */
+    bool IsCwndLimited() const;
+
+    /**
+     * @brief Update cwnd usage accounting for the current usage window
+     *
+     * The caller provides:
+     * - @p sndUna: sender's oldest unacknowledged byte (SND.UNA equivalent)
+     * - @p sndNxt: sender's next sequence to send (SND.NXT equivalent)
+     * - @p isCwndLimited: instantaneous cwnd-limited signal
+     * - @p bytesInFlight: current in-flight bytes estimate
+     *
+     * @param sndUna sender's oldest unacknowledged sequence
+     * @param sndNxt sender's next sequence to transmit
+     * @param isCwndLimited instantaneous cwnd-limited signal
+     * @param bytesInFlight current in-flight bytes estimate
+     */
+    void UpdateCwndUsage(const SequenceNumber32& sndUna,
+                         const SequenceNumber32& sndNxt,
+                         bool isCwndLimited,
+                         uint32_t bytesInFlight);
 
     /**
      * Callback to send an empty packet

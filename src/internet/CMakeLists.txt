@@ -345,6 +345,7 @@ set(test_sources
     test/tcp-classic-recovery-test.cc
     test/tcp-close-test.cc
     test/tcp-cong-avoid-test.cc
+    test/tcp-cwnd-limited-test.cc
     test/tcp-datasentcb-test.cc
     test/tcp-dctcp-loss-test-suite.cc
     test/tcp-dctcp-test.cc

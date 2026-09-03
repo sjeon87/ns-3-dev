@@ -5,6 +5,10 @@
  */
 #include "tcp-socket-state.h"
 
+#include "ns3/log.h"
+
+NS_LOG_COMPONENT_DEFINE("TcpSocketState");
+
 namespace ns3
 {
 
@@ -119,6 +123,8 @@ TcpSocketState::TcpSocketState(const TcpSocketState& other)
       m_minRtt(other.m_minRtt),
       m_bytesInFlight(other.m_bytesInFlight),
       m_isCwndLimited(other.m_isCwndLimited),
+      m_maxBytesInFlight(other.m_maxBytesInFlight),
+      m_cwndUsageSeq(other.m_cwndUsageSeq),
       m_srtt(other.m_srtt),
       m_lastRtt(other.m_lastRtt),
       m_ecnMode(other.m_ecnMode),
@@ -128,6 +134,49 @@ TcpSocketState::TcpSocketState(const TcpSocketState& other)
       m_lastAckedSackedBytes(other.m_lastAckedSackedBytes)
 
 {
+}
+
+bool
+TcpSocketState::IsCwndLimited() const
+{
+    if (m_isCwndLimited)
+    {
+        return true;
+    }
+
+    if (m_cWnd < m_ssThresh)
+    {
+        // Note: multiplication is safe for cwnd values up to ~2 GB (well above
+        // practical ns-3 limits).
+        return m_cWnd.Get() < 2u * m_maxBytesInFlight;
+    }
+
+    return false;
+}
+
+void
+TcpSocketState::UpdateCwndUsage(const SequenceNumber32& sndUna,
+                                const SequenceNumber32& sndNxt,
+                                bool isCwndLimited,
+                                uint32_t bytesInFlight)
+{
+    NS_LOG_FUNCTION(this << sndUna << sndNxt << isCwndLimited << bytesInFlight);
+
+    // Update cwnd-limited accounting when entering a new usage window, when
+    // observing a cwnd-limited sample, or when seeing a stronger non-limited
+    // in-flight sample.
+    if (!(sndUna < m_cwndUsageSeq) || isCwndLimited ||
+        (!m_isCwndLimited && bytesInFlight > m_maxBytesInFlight))
+    {
+        NS_LOG_INFO("Entering new cwnd usage window: sndUna="
+                    << sndUna << " sndNxt=" << sndNxt << " isCwndLimited=" << isCwndLimited
+                    << " bytesInFlight=" << bytesInFlight << " (was: isCwndLimited="
+                    << m_isCwndLimited << " maxBytesInFlight=" << m_maxBytesInFlight
+                    << " cwndUsageSeq=" << m_cwndUsageSeq << ")");
+        m_isCwndLimited = isCwndLimited;
+        m_maxBytesInFlight = bytesInFlight;
+        m_cwndUsageSeq = sndNxt;
+    }
 }
 
 const char* const TcpSocketState::TcpCongStateName[TcpSocketState::CA_LAST_STATE] = {
