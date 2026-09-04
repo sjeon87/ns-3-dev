@@ -30,7 +30,8 @@ build_lib(
     model/sixlowpan-net-device.h
     model/sixlowpan-simple-flooding.h
     model/sixlowpan-nd-binding-table.h
-  LIBRARIES_TO_LINK ${libinternet} ${libcsma}
+  LIBRARIES_TO_LINK ${libinternet}
+                    ${libcsma}
   TEST_SOURCES
     ${example_as_test_suite}
     test/mock-net-device.cc

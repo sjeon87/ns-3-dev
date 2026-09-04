@@ -34,9 +34,9 @@ using namespace ns3;
  */
 class SixLowPanPlainIpv6CoexistenceTest : public TestCase
 {
-    bool m_loWpanHandlerFired{false};  //!< Whether the LoWPAN (0xA0ED) handler fired.
-    bool m_ipv6HandlerFired{false};    //!< Whether the plain IPv6 (0x86DD) handler fired.
-    Ptr<Packet> m_receivedPacket;      //!< Packet captured by whichever handler fired.
+    bool m_loWpanHandlerFired{false}; //!< Whether the LoWPAN (0xA0ED) handler fired.
+    bool m_ipv6HandlerFired{false};   //!< Whether the plain IPv6 (0x86DD) handler fired.
+    Ptr<Packet> m_receivedPacket;     //!< Packet captured by whichever handler fired.
 
     /**
      * Protocol handler registered on the peer node for LoWPAN EtherType.
@@ -65,11 +65,11 @@ class SixLowPanPlainIpv6CoexistenceTest : public TestCase
      * @param packetType The packet type.
      */
     void ReceivePlainIpv6(Ptr<NetDevice> device,
-                         Ptr<const Packet> packet,
-                         uint16_t protocol,
-                         const Address& source,
-                         const Address& destination,
-                         NetDevice::PacketType packetType);
+                          Ptr<const Packet> packet,
+                          uint16_t protocol,
+                          const Address& source,
+                          const Address& destination,
+                          NetDevice::PacketType packetType);
 
     /**
      * Build the two-node CSMA topology, send one below-threshold packet
