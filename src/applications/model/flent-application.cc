@@ -15,6 +15,8 @@
 
 #include "flent-application.h"
 
+#include "nlohmann/json.hpp"
+
 #include "ns3/address.h"
 #include "ns3/application-container.h"
 #include "ns3/boolean.h"
@@ -104,7 +106,10 @@ FlentApplication::GetTypeId()
     return tid;
 }
 
-FlentApplication::FlentApplication() = default;
+FlentApplication::FlentApplication()
+    : m_output(std::make_unique<nlohmann::json>())
+{
+}
 
 FlentApplication::~FlentApplication() = default;
 
@@ -324,7 +329,7 @@ FlentApplication::TraceReceivedPing(uint16_t seq, Time rtt)
     data["seq"] = seq;
     data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
     data["val"] = rtt.GetSeconds() * 1000;
-    m_output["raw_values"]["Ping (ms) ICMP"].push_back(data);
+    (*m_output)["raw_values"]["Ping (ms) ICMP"].push_back(data);
 }
 
 void
@@ -339,7 +344,7 @@ FlentApplication::TraceReceivedUdpPing1(Ptr<const Packet> packet,
     data["dur"] = m_stepSize.GetSeconds();
     data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
     data["val"] = rtt;
-    m_output["raw_values"]["Ping (ms) UDP BE"].push_back(data);
+    (*m_output)["raw_values"]["Ping (ms) UDP BE"].push_back(data);
 }
 
 void
@@ -354,7 +359,7 @@ FlentApplication::TraceReceivedUdpPing2(Ptr<const Packet> packet,
     data["dur"] = m_stepSize.GetSeconds();
     data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
     data["val"] = rtt;
-    m_output["raw_values"]["Ping (ms) UDP BK"].push_back(data);
+    (*m_output)["raw_values"]["Ping (ms) UDP BK"].push_back(data);
 }
 
 void
@@ -369,7 +374,7 @@ FlentApplication::TraceReceivedUdpPing3(Ptr<const Packet> packet,
     data["dur"] = m_stepSize.GetSeconds();
     data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
     data["val"] = rtt;
-    m_output["raw_values"]["Ping (ms) UDP EF"].push_back(data);
+    (*m_output)["raw_values"]["Ping (ms) UDP EF"].push_back(data);
 }
 
 void
@@ -380,7 +385,7 @@ FlentApplication::GoodputSamplingUpload(std::string name, int i)
     data["dur"] = m_stepSize.GetSeconds();
     data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
     data["val"] = goodput;
-    m_output["raw_values"][name].push_back(data);
+    (*m_output)["raw_values"][name].push_back(data);
     m_bytesSent[i] = 0;
     if (Simulator::Now() + m_stepSize < m_stopTime)
     {
@@ -396,7 +401,7 @@ FlentApplication::GoodputSamplingDownload(std::string name, int i)
     data["dur"] = m_stepSize.GetSeconds();
     data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
     data["val"] = goodput;
-    m_output["raw_values"][name].push_back(data);
+    (*m_output)["raw_values"][name].push_back(data);
     m_bytesReceived[i] = 0;
     if (Simulator::Now() + m_stepSize < m_stopTime)
     {
@@ -416,7 +421,7 @@ FlentApplication::FillXValues()
     for (int step = 0; step < totalSteps; step += 1)
     {
         NS_LOG_DEBUG(step);
-        m_output["x_values"].push_back(step * stepSize);
+        (*m_output)["x_values"].push_back(step * stepSize);
     }
 }
 
@@ -430,7 +435,8 @@ FlentApplication::ProcessRawValues()
     {
         double t = m_currTime + (m_stepSize.GetSeconds() * s);
 
-        for (auto itrName = m_output["raw_values"].begin(); itrName != m_output["raw_values"].end();
+        for (auto itrName = (*m_output)["raw_values"].begin();
+             itrName != (*m_output)["raw_values"].end();
              itrName++)
         {
             const std::string& rawValueName = itrName.key();
@@ -438,7 +444,7 @@ FlentApplication::ProcessRawValues()
 
             if (itrName.value().empty() || itrName.value().is_null())
             {
-                m_output["results"][rawValueName].push_back(nullptr);
+                (*m_output)["results"][rawValueName].push_back(nullptr);
                 continue;
             }
 
@@ -449,7 +455,7 @@ FlentApplication::ProcessRawValues()
             double tNext = 0.0;
             double vNext = 0.0;
 
-            auto& arr = m_output["raw_values"][rawValueName];
+            auto& arr = (*m_output)["raw_values"][rawValueName];
             auto prev = arr.end();
 
             for (auto itrValues = arr.begin(); itrValues != arr.end();
@@ -492,25 +498,25 @@ FlentApplication::ProcessRawValues()
                     // 0.0 means no data yet - push null
                     if (vNext == 0.0)
                     {
-                        m_output["results"][rawValueName].push_back(nullptr);
+                        (*m_output)["results"][rawValueName].push_back(nullptr);
                     }
                     else if (last)
                     {
-                        auto& resultArr = m_output["results"][rawValueName];
+                        auto& resultArr = (*m_output)["results"][rawValueName];
                         bool alreadyRecorded = !resultArr.empty() && (resultArr.back() == vNext ||
                                                                       resultArr.back().is_null());
                         if (alreadyRecorded)
                         {
-                            m_output["results"][rawValueName].push_back(nullptr);
+                            (*m_output)["results"][rawValueName].push_back(nullptr);
                         }
                         else
                         {
-                            m_output["results"][rawValueName].push_back(vNext);
+                            (*m_output)["results"][rawValueName].push_back(vNext);
                         }
                     }
                     else
                     {
-                        m_output["results"][rawValueName].push_back(vNext);
+                        (*m_output)["results"][rawValueName].push_back(vNext);
                     }
                 }
                 else
@@ -518,18 +524,18 @@ FlentApplication::ProcessRawValues()
                     // Don't interpolate across a zero boundary
                     if (vPrev == 0.0 || vNext == 0.0)
                     {
-                        m_output["results"][rawValueName].push_back(nullptr);
+                        (*m_output)["results"][rawValueName].push_back(nullptr);
                     }
                     else
                     {
                         double dvDt = (vNext - vPrev) / (tNext - tPrev);
-                        m_output["results"][rawValueName].push_back(vPrev + dvDt * (t - tPrev));
+                        (*m_output)["results"][rawValueName].push_back(vPrev + dvDt * (t - tPrev));
                     }
                 }
             }
             else
             {
-                m_output["results"][rawValueName].push_back(nullptr);
+                (*m_output)["results"][rawValueName].push_back(nullptr);
             }
         }
     }
@@ -549,7 +555,7 @@ FlentApplication::StartApplication()
     {
         m_currTime = m_t0.GetSeconds();
     }
-    AddMetadata(m_output);
+    AddMetadata(*m_output);
 
     Ptr<Node> hostNode = GetHostNode(Ipv4Address::ConvertFrom(m_hostAddress));
 
@@ -568,9 +574,9 @@ FlentApplication::StartApplication()
         m_ping->SetStartTime(m_startTime);
         m_ping->SetStopTime(m_stopTime);
 
-        m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["x_values"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["x_values"] = nlohmann::json::array();
 
         m_ping->TraceConnectWithoutContext(
             "Rtt",
@@ -587,9 +593,9 @@ FlentApplication::StartApplication()
         m_ping->SetStartTime(m_startTime);
         m_ping->SetStopTime(m_stopTime);
 
-        m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["x_values"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["x_values"] = nlohmann::json::array();
 
         m_ping->TraceConnectWithoutContext(
             "Rtt",
@@ -603,13 +609,13 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_bulkSendUp[0]);
         m_bulkSendUp[0]->SetStartTime(m_startTime + Seconds(5));
         m_bulkSendUp[0]->SetStopTime(m_stopTime - Seconds(5));
-        m_output["results"]["TCP upload"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP upload"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP upload"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP upload"] = nlohmann::json::array();
         nlohmann::json data;
         data["dur"] = m_stepSize.GetSeconds();
         data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data["val"] = 0;
-        m_output["raw_values"]["TCP upload"].push_back(data);
+        (*m_output)["raw_values"]["TCP upload"].push_back(data);
         m_bulkSendUp[0]->TraceConnectWithoutContext(
             "Tx",
             MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[0]));
@@ -638,9 +644,9 @@ FlentApplication::StartApplication()
         m_ping->SetStartTime(m_startTime);
         m_ping->SetStopTime(m_stopTime);
 
-        m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["x_values"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["x_values"] = nlohmann::json::array();
 
         m_ping->TraceConnectWithoutContext(
             "Rtt",
@@ -655,13 +661,13 @@ FlentApplication::StartApplication()
         m_packetSinkDown[0]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[0]));
-        m_output["results"]["TCP download"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP download"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP download"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP download"] = nlohmann::json::array();
         nlohmann::json data;
         data["dur"] = m_stepSize.GetSeconds();
         data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data["val"] = 0;
-        m_output["raw_values"]["TCP download"].push_back(data);
+        (*m_output)["raw_values"]["TCP download"].push_back(data);
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingDownload,
                             this,
@@ -690,9 +696,9 @@ FlentApplication::StartApplication()
         m_ping->SetStartTime(m_startTime);
         m_ping->SetStopTime(m_stopTime);
 
-        m_output["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
-        m_output["x_values"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["results"]["Ping (ms) ICMP"] = nlohmann::json::array();
+        (*m_output)["x_values"] = nlohmann::json::array();
         m_ping->TraceConnectWithoutContext(
             "Rtt",
             MakeCallback(&FlentApplication::TraceReceivedPing, this));
@@ -717,8 +723,8 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_udpclient[0]);
         m_udpclient[0]->SetStartTime(m_startTime);
         m_udpclient[0]->SetStopTime(m_stopTime);
-        m_output["raw_values"]["Ping (ms) UDP BE"] = nlohmann::json::array();
-        m_output["results"]["Ping (ms) UDP BE"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["Ping (ms) UDP BE"] = nlohmann::json::array();
+        (*m_output)["results"]["Ping (ms) UDP BE"] = nlohmann::json::array();
         m_udpclient[0]->TraceConnectWithoutContext(
             "RxWithSeqTsEchoHeader",
             MakeCallback(&FlentApplication::TraceReceivedUdpPing1, this));
@@ -741,8 +747,8 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_udpclient[1]);
         m_udpclient[1]->SetStartTime(m_startTime);
         m_udpclient[1]->SetStopTime(m_stopTime);
-        m_output["raw_values"]["Ping (ms) UDP BK"] = nlohmann::json::array();
-        m_output["results"]["Ping (ms) UDP BK"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["Ping (ms) UDP BK"] = nlohmann::json::array();
+        (*m_output)["results"]["Ping (ms) UDP BK"] = nlohmann::json::array();
         m_udpclient[1]->TraceConnectWithoutContext(
             "RxWithSeqTsEchoHeader",
             MakeCallback(&FlentApplication::TraceReceivedUdpPing2, this));
@@ -765,8 +771,8 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_udpclient[2]);
         m_udpclient[2]->SetStartTime(m_startTime);
         m_udpclient[2]->SetStopTime(m_stopTime);
-        m_output["raw_values"]["Ping (ms) UDP EF"] = nlohmann::json::array();
-        m_output["results"]["Ping (ms) UDP EF"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["Ping (ms) UDP EF"] = nlohmann::json::array();
+        (*m_output)["results"]["Ping (ms) UDP EF"] = nlohmann::json::array();
         m_udpclient[2]->TraceConnectWithoutContext(
             "RxWithSeqTsEchoHeader",
             MakeCallback(&FlentApplication::TraceReceivedUdpPing3, this));
@@ -784,13 +790,13 @@ FlentApplication::StartApplication()
         m_packetSinkDown[0]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[0]));
-        m_output["results"]["TCP download BE"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP download BE"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP download BE"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP download BE"] = nlohmann::json::array();
         nlohmann::json data;
         data["dur"] = m_stepSize.GetSeconds();
         data["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data["val"] = 0;
-        m_output["raw_values"]["TCP download BE"].push_back(data);
+        (*m_output)["raw_values"]["TCP download BE"].push_back(data);
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingDownload,
                             this,
@@ -817,13 +823,13 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_bulkSendUp[0]);
         m_bulkSendUp[0]->SetStartTime(m_startTime + Seconds(5));
         m_bulkSendUp[0]->SetStopTime(m_stopTime - Seconds(5));
-        m_output["results"]["TCP upload BE"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP upload BE"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP upload BE"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP upload BE"] = nlohmann::json::array();
         nlohmann::json data_up;
         data_up["dur"] = m_stepSize.GetSeconds();
         data_up["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data_up["val"] = 0;
-        m_output["raw_values"]["TCP upload BE"].push_back(data_up);
+        (*m_output)["raw_values"]["TCP upload BE"].push_back(data_up);
         m_bulkSendUp[0]->TraceConnectWithoutContext(
             "Tx",
             MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[0]));
@@ -855,13 +861,13 @@ FlentApplication::StartApplication()
         m_packetSinkDown[1]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[1]));
-        m_output["results"]["TCP download BK"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP download BK"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP download BK"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP download BK"] = nlohmann::json::array();
         nlohmann::json data2;
         data2["dur"] = m_stepSize.GetSeconds();
         data2["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data2["val"] = 0;
-        m_output["raw_values"]["TCP download BK"].push_back(data2);
+        (*m_output)["raw_values"]["TCP download BK"].push_back(data2);
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingDownload,
                             this,
@@ -887,13 +893,13 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_bulkSendUp[1]);
         m_bulkSendUp[1]->SetStartTime(m_startTime + Seconds(5));
         m_bulkSendUp[1]->SetStopTime(m_stopTime - Seconds(5));
-        m_output["results"]["TCP upload BK"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP upload BK"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP upload BK"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP upload BK"] = nlohmann::json::array();
         nlohmann::json data_up2;
         data_up2["dur"] = m_stepSize.GetSeconds();
         data_up2["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data_up2["val"] = 0;
-        m_output["raw_values"]["TCP upload BK"].push_back(data_up2);
+        (*m_output)["raw_values"]["TCP upload BK"].push_back(data_up2);
         m_bulkSendUp[1]->TraceConnectWithoutContext(
             "Tx",
             MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[1]));
@@ -924,13 +930,13 @@ FlentApplication::StartApplication()
         m_packetSinkDown[2]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[2]));
-        m_output["results"]["TCP download CS5"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP download CS5"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP download CS5"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP download CS5"] = nlohmann::json::array();
         nlohmann::json data3;
         data3["dur"] = m_stepSize.GetSeconds();
         data3["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data3["val"] = 0;
-        m_output["raw_values"]["TCP download CS5"].push_back(data3);
+        (*m_output)["raw_values"]["TCP download CS5"].push_back(data3);
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingDownload,
                             this,
@@ -956,13 +962,13 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_bulkSendUp[2]);
         m_bulkSendUp[2]->SetStartTime(m_startTime + Seconds(5));
         m_bulkSendUp[2]->SetStopTime(m_stopTime - Seconds(5));
-        m_output["results"]["TCP upload CS5"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP upload CS5"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP upload CS5"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP upload CS5"] = nlohmann::json::array();
         nlohmann::json data_up3;
         data_up3["dur"] = m_stepSize.GetSeconds();
         data_up3["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data_up3["val"] = 0;
-        m_output["raw_values"]["TCP upload CS5"].push_back(data_up3);
+        (*m_output)["raw_values"]["TCP upload CS5"].push_back(data_up3);
         m_bulkSendUp[2]->TraceConnectWithoutContext(
             "Tx",
             MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[2]));
@@ -992,13 +998,13 @@ FlentApplication::StartApplication()
         m_packetSinkDown[3]->TraceConnectWithoutContext(
             "Rx",
             MakeBoundCallback(&FlentApplication::TraceReceivedPacket, &m_bytesReceived[3]));
-        m_output["results"]["TCP download EF"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP download EF"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP download EF"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP download EF"] = nlohmann::json::array();
         nlohmann::json data4;
         data4["dur"] = m_stepSize.GetSeconds();
         data4["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data4["val"] = 0;
-        m_output["raw_values"]["TCP download EF"].push_back(data4);
+        (*m_output)["raw_values"]["TCP download EF"].push_back(data4);
         Simulator::Schedule(m_stepSize,
                             &FlentApplication::GoodputSamplingDownload,
                             this,
@@ -1024,13 +1030,13 @@ FlentApplication::StartApplication()
         m_node->AddApplication(m_bulkSendUp[3]);
         m_bulkSendUp[3]->SetStartTime(m_startTime + Seconds(5));
         m_bulkSendUp[3]->SetStopTime(m_stopTime - Seconds(5));
-        m_output["results"]["TCP upload EF"] = nlohmann::json::array();
-        m_output["raw_values"]["TCP upload EF"] = nlohmann::json::array();
+        (*m_output)["results"]["TCP upload EF"] = nlohmann::json::array();
+        (*m_output)["raw_values"]["TCP upload EF"] = nlohmann::json::array();
         nlohmann::json data_up4;
         data_up4["dur"] = m_stepSize.GetSeconds();
         data_up4["t"] = (Simulator::Now().GetSeconds() + m_currTime);
         data_up4["val"] = 0;
-        m_output["raw_values"]["TCP upload EF"].push_back(data_up4);
+        (*m_output)["raw_values"]["TCP upload EF"].push_back(data_up4);
         m_bulkSendUp[3]->TraceConnectWithoutContext(
             "Tx",
             MakeBoundCallback(&FlentApplication::TraceSentPacket, &m_bytesSent[3]));
@@ -1109,7 +1115,7 @@ FlentApplication::StopApplication() // Called at time specified by Stop
     std::ofstream out(outputPath);
     if (out.is_open())
     {
-        out << m_output.dump(1) << std::endl;
+        out << m_output->dump(1) << std::endl;
         out.close();
     }
     else

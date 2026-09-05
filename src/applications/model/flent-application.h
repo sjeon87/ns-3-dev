@@ -17,7 +17,7 @@
 #define FLENT_APPLICATION_H
 
 #include "bulk-send-application.h"
-#include "nlohmann/json.hpp"
+#include "nlohmann/json_fwd.hpp"
 #include "packet-sink.h"
 #include "udp-echo-client.h"
 #include "udp-echo-server.h"
@@ -29,6 +29,7 @@
 #include "ns3/ping.h"
 #include "ns3/ptr.h"
 
+#include <memory>
 #include <string>
 
 namespace ns3
@@ -80,13 +81,6 @@ class FlentApplication : public Application
 
     ~FlentApplication() override;
 
-    /**
-     * @brief Add Flent Meta Data
-     *
-     * @param [out] j Json output object
-     */
-    void AddMetadata(nlohmann::json& j);
-
   protected:
     /**
      * In this method, the following tasks are performed:
@@ -108,6 +102,13 @@ class FlentApplication : public Application
     // inherited from Application base class.
     void StartApplication() override; // Called at time specified by Start
     void StopApplication() override;  // Called at time specified by Stop
+
+    /**
+     * @brief Add Flent Meta Data
+     *
+     * @param [out] j Json output object
+     */
+    void AddMetadata(nlohmann::json& j);
 
     /**
      * @brief sink for packet transmissions.
@@ -221,12 +222,12 @@ class FlentApplication : public Application
      */
     void ProcessRawValues();
 
-    double m_currTime;            //!< Derived epoch anchor in seconds
-    nlohmann::json m_output;      //!< Json output
-    Time m_length;                //!< Test duration
-    std::string m_outputFilename; ///< Output file path (see OutputFilename attribute)
-    std::string m_testName;       //!< Flent test name
-    Time m_t0;                    ///< Epoch anchor for output timestamps (see T0 attribute)
+    double m_currTime;                        //!< Derived epoch anchor in seconds
+    std::unique_ptr<nlohmann::json> m_output; //!< Json output
+    Time m_length;                            //!< Test duration
+    std::string m_outputFilename;             ///< Output file path (see OutputFilename attribute)
+    std::string m_testName;                   //!< Flent test name
+    Time m_t0;             ///< Epoch anchor for output timestamps (see T0 attribute)
     bool m_useWallClockT0; ///< Use the wall clock instead of m_t0 (see UseWallClockT0 attribute)
     Address m_hostAddress; //!< Host address
     Address m_localBindAddress;                //!< Local bind address
