@@ -1,0 +1,17 @@
+#ifndef SI_UNITS_AGGREGATE_HEADER
+#define SI_UNITS_AGGREGATE_HEADER
+
+// Main si-units header without extension (modern C++ style)
+// This allows: #include <si-units>
+// Following the same convention as standard library headers like <vector>, <iostream>
+
+#include "units-aliases.h"
+#include "units-angle.h"
+#include "units-frequency.h"
+#include "units-power.h"
+#include "units-ratio.h"
+#include "units-time.h"
+
+using namespace si_units;
+
+#endif // SI_UNITS_AGGREGATE_HEADER
