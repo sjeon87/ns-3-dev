@@ -34,6 +34,13 @@ in ns-3 supports the following tests:
 
   - TCP_Download: This test saturates the bottleneck link between the host and the remote machine with 1 TCP Download flow while measuring RTT with the help of an ICMP Ping.
 
+Scope and Limitations
+=====================
+
+1. ``FlentApplication`` is an orchestrator application and installs and configures peer applications on the remote node at ``StartApplication`` time, unlike typical ns-3 apps in which the source and sink applications are separately installed in helpers.
+2. Because sinks bind to fixed well-known ports (e.g., 9020), two ``FlentApplications`` that target the same host node simultaneously require that the ``HostAddress`` attribute contain ``InetSocketAddress`` instances with different ports (otherwise, socket creation will fail as they try to bind to the same default port).
+3. Currently, the ``FlentApplication`` only supports IPv4. IPv6 support will be added in a future extension.
+
 Design
 ======
 
@@ -139,6 +146,7 @@ Client <- - - 5000Mbps,1us - - -> router1 <- - - 50Mbps,5ms - - -> router2 <- - 
 
 where the bottleneck is between router1 and router2. The default bandwidths are represented in the diagram.
 It can be run as follows:
+
 .. code-block:: bash
 
   $ ./ns3 --run 'flent-example'
@@ -186,7 +194,7 @@ Once the simulation completes and outputs the data file in your working director
 
 Tests
 *****
-The Flent application defined in `src/test/applications/flent-application-test-suite` test suite consists of self-contained test cases for each supported test type.
+The Flent application defined in `src/applications/test/flent-application-test-suite.cc` test suite consists of self-contained test cases for each supported test type.
 
 Instead of writing to the current working directory, each test writes a `.flent` file into a runner-managed temporary directory. During its execution, each test runs the full simulation, generates the file, and independently verifies both the file's structural integrity (JSON metadata presence) and its numeric results (throughput bounds and latency limits).
 
@@ -199,7 +207,7 @@ The test suite can be run using the following commands::
 Validation
 ==========
 
-The FlentApplication model is tested using :cpp:class:`FlentApplicationTestSuite` class defined in `src/test/applications/flent-application-test-suite.cc`. The suite includes independent test cases for each supported configuration:
+The FlentApplication model is tested using :cpp:class:`FlentApplicationTestSuite` class defined in `src/applications/test/flent-application-test-suite.cc`. The suite includes independent test cases for each supported configuration:
 
 * Test 1: Flent rrul test, checks if the test is running, validates metadata integrity, and checks if the average throughput and average ICMP latency are as expected.
 * Test 2: Flent tcp_upload test, checks if the test is running, validates metadata integrity, and checks if the average throughput and average ICMP latency are as expected.
