@@ -3,8 +3,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-only
  */
-
 #include "udp-echo-server.h"
+#include "seq-ts-echo-header.h"
 
 #include "ns3/address-utils.h"
 #include "ns3/inet-socket-address.h"
@@ -19,6 +19,7 @@
 #include "ns3/socket.h"
 #include "ns3/udp-socket.h"
 #include "ns3/uinteger.h"
+#include "ns3/boolean.h"
 
 namespace ns3
 {
@@ -41,6 +42,11 @@ UdpEchoServer::GetTypeId()
                           UintegerValue(0),
                           MakeUintegerAccessor(&UdpEchoServer::m_tos),
                           MakeUintegerChecker<uint8_t>())
+            .AddAttribute("EnableSeqTsEchoHeader",
+                          "Enable use of SeqTsEchoHeader for sequence number and timestamps",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&UdpEchoServer::m_enableSeqTsEchoHeader),
+                          MakeBooleanChecker())
             .AddTraceSource("RxWithAddresses",
                             "A packet has been received",
                             MakeTraceSourceAccessor(&UdpEchoServer::m_rxTraceWithAddresses),
@@ -53,6 +59,7 @@ UdpEchoServer::UdpEchoServer()
 {
     NS_LOG_FUNCTION(this);
     m_protocolTid = TypeId::LookupByName("ns3::UdpSocketFactory");
+    m_enableSeqTsEchoHeader = false;
 }
 
 UdpEchoServer::~UdpEchoServer()
@@ -144,6 +151,15 @@ UdpEchoServer::HandleRead(Ptr<Socket> socket)
 
         packet->RemoveAllPacketTags();
         packet->RemoveAllByteTags();
+        
+        if (m_enableSeqTsEchoHeader)
+        {
+            SeqTsEchoHeader header;
+            packet->RemoveHeader(header);
+            header.SetTsEchoReply(header.GetTsValue());
+            header.SetTsValue(Simulator::Now());
+            packet->AddHeader(header);
+        }
 
         NS_LOG_LOGIC("Echoing packet");
         socket->SendTo(packet, 0, from);
