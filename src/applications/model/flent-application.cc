@@ -37,6 +37,11 @@
 namespace ns3
 {
 
+/**
+ * @brief Default base port used by the FlentApplication to configure and bind remote peer sinks.
+ */
+const uint16_t DEFAULT_PORT = 9020;
+
 NS_LOG_COMPONENT_DEFINE("FlentApplication");
 
 NS_OBJECT_ENSURE_REGISTERED(FlentApplication);
@@ -200,7 +205,14 @@ FlentApplication::AddMetadata(nlohmann::json& j)
     std::string dataFilename = std::filesystem::path(outputPath).filename().string();
 
     std::ostringstream oss;
-    oss << Ipv4Address::ConvertFrom(m_hostAddress);
+    if (InetSocketAddress::IsMatchingType(m_hostAddress))
+    {
+        oss << InetSocketAddress::ConvertFrom(m_hostAddress).GetIpv4();
+    }
+    else
+    {
+        oss << Ipv4Address::ConvertFrom(m_hostAddress);
+    }
     std::string hostName = oss.str();
 
     std::ostringstream ossLocal;
@@ -557,17 +569,35 @@ FlentApplication::StartApplication()
     }
     AddMetadata(*m_output);
 
-    Ptr<Node> hostNode = GetHostNode(Ipv4Address::ConvertFrom(m_hostAddress));
+    Ipv4Address hostIpv4Address;
+    uint16_t basePort = DEFAULT_PORT;
+
+    if (InetSocketAddress::IsMatchingType(m_hostAddress))
+    {
+        InetSocketAddress inetAddr = InetSocketAddress::ConvertFrom(m_hostAddress);
+        hostIpv4Address = inetAddr.GetIpv4();
+        basePort = inetAddr.GetPort();
+    }
+    else if (Ipv4Address::IsMatchingType(m_hostAddress))
+    {
+        hostIpv4Address = Ipv4Address::ConvertFrom(m_hostAddress);
+    }
+    else
+    {
+        NS_FATAL_ERROR("HostAddress must be an Ipv4Address or InetSocketAddress");
+    }
+
+    Ptr<Node> hostNode = GetHostNode(hostIpv4Address);
 
     if (!hostNode)
     {
-        NS_FATAL_ERROR("Couldn't find dest node given the IP" << m_hostAddress);
+        NS_FATAL_ERROR("Couldn't find dest node given the IP " << hostIpv4Address);
     }
 
     if (m_testName == "ping")
     {
         m_ping = CreateObjectWithAttributes<Ping>("Destination",
-                                                  AddressValue(m_hostAddress),
+                                                  AddressValue(hostIpv4Address),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
@@ -584,9 +614,8 @@ FlentApplication::StartApplication()
     }
     else if (m_testName == "tcp_upload")
     {
-        Ipv4Address hostAddr = Ipv4Address::ConvertFrom(m_hostAddress);
         m_ping = CreateObjectWithAttributes<Ping>("Destination",
-                                                  AddressValue(m_hostAddress),
+                                                  AddressValue(hostIpv4Address),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
@@ -601,7 +630,7 @@ FlentApplication::StartApplication()
             "Rtt",
             MakeCallback(&FlentApplication::TraceReceivedPing, this));
 
-        InetSocketAddress clientAddress = InetSocketAddress(hostAddr, 9020);
+        InetSocketAddress clientAddress = InetSocketAddress(hostIpv4Address, basePort);
         m_bulkSendUp[0] = CreateObject<BulkSendApplication>();
         m_bulkSendUp[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendUp[0]->SetAttribute("Remote", AddressValue(clientAddress));
@@ -625,7 +654,7 @@ FlentApplication::StartApplication()
                             "TCP upload",
                             0);
 
-        Address sinkAddress(InetSocketAddress(Ipv4Address::GetAny(), 9020));
+        Address sinkAddress(InetSocketAddress(Ipv4Address::GetAny(), basePort));
         m_packetSinkUp[0] = CreateObject<PacketSink>();
         m_packetSinkUp[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[0]->SetAttribute("Local", AddressValue(sinkAddress));
@@ -651,7 +680,7 @@ FlentApplication::StartApplication()
         m_ping->TraceConnectWithoutContext(
             "Rtt",
             MakeCallback(&FlentApplication::TraceReceivedPing, this));
-        Address sinkAddress(InetSocketAddress(Ipv4Address::GetAny(), 9010));
+        Address sinkAddress(InetSocketAddress(Ipv4Address::GetAny(), basePort - 10));
         m_packetSinkDown[0] = CreateObject<PacketSink>();
         m_packetSinkDown[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkDown[0]->SetAttribute("Local", AddressValue(sinkAddress));
@@ -674,7 +703,7 @@ FlentApplication::StartApplication()
                             "TCP download",
                             0);
 
-        InetSocketAddress localBindAddress = InetSocketAddress(localBindAddr, 9010);
+        InetSocketAddress localBindAddress = InetSocketAddress(localBindAddr, basePort - 10);
         m_bulkSendDown[0] = CreateObject<BulkSendApplication>();
         m_bulkSendDown[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendDown[0]->SetAttribute("Remote", AddressValue(localBindAddress));
@@ -685,11 +714,10 @@ FlentApplication::StartApplication()
     }
     else if (m_testName == "rrul")
     {
-        Ipv4Address hostIpv4Address = Ipv4Address::ConvertFrom(m_hostAddress);
         Ipv4Address localIpv4Address = Ipv4Address::ConvertFrom(m_localBindAddress);
 
         m_ping = CreateObjectWithAttributes<Ping>("Destination",
-                                                  AddressValue(m_hostAddress),
+                                                  AddressValue(hostIpv4Address),
                                                   "Interval",
                                                   TimeValue(m_stepSize));
         m_node->AddApplication(m_ping);
@@ -703,7 +731,7 @@ FlentApplication::StartApplication()
             "Rtt",
             MakeCallback(&FlentApplication::TraceReceivedPing, this));
 
-        uint16_t port = 9000;
+        uint16_t port = basePort - 20;
         m_udpserver[0] = CreateObject<UdpEchoServer>();
         m_udpserver[0]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[0]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
@@ -729,7 +757,7 @@ FlentApplication::StartApplication()
             "RxWithSeqTsEchoHeader",
             MakeCallback(&FlentApplication::TraceReceivedUdpPing1, this));
 
-        port = 9001;
+        port = basePort - 19;
         m_udpserver[1] = CreateObject<UdpEchoServer>();
         m_udpserver[1]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[1]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
@@ -753,7 +781,7 @@ FlentApplication::StartApplication()
             "RxWithSeqTsEchoHeader",
             MakeCallback(&FlentApplication::TraceReceivedUdpPing2, this));
 
-        port = 9002;
+        port = basePort - 18;
         m_udpserver[2] = CreateObject<UdpEchoServer>();
         m_udpserver[2]->SetAttribute("Port", UintegerValue(port));
         m_udpserver[2]->SetAttribute("EnableSeqTsEchoHeader", BooleanValue(true));
@@ -778,7 +806,7 @@ FlentApplication::StartApplication()
             MakeCallback(&FlentApplication::TraceReceivedUdpPing3, this));
 
         // Download BE
-        Address sinkAddress(InetSocketAddress(Ipv4Address::GetAny(), 9010));
+        Address sinkAddress(InetSocketAddress(Ipv4Address::GetAny(), basePort - 10));
         m_packetSinkDown[0] = CreateObject<PacketSink>();
         m_packetSinkDown[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkDown[0]->SetAttribute("Local", AddressValue(sinkAddress));
@@ -802,7 +830,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP download BE",
                             0);
-        InetSocketAddress localBindAddress = InetSocketAddress(localIpv4Address, 9010);
+        InetSocketAddress localBindAddress = InetSocketAddress(localIpv4Address, basePort - 10);
         m_bulkSendDown[0] = CreateObject<BulkSendApplication>();
         m_bulkSendDown[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendDown[0]->SetAttribute("Remote", AddressValue(localBindAddress));
@@ -814,7 +842,7 @@ FlentApplication::StartApplication()
         m_bulkSendDown[0]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload BE
-        InetSocketAddress hostAddress = InetSocketAddress(hostIpv4Address, 9020);
+        InetSocketAddress hostAddress = InetSocketAddress(hostIpv4Address, basePort);
         m_bulkSendUp[0] = CreateObject<BulkSendApplication>();
         m_bulkSendUp[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendUp[0]->SetAttribute("Remote", AddressValue(hostAddress));
@@ -838,7 +866,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP upload BE",
                             0);
-        Address sinkAddressUp(InetSocketAddress(Ipv4Address::GetAny(), 9020));
+        Address sinkAddressUp(InetSocketAddress(Ipv4Address::GetAny(), basePort));
         m_packetSinkUp[0] = CreateObject<PacketSink>();
         m_packetSinkUp[0]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[0]->SetAttribute("Local", AddressValue(sinkAddressUp));
@@ -849,7 +877,7 @@ FlentApplication::StartApplication()
         m_packetSinkUp[0]->SetStopTime(m_stopTime - Seconds(5));
 
         // Download BK
-        Address sinkAddress2(InetSocketAddress(Ipv4Address::GetAny(), 9011));
+        Address sinkAddress2(InetSocketAddress(Ipv4Address::GetAny(), basePort - 9));
         m_packetSinkDown[1] = CreateObject<PacketSink>();
         m_packetSinkDown[1]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkDown[1]->SetAttribute("Local", AddressValue(sinkAddress2));
@@ -873,7 +901,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP download BK",
                             1);
-        InetSocketAddress localBindAddress2 = InetSocketAddress(localIpv4Address, 9011);
+        InetSocketAddress localBindAddress2 = InetSocketAddress(localIpv4Address, basePort - 9);
         m_bulkSendDown[1] = CreateObject<BulkSendApplication>();
         m_bulkSendDown[1]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendDown[1]->SetAttribute("Remote", AddressValue(localBindAddress2));
@@ -884,7 +912,7 @@ FlentApplication::StartApplication()
         m_bulkSendDown[1]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload BK
-        hostAddress = InetSocketAddress(hostIpv4Address, 9021);
+        hostAddress = InetSocketAddress(hostIpv4Address, basePort + 1);
         m_bulkSendUp[1] = CreateObject<BulkSendApplication>();
         m_bulkSendUp[1]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendUp[1]->SetAttribute("Remote", AddressValue(hostAddress));
@@ -908,7 +936,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP upload BK",
                             1);
-        Address sinkAddressUp2(InetSocketAddress(Ipv4Address::GetAny(), 9021));
+        Address sinkAddressUp2(InetSocketAddress(Ipv4Address::GetAny(), basePort + 1));
         m_packetSinkUp[1] = CreateObject<PacketSink>();
         m_packetSinkUp[1]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[1]->SetAttribute("Local", AddressValue(sinkAddressUp2));
@@ -918,7 +946,7 @@ FlentApplication::StartApplication()
         m_packetSinkUp[1]->SetStopTime(m_stopTime - Seconds(5));
 
         // Download CS5
-        Address sinkAddress3(InetSocketAddress(Ipv4Address::GetAny(), 9012));
+        Address sinkAddress3(InetSocketAddress(Ipv4Address::GetAny(), basePort - 8));
         m_packetSinkDown[2] = CreateObject<PacketSink>();
         m_packetSinkDown[2]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkDown[2]->SetAttribute("Local", AddressValue(sinkAddress3));
@@ -942,7 +970,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP download CS5",
                             2);
-        InetSocketAddress localBindAddress3 = InetSocketAddress(localIpv4Address, 9012);
+        InetSocketAddress localBindAddress3 = InetSocketAddress(localIpv4Address, basePort - 8);
         m_bulkSendDown[2] = CreateObject<BulkSendApplication>();
         m_bulkSendDown[2]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendDown[2]->SetAttribute("Remote", AddressValue(localBindAddress3));
@@ -953,7 +981,7 @@ FlentApplication::StartApplication()
         m_bulkSendDown[2]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload CS5
-        hostAddress = InetSocketAddress(hostIpv4Address, 9022);
+        hostAddress = InetSocketAddress(hostIpv4Address, basePort + 2);
         m_bulkSendUp[2] = CreateObject<BulkSendApplication>();
         m_bulkSendUp[2]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendUp[2]->SetAttribute("Remote", AddressValue(hostAddress));
@@ -977,7 +1005,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP upload CS5",
                             2);
-        Address sinkAddressUp3(InetSocketAddress(Ipv4Address::GetAny(), 9022));
+        Address sinkAddressUp3(InetSocketAddress(Ipv4Address::GetAny(), basePort + 2));
         m_packetSinkUp[2] = CreateObject<PacketSink>();
         m_packetSinkUp[2]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[2]->SetAttribute("Local", AddressValue(sinkAddressUp3));
@@ -987,7 +1015,7 @@ FlentApplication::StartApplication()
         m_packetSinkUp[2]->SetStopTime(m_stopTime - Seconds(5));
 
         // Download EF
-        Address sinkAddress4(InetSocketAddress(Ipv4Address::GetAny(), 9013));
+        Address sinkAddress4(InetSocketAddress(Ipv4Address::GetAny(), basePort - 7));
         m_packetSinkDown[3] = CreateObject<PacketSink>();
         m_packetSinkDown[3]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkDown[3]->SetAttribute("Local", AddressValue(sinkAddress4));
@@ -1010,7 +1038,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP download EF",
                             3);
-        InetSocketAddress localBindAddress4 = InetSocketAddress(localIpv4Address, 9013);
+        InetSocketAddress localBindAddress4 = InetSocketAddress(localIpv4Address, basePort - 7);
         m_bulkSendDown[3] = CreateObject<BulkSendApplication>();
         m_bulkSendDown[3]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendDown[3]->SetAttribute("Remote", AddressValue(localBindAddress4));
@@ -1021,7 +1049,7 @@ FlentApplication::StartApplication()
         m_bulkSendDown[3]->SetStopTime(m_stopTime - Seconds(5));
 
         // Upload EF
-        hostAddress = InetSocketAddress(hostIpv4Address, 9023);
+        hostAddress = InetSocketAddress(hostIpv4Address, basePort + 3);
         m_bulkSendUp[3] = CreateObject<BulkSendApplication>();
         m_bulkSendUp[3]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_bulkSendUp[3]->SetAttribute("Remote", AddressValue(hostAddress));
@@ -1045,7 +1073,7 @@ FlentApplication::StartApplication()
                             this,
                             "TCP upload EF",
                             3);
-        Address sinkAddressUp4(InetSocketAddress(Ipv4Address::GetAny(), 9023));
+        Address sinkAddressUp4(InetSocketAddress(Ipv4Address::GetAny(), basePort + 3));
         m_packetSinkUp[3] = CreateObject<PacketSink>();
         m_packetSinkUp[3]->SetAttribute("Protocol", StringValue("ns3::TcpSocketFactory"));
         m_packetSinkUp[3]->SetAttribute("Local", AddressValue(sinkAddressUp4));
