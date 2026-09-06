@@ -11,6 +11,9 @@
 #include "ns3/assert.h"
 #include "ns3/log.h"
 
+#include <iomanip>
+#include <sstream>
+
 namespace ns3
 {
 
@@ -185,6 +188,62 @@ Ipv4RoutingTableEntry::CreateDefaultRoute(Ipv4Address nextHop, uint32_t interfac
 {
     NS_LOG_FUNCTION(nextHop << interface);
     return Ipv4RoutingTableEntry(Ipv4Address::GetZero(), Ipv4Mask::GetZero(), nextHop, interface);
+}
+
+std::string
+Ipv4RoutingTableEntry::GetPrintColumnHeader()
+{
+    return "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface";
+}
+
+void
+Ipv4RoutingTableEntry::PrintRoutingTableEntry(std::ostream& os,
+                                              std::optional<uint32_t> metric,
+                                              const std::string& ifaceName) const
+{
+    std::ostringstream dest;
+    dest << m_dest;
+    std::ostringstream gateway;
+    gateway << m_gateway;
+    std::ostringstream mask;
+    mask << m_destNetworkMask;
+    std::ostringstream flags;
+    flags << "U";
+    if (IsHost())
+    {
+        flags << "HS";
+    }
+    else if (IsGateway())
+    {
+        flags << "GS";
+    }
+
+    os << std::setw(16) << dest.str() << std::setw(16) << gateway.str() << std::setw(16)
+       << mask.str() << std::setw(6) << flags.str();
+    if (metric)
+    {
+        os << std::setw(7) << *metric;
+    }
+    else
+    {
+        os << "-"
+           << "      ";
+    }
+    // Ref ct not implemented
+    os << "-"
+       << "      ";
+    // Use not implemented
+    os << "-"
+       << "   ";
+    if (ifaceName.empty())
+    {
+        os << m_interface;
+    }
+    else
+    {
+        os << ifaceName;
+    }
+    os << std::endl;
 }
 
 std::ostream&

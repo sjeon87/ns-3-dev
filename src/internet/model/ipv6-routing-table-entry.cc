@@ -10,6 +10,9 @@
 
 #include "ns3/assert.h"
 
+#include <iomanip>
+#include <sstream>
+
 namespace ns3
 {
 
@@ -213,6 +216,57 @@ Ipv6RoutingTableEntry
 Ipv6RoutingTableEntry::CreateDefaultRoute(Ipv6Address nextHop, uint32_t interface)
 {
     return Ipv6RoutingTableEntry(Ipv6Address::GetZero(), nextHop, interface);
+}
+
+std::string
+Ipv6RoutingTableEntry::GetPrintColumnHeader()
+{
+    return "Destination                    Next Hop                   Flag Met Ref Use If";
+}
+
+void
+Ipv6RoutingTableEntry::PrintRoutingTableEntry(std::ostream& os,
+                                              std::optional<uint32_t> metric,
+                                              const std::string& ifaceName) const
+{
+    std::ostringstream dest;
+    dest << m_dest << "/" << int(m_destNetworkPrefix.GetPrefixLength());
+    std::ostringstream flags;
+    flags << "U";
+    if (IsHost())
+    {
+        flags << "H";
+    }
+    else if (IsGateway())
+    {
+        flags << "G";
+    }
+
+    os << std::setw(31) << dest.str() << std::setw(27) << m_gateway << std::setw(5) << flags.str();
+    if (metric)
+    {
+        os << std::setw(4) << *metric;
+    }
+    else
+    {
+        os << "-"
+           << "   ";
+    }
+    // Ref ct not implemented
+    os << "-"
+       << "   ";
+    // Use not implemented
+    os << "-"
+       << "   ";
+    if (ifaceName.empty())
+    {
+        os << m_interface;
+    }
+    else
+    {
+        os << ifaceName;
+    }
+    os << std::endl;
 }
 
 uint32_t

@@ -12,7 +12,9 @@
 #include "ns3/ipv6-address.h"
 
 #include <list>
+#include <optional>
 #include <ostream>
+#include <string>
 #include <vector>
 
 namespace ns3
@@ -181,6 +183,28 @@ class Ipv6RoutingTableEntry
      * @return IPv6Route object
      */
     static Ipv6RoutingTableEntry CreateDefaultRoute(Ipv6Address nextHop, uint32_t interface);
+
+    /**
+     * @return The column header used by PrintRoutingTableEntry(), in
+     *         "route -n" style.
+     */
+    static std::string GetPrintColumnHeader();
+
+    /**
+     * @brief Print the entry as a fixed-width row, in "route -n" style.
+     *
+     * Prints the Destination, Next Hop, Flag, Met, Ref, Use, and If columns,
+     * matching the header returned by GetPrintColumnHeader().
+     *
+     * @param os the output stream
+     * @param metric the route metric, or std::nullopt if the metric is not
+     *               available (printed as "-")
+     * @param ifaceName the name of the output interface, or an empty string
+     *                  to print the interface index
+     */
+    void PrintRoutingTableEntry(std::ostream& os,
+                                std::optional<uint32_t> metric,
+                                const std::string& ifaceName) const;
 
   private:
     /**
