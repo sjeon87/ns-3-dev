@@ -425,6 +425,7 @@ build_lib(
     test/wifi-mac-queue-test.cc
     test/wifi-mlo-test.cc
     test/wifi-phy-ofdma-test.cc
+    test/wifi-minstrel-ht-test.cc
     test/wifi-phy-reception-test.cc
     test/wifi-phy-rx-trace-helper-test.cc
     test/wifi-phy-thresholds-test.cc

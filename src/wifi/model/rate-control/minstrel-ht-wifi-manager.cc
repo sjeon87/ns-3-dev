@@ -164,7 +164,16 @@ MinstrelHtWifiManager::GetTypeId()
             .AddTraceSource("Rate",
                             "Traced value for rate changes (b/s)",
                             MakeTraceSourceAccessor(&MinstrelHtWifiManager::m_currentRate),
-                            "ns3::TracedValueCallback::Uint64");
+                            "ns3::TracedValueCallback::Uint64")
+            .AddTraceSource("RetryChain",
+                            "Updated the best tp, second best tp and best prob",
+                            MakeTraceSourceAccessor(&MinstrelHtWifiManager::m_retryChain),
+                            "ns3::MinstrelHtWifiManager::MinstrelHtRetryChainTracedCallback")
+            .AddTraceSource("SampleRate",
+                            "Traced value for sample rate changes",
+                            MakeTraceSourceAccessor(&MinstrelHtWifiManager::m_samplingRate),
+                            "ns3::MinstrelHtWifiManager::MinstrelHtSampleRateTracedCallback");
+
     return tid;
 }
 
@@ -719,7 +728,6 @@ MinstrelHtWifiManager::DoReportFinalDataFailed(WifiRemoteStation* st)
     else
     {
         UpdatePacketCounters(station, 0, 1);
-
         station->m_isSampling = false;
         station->m_sampleDeferred = false;
 
@@ -882,15 +890,15 @@ MinstrelHtWifiManager::UpdateRate(MinstrelHtWifiRemoteStation* station)
         /// Sample rate is used only once
         /// Use the best rate.
         if (station->m_longRetry <
-            1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTp2RateId].retryCount)
+            1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount)
         {
             NS_LOG_DEBUG("Sampling use the MaxTP rate");
-            station->m_txrate = station->m_maxTpRate2;
+            station->m_txrate = station->m_maxTpRate;
         }
 
         /// Use the best probability rate.
         else if (station->m_longRetry <=
-                 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTp2RateId].retryCount +
+                 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount +
                      station->m_groupsTable[maxProbGroupId].m_ratesTable[maxProbRateId].retryCount)
         {
             NS_LOG_DEBUG("Sampling use the MaxProb rate");
@@ -1212,7 +1220,7 @@ MinstrelHtWifiManager::CountRetries(MinstrelHtWifiRemoteStation* station)
     }
     else
     {
-        return 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTp2RateId].retryCount +
+        return 1 + station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount +
                station->m_groupsTable[maxProbGroupId].m_ratesTable[maxProbRateId].retryCount;
     }
 }
@@ -1333,6 +1341,25 @@ MinstrelHtWifiManager::FindRate(MinstrelHtWifiRemoteStation* station)
                              << sampleDuration << " maxTp2Duration= " << maxTp2Duration
                              << " maxProbDuration= " << maxProbDuration << " sampleStreams= "
                              << +sampleStreams << " maxTpStreams= " << +maxTpStreams);
+
+                WifiMode sampleMode = GetMcsSupported(
+                    station,
+                    station->m_groupsTable[sampleGroupId].m_ratesTable[sampleRateId].mcsIndex);
+
+                McsGroup sampleGroup = m_minstrelGroups[sampleGroupId];
+
+                WifiTxVector sampleTxVector{
+                    sampleMode,
+                    GetDefaultTxPowerLevel(),
+                    GetPreambleForTransmission(sampleMode.GetModulationClass(),
+                                               GetShortPreambleEnabled()),
+                    sampleGroup.gi,
+                    GetNumberOfAntennas(),
+                    sampleGroup.streams,
+                    GetNess(station),
+                    GetPhy()->GetTxBandwidth(sampleMode, sampleGroup.chWidth),
+                    GetAggregation(station) && !station->m_isSampling};
+
                 if (sampleDuration < maxTp2Duration ||
                     (sampleStreams < maxTpStreams && sampleDuration < maxProbDuration))
                 {
@@ -1341,6 +1368,8 @@ MinstrelHtWifiManager::FindRate(MinstrelHtWifiRemoteStation* station)
 
                     /// set the rate that we're currently sampling
                     station->m_sampleRate = sampleIdx;
+
+                    m_samplingRate(sampleTxVector);
 
                     NS_LOG_DEBUG("FindRate sampleRate=" << sampleIdx);
                     station->m_sampleTries--;
@@ -1356,6 +1385,8 @@ MinstrelHtWifiManager::FindRate(MinstrelHtWifiRemoteStation* station)
 
                         /// set the rate that we're currently sampling
                         station->m_sampleRate = sampleIdx;
+
+                        m_samplingRate(sampleTxVector);
 
                         NS_LOG_DEBUG("FindRate sampleRate=" << sampleIdx);
                         station->m_sampleTries--;
@@ -1501,6 +1532,84 @@ MinstrelHtWifiManager::UpdateStats(MinstrelHtWifiRemoteStation* station)
     CalculateRetransmits(station, station->m_maxTpRate);
     CalculateRetransmits(station, station->m_maxTpRate2);
     CalculateRetransmits(station, station->m_maxProbRate);
+
+    /**
+     * Get the IDs for all rates.
+     */
+    uint8_t maxTpRateId = GetRateId(station->m_maxTpRate);
+    uint8_t maxTpGroupId = GetGroupId(station->m_maxTpRate);
+    uint8_t maxTp2RateId = GetRateId(station->m_maxTpRate2);
+    uint8_t maxTp2GroupId = GetGroupId(station->m_maxTpRate2);
+    uint8_t maxProbRateId = GetRateId(station->m_maxProbRate);
+    uint8_t maxProbGroupId = GetGroupId(station->m_maxProbRate);
+
+    WifiMode maxTpMode =
+        GetMcsSupported(station,
+                        station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].mcsIndex);
+
+    McsGroup maxTpGroup = m_minstrelGroups[maxTpGroupId];
+
+    WifiTxVector maxTpTxVector{
+        maxTpMode,
+        GetDefaultTxPowerLevel(),
+        GetPreambleForTransmission(maxTpMode.GetModulationClass(), GetShortPreambleEnabled()),
+        maxTpGroup.gi,
+        GetNumberOfAntennas(),
+        maxTpGroup.streams,
+        GetNess(station),
+        GetPhy()->GetTxBandwidth(maxTpMode, maxTpGroup.chWidth),
+        GetAggregation(station) && !station->m_isSampling};
+
+    WifiMode maxTp2Mode =
+        GetMcsSupported(station,
+                        station->m_groupsTable[maxTp2GroupId].m_ratesTable[maxTp2RateId].mcsIndex);
+
+    McsGroup maxTp2Group = m_minstrelGroups[maxTp2GroupId];
+
+    WifiTxVector maxTp2TxVector{
+        maxTp2Mode,
+        GetDefaultTxPowerLevel(),
+        GetPreambleForTransmission(maxTp2Mode.GetModulationClass(), GetShortPreambleEnabled()),
+        maxTp2Group.gi,
+        GetNumberOfAntennas(),
+        maxTp2Group.streams,
+        GetNess(station),
+        GetPhy()->GetTxBandwidth(maxTp2Mode, maxTp2Group.chWidth),
+        GetAggregation(station) && !station->m_isSampling};
+
+    WifiMode maxProbMode = GetMcsSupported(
+        station,
+        station->m_groupsTable[maxProbGroupId].m_ratesTable[maxProbRateId].mcsIndex);
+    McsGroup maxProbGroup = m_minstrelGroups[maxProbGroupId];
+
+    WifiTxVector maxProbTxVector{
+        maxProbMode,
+        GetDefaultTxPowerLevel(),
+        GetPreambleForTransmission(maxProbMode.GetModulationClass(), GetShortPreambleEnabled()),
+        maxProbGroup.gi,
+        GetNumberOfAntennas(),
+        maxProbGroup.streams,
+        GetNess(station),
+        GetPhy()->GetTxBandwidth(maxProbMode, maxProbGroup.chWidth),
+        GetAggregation(station) && !station->m_isSampling};
+
+    RetryChainInfo retryChain;
+    retryChain.m_maxTp = maxTpTxVector;
+    retryChain.m_maxTp2 = maxTp2TxVector;
+    retryChain.m_maxProb = maxProbTxVector;
+    retryChain.m_maxTpCount =
+        station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount;
+    // While sampling, the sample rate is used once and the retry chain continues with the
+    // max throughput rate (with its full retry count) and the max probability rate
+    retryChain.m_maxTpCountSampling =
+        station->m_groupsTable[maxTpGroupId].m_ratesTable[maxTpRateId].retryCount;
+    retryChain.m_maxTp2Count =
+        station->m_groupsTable[maxTp2GroupId].m_ratesTable[maxTp2RateId].retryCount;
+
+    retryChain.m_maxProbCount =
+        station->m_groupsTable[maxProbGroupId].m_ratesTable[maxProbRateId].retryCount;
+
+    m_retryChain(retryChain);
 
     NS_LOG_DEBUG("max tp=" << station->m_maxTpRate << "\nmax tp2=" << station->m_maxTpRate2
                            << "\nmax prob=" << station->m_maxProbRate);
