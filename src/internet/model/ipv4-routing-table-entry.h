@@ -12,8 +12,8 @@
 
 #include <list>
 #include <ostream>
+#include <string>
 #include <vector>
-
 namespace ns3
 {
 
@@ -121,6 +121,27 @@ class Ipv4RoutingTableEntry
      * @param interface Outgoing interface
      */
     static Ipv4RoutingTableEntry CreateDefaultRoute(Ipv4Address nextHop, uint32_t interface);
+
+    /**
+     * @brief Get the routing-table column header.
+     *
+     * @param additionalColumns Additional column names appended to the header.
+     * @return The formatted column header.
+     */
+    static std::string GetPrintColumnHeader(const std::string& additionalColumns = "");
+
+    /**
+     * @brief Print this entry as a routing-table row.
+     *
+     * @param os Output stream
+     * @param interfaceName Interface name or index
+     * @param metric Route metric
+     * @param additionalValues Additional values appended to the row
+     */
+    void Print(std::ostream& os,
+               const std::string& interfaceName,
+               const std::string& metric = "-",
+               const std::string& additionalValues = "") const;
 
   private:
     /**
@@ -267,16 +288,6 @@ class Ipv4MulticastRoutingTableEntry
  * @returns the reference to the output stream
  */
 std::ostream& operator<<(std::ostream& os, const Ipv4MulticastRoutingTableEntry& route);
-
-/**
- * @brief Equality operator.
- *
- * @param a lhs
- * @param b rhs
- * @returns true if operands are equal, false otherwise
- */
-bool operator==(const Ipv4MulticastRoutingTableEntry a, const Ipv4MulticastRoutingTableEntry b);
-
 } // namespace ns3
 
 #endif /* IPV4_ROUTING_TABLE_ENTRY_H */

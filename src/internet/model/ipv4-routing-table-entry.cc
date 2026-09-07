@@ -10,7 +10,9 @@
 
 #include "ns3/assert.h"
 #include "ns3/log.h"
-
+#include <iomanip>
+#include <sstream>
+#include <string>
 namespace ns3
 {
 
@@ -190,40 +192,7 @@ Ipv4RoutingTableEntry::CreateDefaultRoute(Ipv4Address nextHop, uint32_t interfac
 std::ostream&
 operator<<(std::ostream& os, const Ipv4RoutingTableEntry& route)
 {
-    if (route.IsDefault())
-    {
-        NS_ASSERT(route.IsGateway());
-        os << "default out=" << route.GetInterface() << ", next hop=" << route.GetGateway();
-    }
-    else if (route.IsHost())
-    {
-        if (route.IsGateway())
-        {
-            os << "host=" << route.GetDest() << ", out=" << route.GetInterface()
-               << ", next hop=" << route.GetGateway();
-        }
-        else
-        {
-            os << "host=" << route.GetDest() << ", out=" << route.GetInterface();
-        }
-    }
-    else if (route.IsNetwork())
-    {
-        if (route.IsGateway())
-        {
-            os << "network=" << route.GetDestNetwork() << ", mask=" << route.GetDestNetworkMask()
-               << ",out=" << route.GetInterface() << ", next hop=" << route.GetGateway();
-        }
-        else
-        {
-            os << "network=" << route.GetDestNetwork() << ", mask=" << route.GetDestNetworkMask()
-               << ",out=" << route.GetInterface();
-        }
-    }
-    else
-    {
-        NS_ASSERT(false);
-    }
+    route.Print(os, std::to_string(route.GetInterface()));
     return os;
 }
 
@@ -351,6 +320,48 @@ operator==(const Ipv4MulticastRoutingTableEntry a, const Ipv4MulticastRoutingTab
     return (a.GetOrigin() == b.GetOrigin() && a.GetGroup() == b.GetGroup() &&
             a.GetInputInterface() == b.GetInputInterface() &&
             a.GetOutputInterfaces() == b.GetOutputInterfaces());
+}
+
+std::string
+Ipv4RoutingTableEntry::GetPrintColumnHeader(const std::string& additionalColumns)
+{
+    std::string header = "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface";
+    return additionalColumns.empty() ? header : header + " " + additionalColumns;
+}
+
+void
+Ipv4RoutingTableEntry::Print(std::ostream& os,
+                             const std::string& interfaceName,
+                             const std::string& metric,
+                             const std::string& additionalValues) const
+{
+    std::ostringstream destination;
+    std::ostringstream gateway;
+    std::ostringstream mask;
+    std::string flags{"U"};
+
+    destination << GetDest();
+    gateway << GetGateway();
+    mask << GetDestNetworkMask();
+
+    if (IsHost())
+    {
+        flags += "H";
+    }
+    else if (IsGateway())
+    {
+        flags += "G";
+    }
+
+    os << std::left << std::setw(16) << destination.str() << std::setw(16) << gateway.str()
+       << std::setw(16) << mask.str() << std::setw(6) << flags << std::setw(7) << metric
+       << "-      "
+       << "-   " << interfaceName;
+
+    if (!additionalValues.empty())
+    {
+        os << " " << additionalValues;
+    }
 }
 
 } // namespace ns3
