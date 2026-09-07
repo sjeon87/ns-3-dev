@@ -538,9 +538,7 @@ Rip::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
                     interfaceName = std::to_string(route->GetInterface());
                 }
 
-                route->Print(*os,
-                 interfaceName,
-                 std::to_string(route->GetRouteMetric()));
+                route->Print(*os, interfaceName, std::to_string(route->GetRouteMetric()));
                 *os << std::endl;
             }
         }

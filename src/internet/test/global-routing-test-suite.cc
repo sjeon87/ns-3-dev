@@ -269,11 +269,10 @@ RoutingTableEntryPrintTestCase::DoRun()
         "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface Tag",
         "IPv4 extended routing table header is incorrect");
 
-    const auto ipv4Route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(
-        Ipv4Address("10.1.0.0"),
-        Ipv4Mask("255.255.0.0"),
-        Ipv4Address("10.0.0.1"),
-        2);
+    const auto ipv4Route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(Ipv4Address("10.1.0.0"),
+                                                                       Ipv4Mask("255.255.0.0"),
+                                                                       Ipv4Address("10.0.0.1"),
+                                                                       2);
     std::ostringstream ipv4Output;
     ipv4Route.Print(ipv4Output, "eth0", "5", "7");
     NS_TEST_EXPECT_MSG_EQ(
@@ -286,26 +285,23 @@ RoutingTableEntryPrintTestCase::DoRun()
         "Destination                    Next Hop                   Flag Met Ref Use Iface Tag",
         "IPv6 extended routing table header is incorrect");
 
-    const auto ipv6Route = Ipv6RoutingTableEntry::CreateNetworkRouteTo(
-        Ipv6Address("2001:db8:1::"),
-        Ipv6Prefix(64),
-        Ipv6Address("fe80::1"),
-        2);
+    const auto ipv6Route = Ipv6RoutingTableEntry::CreateNetworkRouteTo(Ipv6Address("2001:db8:1::"),
+                                                                       Ipv6Prefix(64),
+                                                                       Ipv6Address("fe80::1"),
+                                                                       2);
     std::ostringstream ipv6Output;
     ipv6Route.Print(ipv6Output, "eth0", "5", "9");
     const std::string ipv6Columns =
         "2001:db8:1::/64" + std::string(16, ' ') + "fe80::1" + std::string(20, ' ');
-    NS_TEST_EXPECT_MSG_EQ(
-        ipv6Output.str(),
-        ipv6Columns + "UG   5   -   -   eth0 9",
-        "IPv6 routing table entry is formatted incorrectly");
+    NS_TEST_EXPECT_MSG_EQ(ipv6Output.str(),
+                          ipv6Columns + "UG   5   -   -   eth0 9",
+                          "IPv6 routing table entry is formatted incorrectly");
 
     std::ostringstream streamOutput;
     streamOutput << ipv6Route;
-    NS_TEST_EXPECT_MSG_EQ(
-        streamOutput.str(),
-        ipv6Columns + "UG   -   -   -   2",
-        "Routing table entry stream operator is formatted incorrectly");
+    NS_TEST_EXPECT_MSG_EQ(streamOutput.str(),
+                          ipv6Columns + "UG   -   -   -   2",
+                          "Routing table entry stream operator is formatted incorrectly");
 }
 
 /**

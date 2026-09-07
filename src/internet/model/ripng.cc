@@ -512,8 +512,7 @@ RipNg::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 
     if (!m_routes.empty())
     {
-        *os << Ipv6RoutingTableEntry::GetPrintColumnHeader()
-            << std::endl;
+        *os << Ipv6RoutingTableEntry::GetPrintColumnHeader() << std::endl;
         for (auto it = m_routes.begin(); it != m_routes.end(); it++)
         {
             RipNgRoutingTableEntry* route = it->first;
@@ -528,9 +527,7 @@ RipNg::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
                     interfaceName = std::to_string(route->GetInterface());
                 }
 
-                route->Print(*os,
-                            interfaceName,
-                            std::to_string(route->GetRouteMetric()));
+                route->Print(*os, interfaceName, std::to_string(route->GetRouteMetric()));
                 *os << std::endl;
             }
         }

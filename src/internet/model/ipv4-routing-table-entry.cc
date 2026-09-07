@@ -10,9 +10,11 @@
 
 #include "ns3/assert.h"
 #include "ns3/log.h"
+
 #include <iomanip>
 #include <sstream>
 #include <string>
+
 namespace ns3
 {
 
@@ -325,7 +327,8 @@ operator==(const Ipv4MulticastRoutingTableEntry a, const Ipv4MulticastRoutingTab
 std::string
 Ipv4RoutingTableEntry::GetPrintColumnHeader(const std::string& additionalColumns)
 {
-    std::string header = "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface";
+    std::string header =
+        "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface";
     return additionalColumns.empty() ? header : header + " " + additionalColumns;
 }
 

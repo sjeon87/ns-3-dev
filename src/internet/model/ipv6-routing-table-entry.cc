@@ -333,6 +333,7 @@ operator<<(std::ostream& os, const Ipv6MulticastRoutingTableEntry& route)
 
     return os;
 }
+
 std::string
 Ipv6RoutingTableEntry::GetPrintColumnHeader(const std::string& additionalColumns)
 {

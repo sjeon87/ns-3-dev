@@ -91,8 +91,7 @@ Ipv6StaticRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit
         for (uint32_t j = 0; j < GetNRoutes(); j++)
         {
             Ipv6RoutingTableEntry route = GetRoute(j);
-            std::string interfaceName =
-                Names::FindName(m_ipv6->GetNetDevice(route.GetInterface()));
+            std::string interfaceName = Names::FindName(m_ipv6->GetNetDevice(route.GetInterface()));
             if (interfaceName.empty())
             {
                 interfaceName = std::to_string(route.GetInterface());
