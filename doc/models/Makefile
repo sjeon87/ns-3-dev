@@ -132,6 +132,8 @@ SOURCEFIGS = \
 	$(SRC)/internet/doc/routing-specialization.dia \
 	$(SRC)/internet/doc/global-routing-limitation.dia \
 	$(SRC)/internet/doc/figures/tcp-state-machine.png \
+	$(SRC)/internet/doc/figures/tcp-documentation-restructuring.dia \
+	$(SRC)/internet/doc/figures/tcp-congestion-state-machine.dia \
 	$(SRC)/internet/doc/figures/fack-cwnd.png \
 	$(SRC)/internet/doc/figures/fack-inflight.png \
 	$(SRC)/internet/doc/figures/fack-packetDrops.png \
@@ -414,6 +416,8 @@ IMAGES_EPS = \
 	$(FIGURES)/routing.eps \
 	$(FIGURES)/routing-specialization.eps \
 	$(FIGURES)/global-routing-limitation.eps \
+	$(FIGURES)/tcp-documentation-restructuring.eps \
+	$(FIGURES)/tcp-congestion-state-machine.eps \
 	$(FIGURES)/WifiArchitecture.eps \
 	$(FIGURES)/PhyEntityHierarchy.eps \
 	$(FIGURES)/WifiPpduHierarchy.eps \

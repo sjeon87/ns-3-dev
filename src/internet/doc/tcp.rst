@@ -1,46 +1,36 @@
 .. include:: replace.txt
 .. highlight:: cpp
 
-TCP models in ns-3
-------------------
+TCP Models in ns-3
+==================
 
 This chapter describes the TCP models available in |ns3|.
 
-Overview of support for TCP
-***************************
+This figure shows the organization of TCP components in ns-3, including
+congestion control, loss detection, and loss recovery along with their
+associated mechanisms and algorithms.
 
-|ns3| was written to support multiple TCP implementations. The implementations
-inherit from a few common header classes in the ``src/network`` directory, so that
-user code can swap out implementations with minimal changes to the scripts.
+**Structure of TCP model documentation in ns-3**
 
-There are three important abstract base classes:
+.. _fig-tcp-documentation-restructuring:
 
-* class :cpp:class:`TcpSocket`: This is defined in
-  ``src/internet/model/tcp-socket.{cc,h}``. This class exists for hosting TcpSocket
-  attributes that can be reused across different implementations. For instance,
-  the attribute ``InitialCwnd`` can be used for any of the implementations
-  that derive from class :cpp:class:`TcpSocket`.
-* class :cpp:class:`TcpSocketFactory`: This is used by the layer-4 protocol
-  instance to create TCP sockets of the right type.
-* class :cpp:class:`TcpCongestionOps`: This supports different variants of
-  congestion control-- a key topic of simulation-based TCP research.
+.. figure:: figures/tcp-documentation-restructuring.*
+   :align: center
 
-There are presently two active implementations of TCP available for |ns3|.
+   Structure of TCP model documentation in ns-3
 
-* a natively implemented TCP for ns-3
-* support for kernel implementations via `Direct Code Execution (DCE) <https://www.nsnam.org/overview/projects/direct-code-execution/>`__
 
-Direct Code Execution is limited in its support for newer kernels; at
-present, only Linux kernel 4.4 is supported.  However, the TCP implementations
-in kernel 4.4 can still be used for ns-3 validation or for specialized
-simulation use cases.
+Scope and Limitations
+---------------------
 
-It should also be mentioned that various ways of combining virtual machines
-with |ns3| makes available also some additional TCP implementations, but
-those are out of scope for this chapter.
+- TcpCongestionOps interface does not contain every possible Linux operation.
+
+
+Model History and Acknowledgments
+---------------------------------
 
 ns-3 TCP
-********
+~~~~~~~~
 
 In brief, the native |ns3| TCP model supports a full bidirectional TCP with
 connection setup and close logic. Several congestion control algorithms
@@ -53,8 +43,8 @@ Acknowledgements (SACK), Forward Acknowledgement (FACK), Proportional Rate Reduc
 Congestion Notification (ECN). Multipath-TCP is not yet supported in the |ns3|
 releases.
 
-Model history
-+++++++++++++
+Model History
+~~~~~~~~~~~~~
 
 Until the ns-3.10 release, |ns3| contained a port of the TCP model from `GTNetS
 <https://web.archive.org/web/20210928123443/http://griley.ece.gatech.edu/MANIACS/GTNetS/index.html>`_,
@@ -94,106 +84,57 @@ the ns-3.41 release.  This feature is called 'TCP friendliness' in earlier
 versions of the CUBIC RFCs, and in the Linux and ns-3 implementations.
 
 Acknowledgments
-+++++++++++++++
+~~~~~~~~~~~~~~~
 
 As mentioned above, |ns3| TCP has had multiple authors and maintainers over
 the years. Several publications exist on aspects of |ns3| TCP, and users
 of |ns3| TCP are requested to cite one of the applicable papers when
 publishing new work.
 
-A general reference on the current architecture is found in the following paper:
-
-* Maurizio Casoni, Natale Patriciello, Next-generation TCP for ns-3 simulator, Simulation Modelling Practice and Theory, Volume 66, 2016, Pages 81-93. (http://www.sciencedirect.com/science/article/pii/S1569190X15300939)
+A general reference on the current architecture is found in [:ref:`1<tcpRef1>`].
 
 For an academic peer-reviewed paper on the SACK implementation in ns-3,
-please refer to:
+please refer to [:ref:`2<tcpRef2>`].
 
-* Natale Patriciello. 2017. A SACK-based Conservative Loss Recovery Algorithm for ns-3 TCP: a Linux-inspired Proposal. In Proceedings of the Workshop on ns-3 (WNS3 '17). ACM, New York, NY, USA, 1-8. (https://dl.acm.org/citation.cfm?id=3067666)
+Overview of Implementation
+--------------------------
 
-Usage
-+++++
+|ns3| was written to support multiple TCP implementations. The implementations
+inherit from a few common header classes in the ``src/network`` directory, so that
+user code can swap out implementations with minimal changes to the scripts.
 
-In many cases, usage of TCP is set at the application layer by telling
-the |ns3| application which kind of socket factory to use.
+There are three important abstract base classes:
 
-Using the helper functions defined in ``src/applications/helper`` and
-``src/network/helper``, here is how one would create a TCP receiver::
+* class :cpp:class:`TcpSocket`: This is defined in
+  ``src/internet/model/tcp-socket.{cc,h}``. This class exists for hosting TcpSocket
+  attributes that can be reused across different implementations. For instance,
+  the attribute ``InitialCwnd`` can be used for any of the implementations
+  that derive from class :cpp:class:`TcpSocket`.
+* class :cpp:class:`TcpSocketFactory`: This is used by the layer-4 protocol
+  instance to create TCP sockets of the right type.
+* class :cpp:class:`TcpCongestionOps`: This supports different variants of
+  congestion control-- a key topic of simulation-based TCP research.
 
-  // Create a packet sink on the star "hub" to receive these packets
-  uint16_t port = 50000;
-  Address sinkLocalAddress(InetSocketAddress(Ipv4Address::GetAny(), port));
-  PacketSinkHelper sinkHelper("ns3::TcpSocketFactory", sinkLocalAddress);
-  ApplicationContainer sinkApp = sinkHelper.Install(serverNode);
-  sinkApp.Start(Seconds(1));
-  sinkApp.Stop(Seconds(10));
+There are presently two active implementations of TCP available for |ns3|.
 
-Similarly, the below snippet configures OnOffApplication traffic source to use
-TCP::
+* a natively implemented TCP for ns-3
+* support for kernel implementations via `Direct Code Execution (DCE) <https://www.nsnam.org/overview/projects/direct-code-execution/>`__
 
-  // Create the OnOff applications to send TCP to the server
-  OnOffHelper clientHelper("ns3::TcpSocketFactory", Address());
+Direct Code Execution is limited in its support for newer kernels; at
+present, only Linux kernel 4.4 is supported.  However, the TCP implementations
+in kernel 4.4 can still be used for ns-3 validation or for specialized
+simulation use cases.
 
-The careful reader will note above that we have specified the TypeId of an
-abstract base class :cpp:class:`TcpSocketFactory`. How does the script tell
-|ns3| that it wants the native |ns3| TCP vs. some other one? Well, when
-internet stacks are added to the node, the default TCP implementation that is
-aggregated to the node is the |ns3| TCP.  So, by default, when using the |ns3|
-helper API, the TCP that is aggregated to nodes with an Internet stack is the
-native |ns3| TCP.
+It should also be mentioned that various ways of combining virtual machines
+with |ns3| makes available also some additional TCP implementations, but
+those are out of scope for this chapter.
 
-To configure behavior of TCP, a number of parameters are exported through the
-|ns3| attribute system. These are documented in the `Doxygen
-<https://www.nsnam.org/docs/doxygen/d3/dea/classns3_1_1_tcp_socket.html>`_ for class
-:cpp:class:`TcpSocket`. For example, the maximum segment size is a
-settable attribute.
 
-To set the default socket type before any internet stack-related objects are
-created, one may put the following statement at the top of the simulation
-program::
+Architecture
+------------
 
-  Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::TcpNewReno"));
-
-For users who wish to have a pointer to the actual socket (so that
-socket operations like Bind(), setting socket options, etc. can be
-done on a per-socket basis), Tcp sockets can be created by using the
-``Socket::CreateSocket()`` method. The TypeId passed to CreateSocket()
-must be of type :cpp:class:`ns3::SocketFactory`, so configuring the underlying
-socket type must be done by twiddling the attribute associated with the
-underlying TcpL4Protocol object. The easiest way to get at this would be
-through the attribute configuration system. In the below example,
-the Node container "n0n1" is accessed to get the zeroth element, and a socket is
-created on this node::
-
-  // Create and bind the socket...
-  TypeId tid = TypeId::LookupByName("ns3::TcpNewReno");
-  Config::Set("/NodeList/*/$ns3::TcpL4Protocol/SocketType", TypeIdValue(tid));
-  Ptr<Socket> localSocket =
-    Socket::CreateSocket(n0n1.Get(0), TcpSocketFactory::GetTypeId());
-
-Above, the "*" wild card for node number is passed to the attribute
-configuration system, so that all future sockets on all nodes are set to
-NewReno, not just on node 'n0n1.Get (0)'. If one wants to limit it to just
-the specified node, one would have to do something like::
-
-  // Create and bind the socket...
-  TypeId tid = TypeId::LookupByName("ns3::TcpNewReno");
-  std::stringstream nodeId;
-  nodeId << n0n1.Get(0)->GetId();
-  std::string specificNode = "/NodeList/" + nodeId.str() + "/$ns3::TcpL4Protocol/SocketType";
-  Config::Set(specificNode, TypeIdValue(tid));
-  Ptr<Socket> localSocket =
-    Socket::CreateSocket(n0n1.Get(0), TcpSocketFactory::GetTypeId());
-
-Once a TCP socket is created, one will want to follow conventional socket logic
-and either connect() and send() (for a TCP client) or bind(), listen(), and
-accept() (for a TCP server).
-Please note that applications usually create the sockets they use automatically,
-and so is not straightforward to connect directly to them using pointers. Please
-refer to the source code of your preferred application to discover how and when
-it creates the socket.
-
-TCP Socket interaction and interface with Application layer
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TCP Socket Interaction and Interface with Application Layer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the following there is an analysis on the public interface of the TCP socket,
 and how it can be used to interact with the socket itself. An analysis of the
@@ -203,8 +144,6 @@ divide the functionality of the socket. However, in TCP these two roles can be
 applied at the same time (i.e. a socket could be a sender and a receiver at the
 same time): our distinction does not lose generality, since the following
 definition can be applied to both sockets in case of full-duplex mode.
-
-----------
 
 **TCP state machine (for commodity use)**
 
@@ -217,8 +156,6 @@ definition can be applied to both sockets in case of full-duplex mode.
 
 In ns-3 we are fully compliant with the state machine depicted in
 Figure :ref:`fig-tcp-state-machine`.
-
-----------
 
 **Public interface for receivers (e.g. servers receiving data)**
 
@@ -280,8 +217,6 @@ Figure :ref:`fig-tcp-state-machine`.
 *RecvFrom()*
   Same as Recv, but with the source address as parameter.
 
--------------------
-
 **Public interface for senders (e.g. clients uploading data)**
 
 *Connect()*
@@ -315,8 +250,6 @@ Figure :ref:`fig-tcp-state-machine`.
   FIN_WAIT_2, or LAST_ACK, after that call the application will be notified with
   *NotifyNormalClose()*. In other cases, the notification is delayed
   (see *NotifyNormalClose()*).
-
------------------------------------------
 
 **Public callbacks**
 
@@ -378,1238 +311,97 @@ callback as well.
   data).
 
 
-Congestion Control Algorithms
-+++++++++++++++++++++++++++++
-Here follows a list of supported TCP congestion control algorithms. For an
-academic paper on many of these congestion control algorithms, see
-http://dl.acm.org/citation.cfm?id=2756518 .
-
-NewReno
-^^^^^^^
-NewReno algorithm introduces partial ACKs inside the well-established Reno
-algorithm. This and other modifications are described in RFC 6582. We have two
-possible congestion window increment strategy: slow start and congestion
-avoidance. Taken from RFC 5681:
-
-  During slow start, a TCP increments cwnd by at most SMSS bytes for
-  each ACK received that cumulatively acknowledges new data. Slow
-  start ends when cwnd exceeds ssthresh (or, optionally, when it
-  reaches it, as noted above) or when congestion is observed. While
-  traditionally TCP implementations have increased cwnd by precisely
-  SMSS bytes upon receipt of an ACK covering new data, we RECOMMEND
-  that TCP implementations increase cwnd, per Equation :eq:`newrenocongavoid`,
-  where N is the number of previously unacknowledged bytes acknowledged
-  in the incoming ACK.
-
-.. math:: cwnd += min (N, SMSS)
-   :label: newrenocongavoid
-
-During congestion avoidance, cwnd is incremented by roughly 1 full-sized
-segment per round-trip time (RTT), and for each congestion event, the slow
-start threshold is halved.
-
-CUBIC
-^^^^^
-CUBIC (class :cpp:class:`TcpCubic`) is the default TCP congestion control
-in Linux, macOS (since 2014), and Microsoft Windows (since 2017).
-CUBIC has two main differences with respect to
-a more classic TCP congestion control such as NewReno.  First, during the
-congestion avoidance phase, the window size grows according to a cubic
-function (concave, then convex) with the latter convex portion designed
-to allow for bandwidth probing.  Second, a hybrid slow start (HyStart)
-algorithm uses observations of delay increases in the slow start
-phase of window growth to try to exit slow start before window growth
-causes queue overflow.
-
-CUBIC is documented in :rfc:`9438`, and the |ns3| implementation is patterned
-partly on the Linux implementation and partly on the RFC, although the Linux
-4.4 kernel implementation (through the Direct Code Execution environment) has
-been used to validate the behavior.
-
-Linux Reno
-^^^^^^^^^^
-TCP Linux Reno (class :cpp:class:`TcpLinuxReno`) is designed to provide a
-Linux-like implementation of
-TCP NewReno. The implementation of class :cpp:class:`TcpNewReno` in ns-3
-follows RFC standards, and increases cwnd more conservatively than does Linux Reno.
-Linux Reno modifies slow start and congestion avoidance algorithms to
-increase cwnd based on the number of bytes being acknowledged by each
-arriving ACK, rather than by the number of ACKs that arrive.  Another major
-difference in implementation is that Linux maintains the congestion window
-in units of segments, while the RFCs define the congestion window in units of
-bytes.
-
-In slow start phase, on each incoming ACK at the TCP sender side cwnd
-is increased by the number of previously unacknowledged bytes ACKed by the
-incoming acknowledgment. In contrast, in ns-3 NewReno, cwnd is increased
-by one segment per acknowledgment.  In standards terminology, this
-difference is referred to as Appropriate Byte Counting (RFC 3465); Linux
-follows Appropriate Byte Counting while ns-3 NewReno does not.
-
-.. math:: cwnd += segAcked * segmentSize
-   :label: linuxrenoslowstart
-
-.. math:: cwnd += segmentSize
-   :label: newrenoslowstart
-
-In congestion avoidance phase, the number of bytes that have been ACKed at
-the TCP sender side are stored in a 'bytes_acked' variable in the TCP control
-block. When 'bytes_acked' becomes greater than or equal to the value of the
-cwnd, 'bytes_acked' is reduced by the value of cwnd. Next, cwnd is incremented
-by a full-sized segment (SMSS).  In contrast, in ns-3 NewReno, cwnd is increased
-by (1/cwnd) with a rounding off due to type casting into int.
-
-.. code-block:: c++
-   :caption: Linux Reno `cwnd` update
-
-   if (m_cWndCnt >= w)
-   {
-       uint32_t delta = m_cWndCnt / w;
-
-       m_cWndCnt -= delta * w;
-       tcb->m_cWnd += delta * tcb->m_segmentSize;
-       NS_LOG_DEBUG("Subtracting delta * w from m_cWndCnt " << delta * w);
-   }
+.. include:: tcp-congestion-control.rst
 
 
-.. code-block:: c++
-   :caption: New Reno `cwnd` update
+Loss Detection
+--------------
 
-   if (segmentsAcked > 0)
-   {
-       double adder = static_cast<double>(tcb->m_segmentSize * tcb->m_segmentSize) / tcb->m_cWnd.Get();
-       adder = std::max(1.0, adder);
-       tcb->m_cWnd += static_cast<uint32_t>(adder);
-       NS_LOG_INFO("In CongAvoid, updated to cwnd " << tcb->m_cWnd <<
-                   " ssthresh " << tcb->m_ssThresh);
-   }
+The following loss detection mechanisms are supported in ns-3 TCP. Packet loss is
+primarily detected using duplicate acknowledgments (DupAck-based detection) and
+retransmission timeout (RTO). These mechanisms are responsible for identifying
+packet loss events and triggering the appropriate loss recovery algorithms.
 
+RTO
+~~~
 
-So, there are two main difference between the TCP Linux Reno and TCP NewReno
-in ns-3:
-1) In TCP Linux Reno, delayed acknowledgement configuration does not affect
-congestion window growth, while in TCP NewReno, delayed acknowledgments cause
-a slower congestion window growth.
-2) In congestion avoidance phase, the arithmetic for counting the number of
-segments acked and deciding when to increment the cwnd is different for TCP
-Linux Reno and TCP NewReno.
+TCP employs a retransmission timer to ensure reliable data delivery in scenarios
+where acknowledgments are not received from the remote peer. The duration of this
+timer is referred to as the Retransmission Timeout (RTO). The computation of RTO
+follows the algorithm specified in RFC 6298.
 
-Following graphs shows the behavior of window growth in TCP Linux Reno and
-TCP NewReno with delayed acknowledgement of 2 segments:
+To estimate the RTO, the TCP sender maintains the following state variables:
 
-.. _fig-ns3-new-reno-vs-ns3-linux-reno:
+* SRTT: Smoothed Round-Trip Time
+* RTTVAR: Round-Trip Time variation
 
-.. figure:: figures/ns3-new-reno-vs-ns3-linux-reno.*
-   :scale: 70%
-   :align: center
+The RTO is derived as a function of measured Round-Trip Time (RTT) samples.
 
-   ns-3 TCP NewReno vs. ns-3 TCP Linux Reno
-
-HighSpeed
-^^^^^^^^^
-TCP HighSpeed is designed for high-capacity channels or, in general, for
-TCP connections with large congestion windows.
-Conceptually, with respect to the standard TCP, HighSpeed makes the
-cWnd grow faster during the probing phases and accelerates the
-cWnd recovery from losses.
-This behavior is executed only when the window grows beyond a
-certain threshold, which allows TCP HighSpeed to be friendly with standard
-TCP in environments with heavy congestion, without introducing new dangers
-of congestion collapse.
-
-Mathematically:
-
-.. math::  cWnd = cWnd + \frac{a(cWnd)}{cWnd}
-   :label: highspeedcwndincrement
-
-The function a() is calculated using a fixed RTT the value 100 ms (the
-lookup table for this function is taken from RFC 3649). For each congestion
-event, the slow start threshold is decreased by a value that depends on the
-size of the slow start threshold itself. Then, the congestion window is set
-to such value.
-
-.. math::   cWnd = (1 - b(cWnd)) \cdot cWnd
-   :label: highspeedcwnddecrement
-
-The lookup table for the function b() is taken from the same RFC.
-More information at: http://dl.acm.org/citation.cfm?id=2756518
-
-Hybla
-^^^^^
-The key idea behind TCP Hybla is to obtain for long RTT connections the same
-instantaneous transmission rate of a reference TCP connection with lower RTT.
-With analytical steps, it is shown that this goal can be achieved by
-modifying the time scale, in order for the throughput to be independent from
-the RTT. This independence is obtained through the use of a coefficient rho.
-
-This coefficient is used to calculate both the slow start threshold
-and the congestion window when in slow start and in congestion avoidance,
-respectively.
-
-More information at: http://dl.acm.org/citation.cfm?id=2756518
-
-Westwood
-^^^^^^^^
-Westwood and Westwood+ employ the AIAD (Additive Increase/Adaptive Decrease)
-congestion control paradigm. When a congestion episode happens,
-instead of halving the cwnd, these protocols try to estimate the network's
-bandwidth and use the estimated value to adjust the cwnd.
-While Westwood performs the bandwidth sampling every ACK reception,
-Westwood+ samples the bandwidth every RTT.
-
-The TCP Westwood model has been removed in ns-3.38 due to bugs that are impossible
-to fix without modifying the original Westwood model as presented in the published papers.
-For further info refer to https://gitlab.com/nsnam/ns-3-dev/-/issues/579
-
-The Westwood+ model does not have such issues, and is still available.
-
-WARNING: this TCP model lacks validation and regression tests; use with caution.
-
-More information at: http://dl.acm.org/citation.cfm?id=381704 and
-http://dl.acm.org/citation.cfm?id=2512757
-
-Vegas
-^^^^^
-TCP Vegas is a pure delay-based congestion control algorithm implementing a
-proactive scheme that tries to prevent packet drops by maintaining a small
-backlog at the bottleneck queue. Vegas continuously samples the RTT and computes
-the actual throughput a connection achieves using Equation :eq:`vegasactual` and compares it
-with the expected throughput calculated in Equation :eq:`vegasexpected`. The difference between
-these 2 sending rates in Equation :eq:`vegasdiff` reflects the amount of extra packets being
-queued at the bottleneck.
-
-.. math::   actual &= \frac{cWnd}{RTT}
-   :label: vegasactual
-
-.. math::   expected &= \frac{cWnd}{BaseRTT}
-   :label: vegasexpected
-
-.. math::   diff &= expected - actual
-   :label: vegasdiff
-
-To avoid congestion, Vegas linearly increases/decreases its congestion window
-to ensure the diff value falls between the two predefined thresholds, alpha and
-beta. diff and another threshold, gamma, are used to determine when Vegas
-should change from its slow-start mode to linear increase/decrease mode.
-Following the implementation of Vegas in Linux, we use 2, 4, and 1 as the
-default values of alpha, beta, and gamma, respectively, but they can be
-modified through the Attribute system.
-
-More information at: http://dx.doi.org/10.1109/49.464716
-
-Scalable
-^^^^^^^^
-Scalable improves TCP performance to better utilize the available bandwidth of
-a highspeed wide area network by altering NewReno congestion window adjustment
-algorithm. When congestion has not been detected, for each ACK received in an
-RTT, Scalable increases its cwnd per:
-
-.. math::  cwnd = cwnd + 0.01
-   :label: scalablecwndincrement
-
-Following Linux implementation of Scalable, we use 50 instead of 100 to account
-for delayed ACK.
-
-On the first detection of congestion in a given RTT, cwnd is reduced based on
-the following equation:
-
-.. math::  cwnd = cwnd - ceil(0.125 \cdot cwnd)
-   :label: scalablecwnddecrement
-
-More information at: http://dl.acm.org/citation.cfm?id=956989
-
-Veno
-^^^^
-
-TCP Veno enhances Reno algorithm for more effectively dealing with random
-packet loss in wireless access networks by employing Vegas's method in
-estimating the backlog at the bottleneck queue to distinguish between
-congestive and non-congestive states.
-
-The backlog (the number of packets accumulated at the bottleneck queue) is
-calculated using Equation :eq:`venoN`:
+Upon obtaining the first RTT measurement R, the sender initializes the variables as follows:
 
 .. math::
-   N &= Actual \cdot (RTT - BaseRTT) \\
-     &= Diff \cdot BaseRTT
-   :label: venoN
 
-where:
+   \begin{aligned}
+   SRTT &= R \\
+   RTTVAR &= \frac{R}{2} \\
+   RTO &= SRTT + \max(G, K \cdot RTTVAR)
+   \end{aligned}
 
-.. math::
-   Diff &= Expected - Actual \\
-        &= \frac{cWnd}{BaseRTT} - \frac{cWnd}{RTT}
-   :label: venoDiff
+where G is the clock granularity and K is a constant factor (commonly set to 4).
 
-Veno makes decision on cwnd modification based on the calculated N and its
-predefined threshold beta.
-
-Specifically, it refines the additive increase algorithm of Reno so that the
-connection can stay longer in the stable state by incrementing cwnd by
-1/cwnd for every other new ACK received after the available bandwidth has
-been fully utilized, i.e. when N exceeds beta. Otherwise, Veno increases
-its cwnd by 1/cwnd upon every new ACK receipt as in Reno.
-
-In the multiplicative decrease algorithm, when Veno is in the non-congestive
-state, i.e. when N is less than beta, Veno decrements its cwnd by only 1/5
-because the loss encountered is more likely a corruption-based loss than a
-congestion-based. Only when N is greater than beta, Veno halves its sending
-rate as in Reno.
-
-More information at: http://dx.doi.org/10.1109/JSAC.2002.807336
-
-BIC
-^^^
-BIC (class :cpp:class:`TcpBic`) is a predecessor of TCP CUBIC.
-In TCP BIC the congestion control problem is viewed as a search
-problem. Taking as a starting point the current window value
-and as a target point the last maximum window value
-(i.e. the cWnd value just before the loss event) a binary search
-technique can be used to update the cWnd value at the midpoint between
-the two, directly or using an additive increase strategy if the distance from
-the current window is too large.
-
-This way, assuming a no-loss period, the congestion window logarithmically
-approaches the maximum value of cWnd until the difference between it and cWnd
-falls below a preset threshold. After reaching such a value (or the maximum
-window is unknown, i.e. the binary search does not start at all) the algorithm
-switches to probing the new maximum window with a 'slow start' strategy.
-
-If a loss occur in either these phases, the current window (before the loss)
-can be treated as the new maximum, and the reduced (with a multiplicative
-decrease factor Beta) window size can be used as the new minimum.
-
-More information at: http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=1354672
-
-YeAH
-^^^^
-
-YeAH-TCP (Yet Another HighSpeed TCP) is a heuristic designed to balance various
-requirements of a state-of-the-art congestion control algorithm:
-
-
-1. fully exploit the link capacity of high BDP networks while inducing a small number of congestion events
-2. compete friendly with Reno flows
-3. achieve intra and RTT fairness
-4. robust to random losses
-5. achieve high performance regardless of buffer size
-
-YeAH operates between 2 modes: Fast and Slow mode. In the Fast mode when the queue
-occupancy is small and the network congestion level is low, YeAH increments
-its congestion window according to the aggressive HSTCP rule. When the number of packets
-in the queue grows beyond a threshold and the network congestion level is high, YeAH enters
-its Slow mode, acting as Reno with a decongestion algorithm. YeAH employs Vegas' mechanism
-for calculating the backlog as in Equation :eq:`q_yeah`. The estimation of the network congestion
-level is shown in Equation :eq:`l_yeah`.
-
-.. math::  Q = (RTT - BaseRTT) \cdot \frac{cWnd}{RTT}
-   :label: q_yeah
-
-.. math::  L = \frac{RTT - BaseRTT}{BaseRTT}
-   :label: l_yeah
-
-To ensure TCP friendliness, YeAH also implements an algorithm to detect the presence of legacy
-Reno flows. Upon the receipt of 3 duplicate ACKs, YeAH decreases its slow start threshold
-according to Equation :eq:`yeahssthresh` if it's not competing with Reno flows. Otherwise, the ssthresh is
-halved as in Reno:
-
-.. math::  ssthresh = min(max(\frac{cWnd}{8}, Q), \frac{cWnd}{2})
-   :label: yeahssthresh
-
-More information: http://www.csc.lsu.edu/~sjpark/cs7601/4-YeAH_TCP.pdf
-
-Illinois
-^^^^^^^^
-
-TCP Illinois is a hybrid congestion control algorithm designed for
-high-speed networks. Illinois implements a Concave-AIMD (or C-AIMD)
-algorithm that uses packet loss as the primary congestion signal to
-determine the direction of window update and queueing delay as the
-secondary congestion signal to determine the amount of change.
-
-The additive increase and multiplicative decrease factors (denoted as
-alpha and beta, respectively) are functions of the current average queueing
-delay da as shown in Equations :eq:`illinoisalpha` and :eq:`illinoisbeta`. To improve the protocol
-robustness against sudden fluctuations in its delay sampling,
-Illinois allows the increment of alpha to alphaMax
-only if da stays below d1 for a some (theta) amount of time.
-
-.. math::
-   alpha &=
-   \begin{cases}
-      \quad alphaMax              & \quad \text{if } da <= d1 \\
-      \quad k1 / (k2 + da)        & \quad \text{otherwise} \\
-   \end{cases}
-   :label: illinoisalpha
-
-.. math::
-   beta &=
-   \begin{cases}
-      \quad betaMin               & \quad \text{if } da <= d2 \\
-      \quad k3 + k4 \, da         & \quad \text{if } d2 < da < d3 \\
-      \quad betaMax               & \quad \text{otherwise}
-   \end{cases}
-   :label: illinoisbeta
-
-where the calculations of k1, k2, k3, and k4 are shown in the following:
-
-.. math::   k1 &= \frac{(dm - d1) \cdot alphaMin \cdot alphaMax}{alphaMax - alphaMin}
-   :label: illinoisk1
-
-.. math::   k2 &= \frac{(dm - d1) \cdot alphaMin}{alphaMax - alphaMin} - d1
-   :label: illinoisk2
-
-.. math::   k3 &= \frac{alphaMin \cdot d3 - alphaMax \cdot d2}{d3 - d2}
-   :label: illinoisk3
-
-.. math::   k4 &= \frac{alphaMax - alphaMin}{d3 - d2}
-   :label: illinoisk4
-
-Other parameters include da (the current average queueing delay), and
-Ta (the average RTT, calculated as sumRtt / cntRtt in the implementation) and
-Tmin (baseRtt in the implementation) which is the minimum RTT ever seen.
-dm is the maximum (average) queueing delay, and Tmax (maxRtt in the
-implementation) is the maximum RTT ever seen.
-
-.. math::   da &= Ta - Tmin
-   :label: illinoisda
-
-.. math::   dm &= Tmax - Tmin
-   :label: illinoisdm
-
-.. math::   d_i &= eta_i \cdot dm
-   :label: illinoisdi
-
-Illinois only executes its adaptation of alpha and beta when cwnd exceeds a threshold
-called winThresh. Otherwise, it sets alpha and beta to the base values of 1 and 0.5,
-respectively.
-
-Following the implementation of Illinois in the Linux kernel, we use the following
-default parameter settings:
-
-* alphaMin = 0.3      (0.1 in the Illinois paper)
-* alphaMax = 10.0
-* betaMin = 0.125
-* betaMax = 0.5
-* winThresh = 15      (10 in the Illinois paper)
-* theta = 5
-* eta1 = 0.01
-* eta2 = 0.1
-* eta3 = 0.8
-
-More information: http://www.doi.org/10.1145/1190095.1190166
-
-H-TCP
-^^^^^
-
-H-TCP has been designed for high BDP (Bandwidth-Delay Product) paths. It is
-a dual mode protocol. In normal conditions, it works like traditional TCP
-with the same rate of increment and decrement for the congestion window.
-However, in high BDP networks, when it finds no congestion on the path
-after ``deltal`` seconds, it increases the window size based on the alpha
-function in the following:
-
-.. math::   alpha(delta)=1+10(delta-deltal)+0.5(delta-deltal)^2
-   :label: htcpalpha
-
-where ``deltal`` is a threshold in seconds for switching between the modes and
-``delta`` is the elapsed time from the last congestion. During congestion,
-it reduces the window size by multiplying by beta function provided
-in the reference paper. The calculated throughput between the last two
-consecutive congestion events is considered for beta calculation.
-
-The transport ``TcpHtcp`` can be selected in the program
-``examples/tcp/tcp-variants-comparison.cc`` to perform an experiment with H-TCP,
-although it is useful to increase the bandwidth in this example (e.g.
-to 20 Mb/s) to create a higher BDP link, such as:
-
-.. code-block:: bash
-
-  ./ns3 run "tcp-variants-comparison --transport_prot=TcpHtcp --bandwidth=20Mbps --duration=10"
-
-More information (paper): http://www.hamilton.ie/net/htcp3.pdf
-
-More information (Internet Draft): https://tools.ietf.org/html/draft-leith-tcp-htcp-06
-
-LEDBAT
-^^^^^^
-
-Low Extra Delay Background Transport (LEDBAT) is an experimental delay-based
-congestion control algorithm that seeks to utilize the available bandwidth on
-an end-to-end path while limiting the consequent increase in queueing delay
-on that path. LEDBAT uses changes in one-way delay measurements to limit
-congestion that the flow itself induces in the network.
-
-As a first approximation, the LEDBAT sender operates as shown below:
-
-On receipt of an ACK::
-
-  currentdelay = acknowledgement.delay;
-  basedelay = min(basedelay, currentdelay);
-  queuingdelay = currentdelay - basedelay;
-  offtarget =(TARGET - queuingdelay) / TARGET;
-  cWnd += GAIN * offtarget * bytesnewlyacked * MSS / cWnd;
-
-``TARGET`` is the maximum queueing delay that LEDBAT itself may introduce in the
-network, and ``GAIN`` determines the rate at which the cwnd responds to changes in
-queueing delay; ``offtarget`` is a normalized value representing the difference between
-the measured current queueing delay and the predetermined TARGET delay. offtarget can
-be positive or negative; consequently, cwnd increases or decreases in proportion to
-offtarget.
-
-Following the recommendation of RFC 6817, the default values of the parameters are:
-
-* TargetDelay = 100
-* baseHistoryLen = 10
-* noiseFilterLen = 4
-* Gain = 1
-
-To enable LEDBAT on all TCP sockets, the following configuration can be used::
-
-  Config::SetDefault("ns3::TcpL4Protocol::SocketType", TypeIdValue(TcpLedbat::GetTypeId()));
-
-To enable LEDBAT on a chosen TCP socket, the following configuration can be used::
-
-  Config::Set("$ns3::NodeListPriv/NodeList/1/$ns3::TcpL4Protocol/SocketType", TypeIdValue(TcpLedbat::GetTypeId()));
-
-The following unit tests have been written to validate the implementation of LEDBAT:
-
-* LEDBAT should operate same as NewReno during slow start
-* LEDBAT should operate same as NewReno if timestamps are disabled
-* Test to validate cwnd increment in LEDBAT
-
-In comparison to RFC 6817, the scope and limitations of the current LEDBAT
-implementation are:
-
-* It assumes that the clocks on the sender side and receiver side are synchronised
-* In line with Linux implementation, the one-way delay is calculated at the sender side by using the timestamps option in TCP header
-* Only the MIN function is used for noise filtering
-
-More information about LEDBAT is available in RFC 6817: https://tools.ietf.org/html/rfc6817
-
-TCP-LP
-^^^^^^
-
-TCP-Low Priority (TCP-LP) is a delay based congestion control protocol in which the low
-priority data utilizes only the excess bandwidth available on an end-to-end path.
-TCP-LP uses one way delay measurements as an indicator of congestion as it does
-not influence cross-traffic in the reverse direction.
-
-On receipt of an ACK:
+For each subsequent RTT measurement R, the sender updates the state variables as follows:
 
 .. math::
 
-  \text{One way delay} &= \text{Receiver timestamp} - \text{Receiver timestamp echo reply} \\
-  \text{Smoothed one way delay} &= \frac{7}{8} \times \text{Old Smoothed one way delay} + \frac{1}{8} \times \text{one way delay} \\
-  \text{If smoothed one way delay} &> \text{owdMin} + \frac{15 \times (\text{owdMax} - \text{owdMin})}{100} \\
-      &\text{if LP\_WITHIN\_INF} \\
-          &\quad \text{cwnd} = 1 \\
-      &\text{else} \\
-          &\quad \text{cwnd} = \frac{\text{cwnd}}{2} \\
-      &\text{Inference timer is set}
+   \begin{aligned}
+   RTTVAR &= (1 - \beta)\,RTTVAR + \beta\,|SRTT - R| \\
+   SRTT &= (1 - \alpha)\,SRTT + \alpha\,R \\
+   RTO &= SRTT + \max(G, K \cdot RTTVAR)
+   \end{aligned}
 
-where owdMin and owdMax are the minimum and maximum one way delays experienced
-throughout the connection, LP_WITHIN_INF indicates if TCP-LP is in inference
-phase or not
+where alpha and beta are smoothing factors, typically set to 1/8 and 1/4 respectively.
 
-More information (paper): http://cs.northwestern.edu/~akuzma/rice/doc/TCP-LP.pdf
+After computation, the RTO value is constrained as follows:
 
-Data Center TCP (DCTCP)
-^^^^^^^^^^^^^^^^^^^^^^^^
+* If RTO < 1 second, it MUST be rounded up to 1 second.
+* A maximum bound MAY be enforced, provided it is at least 60 seconds.
 
-DCTCP, specified in RFC 8257 and implemented in Linux, is a TCP congestion
-control algorithm for data center networks.  It leverages Explicit Congestion
-Notification (ECN) to provide more fine-grained congestion
-feedback to the end hosts, and is intended to work with routers that
-implement a shallow congestion marking threshold (on the order of a
-few milliseconds) to achieve high throughput and low latency in the
-datacenter.  However, because DCTCP does not react in the same way to
-notification of congestion experienced, there are coexistence (fairness)
-issues between it and legacy TCP congestion controllers, which is why it
-is recommended to only be used in controlled networking environments such
-as within data centers.
-
-DCTCP extends the Explicit Congestion Notification signal
-to estimate the fraction of bytes that encounter congestion, rather than simply
-detecting that the congestion has occurred. DCTCP then scales the congestion
-window based on this estimate. This approach achieves high burst tolerance, low
-latency, and high throughput with shallow-buffered switches.
-
-* *Receiver functionality:* If CE is observed in the IP header of an incoming
-  packet at the TCP receiver, the receiver sends congestion notification to
-  the sender by setting ECE in TCP header. This processing is different
-  from standard receiver ECN processing which sets and holds the ECE bit
-  for every ACK until it observes a CWR signal from the TCP sender.
-
-* *Sender functionality:* The sender makes use of the modified receiver
-  ECE semantics to maintain an estimate of the fraction of packets marked
-  (:math:`\alpha`) by using the exponential weighted moving average (EWMA) as
-  shown below:
+Upon expiration of the retransmission timer, the sender applies Binary Exponential Backoff,
+as specified in RFC 6298:
 
 .. math::
 
-  \alpha = (1 - g) * \alpha + g * F
+   RTO = RTO * 2
 
-In the above EWMA:
+This doubling continues for consecutive retransmission timeouts, allowing TCP to adapt to
+persistent network congestion or packet loss.
 
-* *g* is the estimation gain (between 0 and 1)
-* *F* is the fraction of packets marked in current RTT.
+The RTO estimation and management in ns-3 is implemented within the TCP socket layer.
 
-For send windows in which at least one ACK was received with ECE set,
-the sender should respond by reducing the congestion
-window as follows, once for every window of data:
+* The core functionality resides in the class :cpp:class:`TcpSocketBase` (located in ``src/internet/model/tcp-socket-base.{cc,h}``).
+* The state variables required for RTO computation are maintained in: :cpp:class:`TcpSocketState` (``src/internet/model/tcp-socket-state.h``), including: :cpp:member:`TcpSocketState::m_srtt`, :cpp:member:`TcpSocketState::m_rttvar`, and :cpp:member:`TcpSocketState::m_rto`.
 
-.. math::
+Fast Retransmit
+~~~~~~~~~~~~~~~
 
-  cwnd = cwnd * (1 - \alpha / 2)
+TCP employs the Fast Retransmit algorithm to detect and recover from packet loss
+without waiting for the RTO to expire. This mechanism relies on the reception of
+duplicate acknowledgments (DupAck) from the receiver. TCP receiver sends an immediate
+duplicate ACK when an out-of-order segment arrives to inform the sender that a
+segment was received out-of-order and which sequence number is expected. The sender
+infers segment loss based on the arrival of three consecutive duplicate ACKs, without
+any intervening ACK that advances sender’s unacknowledged sequence number (SND.UNA) according to RFC 5681.
 
-Following the recommendation of RFC 8257, the default values of the parameters are:
+The Fast Retransmit mechanism is implemented within the TCP socket layer in ns-3.
 
-.. math::
-
-  g = 0.0625 (i.e., 1/16)
-
-  initial alpha (\alpha) = 1
-
-
-To enable DCTCP on all TCP sockets, the following configuration can be used::
-
-  Config::SetDefault("ns3::TcpL4Protocol::SocketType", TypeIdValue(TcpDctcp::GetTypeId()));
-
-To enable DCTCP on a selected node, one can set the "SocketType" attribute
-on the TcpL4Protocol object of that node to the TcpDctcp TypeId.
-
-The ECN is enabled automatically when DCTCP is used, even if the user
-has not explicitly enabled it.
-
-DCTCP depends on a simple queue management algorithm in routers / switches to
-mark packets. The current implementation of DCTCP in ns-3 can use RED with
-a simple
-configuration to achieve the behavior of desired queue management algorithm.
-
-To configure RED router for DCTCP::
-
-  Config::SetDefault("ns3::RedQueueDisc::UseEcn", BooleanValue(true));
-  Config::SetDefault("ns3::RedQueueDisc::QW", DoubleValue(1.0));
-  Config::SetDefault("ns3::RedQueueDisc::MinTh", DoubleValue(16));
-  Config::SetDefault("ns3::RedQueueDisc::MaxTh", DoubleValue(16));
-
-There is also the option, when running CoDel or FqCoDel, to enable ECN
-on the queue and to set the "CeThreshold" value to a low value such as 1ms.
-The following example uses CoDel::
-
-  Config::SetDefault("ns3::CoDelQueueDisc::UseEcn", BooleanValue(true));
-  Config::SetDefault("ns3::CoDelQueueDisc::CeThreshold", TimeValue(MilliSeconds(1)));
-
-The following unit tests have been written to validate the implementation of DCTCP:
-
-* ECT flags should be set for SYN, SYN+ACK, ACK and data packets for DCTCP traffic
-* ECT flags should not be set for SYN, SYN+ACK and pure ACK packets, but should be set on data packets for ECN enabled traditional TCP flows
-* ECE should be set only when CE flags are received at receiver and even if sender doesn't send CWR, receiver should not send ECE if it doesn't receive packets with CE flags
-
-An example program, ``examples/tcp/tcp-validation.cc``, can be used to
-experiment with DCTCP for long-running flows with different bottleneck
-link bandwidth, base RTTs, and queuing disciplines.  A variant of this
-program has also been run using the |ns3| Direct Code Execution
-environment using DCTCP from Linux kernel 4.4, and the results were
-compared against |ns3| results.
-
-An example program based on an experimental topology found in the original
-DCTCP SIGCOMM paper is provided in ``examples/tcp/dctcp-example.cc``.
-This example uses a simple topology consisting of forty DCTCP senders
-and receivers and two ECN-enabled switches to examine throughput,
-fairness, and queue delay properties of the network.
-
-This implementation was tested extensively against a version of DCTCP in
-the Linux kernel version 4.4 using the ns-3 direct code execution (DCE)
-environment. Some differences were noted:
-
-* Linux maintains its congestion window in segments and not bytes, and
-  the arithmetic is not floating point, so small differences in the
-  evolution of congestion window have been observed.
-* Linux uses pacing, where packets to be sent are paced out at regular
-  intervals. However, if at any instant the number of segments that can
-  be sent are less than two, Linux does not pace them and instead sends
-  them back-to-back. Currently, ns-3 paces out all packets eligible to
-  be sent in the same manner.
-
-It is important to also note that the current model does not implement
-Section 3.5 of RFC 8257 regarding the handling of packet loss.  This
-requirement states that DCTCP must react to lost packets in the same way
-as does a conventional TCP (as specified in RFC 5681).  The current
-DCTCP model does not implement this, and should therefore only be used
-in simulations that do not involve any packet loss on the DCTCP flows.
-
-More information about DCTCP is available in the RFC 8257:
-https://tools.ietf.org/html/rfc8257
-
-BBR
-^^^
-BBR (class :cpp:class:`TcpBbr`) is a congestion control algorithm that
-regulates the sending rate by deriving an estimate of the bottleneck's
-available bandwidth and RTT of the path. It seeks to operate at an optimal
-point where sender experiences maximum delivery rate with minimum RTT. It
-creates a network model comprising maximum delivery rate with minimum RTT
-observed so far, and then estimates BDP (maximum bandwidth * minimum RTT)
-to control the maximum amount of inflight data. BBR controls congestion by
-limiting the rate at which packets are sent. It caps the cwnd to one BDP
-and paces out packets at a rate which is adjusted based on the latest estimate
-of delivery rate. BBR algorithm is agnostic to packet losses and ECN marks.
-
-``pacing_gain`` controls the rate of sending data and ``cwnd_gain`` controls the amount
-of data to send.
-
-The following is a high level overview of BBR congestion control algorithm:
-
-On receiving an ACK::
-
-  rtt = now - packet.sent_time;
-  update_minimum_rtt(rtt);
-  delivery_rate = estimate_delivery_rate(packet);
-  update_maximum_bandwidth(delivery_rate);
-
-After transmitting a data packet::
-
-  bdp = max_bandwidth * min_rtt;
-  if (cwnd * bdp < inflight)
-  {
-      return;
-  }
-  if (now > nextSendTime)
-  {
-      transmit(packet);
-      nextSendTime = now + packet.size / (pacing_gain * max_bandwidth);
-  }
-  else
-  {
-      return;
-  }
-  Schedule(nextSendTime, Send);
-
-
-To enable BBR on all TCP sockets, the following configuration can be used::
-
-  Config::SetDefault("ns3::TcpL4Protocol::SocketType", TypeIdValue(TcpBbr::GetTypeId()));
-
-To enable BBR on a chosen TCP socket, the following configuration can be used
-(note that an appropriate Node ID must be used instead of 1)::
-
-  Config::Set("$ns3::NodeListPriv/NodeList/1/$ns3::TcpL4Protocol/SocketType", TypeIdValue(TcpBbr::GetTypeId()));
-
-The ns-3 implementation of BBR is based on its Linux implementation. Linux 5.4
-kernel implementation has been used to validate the behavior of ns-3
-implementation of BBR (See below section on Validation).
-
-In addition, the following unit tests have been written to validate the
-implementation of BBR in ns-3:
-
-* BBR should enable (if not already done) TCP pacing feature.
-* Test to validate the values of ``pacing_gain`` and ``cwnd_gain`` in different phases
-  of BBR.
-
-An example program, ``examples/tcp/tcp-bbr-example.cc``, is provided to experiment
-with BBR for one long running flow. This example uses a simple topology
-consisting of one sender, one receiver and two routers to examine congestion
-window, throughput and queue control. A program similar to this has been run
-using the Network Stack Tester (NeST) using BBR from Linux kernel 5.4, and the
-results were compared against ns-3 results.
-
-More information about BBR is available in the following Internet Draft:
-https://tools.ietf.org/html/draft-cardwell-iccrg-bbr-congestion-control-00
-
-More information about Delivery Rate Estimation is in the following draft:
-https://tools.ietf.org/html/draft-cheng-iccrg-delivery-rate-estimation-00
-
-For an academic peer-reviewed paper on the BBR implementation in ns-3,
-please refer to:
-
-* Vivek Jain, Viyom Mittal and Mohit P. Tahiliani. "Design and Implementation of TCP BBR in ns-3." In Proceedings of the 10th Workshop on ns-3, pp. 16-22. 2018. (https://dl.acm.org/doi/abs/10.1145/3199902.3199911)
-
-Integration with TcpRateOps
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In the older version of the TCP BBR algorithm, the ``appLimited`` variable was handled directly inside the ``TcpBbr`` class. To make the code more modular and similar to how things are done in Linux TCP, a pointer to the ``TcpRateOps`` class called ``Ptr<TcpRateOps> m_rateOps`` was introduced. This change helps manage the ``appLimited`` state through the rate operations interface instead of directly in ``TcpBbr``.
-
-Now, the ``appLimited`` value can be accessed with:
-
-.. code-block:: cpp
-
-    m_rateOps->GetConnectionRate().m_appLimited;
-
-And it can be updated using:
-
-.. code-block:: cpp
-
-    m_rateOps->SetAppLimited(tcb->m_bytesInFlight.Get());
-
-The ``SetAppLimited`` function, which is part of the ``TcpRateLinux`` class, takes care of updating the ``appLimited`` value based on the current amount of data in flight.
-
-Here's an example of the ``SetRateOps`` method in ``TcpBbr``:
-
-.. code-block:: cpp
-
-    void TcpBbr::SetRateOps(Ptr<TcpRateOps> rateOps)
-    {
-        m_rateOps = rateOps;
-    }
-
-This setup makes the code more organized and reflects how Linux TCP handles the ``appLimited`` state, where it's managed within the TCP socket and updated by rate operations.
-
-Support for Explicit Congestion Notification (ECN)
-++++++++++++++++++++++++++++++++++++++++++++++++++
-
-ECN provides end-to-end notification of network congestion without dropping
-packets. It uses two bits in the IP header: ECN Capable Transport (ECT bit)
-and Congestion Experienced (CE bit), and two bits in the TCP header: Congestion
-Window Reduced (CWR) and ECN Echo (ECE).
-
-More information is available in RFC 3168: https://tools.ietf.org/html/rfc3168
-
-The following ECN states are declared in ``src/internet/model/tcp-socket-state.h``
-
-::
-
-  enum EcnStates_t
-  {
-      ECN_DISABLED = 0, //!< ECN disabled traffic
-      ECN_IDLE,         //!< ECN is enabled but currently there is no action pertaining to ECE or CWR to be taken
-      ECN_CE_RCVD,      //!< Last packet received had CE bit set in IP header
-      ECN_SENDING_ECE,  //!< Receiver sends an ACK with ECE bit set in TCP header
-      ECN_ECE_RCVD,     //!< Last ACK received had ECE bit set in TCP header
-      ECN_CWR_SENT      //!< Sender has reduced the congestion window, and sent a packet with CWR bit set in TCP header. This is used for tracing.
-  };
-
-Current implementation of ECN is based on RFC 3168 and is referred as Classic ECN.
-
-The following enum represents the mode of ECN::
-
-  enum EcnMode_t
-  {
-      ClassicEcn,  //!< ECN functionality as described in RFC 3168.
-      DctcpEcn,    //!< ECN functionality as described in RFC 8257. Note: this mode is specific to DCTCP.
-  };
-
-The following are some important ECN parameters::
-
-  // ECN parameters
-  EcnMode_t              m_ecnMode {ClassicEcn}; //!< ECN mode
-  UseEcn_t               m_useEcn {Off};         //!< Socket ECN capability
-
-Enabling ECN
-^^^^^^^^^^^^
-
-By default, support for ECN is disabled in TCP sockets. To enable, change
-the value of the attribute ``ns3::TcpSocketBase::UseEcn`` to ``On``.
-Following are supported values for the same, this functionality is aligned with
-Linux: https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
-
-::
-
-  enum UseEcn_t
-  {
-      Off        = 0,   //!< Disable
-      On         = 1,   //!< Enable
-      AcceptOnly = 2,   //!< Enable only when the peer endpoint is ECN capable
-  };
-
-For example::
-
-  Config::SetDefault("ns3::TcpSocketBase::UseEcn", StringValue("On"))
-
-ECN negotiation
-^^^^^^^^^^^^^^^
-
-ECN capability is negotiated during the three-way TCP handshake:
-
-1. Sender sends SYN + CWR + ECE
-
-::
-
-  if (m_useEcn == UseEcn_t::On)
-  {
-      SendEmptyPacket(TcpHeader::SYN | TcpHeader::ECE | TcpHeader::CWR);
-  }
-  else
-  {
-      SendEmptyPacket(TcpHeader::SYN);
-  }
-  m_ecnState = ECN_DISABLED;
-
-2. Receiver sends SYN + ACK + ECE
-
-::
-
-  if (m_useEcn != UseEcn_t::Off &&(tcpHeader.GetFlags() &(TcpHeader::CWR | TcpHeader::ECE)) == (TcpHeader::CWR | TcpHeader::ECE))
-  {
-      SendEmptyPacket(TcpHeader::SYN | TcpHeader::ACK |TcpHeader::ECE);
-      m_ecnState = ECN_IDLE;
-  }
-  else
-  {
-      SendEmptyPacket(TcpHeader::SYN | TcpHeader::ACK);
-      m_ecnState = ECN_DISABLED;
-  }
-
-3. Sender sends ACK
-
-::
-
-  if (m_useEcn != UseEcn_t::Off && (tcpHeader.GetFlags() &(TcpHeader::CWR | TcpHeader::ECE)) == (TcpHeader::ECE))
-  {
-      m_ecnState = ECN_IDLE;
-  }
-  else
-  {
-      m_ecnState = ECN_DISABLED;
-  }
-
-Once the ECN-negotiation is successful, the sender sends data packets with ECT
-bits set in the IP header.
-
-Note: As mentioned in `Section 6.1.1 of RFC 3168 <https://tools.ietf.org/html/rfc3168#section-6.1.1>`_, ECT bits should not be set
-during ECN negotiation. The ECN negotiation implemented in |ns3| follows
-this guideline.
-
-ECN State Transitions
-^^^^^^^^^^^^^^^^^^^^^
-
-1. Initially both sender and receiver have their m_ecnState set as ECN_DISABLED
-2. Once the ECN negotiation is successful, their states are set to ECN_IDLE
-3. The receiver's state changes to ECN_CE_RCVD when it receives a packet with
-   CE bit set. The state then moves to ECN_SENDING_ECE when the receiver sends
-   an ACK with ECE set. This state is retained until a CWR is received
-   , following which, the state changes to ECN_IDLE.
-4. When the sender receives an ACK with ECE bit set from receiver, its state
-   is set as ECN_ECE_RCVD
-5. The sender's state changes to ECN_CWR_SENT when it sends a packet with
-   CWR bit set. It remains in this state until an ACK with valid ECE is received
-   (i.e., ECE is received for a packet that belongs to a new window),
-   following which, its state changes to ECN_ECE_RCVD.
-
-RFC 3168 compliance
-^^^^^^^^^^^^^^^^^^^
-
-Based on the suggestions provided in RFC 3168, the following behavior has
-been implemented:
-
-1. Pure ACK packets should not have the ECT bit set (`Section 6.1.4 <https://tools.ietf.org/html/rfc3168#section-6.1.4>`_).
-2. In the current implementation, the sender only sends ECT(0) in the IP header.
-3. The sender should should reduce the congestion window only once in each
-   window (`Section 6.1.2 <https://tools.ietf.org/html/rfc3168#section-6.1.2>`_).
-4. The receiver should ignore the CE bits set in a packet arriving out of
-   window (`Section 6.1.5 <https://tools.ietf.org/html/rfc3168#section-6.1.5>`_).
-5. The sender should ignore the ECE bits set in the packet arriving out of
-   window (`Section 6.1.2 <https://tools.ietf.org/html/rfc3168#section-6.1.2>`_).
-
-Open issues
-^^^^^^^^^^^
-
-The following issues are yet to be addressed:
-
-1. Retransmitted packets should not have the CWR bit set (`Section 6.1.5 <https://tools.ietf.org/html/rfc3168#section-6.1.5>`_).
-
-2. Despite the congestion window size being 1 MSS, the sender should reduce its
-   congestion window by half when it receives a packet with the ECE bit set. The
-   sender must reset the retransmit timer on receiving the ECN-Echo packet when
-   the congestion window is one. The sending TCP will then be able to send a
-   new packet only when the retransmit timer expires (`Section 6.1.2 <https://tools.ietf.org/html/rfc3168#section-6.1.2>`_).
-
-3. Support for separately handling the enabling of ECN on the incoming and
-   outgoing TCP sessions (e.g. a TCP may perform ECN echoing but not set the
-   ECT codepoints on its outbound data segments).
-
-Support for Dynamic Pacing
-++++++++++++++++++++++++++
-
-TCP pacing refers to the sender-side practice of scheduling the transmission
-of a burst of eligible TCP segments across a time interval such as
-a TCP RTT, to avoid or reduce bursts.  Historically,
-TCP used the natural ACK clocking mechanism to pace segments, but some
-network paths introduce aggregation (bursts of ACKs arriving) or ACK
-thinning, either of which disrupts ACK clocking.
-Some latency-sensitive congestion controls under development (Prague, BBR)
-require pacing to operate effectively.
-
-Until recently, the state of the art in Linux was to support pacing in one
-of two ways:
-
-1) fq/pacing with sch_fq
-2) TCP internal pacing
-
-The presentation by Dumazet and Cheng at IETF 88 summarizes:
-https://www.ietf.org/proceedings/88/slides/slides-88-tcpm-9.pdf
-
-The first option was most often used when offloading (TSO) was enabled and
-when the sch_fq scheduler was used at the traffic control (qdisc) sublayer.  In
-this case, TCP was responsible for setting the socket pacing rate, but
-the qdisc sublayer would enforce it.  When TSO was enabled, the kernel
-would break a large burst into smaller chunks, with dynamic sizing based
-on the pacing rate, and hand off the segments to the fq qdisc for
-pacing.
-
-The second option was used if sch_fq was not enabled; TCP would be
-responsible for internally pacing.
-
-In 2018, Linux switched to an Early Departure Model (EDM): https://lwn.net/Articles/766564/.
-
-TCP pacing in Linux was added in kernel 3.12, and authors chose to allow
-a pacing rate of 200% against the current rate, to allow probing for
-optimal throughput even during slow start phase.  Some refinements were
-added in https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=43e122b014c9,
-in which Google reported that it was better to apply
-a different ratio (120%) in Congestion Avoidance phase.  Furthermore,
-authors found that after cwnd reduction, it was helpful to become more
-conservative and switch to the conservative ratio (120%) as soon as
-cwnd >= ssthresh/2, as the initial ramp up (when ssthresh is infinite) still
-allows doubling cwnd every other RTT.  Linux also does not pace the initial
-window (IW), typically 10 segments in practice.
-
-Linux has also been observed to not pace if the number of eligible segments
-to be sent is exactly two; they will be sent back to back.  If three or
-more, the first two are sent immediately, and additional segments are paced
-at the current pacing rate.
-
-In ns-3, the model is as follows.  There is no TSO/sch_fq model; only
-internal pacing according to current Linux policy.
-
-Pacing may be enabled for any TCP congestion control, and a maximum
-pacing rate can be set.  Furthermore, dynamic pacing is enabled for
-all TCP variants, according to the following guidelines.
-
-* Pacing of the initial window (IW) is not done by default but can be
-  separately enabled.
-
-* Pacing of the initial slow start, after IW, is done according to the
-  pacing rate of 200% of the current rate, to allow for window growth
-  This pacing rate can be configured to a different value than 200%.
-
-* Pacing of congestion avoidance phase is done at a pacing rate of 120% of
-  current rate.  This can be configured to a different value than 120%.
-
-* Pacing of subsequent slow start is done according to the following
-  heuristic.  If cwnd < ssthresh/2, such as after a timeout or idle period,
-  pace at the slow start rate (200%).  Otherwise, pace at the congestion
-  avoidance rate.
-
-Dynamic pacing is demonstrated by the example program ``examples/tcp/tcp-pacing.cc``.
-
-Validation
-++++++++++
-
-The following tests are found in the ``src/internet/test`` directory. In
-general, TCP tests inherit from a class called :cpp:class:`TcpGeneralTest`,
-which provides common operations to set up test scenarios involving TCP
-objects. For more information on how to write new tests, see the
-section below on :ref:`Writing-tcp-tests`.
-
-* **tcp:** Basic transmission of string of data from client to server
-* **tcp-bytes-in-flight-test:** TCP correctly estimates bytes in flight under loss conditions
-* **tcp-cong-avoid-test:** TCP congestion avoidance for different packet sizes
-* **tcp-datasentcb:** Check TCP's 'data sent' callback
-* **tcp-endpoint-bug2211-test:** A test for an issue that was causing stack overflow
-* **tcp-fack-test:** Unit tests on FACK
-* **tcp-fast-retr-test:** Fast Retransmit testing
-* **tcp-header:** Unit tests on the TCP header
-* **tcp-highspeed-test:** Unit tests on the HighSpeed congestion control
-* **tcp-htcp-test:** Unit tests on the H-TCP congestion control
-* **tcp-hybla-test:** Unit tests on the Hybla congestion control
-* **tcp-vegas-test:** Unit tests on the Vegas congestion control
-* **tcp-veno-test:** Unit tests on the Veno congestion control
-* **tcp-scalable-test:** Unit tests on the Scalable congestion control
-* **tcp-bic-test:** Unit tests on the BIC congestion control
-* **tcp-yeah-test:** Unit tests on the YeAH congestion control
-* **tcp-illinois-test:** Unit tests on the Illinois congestion control
-* **tcp-ledbat-test:** Unit tests on the LEDBAT congestion control
-* **tcp-lp-test:** Unit tests on the TCP-LP congestion control
-* **tcp-dctcp-test:** Unit tests on the DCTCP congestion control
-* **tcp-bbr-test:** Unit tests on the BBR congestion control
-* **tcp-option:** Unit tests on TCP options
-* **tcp-pkts-acked-test:** Unit test the number of time that PktsAcked is called
-* **tcp-rto-test:** Unit test behavior after a RTO occurs
-* **tcp-rtt-estimation-test:** Check RTT calculations, including retransmission cases
-* **tcp-slow-start-test:** Check behavior of slow start
-* **tcp-timestamp:** Unit test on the timestamp option
-* **tcp-wscaling:** Unit test on the window scaling option
-* **tcp-zero-window-test:** Unit test persist behavior for zero window conditions
-* **tcp-close-test:** Unit test on the socket closing: both receiver and sender have to close their socket when all bytes are transferred
-* **tcp-ecn-test:** Unit tests on Explicit Congestion Notification
-* **tcp-pacing-test:** Unit tests on dynamic TCP pacing rate
-
-Several tests have dependencies outside of the ``internet`` module, so they
-are located in a system test directory called ``src/test/ns3tcp``.
-
-* **ns3-tcp-loss:** Check behavior of ns-3 TCP upon packet losses
-* **ns3-tcp-no-delay:** Check that ns-3 TCP Nagle's algorithm works correctly and that it can be disabled
-* **ns3-tcp-socket:** Check that ns-3 TCP successfully transfers an application data write of various sizes
-* **ns3-tcp-state:** Check the operation of the TCP state machine for several cases
-
-Several TCP validation test results can also be found in the
-`wiki page <http://www.nsnam.org/wiki/New_TCP_Socket_Architecture>`_
-describing this implementation.
-
-The ns-3 implementation of TCP Linux Reno was validated against the NewReno
-implementation of Linux kernel 4.4.0 using ns-3 Direct Code Execution (DCE).
-DCE is a framework which allows the users to run kernel space protocol inside
-ns-3 without changing the source code.
-
-In this validation, cwnd traces of DCE Linux ``reno`` were compared to those of
-ns-3 Linux Reno and NewReno for a delayed acknowledgement configuration of 1
-segment (in the ns-3 implementation; Linux does not allow direct configuration
-of this setting). It can be observed that cwnd traces for ns-3 Linux Reno are
-closely overlapping with DCE ``reno``, while
-for ns-3 NewReno there was deviation in the congestion avoidance phase.
-
-.. _fig-dce-Linux-reno-vs-ns3-linux-reno:
-
-.. figure:: figures/dce-linux-reno-vs-ns3-linux-reno.*
-   :scale: 70%
-   :align: center
-
-   DCE Linux Reno vs. ns-3 Linux Reno
-
-.. _fig-dce-Linux-reno-vs-ns3-new-reno:
-
-.. figure:: figures/dce-linux-reno-vs-ns3-new-reno.*
-   :scale: 70%
-   :align: center
-
-   DCE Linux Reno vs. ns-3 NewReno
-
-The difference in the cwnd in the early stage of this flow is because of the
-way cwnd is plotted.  As ns-3 provides a trace source for cwnd, an ns-3 Linux
-Reno cwnd simple is obtained every time the cwnd value changes, whereas for
-DCE Linux Reno, the kernel does not have a corresponding trace source.
-Instead, we use the "ss" command of the Linux kernel to obtain
-cwnd values. The "ss" samples cwnd at an interval of 0.5 seconds.
-
-Figure :ref:`fig-dctcp-10ms-50mbps-tcp-throughput` shows a long-running
-file transfer using DCTCP over a 50 Mbps bottleneck (running CoDel queue
-disc with a 1ms CE threshold setting) with a 10 ms base RTT.  The figure
-shows that DCTCP reaches link capacity very quickly and stays there for
-the duration with minimal change in throughput.  In contrast, Figure
-:ref:`fig-dctcp-80ms-50mbps-tcp-throughput` plots the throughput for
-the same configuration except with an 80 ms base RTT.  In this case,
-the DCTCP exits slow start early and takes a long time to build the
-flow throughput to the bottleneck link capacity.  DCTCP is not intended
-to be used at such a large base RTT, but this figure highlights the
-sensitivity to RTT (and can be reproduced using the Linux implementation).
-
-.. _fig-dctcp-10ms-50mbps-tcp-throughput:
-
-.. figure:: figures/dctcp-10ms-50mbps-tcp-throughput.*
-   :scale: 80 %
-   :align: center
-
-   DCTCP throughput for 10ms/50Mbps bottleneck, 1ms CE threshold
-
-.. _fig-dctcp-80ms-50mbps-tcp-throughput:
-
-.. figure:: figures/dctcp-80ms-50mbps-tcp-throughput.*
-   :scale: 80 %
-   :align: center
-
-   DCTCP throughput for 80ms/50Mbps bottleneck, 1ms CE threshold
-
-Similar to DCTCP, TCP CUBIC has been tested against the Linux kernel version
-4.4 implementation.  Figure :ref:`fig-cubic-50ms-50mbps-tcp-cwnd-no-ecn`
-compares the congestion window evolution between ns-3 and Linux for a single
-flow operating over a 50 Mbps link with 50 ms base RTT and the CoDel AQM.
-Some differences can be observed between the peak of slow start window
-growth (ns-3 exits slow start earlier due to its HyStart implementation),
-and the window growth is a bit out-of-sync (likely due to different
-implementations of the algorithm), but the cubic concave/convex window
-pattern, and the signs of TCP CUBIC fast convergence algorithm
-(alternating patterns of cubic and concave window growth) can be observed.
-The |ns3| congestion window is maintained in bytes (unlike Linux which uses
-segments) but has been normalized to segments for these plots.
-Figure :ref:`fig-cubic-50ms-50mbps-tcp-cwnd-ecn` displays the outcome of
-a similar scenario but with ECN enabled throughout.
-
-.. _fig-cubic-50ms-50mbps-tcp-cwnd-no-ecn:
-
-.. figure:: figures/cubic-50ms-50mbps-tcp-cwnd-no-ecn.*
-   :scale: 80 %
-   :align: center
-
-   CUBIC cwnd evolution for 50ms/50Mbps bottleneck, no ECN
-
-.. _fig-cubic-50ms-50mbps-tcp-cwnd-ecn:
-
-.. figure:: figures/cubic-50ms-50mbps-tcp-cwnd-ecn.*
-   :scale: 80 %
-   :align: center
-
-   CUBIC cwnd evolution for 50ms/50Mbps bottleneck, with ECN
-
-
-TCP ECN operation is tested in the ARED and RED tests that are documented in the traffic-control
-module documentation.
-
-Like DCTCP and TCP CUBIC, the ns-3 implementation of TCP BBR was validated
-against the BBR implementation of Linux kernel 5.4 using Network Stack Tester
-(NeST). NeST is a python package which allows the users to emulate kernel space
-protocols using Linux network namespaces. Figure :ref:`fig-ns3-bbr-vs-linux-bbr`
-compares the congestion window evolution between ns-3 and Linux for a single
-flow operating over a 10 Mbps link with 10 ms base RTT and FIFO queue
-discipline.
-
-.. _fig-ns3-bbr-vs-linux-bbr:
-
-.. figure:: figures/ns3-bbr-vs-linux-bbr.*
-   :scale: 80 %
-   :align: center
-
-   Congestion window evolution: ns-3 BBR vs. Linux BBR (using NeST)
-
-It can be observed that the congestion window traces for ns-3 BBR closely
-overlap with Linux BBR. The periodic drops in congestion window every 10
-seconds depict the PROBE_RTT phase of the BBR algorithm. In this phase, BBR
-algorithm keeps the congestion window fixed to 4 segments.
-
-The example program, examples/tcp-bbr-example.cc has been used to obtain the
-congestion window curve shown in Figure :ref:`fig-ns3-bbr-vs-linux-bbr`. The
-detailed instructions to reproduce ns-3 plot and NeST plot can be found at:
-https://github.com/mohittahiliani/BBR-Validation
-
-
-Writing a new congestion control algorithm
-++++++++++++++++++++++++++++++++++++++++++
-
-Writing (or porting) a congestion control algorithms from scratch (or from
-other systems) is a process completely separated from the internals of
-TcpSocketBase.
-
-All operations that are delegated to a congestion control are contained in
-the class TcpCongestionOps. It mimics the structure tcp_congestion_ops of
-Linux, and the following operations are defined:
-
-::
-
-  virtual std::string GetName() const;
-  virtual uint32_t GetSsThresh(Ptr<const TcpSocketState> tcb, uint32_t bytesInFlight);
-  virtual void IncreaseWindow(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked);
-  virtual void PktsAcked(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked,const Time& rtt);
-  virtual Ptr<TcpCongestionOps> Fork();
-  virtual void CwndEvent(Ptr<TcpSocketState> tcb, const TcpSocketState::TcpCaEvent_t event);
-
-The most interesting methods to write are GetSsThresh and IncreaseWindow.
-The latter is called when TcpSocketBase decides that it is time to increase
-the congestion window. Much information is available in the Transmission
-Control Block, and the method should increase cWnd and/or ssThresh based
-on the number of segments acked.
-
-GetSsThresh is called whenever the socket needs an updated value of the
-slow start threshold. This happens after a loss; congestion control algorithms
-are then asked to lower such value, and to return it.
-
-PktsAcked is used in case the algorithm needs timing information (such as
-RTT), and it is called each time an ACK is received.
-
-CwndEvent is used in case the algorithm needs the state of socket during different
-congestion window event.
+* The core logic resides in the class :cpp:class:`TcpSocketBase` (located in ``src/internet/model/tcp-socket-base.{cc,h}``).
+* Detection of duplicate ACKs and triggering of fast retransmit is handled as part of ACK processing in: :cpp:func:`TcpSocketBase::ProcessAck`.
+* The actual retransmission of the lost segment is performed using: :cpp:func:`TcpSocketBase::DoRetransmit`.
+* The tracking of duplicate ACK count is maintained using internal state variables such as: :cpp:member:`TcpSocketBase::m_dupAckCount`.
 
 TCP SACK and non-SACK
-+++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~
+
 To avoid code duplication and the effort of maintaining two different versions
 of the TCP core, namely RFC 6675 (TCP-SACK) and RFC 5681 (TCP congestion control),
 we have merged RFC 6675 in the current code base. If the receiver supports the
@@ -1626,10 +418,10 @@ documentation (and to in-code comments) if you want to learn more about this
 implementation.
 
 For an academic peer-reviewed paper on the SACK implementation in ns-3,
-please refer to https://dl.acm.org/citation.cfm?id=3067666.
+please refer to [:ref:`2<tcpRef2>`].
 
 Forward Acknowledgement (FACK)
-++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 FACK is designed to be used with the TCP SACK option.
 It keeps count of the total number of bytes of outstanding data in the network. It
@@ -1803,17 +595,19 @@ As shown in **Figure 1** and **Figure 2**, distinct behaviors are observed durin
 
 This confirms that FACK successfully decouples data recovery from congestion control, maintaining an accurate picture of the network state even during heavy loss.
 
-More information (paper): https://dl.acm.org/citation.cfm?id=248181
+More information (paper): [:ref:`22<tcpRef22>`].
 
 
-Loss Recovery Algorithms
-++++++++++++++++++++++++
+Loss Recovery
+-------------
+
 The following loss recovery algorithms are supported in ns-3 TCP.  The current
 default (as of ns-3.32 release) is Proportional Rate Reduction (PRR), while
 the default for ns-3.31 and earlier was Classic Recovery.
 
 Classic Recovery
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
+
 Classic Recovery refers to the combination of NewReno algorithm described in
 RFC 6582 along with SACK based loss recovery algorithm mentioned in RFC 6675.
 SACK based loss recovery is used when sender and receiver support SACK options.
@@ -1834,7 +628,8 @@ on arrival of every ACK when NewReno is used. The congestion window is kept
 same when SACK based loss recovery is used.
 
 Proportional Rate Reduction
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Proportional Rate Reduction (PRR) is a loss recovery algorithm described in
 RFC 6937 and currently used in Linux. The design of PRR helps in avoiding
 excess window adjustments and aims to keep the congestion window as close as
@@ -1907,34 +702,52 @@ which is close to the Linux implementation (which matches the RFC):
 
 For reference, the Linux TCP PRR implementation is entirely contained in tcp_init_cwnd_reduction(), tcp_cwnd_reduction(), tcp_end_cwnd_reduction() and the updates elsewhere to prr_out.
 
-More information (paper): https://dl.acm.org/citation.cfm?id=2068832
+More information (paper): [:ref:`23<tcpRef23>`].
 
-More information (RFC): https://tools.ietf.org/html/rfc6937
+More information (RFC): [:ref:`24<tcpRef24>`].
 
-Alternative Backoff with ECN (ABE)
-++++++++++++++++++++++++++++++++++
 
-RFC 8511 recommends using an alternate ``m_betaEcn`` for calculation of the
-ssthresh  when the congestion control algorithm detects congestion using ECN.
-There is an  attribute ``ns3::TcpSocketBase::UseAbe`` which can be set to true
-to enable this feature. When enabled, the congestion control algorithm
-(NewReno or CUBIC) will use the ``m_betaEcn`` value to calculate the ssthresh when
-congestion is detected using ECN. The default value of ``m_betaEcn`` is set to
-0.85 for CUBIC and 0.7 for NewReno as recommended by the RFC, but can be changed
-using the attribute ``ns3::TcpNewReno::BetaEcn`` for NewReno or using
-``ns3::TcpCubic::BetaEcn`` for CUBIC.
+Extending TCP
+-------------
 
-For example, to enable ABE for NewReno, you can set the attribute as follows:
+Writing a new congestion control algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Writing (or porting) a congestion control algorithms from scratch (or from
+other systems) is a process completely separated from the internals of
+TcpSocketBase.
+
+All operations that are delegated to a congestion control are contained in
+the class TcpCongestionOps. It mimics the structure tcp_congestion_ops of
+Linux, and the following operations are defined:
+
 ::
 
-  Config::SetDefault("ns3::TcpSocketBase::UseAbe", BooleanValue(true));
-  Config::SetDefault("ns3::TcpNewReno::BetaEcn", DoubleValue(0.7));
+  virtual std::string GetName() const;
+  virtual uint32_t GetSsThresh(Ptr<const TcpSocketState> tcb, uint32_t bytesInFlight);
+  virtual void IncreaseWindow(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked);
+  virtual void PktsAcked(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked,const Time& rtt);
+  virtual Ptr<TcpCongestionOps> Fork();
+  virtual void CwndEvent(Ptr<TcpSocketState> tcb, const TcpSocketState::TcpCaEvent_t event);
 
+The most interesting methods to write are GetSsThresh and IncreaseWindow.
+The latter is called when TcpSocketBase decides that it is time to increase
+the congestion window. Much information is available in the Transmission
+Control Block, and the method should increase cWnd and/or ssThresh based
+on the number of segments acked.
 
-More information (RFC): https://tools.ietf.org/html/rfc8511
+GetSsThresh is called whenever the socket needs an updated value of the
+slow start threshold. This happens after a loss; congestion control algorithms
+are then asked to lower such value, and to return it.
+
+PktsAcked is used in case the algorithm needs timing information (such as
+RTT), and it is called each time an ACK is received.
+
+CwndEvent is used in case the algorithm needs the state of socket during different
+congestion window event.
 
 Adding a new loss recovery algorithm in ns-3
-++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Writing (or porting) a loss recovery algorithms from scratch (or from
 other systems) is a process completely separated from the internals of
@@ -1963,44 +776,10 @@ ExitRecovery is called just prior to exiting recovery phase in order to perform 
 required congestion window adjustments. UpdateBytesSent is used to keep track of
 bytes sent and is called whenever a data packet is sent during recovery phase.
 
-Delivery Rate Estimation
-++++++++++++++++++++++++
-Current TCP implementation measures the approximate value of the delivery rate of
-inflight data based on Delivery Rate Estimation.
-
-As high level idea, keep in mind that the algorithm keeps track of 2 variables:
-
-1. `delivered`: Total amount of data delivered so far.
-
-2. `deliveredStamp`: Last time `delivered` was updated.
-
-When a packet is transmitted, the value of `delivered (d0)` and `deliveredStamp (t0)`
-is stored in its respective TcpTxItem.
-
-When an acknowledgement comes for this packet, the value of `delivered` and `deliveredStamp`
-is updated to `d1` and `t1` in the same TcpTxItem.
-
-After processing the acknowledgement, the rate sample is calculated and then passed
-to a congestion avoidance algorithm:
-
-.. math:: delivery_rate = (d1 - d0)/(t1 - t0)
-
-
-The implementation to estimate delivery rate is a joint work between TcpTxBuffer and TcpRateOps.
-For more information, please take a look at their Doxygen documentation.
-
-The implementation follows the Internet draft (Delivery Rate Estimation):
-https://tools.ietf.org/html/draft-cheng-iccrg-delivery-rate-estimation-00
-
-Current limitations
-+++++++++++++++++++
-
-* TcpCongestionOps interface does not contain every possible Linux operation
-
 .. _Writing-tcp-tests:
 
 Writing TCP tests
-+++++++++++++++++
+~~~~~~~~~~~~~~~~~
 
 The TCP subsystem supports automated test
 cases on both socket functions and congestion control algorithms. To show
@@ -2446,3 +1225,421 @@ and then, hit "Run".
    test; hopefully the first situation). Correcting bugs is an iterative
    process. For instance, commits created to make this test case running without
    errors are 11633:6b74df04cf44, (others to be merged).
+
+
+Usage
+-----
+
+In many cases, usage of TCP is set at the application layer by telling
+the |ns3| application which kind of socket factory to use.
+
+Using the helper functions defined in ``src/applications/helper`` and
+``src/network/helper``, here is how one would create a TCP receiver::
+
+  // Create a packet sink on the star "hub" to receive these packets
+  uint16_t port = 50000;
+  Address sinkLocalAddress(InetSocketAddress(Ipv4Address::GetAny(), port));
+  PacketSinkHelper sinkHelper("ns3::TcpSocketFactory", sinkLocalAddress);
+  ApplicationContainer sinkApp = sinkHelper.Install(serverNode);
+  sinkApp.Start(Seconds(1));
+  sinkApp.Stop(Seconds(10));
+
+Similarly, the below snippet configures OnOffApplication traffic source to use
+TCP::
+
+  // Create the OnOff applications to send TCP to the server
+  OnOffHelper clientHelper("ns3::TcpSocketFactory", Address());
+
+The careful reader will note above that we have specified the TypeId of an
+abstract base class :cpp:class:`TcpSocketFactory`. How does the script tell
+|ns3| that it wants the native |ns3| TCP vs. some other one? Well, when
+internet stacks are added to the node, the default TCP implementation that is
+aggregated to the node is the |ns3| TCP.  So, by default, when using the |ns3|
+helper API, the TCP that is aggregated to nodes with an Internet stack is the
+native |ns3| TCP.
+
+To configure behavior of TCP, a number of parameters are exported through the
+|ns3| attribute system. These are documented in the `Doxygen
+<https://www.nsnam.org/docs/doxygen/d3/dea/classns3_1_1_tcp_socket.html>`_ for class
+:cpp:class:`TcpSocket`. For example, the maximum segment size is a
+settable attribute.
+
+To set the default socket type before any internet stack-related objects are
+created, one may put the following statement at the top of the simulation
+program::
+
+  Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::TcpNewReno"));
+
+For users who wish to have a pointer to the actual socket (so that
+socket operations like Bind(), setting socket options, etc. can be
+done on a per-socket basis), Tcp sockets can be created by using the
+``Socket::CreateSocket()`` method. The TypeId passed to CreateSocket()
+must be of type :cpp:class:`ns3::SocketFactory`, so configuring the underlying
+socket type must be done by twiddling the attribute associated with the
+underlying TcpL4Protocol object. The easiest way to get at this would be
+through the attribute configuration system. In the below example,
+the Node container "n0n1" is accessed to get the zeroth element, and a socket is
+created on this node::
+
+  // Create and bind the socket...
+  TypeId tid = TypeId::LookupByName("ns3::TcpNewReno");
+  Config::Set("/NodeList/*/$ns3::TcpL4Protocol/SocketType", TypeIdValue(tid));
+  Ptr<Socket> localSocket =
+    Socket::CreateSocket(n0n1.Get(0), TcpSocketFactory::GetTypeId());
+
+Above, the "*" wild card for node number is passed to the attribute
+configuration system, so that all future sockets on all nodes are set to
+NewReno, not just on node 'n0n1.Get (0)'. If one wants to limit it to just
+the specified node, one would have to do something like::
+
+  // Create and bind the socket...
+  TypeId tid = TypeId::LookupByName("ns3::TcpNewReno");
+  std::stringstream nodeId;
+  nodeId << n0n1.Get(0)->GetId();
+  std::string specificNode = "/NodeList/" + nodeId.str() + "/$ns3::TcpL4Protocol/SocketType";
+  Config::Set(specificNode, TypeIdValue(tid));
+  Ptr<Socket> localSocket =
+    Socket::CreateSocket(n0n1.Get(0), TcpSocketFactory::GetTypeId());
+
+Once a TCP socket is created, one will want to follow conventional socket logic
+and either connect() and send() (for a TCP client) or bind(), listen(), and
+accept() (for a TCP server).
+Please note that applications usually create the sockets they use automatically,
+and so is not straightforward to connect directly to them using pointers. Please
+refer to the source code of your preferred application to discover how and when
+it creates the socket.
+
+
+Examples and Tests
+------------------
+
+The following tests are found in the ``src/internet/test`` directory. In
+general, TCP tests inherit from a class called :cpp:class:`TcpGeneralTest`,
+which provides common operations to set up test scenarios involving TCP
+objects. For more information on how to write new tests, see the
+section above on :ref:`Writing-tcp-tests`.
+
+* **tcp:** Basic transmission of string of data from client to server
+* **tcp-bytes-in-flight-test:** TCP correctly estimates bytes in flight under loss conditions
+* **tcp-cong-avoid-test:** TCP congestion avoidance for different packet sizes
+* **tcp-datasentcb:** Check TCP's 'data sent' callback
+* **tcp-endpoint-bug2211-test:** A test for an issue that was causing stack overflow
+* **tcp-fack-test:** Unit tests on FACK
+* **tcp-fast-retr-test:** Fast Retransmit testing
+* **tcp-header:** Unit tests on the TCP header
+* **tcp-highspeed-test:** Unit tests on the HighSpeed congestion control
+* **tcp-htcp-test:** Unit tests on the H-TCP congestion control
+* **tcp-hybla-test:** Unit tests on the Hybla congestion control
+* **tcp-vegas-test:** Unit tests on the Vegas congestion control
+* **tcp-veno-test:** Unit tests on the Veno congestion control
+* **tcp-scalable-test:** Unit tests on the Scalable congestion control
+* **tcp-bic-test:** Unit tests on the BIC congestion control
+* **tcp-yeah-test:** Unit tests on the YeAH congestion control
+* **tcp-illinois-test:** Unit tests on the Illinois congestion control
+* **tcp-ledbat-test:** Unit tests on the LEDBAT congestion control
+* **tcp-lp-test:** Unit tests on the TCP-LP congestion control
+* **tcp-dctcp-test:** Unit tests on the DCTCP congestion control
+* **tcp-bbr-test:** Unit tests on the BBR congestion control
+* **tcp-option:** Unit tests on TCP options
+* **tcp-pkts-acked-test:** Unit test the number of time that PktsAcked is called
+* **tcp-rto-test:** Unit test behavior after a RTO occurs
+* **tcp-rtt-estimation-test:** Check RTT calculations, including retransmission cases
+* **tcp-slow-start-test:** Check behavior of slow start
+* **tcp-timestamp:** Unit test on the timestamp option
+* **tcp-wscaling:** Unit test on the window scaling option
+* **tcp-zero-window-test:** Unit test persist behavior for zero window conditions
+* **tcp-close-test:** Unit test on the socket closing: both receiver and sender have to close their socket when all bytes are transferred
+* **tcp-ecn-test:** Unit tests on Explicit Congestion Notification
+* **tcp-pacing-test:** Unit tests on dynamic TCP pacing rate
+
+Several tests have dependencies outside of the ``internet`` module, so they
+are located in a system test directory called ``src/test/ns3tcp``.
+
+* **ns3-tcp-loss:** Check behavior of ns-3 TCP upon packet losses
+* **ns3-tcp-no-delay:** Check that ns-3 TCP Nagle's algorithm works correctly and that it can be disabled
+* **ns3-tcp-socket:** Check that ns-3 TCP successfully transfers an application data write of various sizes
+* **ns3-tcp-state:** Check the operation of the TCP state machine for several cases
+
+Several TCP validation test results can also be found in the
+`wiki page <http://www.nsnam.org/wiki/New_TCP_Socket_Architecture>`_
+describing this implementation.
+
+
+Validation
+----------
+
+The ns-3 implementation of TCP Linux Reno was validated against the NewReno
+implementation of Linux kernel 4.4.0 using ns-3 Direct Code Execution (DCE).
+DCE is a framework which allows the users to run kernel space protocol inside
+ns-3 without changing the source code.
+
+In this validation, cwnd traces of DCE Linux ``reno`` were compared to those of
+ns-3 Linux Reno and NewReno for a delayed acknowledgement configuration of 1
+segment (in the ns-3 implementation; Linux does not allow direct configuration
+of this setting). It can be observed that cwnd traces for ns-3 Linux Reno are
+closely overlapping with DCE ``reno``, while
+for ns-3 NewReno there was deviation in the congestion avoidance phase.
+
+.. _fig-dce-Linux-reno-vs-ns3-linux-reno:
+
+.. figure:: figures/dce-linux-reno-vs-ns3-linux-reno.*
+   :scale: 70%
+   :align: center
+
+   DCE Linux Reno vs. ns-3 Linux Reno
+
+.. _fig-dce-Linux-reno-vs-ns3-new-reno:
+
+.. figure:: figures/dce-linux-reno-vs-ns3-new-reno.*
+   :scale: 70%
+   :align: center
+
+   DCE Linux Reno vs. ns-3 NewReno
+
+The difference in the cwnd in the early stage of this flow is because of the
+way cwnd is plotted.  As ns-3 provides a trace source for cwnd, an ns-3 Linux
+Reno cwnd simple is obtained every time the cwnd value changes, whereas for
+DCE Linux Reno, the kernel does not have a corresponding trace source.
+Instead, we use the "ss" command of the Linux kernel to obtain
+cwnd values. The "ss" samples cwnd at an interval of 0.5 seconds.
+
+Figure :ref:`fig-dctcp-10ms-50mbps-tcp-throughput` shows a long-running
+file transfer using DCTCP over a 50 Mbps bottleneck (running CoDel queue
+disc with a 1ms CE threshold setting) with a 10 ms base RTT.  The figure
+shows that DCTCP reaches link capacity very quickly and stays there for
+the duration with minimal change in throughput.  In contrast, Figure
+:ref:`fig-dctcp-80ms-50mbps-tcp-throughput` plots the throughput for
+the same configuration except with an 80 ms base RTT.  In this case,
+the DCTCP exits slow start early and takes a long time to build the
+flow throughput to the bottleneck link capacity.  DCTCP is not intended
+to be used at such a large base RTT, but this figure highlights the
+sensitivity to RTT (and can be reproduced using the Linux implementation).
+
+.. _fig-dctcp-10ms-50mbps-tcp-throughput:
+
+.. figure:: figures/dctcp-10ms-50mbps-tcp-throughput.*
+   :scale: 80 %
+   :align: center
+
+   DCTCP throughput for 10ms/50Mbps bottleneck, 1ms CE threshold
+
+.. _fig-dctcp-80ms-50mbps-tcp-throughput:
+
+.. figure:: figures/dctcp-80ms-50mbps-tcp-throughput.*
+   :scale: 80 %
+   :align: center
+
+   DCTCP throughput for 80ms/50Mbps bottleneck, 1ms CE threshold
+
+Similar to DCTCP, TCP CUBIC has been tested against the Linux kernel version
+4.4 implementation.  Figure :ref:`fig-cubic-50ms-50mbps-tcp-cwnd-no-ecn`
+compares the congestion window evolution between ns-3 and Linux for a single
+flow operating over a 50 Mbps link with 50 ms base RTT and the CoDel AQM.
+Some differences can be observed between the peak of slow start window
+growth (ns-3 exits slow start earlier due to its HyStart implementation),
+and the window growth is a bit out-of-sync (likely due to different
+implementations of the algorithm), but the cubic concave/convex window
+pattern, and the signs of TCP CUBIC fast convergence algorithm
+(alternating patterns of cubic and concave window growth) can be observed.
+The |ns3| congestion window is maintained in bytes (unlike Linux which uses
+segments) but has been normalized to segments for these plots.
+Figure :ref:`fig-cubic-50ms-50mbps-tcp-cwnd-ecn` displays the outcome of
+a similar scenario but with ECN enabled throughout.
+
+.. _fig-cubic-50ms-50mbps-tcp-cwnd-no-ecn:
+
+.. figure:: figures/cubic-50ms-50mbps-tcp-cwnd-no-ecn.*
+   :scale: 80 %
+   :align: center
+
+   CUBIC cwnd evolution for 50ms/50Mbps bottleneck, no ECN
+
+.. _fig-cubic-50ms-50mbps-tcp-cwnd-ecn:
+
+.. figure:: figures/cubic-50ms-50mbps-tcp-cwnd-ecn.*
+   :scale: 80 %
+   :align: center
+
+   CUBIC cwnd evolution for 50ms/50Mbps bottleneck, with ECN
+
+
+TCP ECN operation is tested in the ARED and RED tests that are documented in the traffic-control
+module documentation.
+
+Like DCTCP and TCP CUBIC, the ns-3 implementation of TCP BBR was validated
+against the BBR implementation of Linux kernel 5.4 using Network Stack Tester
+(NeST). NeST is a python package which allows the users to emulate kernel space
+protocols using Linux network namespaces. Figure :ref:`fig-ns3-bbr-vs-linux-bbr`
+compares the congestion window evolution between ns-3 and Linux for a single
+flow operating over a 10 Mbps link with 10 ms base RTT and FIFO queue
+discipline.
+
+.. _fig-ns3-bbr-vs-linux-bbr:
+
+.. figure:: figures/ns3-bbr-vs-linux-bbr.*
+   :scale: 80 %
+   :align: center
+
+   Congestion window evolution: ns-3 BBR vs. Linux BBR (using NeST)
+
+It can be observed that the congestion window traces for ns-3 BBR closely
+overlap with Linux BBR. The periodic drops in congestion window every 10
+seconds depict the PROBE_RTT phase of the BBR algorithm. In this phase, BBR
+algorithm keeps the congestion window fixed to 4 segments.
+
+The example program, examples/tcp-bbr-example.cc has been used to obtain the
+congestion window curve shown in Figure :ref:`fig-ns3-bbr-vs-linux-bbr`. The
+detailed instructions to reproduce ns-3 plot and NeST plot can be found at:
+https://github.com/mohittahiliani/BBR-Validation
+
+
+References
+----------
+
+.. _tcpRef1:
+
+[`1 <http://www.sciencedirect.com/science/article/pii/S1569190X15300939>`_]
+Maurizio Casoni and Natale Patriciello.
+Next-generation TCP for ns-3 simulator.
+Simulation Modelling Practice and Theory, Volume 66, 2016, Pages 81–93, ISSN 1569-190X, https://doi.org/10.1016/j.simpat.2016.03.005
+
+.. _tcpRef2:
+
+[`2 <https://doi.org/10.1145/3067665.3067666>`_]
+Natale Patriciello. 2017.
+A SACK-based Conservative Loss Recovery Algorithm for ns-3 TCP: a Linux-inspired Proposal.
+In Proceedings of the 2017 Workshop on ns-3 (WNS3 '17). Association for Computing Machinery, New York, NY, USA, 1–8. https://doi.org/10.1145/3067665.3067666
+
+.. _tcpRef3:
+
+[`3 <https://doi.org/10.1145/2756509.2756518>`_]
+Maurizio Casoni, Carlo Augusto Grazia, Martin Klapez, and Natale Patriciello. 2015.
+Implementation and validation of TCP options and congestion control algorithms for ns-3.
+In Proceedings of the 2015 Workshop on ns-3 (WNS3 '15). Association for Computing Machinery, New York, NY, USA, 112–119. https://doi.org/10.1145/2756509.2756518
+
+.. _tcpRef4:
+
+[`4 <https://doi.org/10.1145/381677.381704>`_]
+Saverio Mascolo, Claudio Casetti, Mario Gerla, M. Y. Sanadidi, and Ren Wang. 2001.
+TCP westwood: Bandwidth estimation for enhanced transport over wireless links.
+In Proceedings of the 7th annual international conference on Mobile computing and networking (MobiCom '01). Association for Computing Machinery, New York, NY, USA, 287–297. https://doi.org/10.1145/381677.381704
+
+.. _tcpRef5:
+
+[`5 <https://dl.acm.org/doi/10.5555/2512734.2512757>`_]
+Siddharth Gangadhar, Truc Anh N. Nguyen, Greeshma Umapathi, and James P. G. Sterbenz. 2013.
+TCP Westwood(+) protocol implementation in ns-3.
+In Proceedings of the 6th International ICST Conference on Simulation Tools and Techniques (SimuTools '13).ICST (Institute for Computer Sciences, Social-Informatics and Telecommunications Engineering), Brussels, BEL, 167–175.
+
+.. _tcpRef6:
+
+[`6 <https://ieeexplore.ieee.org/document/464716>`_]
+L. S. Brakmo and L. L. Peterson.
+"TCP Vegas: end to end congestion avoidance on a global Internet," in IEEE Journal on Selected Areas in Communications, vol. 13, no. 8, pp. 1465-1480, Oct. 1995, doi: 10.1109/49.464716.
+keywords: {Internet;Protocols;Throughput;Testing;Bandwidth;Programmable control;Adaptive control;Jacobian matrices;Computer science;TCPIP}
+
+.. _tcpRef7:
+
+[`7 <https://doi.org/10.1145/956981.956989>`_]
+Tom Kelly. 2003.
+Scalable TCP: improving performance in highspeed wide area networks.
+SIGCOMM Comput. Commun. Rev. 33, 2 (April 2003), 83–91. https://doi.org/10.1145/956981.956989
+
+.. _tcpRef8:
+
+[`8 <https://ieeexplore.ieee.org/document/1177186>`_]
+Cheng Peng Fu and S. C. Liew.
+"TCP Veno: TCP enhancement for transmission over wireless access networks," in IEEE Journal on Selected Areas in Communications, vol. 21, no. 2, pp. 216-228, Feb. 2003, doi: 10.1109/JSAC.2002.807336.
+keywords: {Wireless networks;Access protocols;IP networks;Throughput;Wireless LAN;Home automation;Land mobile radio cellular systems;Propagation losses;Error correction;Performance loss}
+
+.. _tcpRef9:
+
+[`9 <https://ieeexplore.ieee.org/document/1354672?arnumber=1354672>`_]
+Lisong Xu, K. Harfoush and Injong Rhee.
+"Binary increase congestion control (BIC) for fast long-distance networks," IEEE INFOCOM 2004, Hong Kong, China, 2004, pp. 2514-2524 vol.4, doi: 10.1109/INFCOM.2004.1354672.
+keywords: {Bandwidth;Scalability;High-speed networks;Access protocols;Remote monitoring;Computer science;Bit error rate;Network interfaces;Tail;Internet}
+
+.. _tcpRef10:
+
+[`10 <https://www.csc.lsu.edu/~sjpark/cs7601/4-YeAH_TCP.pdf>`_]
+Baiocchi, A., Castellani, A.P., & Vacirca, F. (2006).
+YeAH-TCP: Yet Another Highspeed TCP.
+
+.. _tcpRef11:
+
+[`11 <https://doi.org/10.1145/1190095.1190166>`_]
+Shao Liu, Tamer Başar, and R. Srikant. 2006.
+TCP-Illinois: a loss and delay-based congestion control algorithm for high-speed networks.
+In Proceedings of the 1st international conference on Performance evaluation methodolgies and tools (valuetools '06). Association for Computing Machinery, New York, NY, USA, 55–es. https://doi.org/10.1145/1190095.1190166
+
+.. _tcpRef12:
+
+[`12 <https://www.hamilton.ie/net/htcp3.pdf>`_]
+Leith, D.J., Shorten, R.N., & Hamilton, Y.L. (2005).
+H-TCP : A framework for congestion control in high-speed and long-distance networks.
+
+.. _tcpRef13:
+
+[`13 <https://datatracker.ietf.org/doc/html/draft-leith-tcp-htcp-06>`_]
+D. Leith. (2008).
+H-TCP: TCP Congestion Control for High Bandwidth-Delay Product Paths, Work in Progress, Internet Engineering Task Force, <https://ietf.org>
+
+.. _tcpRef14:
+
+[`14 <https://datatracker.ietf.org/doc/html/rfc6817>`_] RFC 6817
+
+.. _tcpRef15:
+
+[`15 <https://users.cs.northwestern.edu/~akuzma/rice/doc/TCP-LP.pdf>`_]
+A. Kuzmanovic and E. W. Knightly.
+TCP-LP: A Distributed Algorithm for Low Priority Data Transfer.
+In Proceedings of IEEE INFOCOM 2003, San Francisco, CA, April 2003.
+
+.. _tcpRef16:
+
+[`16 <https://tools.ietf.org/html/rfc8257>`_] RFC 8257
+
+.. _tcpRef17:
+
+[`17 <https://tools.ietf.org/html/draft-cardwell-iccrg-bbr-congestion-control-00>`_]
+N. Cardwell, Y. Cheng, S. Hassas Yeganeh, V. Jacobson. (2017).
+BR Congestion Control, Work in Progress, Internet Engineering Task Force, <https://ietf.org>
+
+.. _tcpRef18:
+
+[`18 <https://tools.ietf.org/html/draft-cheng-iccrg-delivery-rate-estimation-00>`_]
+N. Cardwell, Y. Cheng, S. Hassas Yeganeh, V. Jacobson. (2017).
+Delivery Rate Estimation, Work in Progress, Internet Engineering Task Force, <https://ietf.org>
+
+.. _tcpRef19:
+
+[`19 <https://doi.org/10.1145/3199902.3199911>`_]
+Vivek Jain, Viyom Mittal, and Mohit P. Tahiliani. 2018.
+Design and implementation of TCP BBR in ns-3.
+In Proceedings of the 2018 Workshop on ns-3 (WNS3 '18). Association for Computing Machinery, New York, NY, USA, 16–22. https://doi.org/10.1145/3199902.3199911
+
+.. _tcpRef20:
+
+[`20 <https://tools.ietf.org/html/rfc3168>`_] RFC 3168
+
+.. _tcpRef21:
+
+[`21 <https://tools.ietf.org/html/rfc8511>`_] RFC 8511
+
+.. _tcpRef22:
+
+[`22 <https://doi.org/10.1145/248156.248181>`_]
+Matthew Mathis and Jamshid Mahdavi. 1996.
+Forward acknowledgement: refining TCP congestion control.
+In Conference proceedings on Applications, technologies, architectures, and protocols for computer communications (SIGCOMM '96). Association for Computing Machinery, New York, NY, USA, 281–291. https://doi.org/10.1145/248156.248181
+
+.. _tcpRef23:
+
+[`23 <https://doi.org/10.1145/2068816.2068832>`_]
+Nandita Dukkipati, Matt Mathis, Yuchung Cheng, and Monia Ghobadi. 2011.
+Proportional rate reduction for TCP.
+In Proceedings of the 2011 ACM SIGCOMM conference on Internet measurement conference (IMC '11). Association for Computing Machinery, New York, NY, USA, 155–170. https://doi.org/10.1145/2068816.2068832
+
+.. _tcpRef24:
+
+[`24 <https://tools.ietf.org/html/rfc6937>`_] RFC 6937
