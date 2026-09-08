@@ -262,6 +262,7 @@ class Ipv4MulticastRoutingTableEntry
         uint32_t inputInterface,
         std::vector<uint32_t> outputInterfaces);
     /**
+     * @param other the other routing table entry
      * @return true if the routing table entries are equal
      */
     bool operator==(const Ipv4MulticastRoutingTableEntry& other) const = default;
