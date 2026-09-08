@@ -316,21 +316,6 @@ operator<<(std::ostream& os, const Ipv4MulticastRoutingTableEntry& route)
     return os;
 }
 
-/**
- * Compare two IPv4 multicast routing table entries.
- *
- * @param a the first routing table entry
- * @param b the second routing table entry
- * @return true if the routing table entries are equal
- */
-bool
-operator==(const Ipv4MulticastRoutingTableEntry a, const Ipv4MulticastRoutingTableEntry b)
-{
-    return (a.GetOrigin() == b.GetOrigin() && a.GetGroup() == b.GetGroup() &&
-            a.GetInputInterface() == b.GetInputInterface() &&
-            a.GetOutputInterfaces() == b.GetOutputInterfaces());
-}
-
 std::string
 Ipv4RoutingTableEntry::GetPrintColumnHeader(const std::string& additionalColumns)
 {

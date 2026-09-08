@@ -14,7 +14,6 @@
 #include <ostream>
 #include <string>
 #include <vector>
-
 namespace ns3
 {
 
@@ -261,6 +260,10 @@ class Ipv4MulticastRoutingTableEntry
         Ipv4Address group,
         uint32_t inputInterface,
         std::vector<uint32_t> outputInterfaces);
+    /**
+     * @return true if the routing table entries are equal
+     */
+    bool operator==(const Ipv4MulticastRoutingTableEntry& other) const = default;
 
   private:
     /**
