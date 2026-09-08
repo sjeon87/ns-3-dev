@@ -229,6 +229,16 @@ MultiModelSpectrumChannel::StartTx(Ptr<SpectrumSignalParameters> txParams)
     auto wraparound = GetObject<WraparoundModel>();
     auto refTxMobility = txParams->txPhy->GetMobility();
     auto txMobility = refTxMobility;
+    // A phased array can be re-steered while the signal propagates; the signal carries the
+    // beamforming vector it was transmitted with, which the loss model is given at reception.
+    PhasedArrayModel::ComplexVector txBeamformingVector;
+    if (m_phasedArraySpectrumPropagationLoss)
+    {
+        if (auto txPhasedArrayModel = DynamicCast<PhasedArrayModel>(txParams->txPhy->GetAntenna()))
+        {
+            txBeamformingVector = txPhasedArrayModel->GetBeamformingVector();
+        }
+    }
     const auto txSpectrumModelUid = txParams->psd->GetSpectrumModelUid();
     NS_LOG_LOGIC("txSpectrumModelUid " << txSpectrumModelUid);
 
@@ -370,7 +380,8 @@ MultiModelSpectrumChannel::StartTx(Ptr<SpectrumSignalParameters> txParams)
                               .txAntennaGain = txAntennaGain,
                               .params = rxParams,
                               .receiver = *rxPhyIterator,
-                              .availableConvertedPsds = convertedPsds};
+                              .availableConvertedPsds = convertedPsds,
+                              .txBeamformingVector = txBeamformingVector};
                 if (rxNetDevice)
                 {
                     // the receiver has a NetDevice, so we expect that it is attached to a Node
@@ -496,12 +507,16 @@ MultiModelSpectrumChannel::StartRx(const RxInfo& rxInfo)
                           "PhasedArrayModel instances should be installed at both TX and RX "
                           "SpectrumPhy in order to use PhasedArraySpectrumPropagationLoss.");
 
+            // The transmitter's vector is the one in use when the transmission started; the
+            // receiver combines the arriving signal with the vector it holds now.
             rxParams = m_phasedArraySpectrumPropagationLoss->CalcRxPowerSpectralDensity(
                 rxParams,
                 txMobility,
                 rxMobility,
                 txPhasedArrayModel,
-                rxPhasedArrayModel);
+                rxPhasedArrayModel,
+                rxInfo.txBeamformingVector,
+                rxPhasedArrayModel->GetBeamformingVector());
         }
     }
 

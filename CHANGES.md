@@ -49,6 +49,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 ### Changed behavior
 
 * (sixlowpan) Mesh-under forwarding on the receive path is no longer unconditional. A node relays received mesh-under packets only when both `UseMeshUnder` and `ForwardMesh` are enabled; a node with `UseMeshUnder` alone decodes and delivers mesh packets without relaying them; a node without `UseMeshUnder` receiving a mesh-under packet drops it with a warning (`DROP_MESH_NOT_ENABLED` in the drop trace), as this is a network misconfiguration. Previously, every node relayed mesh-under packets regardless of its configuration.
+* (spectrum) `MultiModelSpectrumChannel` now evaluates a `PhasedArraySpectrumPropagationLossModel` with the beamforming vector that the transmitter's phased array had when the transmission started, instead of the one it holds when the signal arrives after the propagation delay. Results change only when that vector is modified while a signal is in flight.
 
 ## Changes from ns-3.47 to ns-3.48
 
