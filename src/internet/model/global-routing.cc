@@ -9,8 +9,8 @@
 #include "global-route-manager.h"
 #include "ipv4-route.h"
 #include "ipv4-routing-table-entry.h"
-#include "ipv6-route.h"
 #include "ipv6-routing-table-entry.h"
+#include "ipv6-route.h"
 
 #include "ns3/boolean.h"
 #include "ns3/log.h"
@@ -29,6 +29,14 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("GlobalRouting");
 
+/**
+ * Get the name of a routing interface, or its index if it is unnamed.
+ *
+ * @tparam Ip the IP protocol type
+ * @param ip the IP protocol instance
+ * @param interface the interface index
+ * @return the interface name or index
+ */
 template <typename Ip>
 std::string
 GetRoutingInterfaceName(Ptr<Ip> ip, uint32_t interface)

@@ -10,11 +10,9 @@
 
 #include "ns3/assert.h"
 #include "ns3/log.h"
-
 #include <iomanip>
 #include <sstream>
 #include <string>
-
 namespace ns3
 {
 
@@ -316,6 +314,13 @@ operator<<(std::ostream& os, const Ipv4MulticastRoutingTableEntry& route)
     return os;
 }
 
+/**
+ * Compare two IPv4 multicast routing table entries.
+ *
+ * @param a the first routing table entry
+ * @param b the second routing table entry
+ * @return true if the routing table entries are equal
+ */
 bool
 operator==(const Ipv4MulticastRoutingTableEntry a, const Ipv4MulticastRoutingTableEntry b)
 {
@@ -327,8 +332,7 @@ operator==(const Ipv4MulticastRoutingTableEntry a, const Ipv4MulticastRoutingTab
 std::string
 Ipv4RoutingTableEntry::GetPrintColumnHeader(const std::string& additionalColumns)
 {
-    std::string header =
-        "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface";
+    std::string header = "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface";
     return additionalColumns.empty() ? header : header + " " + additionalColumns;
 }
 
