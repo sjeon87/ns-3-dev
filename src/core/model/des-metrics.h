@@ -84,14 +84,14 @@ namespace ns3
  *
  * Some useful shell pipelines:
  *
- * \li Run everything, retaining the results directory: <br/>
+ * @li Run everything, retaining the results directory: <br/>
  *   @code  ./test.py --no-build --retain @endcode
- * \li Example traces end up in \c testpy-output/, so move there: <br/>
+ * @li Example traces end up in \c testpy-output/, so move there: <br/>
  *   @code cd testpy-output/$(date +"%F")*_/  @endcode
  *   (Remove the `_', which is to work around a Doxygen limitation.)
- * \li Remove the traces with less than 10 events: <br/>
+ * @li Remove the traces with less than 10 events: <br/>
  *   @code wc -l *.json | sort -nr | grep "^ *[789] " | cut -d ' ' -f 9 | xargs rm -f @endcode
- * \li Show the largest file, and total number of trace files: <br/>
+ * @li Show the largest file, and total number of trace files: <br/>
  *   @code wc -l *.json | sort -n | tail -2 @endcode
  *
  */

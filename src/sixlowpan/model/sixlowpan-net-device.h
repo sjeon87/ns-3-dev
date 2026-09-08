@@ -349,9 +349,9 @@ class SixLowPanNetDevice : public NetDevice
      * @brief Callback to trace TX (transmission) packets.
      *
      * Data passed:
-     * \li Packet received (including 6LoWPAN header)
-     * \li Ptr to SixLowPanNetDevice
-     * \li interface index
+     * @li Packet received (including 6LoWPAN header)
+     * @li Ptr to SixLowPanNetDevice
+     * @li interface index
      * @deprecated The non-const \c Ptr<SixLowPanNetDevice> argument
      * is deprecated and will be changed to \c Ptr<const SixLowPanNetDevice>
      * in a future release.
@@ -376,9 +376,9 @@ class SixLowPanNetDevice : public NetDevice
      * @brief Callback to trace RX (reception) packets.
      *
      * Data passed:
-     * \li Packet received (including 6LoWPAN header)
-     * \li Ptr to SixLowPanNetDevice
-     * \li interface index
+     * @li Packet received (including 6LoWPAN header)
+     * @li Ptr to SixLowPanNetDevice
+     * @li interface index
      * @deprecated The non-const \c Ptr<SixLowPanNetDevice> argument
      * is deprecated and will be changed to \c Ptr<const SixLowPanNetDevice>
      * in a future release.
@@ -403,10 +403,10 @@ class SixLowPanNetDevice : public NetDevice
      * @brief Callback to trace drop packets.
      *
      * Data passed:
-     * \li DropReason
-     * \li Packet dropped (including 6LoWPAN header)
-     * \li Ptr to SixLowPanNetDevice
-     * \li interface index
+     * @li DropReason
+     * @li Packet dropped (including 6LoWPAN header)
+     * @li Ptr to SixLowPanNetDevice
+     * @li interface index
      * @deprecated The non-const \c Ptr<SixLowPanNetDevice> argument
      * is deprecated and will be changed to \c Ptr<const SixLowPanNetDevice>
      * in a future release.

@@ -209,7 +209,7 @@ class HeRu
      * @param bandwidth the channel bandwidth
      * @param nStations the number of candidate stations. On return, it is set to
      *                  the number of stations that are assigned an RU
-     * \param [out] nCentral26TonesRus the number of additional 26-tone RUs that can be
+     * @param [out] nCentral26TonesRus the number of additional 26-tone RUs that can be
      *                                 allocated if the returned RU size is greater than 26 tones
      * @return the RU type
      */

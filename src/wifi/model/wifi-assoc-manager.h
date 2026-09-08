@@ -233,9 +233,9 @@ class WifiAssocManager : public Object
     /**
      * Check whether 11be Multi-Link setup can be established with the current best AP.
      *
-     * \param [out] mle const reference to the Multi-Link Element present in the
+     * @param [out] mle const reference to the Multi-Link Element present in the
      *                  Beacon/Probe Response received from the best AP, if any
-     * \param [out] rnr const reference to the Reduced Neighbor Report Element present
+     * @param [out] rnr const reference to the Reduced Neighbor Report Element present
      *                  in the Beacon/Probe Response received from the best AP, if any.
      * @return whether 11be Multi-Link setup can be established with the current best AP
      */

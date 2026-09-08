@@ -86,8 +86,8 @@ class AttributeContainerValue : public AttributeValue
     /**
      * Construct from iterators.
      * @tparam ITER @deduced type of iterator.
-     * \param [in] begin Iterator that points to first initialization item.
-     * \param [in] end Iterator that points ones past last initialization item.
+     * @param [in] begin Iterator that points to first initialization item.
+     * @param [in] end Iterator that points ones past last initialization item.
      */
     template <class ITER>
     AttributeContainerValue(const ITER begin, const ITER end);
@@ -178,8 +178,8 @@ class AttributeContainerValue : public AttributeValue
      * The internal container is cleared before values are copied
      * using the push_back method.
      * @tparam ITER @deduced iterator type
-     * \param [in] begin Points to first item to copy
-     * \param [in] end Points to one after last item to copy
+     * @param [in] begin Points to first item to copy
+     * @param [in] end Points to one after last item to copy
      */
     template <class ITER>
     inline void CopyFrom(const ITER begin, const ITER end);
@@ -216,7 +216,7 @@ class AttributeContainerChecker : public AttributeChecker
  * @tparam A @deduced AttributeValue type in container.
  * @tparam Sep @deduced Character separator between elements for parsing.
  * @tparam C @deduced Container type returned by Get.
- * \param [in] value AttributeContainerValue from which to deduce types.
+ * @param [in] value AttributeContainerValue from which to deduce types.
  * @return AttributeContainerChecker for value.
  */
 template <class A, char Sep, template <class...> class C>
@@ -230,7 +230,7 @@ Ptr<AttributeChecker> MakeAttributeContainerChecker(
  * @tparam A AttributeValue type in container.
  * @tparam Sep Character separator between elements for parsing.
  * @tparam C Container type returned by Get.
- * \param [in] itemchecker AttributeChecker used for each item in the container.
+ * @param [in] itemchecker AttributeChecker used for each item in the container.
  * @return AttributeContainerChecker.
  */
 template <class A, char Sep = ',', template <class...> class C = std::list>
