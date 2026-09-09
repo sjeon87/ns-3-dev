@@ -345,8 +345,6 @@ Dhcp6Server::SendReply(Ptr<NetDevice> iDev, Dhcp6Header header, Inet6SocketAddre
 
             for (auto& subnet : m_subnets)
             {
-                Ipv6Address pool = subnet.GetAddressPool();
-                Ipv6Prefix prefix = subnet.GetPrefix();
                 Ipv6Address minAddress = subnet.GetMinAddress();
                 Ipv6Address maxAddress = subnet.GetMaxAddress();
 
@@ -360,7 +358,7 @@ Dhcp6Server::SendReply(Ptr<NetDevice> iDev, Dhcp6Header header, Inet6SocketAddre
                 }
 
                 // Check whether this subnet matches the requested address.
-                if (prefix.IsMatch(requestedAddr, pool))
+                if (subnet.GetPool().Includes(requestedAddr))
                 {
                     uint8_t minBuf[16];
                     uint8_t maxBuf[16];
@@ -484,11 +482,8 @@ Dhcp6Server::RenewRebindLeases(Ptr<NetDevice> iDev, Dhcp6Header header, Inet6Soc
             // address belongs to.
             for (auto& subnet : m_subnets)
             {
-                Ipv6Prefix prefix = subnet.GetPrefix();
-                Ipv6Address pool = subnet.GetAddressPool();
-
                 // Check if the prefix of the lease matches that of the pool.
-                if (prefix.IsMatch(clientLease, pool))
+                if (subnet.GetPool().Includes(clientLease))
                 {
                     // Find all the leases for this client.
                     auto range = subnet.m_leasedAddresses.equal_range(clientDuid);
@@ -704,15 +699,14 @@ Dhcp6Server::NetHandler(Ptr<Socket> socket)
 }
 
 void
-Dhcp6Server::AddSubnet(Ipv6Address addressPool,
-                       Ipv6Prefix prefix,
+Dhcp6Server::AddSubnet(Ipv6NetworkAddress addressPool,
                        Ipv6Address minAddress,
                        Ipv6Address maxAddress)
 {
-    NS_LOG_FUNCTION(this << addressPool << prefix << minAddress << maxAddress);
+    NS_LOG_FUNCTION(this << addressPool << minAddress << maxAddress);
 
     NS_LOG_DEBUG("DHCPv6 server: Adding subnet " << addressPool << " to lease information.");
-    LeaseInfo newSubnet(addressPool, prefix, minAddress, maxAddress);
+    LeaseInfo newSubnet(addressPool, minAddress, maxAddress);
     m_subnets.emplace_back(newSubnet);
 }
 
@@ -838,28 +832,20 @@ Dhcp6Server::CleanLeases()
     m_leaseCleanupEvent = Simulator::Schedule(m_leaseCleanup, &Dhcp6Server::CleanLeases, this);
 }
 
-LeaseInfo::LeaseInfo(Ipv6Address addressPool,
-                     Ipv6Prefix prefix,
+LeaseInfo::LeaseInfo(Ipv6NetworkAddress pool,
                      Ipv6Address minAddress,
                      Ipv6Address maxAddress)
 {
-    m_addressPool = addressPool;
-    m_prefix = prefix;
+    m_pool = pool;
     m_minAddress = minAddress;
     m_maxAddress = maxAddress;
     m_numAddresses = 0;
 }
 
-Ipv6Address
-LeaseInfo::GetAddressPool() const
+Ipv6NetworkAddress
+LeaseInfo::GetPool() const
 {
-    return m_addressPool;
-}
-
-Ipv6Prefix
-LeaseInfo::GetPrefix() const
-{
-    return m_prefix;
+    return m_pool;
 }
 
 Ipv6Address

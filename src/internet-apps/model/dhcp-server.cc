@@ -15,6 +15,7 @@
 #include "dhcp-header.h"
 
 #include "ns3/assert.h"
+#include "ns3/ipv4-network-address.h"
 #include "ns3/ipv4-packet-info-tag.h"
 #include "ns3/ipv4.h"
 #include "ns3/log.h"
@@ -124,16 +125,17 @@ DhcpServer::StartApplication()
         NS_ABORT_MSG("DHCP daemon must be run on the same subnet it is assigning the addresses.");
     }
 
+    Ipv4NetworkAddress poolNetwork(m_poolAddress, m_poolMask.GetPrefixLength());
+
     for (addrIndex = 0; addrIndex < ipv4->GetNAddresses(ifIndex); addrIndex++)
     {
-        if (ipv4->GetAddress(ifIndex, addrIndex).GetLocal().CombineMask(m_poolMask) ==
-                m_poolAddress &&
-            ipv4->GetAddress(ifIndex, addrIndex).GetLocal().Get() >= m_minAddress.Get() &&
-            ipv4->GetAddress(ifIndex, addrIndex).GetLocal().Get() <= m_maxAddress.Get())
+        Ipv4Address local = ipv4->GetAddress(ifIndex, addrIndex).GetLocal();
+        if (poolNetwork.Includes(local) && local.Get() >= m_minAddress.Get() &&
+            local.Get() <= m_maxAddress.Get())
         {
             // set infinite GRANTED_LEASED_TIME for my address
 
-            myOwnAddress = ipv4->GetAddress(ifIndex, addrIndex).GetLocal();
+            myOwnAddress = local;
             DhcpChaddr null = {};
             m_leasedAddresses[null] = std::make_pair(myOwnAddress, PERMANENT_LEASE);
             break;

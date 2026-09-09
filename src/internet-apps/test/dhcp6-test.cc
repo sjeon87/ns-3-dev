@@ -11,6 +11,7 @@
 #include "ns3/dhcp6-helper.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv6-address-helper.h"
+#include "ns3/ipv6-network-address.h"
 #include "ns3/radvd-helper.h"
 #include "ns3/simple-net-device-helper.h"
 #include "ns3/simulator.h"
@@ -122,8 +123,7 @@ Dhcp6TestCase::DoRun()
     ApplicationContainer dhcpServerApp = dhcp6Helper.InstallDhcp6Server(serverNetDevices);
 
     Ptr<Dhcp6Server> server = DynamicCast<Dhcp6Server>(dhcpServerApp.Get(0));
-    server->AddSubnet(Ipv6Address("2001:cafe::"),
-                      Ipv6Prefix(64),
+    server->AddSubnet(Ipv6NetworkAddress(Ipv6Address("2001:cafe::"), 64),
                       Ipv6Address("2001:cafe::42:1"),
                       Ipv6Address("2001:cafe::42:ffff"));
 

@@ -15,6 +15,7 @@
 
 #include "ns3/application.h"
 #include "ns3/ipv6-address.h"
+#include "ns3/ipv6-network-address.h"
 #include "ns3/net-device-container.h"
 #include "ns3/pair.h"
 #include "ns3/ptr.h"
@@ -39,13 +40,11 @@ class LeaseInfo
   public:
     /**
      * Constructor.
-     * @param addressPool Address pool
-     * @param prefix Prefix of the address pool
+     * @param pool Address pool network and prefix
      * @param minAddress Minimum address in the pool
      * @param maxAddress Maximum address in the pool
      */
-    LeaseInfo(Ipv6Address addressPool,
-              Ipv6Prefix prefix,
+    LeaseInfo(Ipv6NetworkAddress pool,
               Ipv6Address minAddress,
               Ipv6Address maxAddress);
 
@@ -56,13 +55,7 @@ class LeaseInfo
      * @brief Get the address pool.
      * @return The address pool
      */
-    Ipv6Address GetAddressPool() const;
-
-    /**
-     * @brief Get the prefix of the address pool.
-     * @return The prefix of the address pool
-     */
-    Ipv6Prefix GetPrefix() const;
+    Ipv6NetworkAddress GetPool() const;
 
     /**
      * @brief Get the minimum address in the pool.
@@ -106,8 +99,7 @@ class LeaseInfo
     DeclinedAddresses m_declinedAddresses; //!< Declined addresses
     Ipv6Address m_maxOfferedAddress;       //!< Maximum address offered so far.
 
-    Ipv6Address m_addressPool; //!< Address pool
-    Ipv6Prefix m_prefix;       //!< Prefix of the address pool
+    Ipv6NetworkAddress m_pool; //!< Address pool network and prefix
     Ipv6Address m_minAddress;  //!< Minimum address in the pool
     Ipv6Address m_maxAddress;  //!< Maximum address in the pool
     uint32_t m_numAddresses;   //!< Number of addresses leased.
@@ -141,13 +133,11 @@ class Dhcp6Server : public Application
 
     /**
      * @brief Add a managed address pool.
-     * @param pool The address pool to be managed by the server.
-     * @param prefix The prefix of the address pool.
+     * @param pool The address pool and prefix to be managed by the server.
      * @param minAddress The minimum address in the pool.
      * @param maxAddress The maximum address in the pool.
      */
-    void AddSubnet(Ipv6Address pool,
-                   Ipv6Prefix prefix,
+    void AddSubnet(Ipv6NetworkAddress pool,
                    Ipv6Address minAddress,
                    Ipv6Address maxAddress);
 
