@@ -285,4 +285,11 @@ LteNetDevice::Receive(Ptr<Packet> p)
         NS_ABORT_MSG("LteNetDevice::Receive - Unknown IP type...");
     }
 }
+
+void
+LteNetDevice::FinishSetup()
+{
+    NS_LOG_FUNCTION(this);
+}
+
 } // namespace ns3
