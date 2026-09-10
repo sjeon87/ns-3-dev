@@ -1,9 +1,12 @@
 /*
- * Copyright (c) 2012 INRIA, 2012 University of Washington
+ * Copyright (c) 2026 PES Innovation Lab
+ *               2012 INRIA, 2012 University of Washington
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
- * Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+ * Author: Vinaayak G Dasika <vinaayak@dasika.link>
+ *         Andey Hemanth <andy34g7@gmail.com>
+ *         Alina Quereilhac <alina.quereilhac@inria.fr>
  *         Claudio Freire <klaussfreire@sourceforge.net>
  */
 
@@ -87,6 +90,19 @@ class FdNetDevice : public NetDevice
         LLC,   /**< 802.2 LLC/SNAP Packet*/
         DIXPI, /**< When using TAP devices, if flag
                     IFF_NO_PI is not set on the device,
+                    IP packets will have an extra header:
+                    Flags [2 bytes]
+                    Proto [2 bytes]
+                    Raw protocol(IP, IPv6, etc) frame. */
+        L3,    /**< Raw IP packets. When used on macOS
+                       with utun interfaces, prefixed with
+                       a 4-byte address-family prefix.
+                       The Darwin kernel prepends
+                       AF_INET (2) or AF_INET6 (30) in network byte order
+                       before each packet.
+                    */
+        L3PI,  /**< Raw IP packets for Linux, if flag
+                    IFF_NO_PI is not set on the TUN device,
                     IP packets will have an extra header:
                     Flags [2 bytes]
                     Proto [2 bytes]
@@ -181,6 +197,15 @@ class FdNetDevice : public NetDevice
      * @param multicast true if the NetDevice can send Multicast
      */
     virtual void SetIsMulticast(bool multicast);
+
+    /**
+     * Set if the NetDevice needs ARP to resolve destination addresses.
+     * Devices bound to a NOARP host interface (e.g. netkit or ipvlan in L3
+     * mode) should set this to false, since the peer will never answer ARP
+     * requests.
+     * @param needsArp true if the NetDevice needs ARP
+     */
+    virtual void SetNeedsArp(bool needsArp);
 
     /**
      * Write packet data to device.
@@ -337,6 +362,12 @@ class FdNetDevice : public NetDevice
      * broadcast.
      */
     bool m_isBroadcast;
+
+    /**
+     * Flag indicating whether or not this device needs ARP to resolve
+     * destination addresses.
+     */
+    bool m_needsArp;
 
     /**
      * Flag indicating whether or not the underlying net device supports

@@ -6,6 +6,7 @@
 
 #include "tap-bridge.h"
 
+#include "tap-creator-utils.h"
 #include "tap-encode-decode.h"
 
 #include "ns3/abort.h"
@@ -61,8 +62,6 @@ TapBridgeFdReader::DoRead()
 
     return FdReader::Data(buf, len);
 }
-
-#define TAP_MAGIC 95549
 
 NS_OBJECT_ENSURE_REGISTERED(TapBridge);
 

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 
+#include "tap-creator-utils.h"
 #include "tap-encode-decode.h"
 
 #include "ns3/mac48-address.h"
@@ -11,7 +12,7 @@
 #include <cerrno>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring> // for strerror
+#include <cstring>
 #include <fcntl.h>
 #include <iomanip>
 #include <iostream>
@@ -27,7 +28,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define TAP_MAGIC 95549
+using namespace ns3;
 
 static bool gVerbose = false; // Set to true to turn on logging messages.
 

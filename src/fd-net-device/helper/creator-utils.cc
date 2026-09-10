@@ -8,37 +8,13 @@
 
 #include "encode-decode.h"
 
-#include <arpa/inet.h>
-#include <cstdlib>
-#include <cstring>
-#include <errno.h>
-#include <iomanip>
-#include <iostream>
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <sstream>
-#include <string>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-
 namespace ns3
 {
 
 /// Flag to enable / disable verbose log mode
 bool gVerbose = false;
 
-/**
- * @brief Send the file descriptor back to the code that invoked the creation.
- *
- * @param path The socket address information from the Unix socket we use
- * to send the created socket back to.
- * @param fd The file descriptor we're going to send.
- * @param magic_number A verification number to verify the caller is talking to the
- * right process.
- */
+#ifndef _WIN32
 void
 SendSocket(const char* path, int fd, const int magic_number)
 {
@@ -162,5 +138,6 @@ SendSocket(const char* path, int fd, const int magic_number)
 
     LOG("sendmsg complete");
 }
+#endif // !_WIN32
 
 } // namespace ns3

@@ -1,11 +1,13 @@
 /*
- * Copyright (c) 2012 INRIA, 2012 University of Washington
+ * Copyright (c) 2026 PES Innovation Lab
+ *               2012 INRIA, 2012 University of Washington
  *
  * SPDX-License-Identifier: GPL-2.0-only
  */
 
 #include "emu-fd-net-device-helper.h"
 
+#include "creator-utils.h"
 #include "encode-decode.h"
 
 #include "ns3/abort.h"
@@ -27,6 +29,7 @@
 #include <memory>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/if_arp.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
 #include <string.h>
@@ -44,8 +47,6 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("EmuFdNetDeviceHelper");
 
-#define EMU_MAGIC 65867
-
 EmuFdNetDeviceHelper::EmuFdNetDeviceHelper()
 {
     m_deviceName = "undefined";
@@ -53,21 +54,9 @@ EmuFdNetDeviceHelper::EmuFdNetDeviceHelper()
 }
 
 void
-EmuFdNetDeviceHelper::SetDeviceName(std::string deviceName)
-{
-    m_deviceName = deviceName;
-}
-
-void
 EmuFdNetDeviceHelper::HostQdiscBypass(bool hostQdiscBypass)
 {
     m_hostQdiscBypass = hostQdiscBypass;
-}
-
-std::string
-EmuFdNetDeviceHelper::GetDeviceName()
-{
-    return m_deviceName;
 }
 
 Ptr<NetDevice>
@@ -130,10 +119,41 @@ EmuFdNetDeviceHelper::SetFileDescriptor(Ptr<FdNetDevice> device) const
             "EmuFdNetDeviceHelper::SetFileDescriptor (): Can't bind to specified interface");
     }
 
+    // Use ioctl SIOCGIFHWADDR to check the interface hardware type.
+    struct ifreq hwaddr_ifr;
+    bzero(&hwaddr_ifr, sizeof(hwaddr_ifr));
+    strncpy((char*)hwaddr_ifr.ifr_name, m_deviceName.c_str(), IFNAMSIZ - 1);
+    int32_t hwrc = ioctl(fd, SIOCGIFHWADDR, &hwaddr_ifr);
+    if (hwrc == -1)
+    {
+        NS_FATAL_ERROR("EmuFdNetDeviceHelper::SetFileDescriptor (): Can't get hardware address");
+    }
+    if (hwaddr_ifr.ifr_hwaddr.sa_family == ARPHRD_NONE)
+    {
+        NS_LOG_LOGIC("Interface " << m_deviceName
+                                  << " is ARPHRD_NONE, switching to L3 encapsulation mode");
+        device->SetEncapsulationMode(FdNetDevice::L3);
+    }
+
     rc = ioctl(fd, SIOCGIFFLAGS, &ifr);
     if (rc == -1)
     {
         NS_FATAL_ERROR("EmuFdNetDeviceHelper::SetFileDescriptor (): Can't get interface flags");
+    }
+
+    if (hwaddr_ifr.ifr_hwaddr.sa_family != ARPHRD_NONE && (ifr.ifr_flags & IFF_NOARP))
+    {
+        // Devices such as netkit and ipvlan in L3 mode report a normal
+        // ARPHRD_ETHER hardware type but disallow ARP and force every
+        // neighbour to resolve to their own (possibly zero) hardware
+        // address. Spoofing a fresh MAC would never match, so mirror the
+        // interface's real address instead.
+        Mac48Address addr;
+        addr.CopyFrom((const uint8_t*)hwaddr_ifr.ifr_hwaddr.sa_data);
+        NS_LOG_WARN("Interface " << m_deviceName << " is NOARP, using its hardware address " << addr
+                                 << " instead of a spoofed one and disabling ARP");
+        device->SetAddress(addr);
+        device->SetNeedsArp(false);
     }
 
     if (m_hostQdiscBypass)
@@ -167,10 +187,13 @@ EmuFdNetDeviceHelper::SetFileDescriptor(Ptr<FdNetDevice> device) const
     // mode, and placing it in promiscuous mode.  We just make sure of the
     // end result.
     //
-    if ((ifr.ifr_flags & IFF_PROMISC) == 0)
+    if (device->GetEncapsulationMode() != FdNetDevice::L3)
     {
-        NS_FATAL_ERROR("EmuFdNetDeviceHelper::SetFileDescriptor (): "
-                       << m_deviceName << " is not in promiscuous mode");
+        if ((ifr.ifr_flags & IFF_PROMISC) == 0)
+        {
+            NS_FATAL_ERROR("EmuFdNetDeviceHelper::SetFileDescriptor (): "
+                           << m_deviceName << " is not in promiscuous mode");
+        }
     }
 
     if ((ifr.ifr_flags & IFF_BROADCAST) != IFF_BROADCAST)
@@ -299,8 +322,8 @@ EmuFdNetDeviceHelper::CreateFileDescriptor() const
                           (char*)nullptr);
 
         //
-        // If the execlp successfully completes, it never returns.  If it returns it failed or the
-        // OS is broken.  In either case, we bail.
+        // If the execlp successfully completes, it never returns.  If it returns it failed or
+        // the OS is broken.  In either case, we bail.
         //
         NS_FATAL_ERROR("EmuFdNetDeviceHelper::CreateFileDescriptor(): Back from execlp(), status = "
                        << status << ", errno = " << ::strerror(errno));
@@ -338,8 +361,8 @@ EmuFdNetDeviceHelper::CreateFileDescriptor() const
         }
         else
         {
-            NS_FATAL_ERROR(
-                "EmuFdNetDeviceHelper::CreateFileDescriptor(): socket creator exited abnormally");
+            NS_FATAL_ERROR("EmuFdNetDeviceHelper::CreateFileDescriptor(): socket creator "
+                           "exited abnormally");
         }
 
         //
