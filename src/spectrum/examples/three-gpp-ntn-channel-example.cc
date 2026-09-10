@@ -46,20 +46,167 @@ static Ptr<ThreeGppSpectrumPropagationLossModel>
 static std::ofstream resultsFile; //!< The results file
 
 /**
+ * Frequency range definitions
+ */
+enum FrequencyRange
+{
+    FR1 = 1,    /**< Frequency range FR1 410MHz..7125MHz */
+    FR2 = 2,    /**< Frequency range FR2 17300MHz..30000MHz */
+    NON_NTN = 3 /**< Other non-NTN frequency range */
+};
+
+/**
+ * @brief get frequency range according to TS 138 101-5 V18.5.0 Table 5.1-1 (NTN)
+ *
+ * @param fcHz the carrier frequency in Hz
+ * @return FrequencyRange
+ */
+FrequencyRange
+getFrequencyRange(double fcHz)
+{
+    if (fcHz > 4.1e8 && fcHz < 7.125e9)
+    {
+        return FrequencyRange::FR1;
+    }
+
+    if (fcHz > 17.3e9 && fcHz < 30e9)
+    {
+        return FrequencyRange::FR2;
+    }
+
+    return FrequencyRange::NON_NTN;
+}
+
+/**
+ * @brief A structure that holds structure of UE channel BW
+ */
+struct UEChannelBandwidth
+{
+    double total; //!< the total bandwidth of channel in Hz
+    double perRB; //!< the Resource Block bandwidth in Hz
+
+    /**
+     * @brief Create a UEChannelBandwidth
+     */
+    UEChannelBandwidth()
+        : total(0.0),
+          perRB(0.0)
+    {
+    }
+
+    /**
+     * @brief Destroy a UEChannelBandwidth
+     */
+    ~UEChannelBandwidth()
+    {
+    }
+
+    /**
+     * @brief Copy constructor.
+     *
+     * @param chBw Object to copy from
+     */
+    UEChannelBandwidth(const UEChannelBandwidth& chBw)
+    {
+        total = chBw.total;
+        perRB = chBw.perRB;
+    }
+
+    /// Guardband holding a pair<SCR,BW> + actual guardband
+    using Guardband = std::map<std::pair<double, double>, double>;
+
+    /// Guardband records for FR1
+    mutable Guardband guardsFR1 = {{{15.0, 5000.0}, 242.5},
+                                   {{15.0, 10000.0}, 312.5},
+                                   {{15.0, 15000.0}, 382.5},
+                                   {{15.0, 20000.0}, 452.5},
+                                   {{15.0, 30000.0}, 592.5},
+                                   {{30.0, 5000.0}, 505.0},
+                                   {{30.0, 10000.0}, 665.0},
+                                   {{30.0, 15000.0}, 645.0},
+                                   {{30.0, 20000.0}, 805.0},
+                                   {{30.0, 30000.0}, 945.0},
+                                   {{60.0, 10000.0}, 1010.0},
+                                   {{60.0, 15000.0}, 990.0},
+                                   {{60.0, 20000.0}, 1330.0},
+                                   {{60.0, 30000.0}, 1290.0}};
+
+    /// Guardband records for FR2
+    mutable Guardband guardsFR2 = {{{60.0, 50000.0}, 1210.0},
+                                   {{60.0, 100000.0}, 2450.0},
+                                   {{60.0, 200000.0}, 4930.0},
+                                   {{120.0, 50000.0}, 1900.0},
+                                   {{120.0, 100000.0}, 2420.0},
+                                   {{120.0, 200000.0}, 4900.0},
+                                   {{120.0, 400000.0}, 9860.0}};
+
+    /**
+     * @brief getGuardband based on frequency, channel bandwidth and rb width
+     *
+     * @param fcHz the carrier frequency in Hz
+     * @return guardband in hz
+     */
+    double getGuardband(double fcHz) const
+    {
+        FrequencyRange fr = getFrequencyRange(fcHz);
+
+        Guardband* guardband;
+
+        if (fr == FrequencyRange::FR1)
+        {
+            guardband = &guardsFR1;
+        }
+        else
+        {
+            guardband = &guardsFR2;
+        }
+
+        auto it = guardband->find(std::pair(perRB / 1000.0, total / 1000.0));
+        if (it != guardband->end())
+        {
+            NS_LOG_DEBUG("Guardband value: " << it->second << "(SCS=" << perRB << ",BW=" << total
+                                             << ")");
+            return it->second;
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * @brief calculateNrb based on frequency, channel bandwidth and rb width
+     * formula for calculating Nrbs: (1000*BW - SCS - 2*Gbw)/12*SCS
+     * please check TS 138 101-5 5.3.3 NOTE
+     *
+     * @param fcHz the carrier frequency in Hz
+     * @return Nrb
+     */
+    unsigned int calculateNrb(double fcHz) const
+    {
+        if (perRB == 0.0)
+        {
+            NS_LOG_ERROR("Resource block width is not set, Nrb cannot be calculated!");
+            return 0;
+        }
+
+        return std::floor((total / 1e3 - perRB / 1e3 - (getGuardband(fcHz) * 2)) /
+                          (12 * (perRB / 1e3)));
+    }
+};
+
+/**
  * @brief Create the PSD for the TX
  *
  * @param fcHz the carrier frequency in Hz
  * @param pwrDbm the transmission power in dBm
- * @param bwHz the bandwidth in Hz
- * @param rbWidthHz the Resource Block (RB) width in Hz
- *
+ * @param bw the structure that holds UE bandwidth
  * @return the pointer to the PSD
  */
 Ptr<SpectrumValue>
-CreateTxPowerSpectralDensity(double fcHz, double pwrDbm, double bwHz, double rbWidthHz)
+CreateTxPowerSpectralDensity(double fcHz, double pwrDbm, const UEChannelBandwidth& bw)
 {
-    unsigned int numRbs = std::floor(bwHz / rbWidthHz);
-    double f = fcHz - (numRbs * rbWidthHz / 2.0);
+    unsigned int numRbs = bw.calculateNrb(fcHz);
+
+    double f = fcHz - (numRbs * bw.perRB / 2.0);
     double powerTx = pwrDbm; // dBm power
 
     Bands rbs; // A vector representing each resource block
@@ -67,9 +214,9 @@ CreateTxPowerSpectralDensity(double fcHz, double pwrDbm, double bwHz, double rbW
     {
         BandInfo rb;
         rb.fl = f;
-        f += rbWidthHz / 2;
+        f += bw.perRB / 2;
         rb.fc = f;
-        f += rbWidthHz / 2;
+        f += bw.perRB / 2;
         rb.fh = f;
 
         rbs.push_back(rb);
@@ -78,7 +225,7 @@ CreateTxPowerSpectralDensity(double fcHz, double pwrDbm, double bwHz, double rbW
     Ptr<SpectrumValue> txPsd = Create<SpectrumValue>(model);
 
     double powerTxW = std::pow(10., (powerTx - 30) / 10); // Get Tx power in Watts
-    double txPowerDensity = (powerTxW / bwHz);
+    double txPowerDensity = (powerTxW / bw.total);
 
     for (auto psd = txPsd->ValuesBegin(); psd != txPsd->ValuesEnd(); ++psd)
     {
@@ -93,16 +240,16 @@ CreateTxPowerSpectralDensity(double fcHz, double pwrDbm, double bwHz, double rbW
  *
  * @param fcHz the carrier frequency in Hz
  * @param noiseFigureDb the noise figure in dB
- * @param bwHz the bandwidth in Hz
- * @param rbWidthHz the Resource Block (RB) width in Hz
+ * @param bw the structure that holds UE bandwidth
  *
  * @return the pointer to the noise PSD
  */
 Ptr<SpectrumValue>
-CreateNoisePowerSpectralDensity(double fcHz, double noiseFigureDb, double bwHz, double rbWidthHz)
+CreateNoisePowerSpectralDensity(double fcHz, double noiseFigureDb, const UEChannelBandwidth& bw)
 {
-    unsigned int numRbs = std::floor(bwHz / rbWidthHz);
-    double f = fcHz - (numRbs * rbWidthHz / 2.0);
+    unsigned int numRbs = bw.calculateNrb(fcHz);
+
+    double f = fcHz - (numRbs * bw.perRB / 2.0);
 
     Bands rbs;              // A vector representing each resource block
     std::vector<int> rbsId; // A vector representing the resource block IDs
@@ -110,9 +257,9 @@ CreateNoisePowerSpectralDensity(double fcHz, double noiseFigureDb, double bwHz, 
     {
         BandInfo rb;
         rb.fl = f;
-        f += rbWidthHz / 2;
+        f += bw.perRB / 2;
         rb.fc = f;
-        f += rbWidthHz / 2;
+        f += bw.perRB / 2;
         rb.fh = f;
 
         rbs.push_back(rb);
@@ -151,8 +298,7 @@ struct ComputeSnrParams
     Ptr<PhasedArrayModel> txAntenna; //!< the tx antenna array
     Ptr<PhasedArrayModel> rxAntenna; //!< the rx antenna array
     double frequency;                //!< the carrier frequency in Hz
-    double bandwidth;                //!< the total bandwidth in Hz
-    double resourceBlockBandwidth;   //!< the Resource Block bandwidth in Hz
+    UEChannelBandwidth bandwidth;    //!< UE channel bandwidth structure as per TS.138.101-5 5.3
 
     /**
      * @brief Constructor
@@ -163,8 +309,7 @@ struct ComputeSnrParams
      * @param pTxAntenna the tx antenna array
      * @param pRxAntenna the rx antenna array
      * @param pFrequency the carrier frequency in Hz
-     * @param pBandwidth the total bandwidth in Hz
-     * @param pResourceBlockBandwidth the Resource Block bandwidth in Hz
+     * @param chBandwidth UE channel bandwidth structure
      */
     ComputeSnrParams(Ptr<MobilityModel> pTxMob,
                      Ptr<MobilityModel> pRxMob,
@@ -173,8 +318,7 @@ struct ComputeSnrParams
                      Ptr<PhasedArrayModel> pTxAntenna,
                      Ptr<PhasedArrayModel> pRxAntenna,
                      double pFrequency,
-                     double pBandwidth,
-                     double pResourceBlockBandwidth)
+                     const UEChannelBandwidth& chBandwidth)
     {
         txMob = pTxMob;
         rxMob = pRxMob;
@@ -183,8 +327,7 @@ struct ComputeSnrParams
         txAntenna = pTxAntenna;
         rxAntenna = pRxAntenna;
         frequency = pFrequency;
-        bandwidth = pBandwidth;
-        resourceBlockBandwidth = pResourceBlockBandwidth;
+        bandwidth = chBandwidth;
     }
 };
 
@@ -236,21 +379,16 @@ DoBeamforming(Ptr<MobilityModel> rxMob, Ptr<PhasedArrayModel> thisAntenna, Ptr<M
 static void
 ComputeSnr(ComputeSnrParams& params)
 {
-    Ptr<SpectrumValue> txPsd = CreateTxPowerSpectralDensity(params.frequency,
-                                                            params.txPow,
-                                                            params.bandwidth,
-                                                            params.resourceBlockBandwidth);
+    Ptr<SpectrumValue> txPsd =
+        CreateTxPowerSpectralDensity(params.frequency, params.txPow, params.bandwidth);
     Ptr<SpectrumValue> rxPsd = txPsd->Copy();
-    NS_LOG_DEBUG("Average tx power " << 10 * log10(Sum(*txPsd) * params.resourceBlockBandwidth)
-                                     << " dB");
+    NS_LOG_DEBUG("Average tx power " << 10 * log10(Sum(*txPsd) * params.bandwidth.perRB) << " dB");
 
     // create the noise PSD
-    Ptr<SpectrumValue> noisePsd = CreateNoisePowerSpectralDensity(params.frequency,
-                                                                  params.noiseFigure,
-                                                                  params.bandwidth,
-                                                                  params.resourceBlockBandwidth);
-    NS_LOG_DEBUG("Average noise power "
-                 << 10 * log10(Sum(*noisePsd) * params.resourceBlockBandwidth) << " dB");
+    Ptr<SpectrumValue> noisePsd =
+        CreateNoisePowerSpectralDensity(params.frequency, params.noiseFigure, params.bandwidth);
+    NS_LOG_DEBUG("Average noise power " << 10 * log10(Sum(*noisePsd) * params.bandwidth.perRB)
+                                        << " dB");
 
     // apply the pathloss
     double propagationGainDb = m_propagationLossModel->CalcRxPower(0, params.txMob, params.rxMob);
@@ -272,8 +410,8 @@ ComputeSnr(ComputeSnrParams& params)
                                                             params.rxMob,
                                                             params.txAntenna,
                                                             params.rxAntenna);
-    NS_LOG_DEBUG("Average rx power " << 10 * log10(Sum(*rxSsp->psd) * params.bandwidth) << " dB");
-
+    NS_LOG_DEBUG("Average rx power " << 10 * log10(Sum(*rxSsp->psd) * params.bandwidth.total)
+                                     << " dB");
     // compute the SNR
     NS_LOG_DEBUG("Average SNR " << 10 * log10(Sum(*rxSsp->psd) / Sum(*noisePsd)) << " dB");
 
@@ -295,9 +433,11 @@ main(int argc, char* argv[])
     std::string scenario = "NTN-Suburban"; // 3GPP propagation scenario
     // All available NTN scenarios: DenseUrban, Urban, Suburban, Rural.
 
-    double frequencyHz = 20e9;    // operating frequency in Hz
-    double bandwidthHz = 400e6;   // Hz
-    double RbBandwidthHz = 120e3; // Hz
+    double frequencyHz = 20e9; // operating frequency in Hz
+
+    UEChannelBandwidth ueChannelBandwidth;
+    ueChannelBandwidth.total = 400e6; // Hz
+    ueChannelBandwidth.perRB = 120e3; // Hz
 
     // Satellite parameters
     double satEIRPDensity = 40;     // dBW/MHz
@@ -315,7 +455,7 @@ main(int argc, char* argv[])
                  "NTN-DenseUrban, NTN-Urban, NTN-Suburban, and NTN-Rural",
                  scenario);
     cmd.AddValue("frequencyHz", "The carrier frequency in Hz", frequencyHz);
-    cmd.AddValue("bandwidthHz", "The bandwidth in Hz", bandwidthHz);
+    cmd.AddValue("bandwidthHz", "The UE channel bandwidth in Hz", ueChannelBandwidth.total);
     cmd.AddValue("satEIRPDensity", "The satellite EIRP density in dBW/MHz", satEIRPDensity);
     cmd.AddValue("satAntennaGainDb", "The satellite antenna gain in dB", satAntennaGainDb);
     cmd.AddValue("vsatAntennaGainDb", "The UE VSAT antenna gain in dB", vsatAntennaGainDb);
@@ -326,7 +466,8 @@ main(int argc, char* argv[])
 
     // Calculate transmission power in dBm using EIRPDensity + 10*log10(Bandwidth) - AntennaGain +
     // 30
-    double txPowDbm = (satEIRPDensity + 10 * log10(bandwidthHz / 1e6) - satAntennaGainDb) + 30;
+    double txPowDbm =
+        (satEIRPDensity + 10 * log10(ueChannelBandwidth.total / 1e6) - satAntennaGainDb) + 30;
 
     NS_LOG_DEBUG("Transmitting power: " << txPowDbm << "dBm, (" << pow(10., (txPowDbm - 30) / 10)
                                         << "W)");
@@ -464,8 +605,7 @@ main(int argc, char* argv[])
                                              txAntenna,
                                              rxAntenna,
                                              frequencyHz,
-                                             bandwidthHz,
-                                             RbBandwidthHz));
+                                             ueChannelBandwidth));
     }
 
     Simulator::Run();

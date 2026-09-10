@@ -42,6 +42,9 @@ constexpr double BW = 200e6;
 // This value corresponds to numerology index 2 of the 5G NR specifications
 constexpr double RB_WIDTH = 60e3;
 
+// Guard bandwidth matching 200MHz BW and 60KHz RB_BW (see TS 138 101-5 - Table 5.3.3-1)
+constexpr double GUARD_BW = 4930;
+
 const std::vector<std::string> LOS_CONDITIONS{
     "LOS",
     "NLOS",
@@ -74,7 +77,10 @@ ComputePowerSpectralDensityOverallPower(Ptr<const SpectrumValue> psd)
 Ptr<SpectrumValue>
 CreateTxPowerSpectralDensity(double fc)
 {
-    uint32_t numRbs = std::floor(BW / RB_WIDTH);
+    //(1000*BW - SCS - 2*Gbw)/12*SCS; please see TS 138 101-5 5.3.3 NOTE formula
+    unsigned int numRbs =
+        std::floor((BW / 1000 - RB_WIDTH / 1000 - (2 * GUARD_BW)) / (12 * (RB_WIDTH / 1000)));
+
     double f = fc - (numRbs * RB_WIDTH / 2.0);
     double powerTx = 0.0;
 
