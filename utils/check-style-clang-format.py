@@ -234,7 +234,7 @@ def find_files_to_check_style(
             files_found.append(path)
         elif os.path.isdir(abs_path):
             for dirpath, dirnames, filenames in os.walk(path, topdown=True):
-                if not should_analyze_directory(dirpath):
+                if not should_analyze_directory(os.path.abspath(os.path.expanduser(dirpath))):
                     # Remove directory and its subdirectories
                     dirnames[:] = []
                     continue
