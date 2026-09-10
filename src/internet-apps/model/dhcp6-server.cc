@@ -832,9 +832,7 @@ Dhcp6Server::CleanLeases()
     m_leaseCleanupEvent = Simulator::Schedule(m_leaseCleanup, &Dhcp6Server::CleanLeases, this);
 }
 
-LeaseInfo::LeaseInfo(Ipv6NetworkAddress pool,
-                     Ipv6Address minAddress,
-                     Ipv6Address maxAddress)
+LeaseInfo::LeaseInfo(Ipv6NetworkAddress pool, Ipv6Address minAddress, Ipv6Address maxAddress)
 {
     m_pool = pool;
     m_minAddress = minAddress;

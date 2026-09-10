@@ -44,9 +44,7 @@ class LeaseInfo
      * @param minAddress Minimum address in the pool
      * @param maxAddress Maximum address in the pool
      */
-    LeaseInfo(Ipv6NetworkAddress pool,
-              Ipv6Address minAddress,
-              Ipv6Address maxAddress);
+    LeaseInfo(Ipv6NetworkAddress pool, Ipv6Address minAddress, Ipv6Address maxAddress);
 
     friend class Dhcp6Server;
 
@@ -137,9 +135,7 @@ class Dhcp6Server : public Application
      * @param minAddress The minimum address in the pool.
      * @param maxAddress The maximum address in the pool.
      */
-    void AddSubnet(Ipv6NetworkAddress pool,
-                   Ipv6Address minAddress,
-                   Ipv6Address maxAddress);
+    void AddSubnet(Ipv6NetworkAddress pool, Ipv6Address minAddress, Ipv6Address maxAddress);
 
   protected:
     void DoDispose() override;
