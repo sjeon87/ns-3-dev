@@ -516,9 +516,14 @@ SixLowPanNetDevice::ReceiveFromDevice(Ptr<NetDevice> incomingPort,
             m_dropTrace(DROP_DISALLOWED_COMPRESSION, copyPkt, this, GetIfIndex());
             return;
         }
-        if (DecompressLowPanIphc(copyPkt, realSrc, realDst))
+        const auto error = DecompressLowPanIphc(copyPkt, realSrc, realDst);
+        if (error == DecompressionError::STATEFUL_CONTEXT)
         {
             m_dropTrace(DROP_SATETFUL_DECOMPRESSION_PROBLEM, copyPkt, this, GetIfIndex());
+        }
+        else if (error == DecompressionError::MALFORMED)
+        {
+            m_dropTrace(DROP_MALFORMED_COMPRESSION, copyPkt, this, GetIfIndex());
         }
         else
         {
@@ -1606,7 +1611,7 @@ SixLowPanNetDevice::CanCompressLowPanNhc(uint8_t nextHeader) const
     return ret;
 }
 
-bool
+SixLowPanNetDevice::DecompressionError
 SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src, const Address& dst)
 {
     NS_LOG_FUNCTION(this << *packet << src << dst);
@@ -1635,13 +1640,13 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
             {
                 NS_LOG_LOGIC("Unknown Source compression context (" << +contextId
                                                                     << "), dropping packet");
-                return true;
+                return DecompressionError::STATEFUL_CONTEXT;
             }
             if (m_contextTable[contextId].validLifetime < Simulator::Now())
             {
                 NS_LOG_LOGIC("Expired Source compression context (" << +contextId
                                                                     << "), dropping packet");
-                return true;
+                return DecompressionError::STATEFUL_CONTEXT;
             }
 
             uint8_t contextPrefix[16];
@@ -1732,13 +1737,13 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
         {
             NS_LOG_LOGIC("Unknown Destination compression context (" << +contextId
                                                                      << "), dropping packet");
-            return true;
+            return DecompressionError::STATEFUL_CONTEXT;
         }
         if (m_contextTable[contextId].validLifetime < Simulator::Now())
         {
             NS_LOG_LOGIC("Expired Destination compression context (" << +contextId
                                                                      << "), dropping packet");
-            return true;
+            return DecompressionError::STATEFUL_CONTEXT;
         }
 
         uint8_t contextPrefix[16];
@@ -1925,16 +1930,10 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
                                                                      dst,
                                                                      ipHeader.GetSource(),
                                                                      ipHeader.GetDestination());
-            // GHC decompression is stateless (no context table), so unlike
-            // stateful IPHC the only way retval.second can be true is a
-            // malformed bytecode stream on the wire. Assert rather than
-            // silently discarding the packet: this points to either a bug
-            // in the local compressor, a protocol-violating peer, or a
-            // test input accident - all of which should surface loudly
-            // during simulation development.
-            NS_ASSERT_MSG(!retval.second,
-                          "GHC decompression failed on LOWPAN_GHC_EXT stream: "
-                          "malformed bytecode sequence.");
+            if (retval.second)
+            {
+                return DecompressionError::MALFORMED;
+            }
             ipHeader.SetNextHeader(retval.first);
         }
         else
@@ -1946,7 +1945,7 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
                                                                   ipHeader.GetDestination());
             if (retval.second)
             {
-                return true;
+                return DecompressionError::STATEFUL_CONTEXT;
             }
             else
             {
@@ -1965,7 +1964,7 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
 
     NS_LOG_DEBUG("Rebuilt packet:  " << *packet << " Size " << packet->GetSize());
 
-    return false;
+    return DecompressionError::NONE;
 }
 
 uint32_t
@@ -2499,7 +2498,7 @@ SixLowPanNetDevice::DecompressLowPanNhc(Ptr<Packet> packet,
         break;
     case SixLowPanNhcExtension::EID_IPv6_H:
         actualHeaderType = Ipv6Header::IPV6_IPV6;
-        if (DecompressLowPanIphc(packet, src, dst))
+        if (DecompressLowPanIphc(packet, src, dst) != DecompressionError::NONE)
         {
             m_dropTrace(DROP_SATETFUL_DECOMPRESSION_PROBLEM, packet, this, GetIfIndex());
             return std::pair<uint8_t, bool>(0, true);
@@ -2798,13 +2797,18 @@ SixLowPanNetDevice::ProcessFragment(Ptr<Packet>& packet,
         case SixLowPanDispatch::LOWPAN_HC1:
             DecompressLowPanHc1(p, src, dst);
             break;
-        case SixLowPanDispatch::LOWPAN_IPHC:
-            if (DecompressLowPanIphc(p, src, dst))
+        case SixLowPanDispatch::LOWPAN_IPHC: {
+            const auto error = DecompressLowPanIphc(p, src, dst);
+            if (error != DecompressionError::NONE)
             {
-                m_dropTrace(DROP_SATETFUL_DECOMPRESSION_PROBLEM, p, this, GetIfIndex());
+                const auto reason = error == DecompressionError::STATEFUL_CONTEXT
+                                        ? DROP_SATETFUL_DECOMPRESSION_PROBLEM
+                                        : DROP_MALFORMED_COMPRESSION;
+                m_dropTrace(reason, p, this, GetIfIndex());
                 return false;
             }
             break;
+        }
         default:
             NS_FATAL_ERROR("Unsupported 6LoWPAN encoding, exiting.");
             break;
