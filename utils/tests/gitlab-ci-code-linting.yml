@@ -51,7 +51,7 @@ check-style-clang-format-20:
       --enable-examples --enable-tests --enable-asserts
       --enable-mpi
   script:
-    - if (git remote | grep -qw upstream) ; then
+    - if git remote get-url upstream > /dev/null 2>&1 ; then
       git remote remove upstream ;
       fi
     - git remote add -t $CI_DEFAULT_BRANCH --no-tags -f upstream "${CI_MERGE_REQUEST_PROJECT_URL:-https://gitlab.com/nsnam/ns-3-dev.git}"
@@ -103,7 +103,7 @@ spell-check:
     - pip install codespell
   script:
     # Get commit messages
-    - if (git remote | grep -qw upstream) ; then
+    - if git remote get-url upstream > /dev/null 2>&1 ; then
       git remote remove upstream ;
       fi
     - git remote add -t $CI_DEFAULT_BRANCH --no-tags -f upstream "${CI_MERGE_REQUEST_PROJECT_URL:-https://gitlab.com/nsnam/ns-3-dev.git}"
@@ -148,3 +148,21 @@ markdown-lint:
     - npm install -g markdownlint-cli
   script:
     - markdownlint .
+
+# glsec CI/CD configuration linter (settings in .glsec.yml)
+# Runs fully offline on the checked-out CI files, so it works on merge
+# request pipelines from forks without any API token.
+compliance-glsec:
+  extends: .code-linting-base
+  image:
+    name: ghcr.io/glsec/glsec:1.17.0
+    # The image entrypoint is the glsec binary; GitLab runs job scripts through a shell
+    entrypoint: [""]
+  script:
+    - glsec --format codeclimate utils/tests/*.yml > glsec-codequality.json || true
+    - glsec utils/tests/*.yml
+  artifacts:
+    reports:
+      codequality: glsec-codequality.json
+    when: always
+    expire_in: 1 week

@@ -1,0 +1,8 @@
+# glsec configuration (https://github.com/glsec/glsec)
+# The CI configuration lives in utils/tests/*.yml; the glsec CI job passes those paths.
+exclude_paths:
+  # Only defines job templates and does not contain a pipeline on its own
+  - utils/tests/gitlab-ci-per-commit.yml
+rules:
+  # Weekly jobs intentionally track rolling distribution images
+  GL001: off
