@@ -366,6 +366,8 @@ class PssFfMacScheduler : public FfMacScheduler
 
     uint32_t m_nMux; ///< TD scheduler selects nMux UEs and transfer them to FD scheduler
 
+    bool m_bufferAware; ///< If true, limits allocation to RLC buffer size
+
     // HARQ attributes
     /**
      * m_harqOn when false inhibit the HARQ mechanisms (by default active)

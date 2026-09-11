@@ -39,7 +39,8 @@ NS_OBJECT_ENSURE_REGISTERED(TtaFfMacScheduler);
 TtaFfMacScheduler::TtaFfMacScheduler()
     : m_cschedSapUser(nullptr),
       m_schedSapUser(nullptr),
-      m_nextRntiUl(0)
+      m_nextRntiUl(0),
+      m_bufferAware(false)
 {
     m_amc = CreateObject<LteAmc>();
     m_cschedSapProvider = new MemberCschedSapProvider<TtaFfMacScheduler>(this);
@@ -88,7 +89,13 @@ TtaFfMacScheduler::GetTypeId()
                           "The MCS of the UL grant, must be [0..15] (default 0)",
                           UintegerValue(0),
                           MakeUintegerAccessor(&TtaFfMacScheduler::m_ulGrantMcs),
-                          MakeUintegerChecker<uint8_t>());
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute("BufferAware",
+                          "If true, the scheduler will stop assigning resources to a UE if its "
+                          "buffer is already satisfied.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&TtaFfMacScheduler::m_bufferAware),
+                          MakeBooleanChecker());
     return tid;
 }
 
@@ -841,6 +848,19 @@ TtaFfMacScheduler::DoSchedDlTriggerReq(
         return;
     }
 
+    std::map<uint16_t, uint32_t> rlcBufSize;
+    std::map<uint16_t, uint32_t> allocatedBytesPerUe;
+
+    if (m_bufferAware)
+    {
+        for (auto it = m_rlcBufferReq.begin(); it != m_rlcBufferReq.end(); it++)
+        {
+            rlcBufSize[(*it).first.m_rnti] += (*it).second.m_rlcTransmissionQueueSize +
+                                              (*it).second.m_rlcRetransmissionQueueSize +
+                                              (*it).second.m_rlcStatusPduSize;
+        }
+    }
+
     for (int i = 0; i < rbgNum; i++)
     {
         NS_LOG_INFO(this << " ALLOCATION for RBG " << i << " of " << rbgNum);
@@ -848,12 +868,13 @@ TtaFfMacScheduler::DoSchedDlTriggerReq(
         {
             auto itMax = m_flowStatsDl.end();
             double rcqiMax = 0.0;
+            uint32_t bytesForItMax = 0;
+
             for (auto it = m_flowStatsDl.begin(); it != m_flowStatsDl.end(); it++)
             {
                 auto itRnti = rntiAllocated.find(*it);
                 if (itRnti != rntiAllocated.end() || !HarqProcessAvailability(*it))
                 {
-                    // UE already allocated for HARQ or without HARQ process available -> drop it
                     if (itRnti != rntiAllocated.end())
                     {
                         NS_LOG_DEBUG(this << " RNTI discarded for HARQ tx" << (uint16_t)(*it));
@@ -863,6 +884,11 @@ TtaFfMacScheduler::DoSchedDlTriggerReq(
                         NS_LOG_DEBUG(this << " RNTI discarded for HARQ id" << (uint16_t)(*it));
                     }
                     continue;
+                }
+
+                if (m_bufferAware && allocatedBytesPerUe[*it] >= rlcBufSize[*it])
+                {
+                    continue; // Skip this UE, its buffer is already satisfied
                 }
 
                 auto itSbCqi = m_a30CqiRxed.find(*it);
@@ -911,6 +937,8 @@ TtaFfMacScheduler::DoSchedDlTriggerReq(
                         double achievableWbRate = 0.0;
                         uint8_t sbMcs = 0;
                         uint8_t wbMcs = 0;
+                        uint32_t bytesPerRbg = 0;
+
                         for (uint8_t k = 0; k < nLayer; k++)
                         {
                             if (sbCqi.size() > k)
@@ -922,8 +950,11 @@ TtaFfMacScheduler::DoSchedDlTriggerReq(
                                 // no info on this subband -> worst MCS
                                 sbMcs = 0;
                             }
-                            achievableSbRate += ((m_amc->GetDlTbSizeFromMcs(sbMcs, rbgSize) / 8) /
-                                                 0.001); // = TB size / TTI
+
+                            uint32_t bytes = m_amc->GetDlTbSizeFromMcs(sbMcs, rbgSize) / 8;
+                            achievableSbRate += ((bytes) / 0.001); // = TB size / TTI
+                            bytesPerRbg += bytes;                  // Track the bytes
+
                             wbMcs = m_amc->GetMcsFromCqi(wbCqi);
                             achievableWbRate += ((m_amc->GetDlTbSizeFromMcs(wbMcs, rbgSize) / 8) /
                                                  0.001); // = TB size / TTI
@@ -935,6 +966,7 @@ TtaFfMacScheduler::DoSchedDlTriggerReq(
                         {
                             rcqiMax = metric;
                             itMax = it;
+                            bytesForItMax = bytesPerRbg; // Store bytes for the winning UE
                         }
                     }
                 }
@@ -960,6 +992,12 @@ TtaFfMacScheduler::DoSchedDlTriggerReq(
                 {
                     (*itMap).second.push_back(i);
                 }
+
+                if (m_bufferAware)
+                {
+                    allocatedBytesPerUe[*itMax] += bytesForItMax;
+                }
+
                 NS_LOG_INFO(this << " UE assigned " << (*itMax));
             }
         }
@@ -1430,6 +1468,27 @@ TtaFfMacScheduler::DoSchedUlTriggerReq(
             {
                 // terminate allocation
                 rbPerFlow = 0;
+            }
+        }
+
+        if (m_bufferAware)
+        {
+            uint16_t mcs = 0;
+            auto itCqi = m_ueCqi.find((*it).first);
+            if (itCqi != m_ueCqi.end() && !(*itCqi).second.empty())
+            {
+                double minSinr = (*itCqi).second.at(0);
+                double s =
+                    log2(1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
+                mcs = m_amc->GetMcsFromCqi(m_amc->GetCqiFromSpectralEfficiency(s));
+            }
+
+            // Shrink rbPerFlow if it's too large for the buffer (keep minimum 3 to adhere to base
+            // rules)
+            while (rbPerFlow > 3 &&
+                   (uint32_t)(m_amc->GetUlTbSizeFromMcs(mcs, rbPerFlow - 1) / 8) >= (*it).second)
+            {
+                rbPerFlow--;
             }
         }
 

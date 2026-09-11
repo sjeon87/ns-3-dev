@@ -41,7 +41,8 @@ RrFfMacScheduler::RrFfMacScheduler()
     : m_cschedSapUser(nullptr),
       m_schedSapUser(nullptr),
       m_nextRntiDl(0),
-      m_nextRntiUl(0)
+      m_nextRntiUl(0),
+      m_bufferAware(false)
 {
     m_amc = CreateObject<LteAmc>();
     m_cschedSapProvider = new MemberCschedSapProvider<RrFfMacScheduler>(this);
@@ -90,7 +91,13 @@ RrFfMacScheduler::GetTypeId()
                           "The MCS of the UL grant, must be [0..15] (default 0)",
                           UintegerValue(0),
                           MakeUintegerAccessor(&RrFfMacScheduler::m_ulGrantMcs),
-                          MakeUintegerChecker<uint8_t>());
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute("BufferAware",
+                          "If true, the scheduler will stop assigning resources to a UE if its "
+                          "buffer is already satisfied.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RrFfMacScheduler::m_bufferAware),
+                          MakeBooleanChecker());
     return tid;
 }
 
@@ -983,7 +990,30 @@ RrFfMacScheduler::DoSchedDlTriggerReq(
                 newDci.m_mcs.push_back(m_amc->GetMcsFromCqi((*itCqi).second));
             }
         }
-        int tbSize = (m_amc->GetDlTbSizeFromMcs(newDci.m_mcs.at(0), rbgPerTb * rbgSize) / 8);
+
+        uint16_t rbgToAllocate = rbgPerTb;
+        if (m_bufferAware)
+        {
+            uint32_t bufSize = (*it).m_rlcTransmissionQueueSize +
+                               (*it).m_rlcRetransmissionQueueSize + (*it).m_rlcStatusPduSize;
+
+            while (rbgToAllocate > 1)
+            {
+                int smallerTbSize =
+                    (m_amc->GetDlTbSizeFromMcs(newDci.m_mcs.at(0), (rbgToAllocate - 1) * rbgSize) /
+                     8);
+                if ((uint32_t)smallerTbSize >= bufSize)
+                {
+                    rbgToAllocate--;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        int tbSize = (m_amc->GetDlTbSizeFromMcs(newDci.m_mcs.at(0), rbgToAllocate * rbgSize) / 8);
         uint16_t rlcPduSize = tbSize / lcNum;
         while ((*it).m_rnti == newEl.m_rnti)
         {
@@ -1034,8 +1064,13 @@ RrFfMacScheduler::DoSchedDlTriggerReq(
                          << (uint16_t)newDci.m_mcs.at(0) << " harqId "
                          << (uint16_t)newDci.m_harqProcess << " layers " << nLayer);
         NS_LOG_INFO("RBG:");
-        while (i < rbgPerTb)
+        while (i < rbgToAllocate)
         {
+            if (rbgAllocated >= rbgNum)
+            {
+                break; // Safeguard against over-allocation
+            }
+
             if (!rbgMap.at(rbgAllocated))
             {
                 rbgMask = rbgMask + (0x1 << rbgAllocated);
@@ -1272,13 +1307,15 @@ RrFfMacScheduler::DoSchedUlTriggerReq(
 
     // Divide the remaining resources equally among the active users starting from the subsequent
     // one served last scheduling trigger
-    uint16_t rbPerFlow = (m_cschedCellConfig.m_ulBandwidth) / (nflows + rntiAllocated.size());
-    if (rbPerFlow < 3)
+    uint16_t defaultRbPerFlow =
+        (m_cschedCellConfig.m_ulBandwidth) / (nflows + rntiAllocated.size());
+    if (defaultRbPerFlow < 3)
     {
-        rbPerFlow = 3; // at least 3 rbg per flow (till available resource) to ensure TxOpportunity
-                       // >= 7 bytes
+        defaultRbPerFlow =
+            3; // at least 3 rbg per flow (till available resource) to ensure TxOpportunity
     }
     uint16_t rbAllocated = 0;
+    uint16_t rbPerFlow = defaultRbPerFlow;
 
     if (m_nextRntiUl != 0)
     {
@@ -1323,6 +1360,25 @@ RrFfMacScheduler::DoSchedUlTriggerReq(
             {
                 // terminate allocation
                 rbPerFlow = 0;
+            }
+        }
+        if (m_bufferAware && rbPerFlow > 3)
+        {
+            uint16_t mcs = 0;
+            auto itCqi = m_ueCqi.find((*it).first);
+            if (itCqi != m_ueCqi.end() && !(*itCqi).second.empty())
+            {
+                double minSinr = (*itCqi).second.at(0);
+                double s =
+                    log2(1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
+                mcs = m_amc->GetMcsFromCqi(m_amc->GetCqiFromSpectralEfficiency(s));
+            }
+
+            // Shrink rbPerFlow if it's too large for the buffer (keep minimum 3)
+            while (rbPerFlow > 3 &&
+                   (uint32_t)(m_amc->GetUlTbSizeFromMcs(mcs, rbPerFlow - 1) / 8) >= (*it).second)
+            {
+                rbPerFlow--;
             }
         }
         NS_LOG_INFO(this << " try to allocate " << (*it).first);

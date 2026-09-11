@@ -332,6 +332,11 @@ class FdMtFfMacScheduler : public FfMacScheduler
 
     // HARQ attributes
     bool m_harqOn; ///< m_harqOn when false inhibit tte HARQ mechanisms (by default active)
+
+    /**
+     * m_bufferAware when true limits the RBG allocation to the UE's RLC buffer size
+     */
+    bool m_bufferAware;
     std::map<uint16_t, uint8_t> m_dlHarqCurrentProcessId; ///< DL HARQ current process ID
     // HARQ status
     //  0: process Id available

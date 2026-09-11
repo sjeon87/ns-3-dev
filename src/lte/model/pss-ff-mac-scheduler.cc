@@ -104,7 +104,13 @@ PssFfMacScheduler::GetTypeId()
                           "The MCS of the UL grant, must be [0..15] (default 0)",
                           UintegerValue(0),
                           MakeUintegerAccessor(&PssFfMacScheduler::m_ulGrantMcs),
-                          MakeUintegerChecker<uint8_t>());
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute("BufferAware",
+                          "If true, the scheduler will stop assigning resources to a UE if its "
+                          "buffer is already satisfied.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&PssFfMacScheduler::m_bufferAware),
+                          MakeBooleanChecker());
     return tid;
 }
 

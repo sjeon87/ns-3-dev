@@ -39,7 +39,8 @@ PfFfMacScheduler::PfFfMacScheduler()
     : m_cschedSapUser(nullptr),
       m_schedSapUser(nullptr),
       m_timeWindow(99.0),
-      m_nextRntiUl(0)
+      m_nextRntiUl(0),
+      m_bufferAware(false)
 {
     m_amc = CreateObject<LteAmc>();
     m_cschedSapProvider = new MemberCschedSapProvider<PfFfMacScheduler>(this);
@@ -91,7 +92,13 @@ PfFfMacScheduler::GetTypeId()
                           "The MCS of the UL grant, must be [0..15] (default 0)",
                           UintegerValue(0),
                           MakeUintegerAccessor(&PfFfMacScheduler::m_ulGrantMcs),
-                          MakeUintegerChecker<uint8_t>());
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute("BufferAware",
+                          "If true, the scheduler will stop assigning resources to a UE if its "
+                          "buffer is already satisfied.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&PfFfMacScheduler::m_bufferAware),
+                          MakeBooleanChecker());
     return tid;
 }
 
@@ -902,6 +909,19 @@ PfFfMacScheduler::DoSchedDlTriggerReq(
         return;
     }
 
+    std::map<uint16_t, uint32_t> rlcBufSize;
+    std::map<uint16_t, uint32_t> allocatedBytesPerUe;
+
+    if (m_bufferAware)
+    {
+        for (auto it = m_rlcBufferReq.begin(); it != m_rlcBufferReq.end(); it++)
+        {
+            rlcBufSize[(*it).first.m_rnti] += (*it).second.m_rlcTransmissionQueueSize +
+                                              (*it).second.m_rlcRetransmissionQueueSize +
+                                              (*it).second.m_rlcStatusPduSize;
+        }
+    }
+
     for (int i = 0; i < rbgNum; i++)
     {
         NS_LOG_INFO(this << " ALLOCATION for RBG " << i << " of " << rbgNum);
@@ -909,6 +929,8 @@ PfFfMacScheduler::DoSchedDlTriggerReq(
         {
             auto itMax = m_flowStatsDl.end();
             double rcqiMax = 0.0;
+            uint32_t bytesForItMax = 0; // Tracks bytes for the best UE
+
             for (auto it = m_flowStatsDl.begin(); it != m_flowStatsDl.end(); it++)
             {
                 if (!m_ffrSapProvider->IsDlRbgAvailableForUe(i, (*it).first))
@@ -932,6 +954,12 @@ PfFfMacScheduler::DoSchedDlTriggerReq(
                     }
                     continue;
                 }
+
+                if (m_bufferAware && allocatedBytesPerUe[(*it).first] >= rlcBufSize[(*it).first])
+                {
+                    continue;
+                }
+
                 auto itCqi = m_a30CqiRxed.find((*it).first);
                 auto itTxMode = m_uesTxMode.find((*it).first);
                 if (itTxMode == m_uesTxMode.end())
@@ -963,6 +991,8 @@ PfFfMacScheduler::DoSchedDlTriggerReq(
                         // this UE has data to transmit
                         double achievableRate = 0.0;
                         uint8_t mcs = 0;
+                        uint32_t bytesPerRbg = 0;
+
                         for (uint8_t k = 0; k < nLayer; k++)
                         {
                             if (sbCqi.size() > k)
@@ -974,8 +1004,11 @@ PfFfMacScheduler::DoSchedDlTriggerReq(
                                 // no info on this subband -> worst MCS
                                 mcs = 0;
                             }
-                            achievableRate += ((m_amc->GetDlTbSizeFromMcs(mcs, rbgSize) / 8) /
-                                               0.001); // = TB size / TTI
+
+                            // Calculate bytes and update trackers
+                            uint32_t bytes = m_amc->GetDlTbSizeFromMcs(mcs, rbgSize) / 8;
+                            achievableRate += (bytes / 0.001); // = TB size / TTI
+                            bytesPerRbg += bytes;
                         }
 
                         double rcqi = achievableRate / (*it).second.lastAveragedThroughput;
@@ -988,6 +1021,7 @@ PfFfMacScheduler::DoSchedDlTriggerReq(
                         {
                             rcqiMax = rcqi;
                             itMax = it;
+                            bytesForItMax = bytesPerRbg; // Store bytes for the winning UE
                         }
                     }
                 }
@@ -1013,6 +1047,12 @@ PfFfMacScheduler::DoSchedDlTriggerReq(
                 {
                     (*itMap).second.push_back(i);
                 }
+
+                if (m_bufferAware)
+                {
+                    allocatedBytesPerUe[(*itMax).first] += bytesForItMax;
+                }
+
                 NS_LOG_INFO(this << " UE assigned " << (*itMax).first);
             }
         }
