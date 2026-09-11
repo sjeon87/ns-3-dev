@@ -54,6 +54,17 @@ build_example(
 )
 
 build_example(
+  NAME bufferbloat-example
+  SOURCE_FILES bufferbloat-example.cc
+  LIBRARIES_TO_LINK
+    ${libapplications}
+    ${libinternet}
+    ${libinternet-apps}
+    ${libpoint-to-point}
+    ${libtraffic-control}
+)
+
+build_example(
   NAME cobalt-vs-codel
   SOURCE_FILES cobalt-vs-codel.cc
   LIBRARIES_TO_LINK

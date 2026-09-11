@@ -7,6 +7,8 @@
 #
 # See test.py for more information.
 cpp_examples = [
+    ("bufferbloat-example --queueDisc=PfifoFast --simulationTime=10", "True", "True"),
+    ("bufferbloat-example --queueDisc=FqCoDel --simulationTime=10", "True", "True"),
     ("traffic-control", "True", "True"),
     ("red-vs-nlred", "True", "True"),
     ("red-vs-fengadaptive", "True", "True"),
