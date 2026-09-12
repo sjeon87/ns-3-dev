@@ -16,4 +16,5 @@ Traffic Control Layer
    fq-cobalt
    pie
    fq-pie
+   dualpi2
    mq

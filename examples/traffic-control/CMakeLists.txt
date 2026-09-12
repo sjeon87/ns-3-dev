@@ -62,3 +62,13 @@ build_example(
     ${libapplications}
     ${libtraffic-control}
 )
+
+build_example(
+  NAME dualpi2-example
+  SOURCE_FILES dualpi2-example.cc
+  LIBRARIES_TO_LINK
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+    ${libtraffic-control}
+)
