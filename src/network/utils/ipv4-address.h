@@ -307,6 +307,12 @@ class Ipv4Mask
      */
     void Print(std::ostream& os) const;
     /**
+     * @brief Set the mask according to its length (the yy in x.x.x.x/yy notation).
+     *
+     * @param prefixLength the prefix length of mask
+     */
+    void SetPrefixLength(uint16_t prefixLength);
+    /**
      * @return the prefix length of mask (the yy in x.x.x.x/yy notation)
      */
     uint16_t GetPrefixLength() const;

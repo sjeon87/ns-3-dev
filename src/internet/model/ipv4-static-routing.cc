@@ -18,6 +18,7 @@
 #include "ipv4-route.h"
 #include "ipv4-routing-table-entry.h"
 
+#include "ns3/ipv4-network-address.h"
 #include "ns3/log.h"
 #include "ns3/names.h"
 #include "ns3/node.h"
@@ -97,21 +98,45 @@ Ipv4StaticRouting::AddHostRouteTo(Ipv4Address dest,
                                   uint32_t metric)
 {
     NS_LOG_FUNCTION(this << dest << " " << nextHop << " " << interface << " " << metric);
-    AddNetworkRouteTo(dest, Ipv4Mask::GetOnes(), nextHop, interface, metric);
+    AddRouteTo(Ipv4NetworkAddress(dest, Ipv4NetworkAddress::MAX_PREFIX_LENGTH),
+               interface,
+               nextHop,
+               metric);
 }
 
 void
 Ipv4StaticRouting::AddHostRouteTo(Ipv4Address dest, uint32_t interface, uint32_t metric)
 {
     NS_LOG_FUNCTION(this << dest << " " << interface << " " << metric);
-    AddNetworkRouteTo(dest, Ipv4Mask::GetOnes(), interface, metric);
+    AddRouteTo(Ipv4NetworkAddress(dest, Ipv4NetworkAddress::MAX_PREFIX_LENGTH),
+               interface,
+               Ipv4Address::GetAny(),
+               metric);
+}
+
+void
+Ipv4StaticRouting::AddRouteTo(Ipv4NetworkAddress destination,
+                              uint32_t interface,
+                              Ipv4Address nextHop,
+                              uint32_t metric)
+{
+    NS_LOG_FUNCTION(this << destination << " " << nextHop << " " << interface << " " << metric);
+
+    Ipv4RoutingTableEntry route =
+        Ipv4RoutingTableEntry::CreateRouteTo(destination, interface, nextHop);
+
+    if (!LookupRoute(route, metric))
+    {
+        auto routePtr = new Ipv4RoutingTableEntry(route);
+        m_networkRoutes.emplace_back(routePtr, metric);
+    }
 }
 
 void
 Ipv4StaticRouting::SetDefaultRoute(Ipv4Address nextHop, uint32_t interface, uint32_t metric)
 {
     NS_LOG_FUNCTION(this << nextHop << " " << interface << " " << metric);
-    AddNetworkRouteTo(Ipv4Address("0.0.0.0"), Ipv4Mask::GetZero(), nextHop, interface, metric);
+    AddRouteTo(Ipv4NetworkAddress(Ipv4Address::GetAny(), 0), interface, nextHop, metric);
 }
 
 void
@@ -138,9 +163,8 @@ Ipv4StaticRouting::SetDefaultMulticastRoute(uint32_t outputInterface)
 {
     NS_LOG_FUNCTION(this << outputInterface);
     auto route = new Ipv4RoutingTableEntry();
-    Ipv4Address network("224.0.0.0");
-    Ipv4Mask networkMask("240.0.0.0");
-    *route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(network, networkMask, outputInterface);
+    Ipv4NetworkAddress network(Ipv4Address("224.0.0.0"), 4);
+    *route = Ipv4RoutingTableEntry::CreateRouteTo(network, outputInterface);
     m_networkRoutes.emplace_back(route, 0);
 }
 
@@ -217,8 +241,7 @@ Ipv4StaticRouting::LookupRoute(const Ipv4RoutingTableEntry& route, uint32_t metr
     {
         Ipv4RoutingTableEntry* rtentry = j->first;
 
-        if (rtentry->GetDest() == route.GetDest() &&
-            rtentry->GetDestNetworkMask() == route.GetDestNetworkMask() &&
+        if (rtentry->GetDestination() == route.GetDestination() &&
             rtentry->GetGateway() == route.GetGateway() &&
             rtentry->GetInterface() == route.GetInterface() && j->second == metric)
         {
@@ -254,12 +277,13 @@ Ipv4StaticRouting::LookupStatic(Ipv4Address dest, Ptr<NetDevice> oif)
     {
         Ipv4RoutingTableEntry* j = i->first;
         uint32_t metric = i->second;
-        Ipv4Mask mask = (j)->GetDestNetworkMask();
-        uint16_t masklen = mask.GetPrefixLength();
-        Ipv4Address entry = (j)->GetDestNetwork();
-        NS_LOG_LOGIC("Searching for route to " << dest << ", checking against route to " << entry
-                                               << "/" << masklen);
-        if (mask.IsMatch(dest, entry))
+        uint16_t masklen = (j)->GetDestination().GetNetworkLength();
+        Ipv4NetworkAddress destination = (j)->GetDestination();
+
+        NS_LOG_LOGIC("Searching for route to " << dest << ", checking against route to "
+                                               << destination);
+
+        if (destination.Includes(dest))
         {
             NS_LOG_LOGIC("Found global network route " << j << ", mask length " << masklen
                                                        << ", metric " << metric);
@@ -294,7 +318,7 @@ Ipv4StaticRouting::LookupStatic(Ipv4Address dest, Ptr<NetDevice> oif)
             rtentry->SetSource(m_ipv4->SourceAddressSelection(interfaceIdx, route->GetDest()));
             rtentry->SetGateway(route->GetGateway());
             rtentry->SetOutputDevice(m_ipv4->GetNetDevice(interfaceIdx));
-            if (masklen == 32)
+            if (masklen == Ipv4NetworkAddress::MAX_PREFIX_LENGTH)
             {
                 break;
             }
@@ -378,8 +402,7 @@ Ipv4StaticRouting::GetDefaultRoute()
     {
         Ipv4RoutingTableEntry* j = i->first;
         uint32_t metric = i->second;
-        Ipv4Mask mask = (j)->GetDestNetworkMask();
-        uint16_t masklen = mask.GetPrefixLength();
+        uint16_t masklen = (j)->GetDestination().GetNetworkLength();
         if (masklen != 0)
         {
             continue;
@@ -599,15 +622,26 @@ Ipv4StaticRouting::NotifyInterfaceUp(uint32_t i)
     // Linux box)
     for (uint32_t j = 0; j < m_ipv4->GetNAddresses(i); j++)
     {
-        if (m_ipv4->GetAddress(i, j).GetLocal() != Ipv4Address() &&
-            m_ipv4->GetAddress(i, j).GetMask() != Ipv4Mask() &&
-            m_ipv4->GetAddress(i, j).GetMask() != Ipv4Mask::GetOnes())
+        auto addr = m_ipv4->GetAddress(i, j).GetNetworkAddress();
+
+        if (addr.GetNetworkLength() == Ipv4NetworkAddress::MAX_PREFIX_LENGTH)
         {
-            AddNetworkRouteTo(
-                m_ipv4->GetAddress(i, j).GetLocal().CombineMask(m_ipv4->GetAddress(i, j).GetMask()),
-                m_ipv4->GetAddress(i, j).GetMask(),
-                i);
+            // Do not add a routing entry if the address is a /32
+            NS_LOG_LOGIC("Not adding a route derived from a /32 address");
+            continue;
         }
+        else if (addr.GetNetworkLength() == 0 ||
+                 addr.GetNetwork().GetAddress() == Ipv4Address::GetAny())
+        {
+            // Reject a 0.0.0.0/? or a x.y.z.k/0
+            // Most likely the interface is up, but the address has not been assigned.
+            NS_LOG_LOGIC("Not adding a route to " << addr.GetNetwork()
+                                                  << ", address is likely misconfigured");
+            continue;
+        }
+
+        addr.MakeNetwork();
+        AddRouteTo(addr, i);
     }
 }
 
@@ -639,12 +673,14 @@ Ipv4StaticRouting::NotifyAddAddress(uint32_t interface, Ipv4InterfaceAddress add
         return;
     }
 
-    Ipv4Address networkAddress = address.GetLocal().CombineMask(address.GetMask());
-    Ipv4Mask networkMask = address.GetMask();
-    if (address.GetLocal() != Ipv4Address() && address.GetMask() != Ipv4Mask())
+    auto netAddr = address.GetNetworkAddress();
+    // invalid address, it has not been initialized correctly.
+    if (netAddr.GetAddress() == Ipv4Address() || netAddr.GetNetworkLength() == 0)
     {
-        AddNetworkRouteTo(networkAddress, networkMask, interface);
+        return;
     }
+    netAddr.MakeNetwork();
+    AddRouteTo(netAddr, interface);
 }
 
 void
@@ -655,15 +691,16 @@ Ipv4StaticRouting::NotifyRemoveAddress(uint32_t interface, Ipv4InterfaceAddress 
     {
         return;
     }
-    Ipv4Address networkAddress = address.GetLocal().CombineMask(address.GetMask());
-    Ipv4Mask networkMask = address.GetMask();
+
+    auto netAddr = address.GetNetworkAddress();
+    netAddr.MakeNetwork();
+
     // Remove all static routes that are going through this interface
     // which reference this network
     for (auto it = m_networkRoutes.begin(); it != m_networkRoutes.end();)
     {
         if (it->first->GetInterface() == interface && it->first->IsNetwork() &&
-            it->first->GetDestNetwork() == networkAddress &&
-            it->first->GetDestNetworkMask() == networkMask)
+            it->first->GetDestination() == netAddr)
         {
             delete it->first;
             it = m_networkRoutes.erase(it);

@@ -8,6 +8,7 @@
 
 #include "ns3/abort.h"
 #include "ns3/assert.h"
+#include "ns3/ipv4-network-address.h"
 #include "ns3/log.h"
 #include "ns3/simulation-singleton.h"
 
@@ -467,8 +468,10 @@ Ipv4AddressGeneratorImpl::IsNetworkAllocated(const Ipv4Address address, const Ip
 {
     NS_LOG_FUNCTION(this << address << mask);
 
+    const Ipv4NetworkAddress network(address, mask.GetPrefixLength());
+
     NS_ABORT_MSG_UNLESS(
-        address == address.CombineMask(mask),
+        network == network.GetNetwork(),
         "Ipv4AddressGeneratorImpl::IsNetworkAllocated(): network address and mask don't match "
             << address << " " << mask);
 
@@ -479,7 +482,7 @@ Ipv4AddressGeneratorImpl::IsNetworkAllocated(const Ipv4Address address, const Ip
         Ipv4Address low((*i).addrLow);
         Ipv4Address high((*i).addrHigh);
 
-        if (address == low.CombineMask(mask) || address == high.CombineMask(mask))
+        if (network.Includes(Ipv4NetworkAddress(low)) || network.Includes(Ipv4NetworkAddress(high)))
         {
             NS_LOG_LOGIC(
                 "Ipv4AddressGeneratorImpl::IsNetworkAllocated(): Network already allocated: "

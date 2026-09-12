@@ -9,6 +9,7 @@
 #define IPV4_ROUTING_TABLE_ENTRY_H
 
 #include "ns3/ipv4-address.h"
+#include "ns3/ipv4-network-address.h"
 
 #include <list>
 #include <ostream>
@@ -67,6 +68,10 @@ class Ipv4RoutingTableEntry
      */
     Ipv4Address GetDest() const;
     /**
+     * @return The IPv4 network address of the destination of this route
+     */
+    Ipv4NetworkAddress GetDestination() const;
+    /**
      * @return The IPv4 network number of the destination of this route
      */
     Ipv4Address GetDestNetwork() const;
@@ -93,6 +98,7 @@ class Ipv4RoutingTableEntry
      * @param interface Outgoing interface
      */
     static Ipv4RoutingTableEntry CreateHostRouteTo(Ipv4Address dest, uint32_t interface);
+
     /**
      * @return An Ipv4RoutingTableEntry object corresponding to the input parameters.
      * @param network Ipv4Address of the destination network
@@ -104,6 +110,7 @@ class Ipv4RoutingTableEntry
                                                       Ipv4Mask networkMask,
                                                       Ipv4Address nextHop,
                                                       uint32_t interface);
+
     /**
      * @return An Ipv4RoutingTableEntry object corresponding to the input parameters.
      * @param network Ipv4Address of the destination network
@@ -113,6 +120,20 @@ class Ipv4RoutingTableEntry
     static Ipv4RoutingTableEntry CreateNetworkRouteTo(Ipv4Address network,
                                                       Ipv4Mask networkMask,
                                                       uint32_t interface);
+
+    /**
+     * @return An Ipv4RoutingTableEntry object corresponding to the input parameters.
+     *
+     * Note: a null next hop means that the destination is reachable without a router.
+     *
+     * @param destination Ipv4NetworkAddress the destination
+     * @param interface Outgoing interface
+     * @param nextHop Ipv4Address of the next hop
+     */
+    static Ipv4RoutingTableEntry CreateRouteTo(Ipv4NetworkAddress destination,
+                                               uint32_t interface,
+                                               Ipv4Address nextHop = Ipv4Address::GetAny());
+
     /**
      * @return An Ipv4RoutingTableEntry object corresponding to the input
      * parameters.  This route is distinguished; it will match any
@@ -127,38 +148,36 @@ class Ipv4RoutingTableEntry
      * @brief Constructor.
      * @param network network address
      * @param mask network mask
-     * @param gateway the gateway
      * @param interface the interface index
+     * @param gateway the gateway
      */
     Ipv4RoutingTableEntry(Ipv4Address network,
                           Ipv4Mask mask,
-                          Ipv4Address gateway,
-                          uint32_t interface);
-    /**
-     * @brief Constructor.
-     * @param dest destination address
-     * @param mask network mask
-     * @param interface the interface index
-     */
-    Ipv4RoutingTableEntry(Ipv4Address dest, Ipv4Mask mask, uint32_t interface);
-    /**
-     * @brief Constructor.
-     * @param dest destination address
-     * @param gateway the gateway
-     * @param interface the interface index
-     */
-    Ipv4RoutingTableEntry(Ipv4Address dest, Ipv4Address gateway, uint32_t interface);
-    /**
-     * @brief Constructor.
-     * @param dest destination address
-     * @param interface the interface index
-     */
-    Ipv4RoutingTableEntry(Ipv4Address dest, uint32_t interface);
+                          uint32_t interface,
+                          Ipv4Address gateway = Ipv4Address::GetAny());
 
-    Ipv4Address m_dest;         //!< destination address
-    Ipv4Mask m_destNetworkMask; //!< destination network mask
-    Ipv4Address m_gateway;      //!< gateway
-    uint32_t m_interface;       //!< output interface
+    /**
+     * @brief Constructor.
+     * @param dest destination address
+     * @param interface the interface index
+     * @param gateway the gateway
+     */
+    Ipv4RoutingTableEntry(Ipv4Address dest,
+                          uint32_t interface,
+                          Ipv4Address gateway = Ipv4Address::GetAny());
+    /**
+     * @brief Constructor.
+     * @param destination destination address
+     * @param interface the interface index
+     * @param gateway the gateway
+     */
+    Ipv4RoutingTableEntry(Ipv4NetworkAddress destination,
+                          uint32_t interface,
+                          Ipv4Address gateway = Ipv4Address::GetAny());
+
+    Ipv4NetworkAddress m_destination; //!< destination
+    Ipv4Address m_gateway;            //!< gateway
+    uint32_t m_interface;             //!< output interface
 };
 
 /**
