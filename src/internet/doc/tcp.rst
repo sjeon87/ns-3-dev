@@ -887,6 +887,89 @@ implementation are:
 
 More information about LEDBAT is available in RFC 6817: https://tools.ietf.org/html/rfc6817
 
+rLEDBAT
+^^^^^^^
+
+Receiver-Driven Low Extra Delay Background Transport (rLEDBAT) is a
+receiver-side congestion control algorithm specified in RFC 9840. Unlike
+sender-side LEDBAT (RFC 6817), rLEDBAT moves delay measurement and window
+computation to the receiver. The receiver derives a receiver-computed window
+(RLWND) from one-way delay (OWD) measurements obtained via TCP Timestamps
+(RFC 7323) and advertises it in place of the standard receive window:
+
+.. math::
+
+   \text{RCV.WND} = \min(\text{RLWND},\ \text{fcwnd})
+
+where ``fcwnd`` is the flow-control window computed from available buffer
+space. This allows low-priority background transport without requiring
+sender modification.
+
+On receipt of each data segment, RLWND is updated as follows:
+
+.. math::
+
+   \text{queuingDelay} &= \text{currentDelay} - \text{baseDelay} \\
+   \text{offTarget}    &= \frac{\text{TARGET} - \text{queuingDelay}}{\text{TARGET}} \\
+   \text{RLWND}        &\ \mathrel{+}=\ \text{GAIN} \cdot \text{offTarget}
+                          \cdot \text{ackedBytes}
+                          \cdot \frac{\text{segmentSize}}{\text{RLWND}}
+
+``TARGET`` is the maximum queueing delay that rLEDBAT itself may introduce
+in the network, and ``GAIN`` determines the rate at which RLWND responds to
+changes in queueing delay. ``offTarget`` is a normalized value representing
+the difference between the measured current queueing delay and the
+predetermined TARGET delay. offTarget can be positive or negative;
+consequently, RLWND increases or decreases in proportion to offTarget.
+
+During slow start, while RLWND is below the slow-start threshold
+(``ssthresh``), RLWND grows by ``ackedBytes`` per segment rather than
+using the delay-based formula. On retransmission detection, ``ssthresh``
+is halved and a ``pendingReduction`` equal to ``RLWND - ssthresh`` is set.
+The window is then drained at most ``ackedBytes`` per arriving segment,
+satisfying the window-shrinking constraint of RFC 9293.
+
+Following RFC 6817 Section 4.3, the default values of the parameters are:
+
+* TargetDelay = 100 ms
+* BaseHistoryLen = 10
+* NoiseFilterLen = 4
+* Gain = 1.0
+* MinRlwnd = 2 segments
+* InitRlwnd = 1 segment
+
+To enable rLEDBAT on a specific receiver node (e.g. NodeList index 2),
+the following configuration can be used::
+
+  Config::Set("/NodeList/2/$ns3::TcpL4Protocol/SocketImplType",
+              TypeIdValue(TcpRLedbat::GetTypeId()));
+
+The sender-side socket type remains unchanged; only the receiver's accepted
+sockets use :cpp:class:`TcpRLedbat`.
+
+The following unit tests have been written to validate the implementation
+of rLEDBAT:
+
+* RLWND grows by one segment per ACK during slow start
+* RLWND increases correctly when queuing delay is below the target
+* RLWND decreases and ``pendingReduction`` is set when queuing delay exceeds the target
+* RLWND is clamped to ``MinRlwnd`` x ``segmentSize`` when a decrease would push it below the minimum
+* Retransmission detection triggers multiplicative decrease and ``ssthresh`` update
+* Gradual multi-step window draining works correctly when a single ACK cannot retire the full ``pendingReduction``
+
+In comparison to RFC 9840, the scope and limitations of the current rLEDBAT
+implementation are:
+
+* It assumes that the clocks on the sender side and receiver side are synchronised
+* The one-way delay is calculated at the receiver side by using the timestamps option in the TCP header
+* Only the MIN function is used for noise filtering
+
+More information about rLEDBAT is available in RFC 9840:
+https://tools.ietf.org/html/rfc9840
+
+More information about sender-side LEDBAT is available in RFC 6817:
+https://tools.ietf.org/html/rfc6817
+
 TCP-LP
 ^^^^^^
 
@@ -1420,6 +1503,7 @@ section below on :ref:`Writing-tcp-tests`.
 * **tcp-yeah-test:** Unit tests on the YeAH congestion control
 * **tcp-illinois-test:** Unit tests on the Illinois congestion control
 * **tcp-ledbat-test:** Unit tests on the LEDBAT congestion control
+* **tcp-r-ledbat-test:** Unit tests on the rLEDBAT congestion control
 * **tcp-lp-test:** Unit tests on the TCP-LP congestion control
 * **tcp-dctcp-test:** Unit tests on the DCTCP congestion control
 * **tcp-bbr-test:** Unit tests on the BBR congestion control

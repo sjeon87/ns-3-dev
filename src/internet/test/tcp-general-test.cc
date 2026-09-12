@@ -288,27 +288,9 @@ TcpGeneralTest::CreateSocket(Ptr<Node> node,
                              TypeId congControl,
                              TypeId recoveryAlgorithm)
 {
-    ObjectFactory rttFactory;
-    ObjectFactory congestionAlgorithmFactory;
-    ObjectFactory recoveryAlgorithmFactory;
-    ObjectFactory socketFactory;
-
-    rttFactory.SetTypeId(RttMeanDeviation::GetTypeId());
-    congestionAlgorithmFactory.SetTypeId(congControl);
-    recoveryAlgorithmFactory.SetTypeId(recoveryAlgorithm);
-    socketFactory.SetTypeId(socketType);
-
-    Ptr<RttEstimator> rtt = rttFactory.Create<RttEstimator>();
-    Ptr<TcpSocketMsgBase> socket = DynamicCast<TcpSocketMsgBase>(socketFactory.Create());
-    Ptr<TcpCongestionOps> algo = congestionAlgorithmFactory.Create<TcpCongestionOps>();
-    Ptr<TcpRecoveryOps> recovery = recoveryAlgorithmFactory.Create<TcpRecoveryOps>();
-
-    socket->SetNode(node);
-    socket->SetTcp(node->GetObject<TcpL4Protocol>());
-    socket->SetRtt(rtt);
-    socket->SetCongestionControlAlgorithm(algo);
-    socket->SetRecoveryAlgorithm(recovery);
-    return socket;
+    Ptr<TcpL4Protocol> tcp = node->GetObject<TcpL4Protocol>();
+    Ptr<Socket> socket = tcp->CreateSocket(socketType, congControl, recoveryAlgorithm);
+    return DynamicCast<TcpSocketMsgBase>(socket);
 }
 
 Ptr<ErrorModel>
