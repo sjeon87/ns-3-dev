@@ -15,7 +15,7 @@ Motivation
 
 As a community |ns3| values contributions from new as well as experienced developers,
 as discussed in our
-[Code of Conduct Policy](https://www.nsnam.org/about/governance/policies/).
+`Code of Conduct Policy <https://www.nsnam.org/about/governance/policies/>`_.
 We expect that participating in |ns3| will be a learning experience,
 especially for new contributors, and we strive to support that learning
 throughout our code review process.
@@ -28,12 +28,12 @@ what the tool has generated, haven't reviewed it fully themselves,
 and are not committed to learning themselves.
 
 As a project we recognize that code reviews are not free;
-they _do_ consume reviewers' and maintainers' time and effort.
+they consume reviewers' and maintainers' time and effort.
 Therefore we strive to find a balance between supporting new contributors
 and being judicious in committing reviewers time.
 
 We believe a key factor in achieving that balance is to recognize
-that participation in |ns3| is fundamentally a _human_ process.
+that participation in |ns3| is fundamentally a human process.
 Therefore we value interacting with human contributors to enhance submissions,
 enabling contributor learning, and maintaining high quality |ns3| code.
 When contributors rely excessively on AI tools they put |ns3| reviewers
@@ -50,9 +50,10 @@ Summary of the policy
 =====================
 
 The main principles of this policy are
+
 * Contributors can use whatever tools they would like
 * There must be a *human in the loop*
-* Contributors must read and review all generated contributions _before_ asking for review
+* Contributors must read and review all generated contributions before asking for review
 * Contributions containing substantial generated content should be labeled
 * Agents **must not** take action in our digital spaces without human approval
 * Issues labeled "good first issue" are strictly for humans; AI tools must not be used
@@ -61,7 +62,7 @@ Policy
 ******
 
 ns-3's policy is that contributors can use whatever tools they would like to
-craft their contributions, but there must be a *human in the loop*.
+craft their contributions, but there must be a human in the loop.
 *Contributors must read and review all LLM-generated code or text before they
 ask other project members to review it.* The contributor is always the author
 and is fully accountable for their contributions. Contributors should be
@@ -70,14 +71,14 @@ for a review is a good use of scarce maintainer time, and they should be *able
 to answer questions about their work* during review.
 
 We expect that new contributors will be less confident in their contributions,
-and our guidance to them is to *start with small contributions* that they can
+and our guidance to them is to start with small contributions that they can
 fully understand to build confidence. We aspire to be a welcoming community
 that helps new contributors grow their expertise, but learning involves taking
 small steps, getting feedback, and iterating. Passing maintainer feedback to an
 LLM doesn't help anyone grow, and does not sustain our community.
 
-Contributors are expected to *be transparent and label contributions that
-contain substantial amounts of tool-generated content*. Our policy on
+Contributors are expected to be transparent and label contributions that
+contain substantial amounts of tool-generated content. Our policy on
 labelling is intended to facilitate reviews, and not to track which parts of
 |ns3| are generated. Contributors should note tool usage in their merge request
 description, commit message, or wherever authorship is normally indicated for
@@ -108,7 +109,7 @@ in our digital spaces without human approval, such as the `GitHub @claude
 agent <https://github.com/claude/>`_. Automated review tools that may publish
 review comments without human review can be considered by the ns-3 project as a
 possible exception to this policy on a case-by-case basis. However, an opt-in
-review tool that *keeps a human in the loop* is acceptable under this policy.
+review tool that keeps a human in the loop is acceptable under this policy.
 As another example, using an LLM to generate documentation, which a contributor
 manually reviews for correctness, edits, and then posts as a MR, is an approved
 use of tools under this policy.
@@ -124,10 +125,10 @@ issues" is forbidden*.
 Extractive Contributions
 ************************
 
-The reason for our *human in the loop* contribution policy is that processing
+The reason for our human in the loop contribution policy is that processing
 patches, MRs, RFCs, and comments to |ns3| is not free -- it takes a lot of
 maintainer time and energy to review those contributions! Sending the
-unreviewed output of an LLM to open source project maintainers *extracts* work
+unreviewed output of an LLM to open source project maintainers extracts work
 from them in the form of design and code review, so we call this kind of
 contribution an *extractive contribution*.
 
@@ -155,8 +156,7 @@ they should paste the following response to request changes:
     This MR doesn't appear to comply with our [our policy on tool-generated
     content](https://www.nsnam.org/docs/contributing/html/general.html#ai-policy),
     and requires additional justification for why it is valuable enough to the
-    project for us to review it. Please see our developer policy on
-    AI-generated contributions: (URL TBD)
+    project for us to review it. Please review the policy on this point.
 
 The best ways to make a change less extractive and more valuable are to reduce
 its size or complexity or to increase its usefulness to the community. These
