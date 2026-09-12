@@ -9,6 +9,7 @@
 #ifndef NS3_LOG_H
 #define NS3_LOG_H
 
+#include "log-filter.h"
 #include "log-macros-disabled.h"
 #include "log-macros-enabled.h"
 #include "node-printer.h"

@@ -141,6 +141,7 @@ set(source_files
     model/synchronizer.cc
     model/environment-variable.cc
     model/log.cc
+    model/log-filter.cc
     model/breakpoint.cc
     model/type-id.cc
     model/attribute-construction-list.cc
@@ -239,6 +240,7 @@ set(header_files
     model/list-scheduler.h
     model/log-macros-disabled.h
     model/log-macros-enabled.h
+    model/log-filter.h
     model/log.h
     model/make-event.h
     model/map-scheduler.h
@@ -312,6 +314,7 @@ set(test_sources
     test/hash-test-suite.cc
     test/int64x64-test-suite.cc
     test/length-test-suite.cc
+    test/log-filter-test-suite.cc
     test/many-uniform-random-variables-one-get-value-call-test-suite.cc
     test/names-test-suite.cc
     test/nlohmann-json-test-suite.cc
