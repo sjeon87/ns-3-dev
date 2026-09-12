@@ -26,7 +26,6 @@
 #include "ns3/packet-socket-client.h"
 #include "ns3/packet-socket-helper.h"
 #include "ns3/packet-socket-server.h"
-#include "ns3/pointer.h"
 #include "ns3/qos-txop.h"
 #include "ns3/rng-seed-manager.h"
 #include "ns3/rr-multi-user-scheduler.h"
@@ -38,6 +37,7 @@
 #include "ns3/wifi-net-device.h"
 #include "ns3/wifi-ppdu.h"
 #include "ns3/wifi-psdu.h"
+#include "ns3/wifi-static-setup-helper.h"
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/yans-wifi-phy.h"
 
@@ -172,10 +172,17 @@ class IdealWifiManagerForGcrTest : public IdealWifiManager
      */
     static TypeId GetTypeId()
     {
-        static TypeId tid = TypeId("ns3::IdealWifiManagerForGcrTest")
-                                .SetParent<IdealWifiManager>()
-                                .SetGroupName("Wifi")
-                                .AddConstructor<IdealWifiManagerForGcrTest>();
+        static TypeId tid =
+            TypeId("ns3::IdealWifiManagerForGcrTest")
+                .SetParent<IdealWifiManager>()
+                .SetGroupName("Wifi")
+                .AddConstructor<IdealWifiManagerForGcrTest>()
+                .AddAttribute(
+                    "ForceHighestCombination",
+                    "Force highest combination of MCS/BW/NSS.",
+                    BooleanValue(false),
+                    MakeBooleanAccessor(&IdealWifiManagerForGcrTest::m_forceHighestCombination),
+                    MakeBooleanChecker());
         return tid;
     }
 
@@ -188,15 +195,27 @@ class IdealWifiManagerForGcrTest : public IdealWifiManager
                                uint8_t dataNss) override
     {
         m_blockAckSenders.insert(station->m_state->m_address);
-        IdealWifiManager::DoReportAmpduTxStatus(station,
-                                                nSuccessfulMpdus,
-                                                nFailedMpdus,
-                                                rxSnr,
-                                                dataSnr,
-                                                dataChannelWidth,
-                                                dataNss);
     }
 
+    WifiTxVector DoGetDataTxVector(WifiRemoteStation* st, MHz_u allowedWidth) override
+    {
+        auto txVector = IdealWifiManager::DoGetDataTxVector(st, allowedWidth);
+        if (const auto mc = txVector.GetModulationClass();
+            m_forceHighestCombination && (mc >= WIFI_MOD_CLASS_HT))
+        {
+            // the highest MCS is not always compatible with all combinations in case of VHT, hence
+            // pick the MCS just before it
+            txVector.SetMode(*std::next(st->m_state->m_operationalMcsSet.crbegin()));
+            txVector.SetChannelWidth(allowedWidth);
+            const auto maxMcs = (mc == WIFI_MOD_CLASS_HT)
+                                    ? ((txVector.GetMode().GetMcsValue() / 8) + 1)
+                                    : GetNumberOfSupportedStreams(st);
+            txVector.SetNss(maxMcs);
+        }
+        return txVector;
+    }
+
+    bool m_forceHighestCombination;           ///< flag to force highest combination of MCS/BW/NSS
     GcrManager::GcrMembers m_blockAckSenders; ///< hold set of BACK senders that have passed
                                               ///< success/failure infos to RSM
 };
@@ -802,7 +821,7 @@ GcrTestBase::DoSetup()
                         "Ssid",
                         SsidValue(Ssid("ns-3-ssid")),
                         "BeaconGeneration",
-                        BooleanValue(true),
+                        BooleanValue(false),
                         "RobustAVStreamingSupported",
                         BooleanValue(true));
     ConfigureGcrManager(apMacHelper);
@@ -889,6 +908,9 @@ GcrTestBase::DoSetup()
     mobility.Install(wifiStaNodes);
 
     auto apNetDevice = DynamicCast<WifiNetDevice>(apDevice.Get(0));
+    NS_ASSERT(apNetDevice);
+    WifiStaticSetupHelper::SetStaticAssociation(apNetDevice, staDevices);
+
     m_apWifiMac = DynamicCast<ApWifiMac>(apNetDevice->GetMac());
     m_apWifiMac->SetAttribute("BE_MaxAmsduSize", UintegerValue(0));
     m_apWifiMac->SetAttribute(
@@ -1015,9 +1037,7 @@ GcrTestBase::DoSetup()
         }
     }
 
-    PointerValue ptr;
-    m_apWifiMac->GetAttribute("BE_Txop", ptr);
-    ptr.Get<QosTxop>()->TraceConnectWithoutContext(
+    m_apWifiMac->GetQosTxop(AC_BE)->TraceConnectWithoutContext(
         "TxopTrace",
         MakeCallback(&GcrTestBase::NotifyTxopTerminated, this));
 
@@ -1054,6 +1074,17 @@ GcrUrTest::GcrUrTest(const std::string& testName,
       m_gcrUrParams{gcrUrParams},
       m_currentSeqNo{}
 {
+}
+
+void
+GcrUrTest::DoSetup()
+{
+    GcrTestBase::DoSetup();
+    auto rsm = DynamicCast<IdealWifiManagerForGcrTest>(m_apWifiMac->GetWifiRemoteStationManager());
+    NS_ASSERT(rsm);
+    // GCR-UR with static setup helper won't let a chance to Ideal RAA to get SNR feedback, hence
+    // consider interference-free channel and select highest MCS, largest BW and max NSS
+    rsm->SetAttribute("ForceHighestCombination", BooleanValue(true));
 }
 
 void
@@ -1517,7 +1548,6 @@ GcrBaTest::Transmit(std::string context,
                                  (Simulator::Now() > m_params.startGroupcast)) ||
                                 ((m_params.startGroupcast < m_params.startUnicast) &&
                                  (Simulator::Now() < m_params.startUnicast)));
-        NS_ASSERT(blockAckReq.IsGcr() == expectedGcr);
         NS_TEST_EXPECT_MSG_EQ(blockAckReq.IsGcr(),
                               expectedGcr,
                               "Expected GCR Block Ack request type sent to STA " << +staId);
@@ -1529,7 +1559,6 @@ GcrBaTest::Transmit(std::string context,
                   m_nTxGcrBar > m_params.mpdusToCorruptPerPsdu.size())
                      ? m_params.numGroupcastPackets
                      : m_firstTxSeq);
-            NS_ASSERT(blockAckReq.GetStartingSequence() == expectedStartingSequence);
             NS_TEST_EXPECT_MSG_EQ(
                 blockAckReq.GetStartingSequence(),
                 expectedStartingSequence,
@@ -1787,6 +1816,9 @@ GcrBaTest::CheckResults()
                                      : std::max(expectedNumAttempt, prevExpectedNumAttempt);
             prevExpectedNumAttempt = expectedNumAttempt;
             const std::size_t rxPsdus = (j - droppedPsdus);
+            NS_TEST_ASSERT_MSG_LT(rxPsdus,
+                                  m_rxGroupcastPerSta.at(i).size(),
+                                  "Less dropped PSDUs than expected");
             NS_TEST_EXPECT_MSG_EQ(+m_rxGroupcastPerSta.at(i).at(rxPsdus),
                                   +expectedNumAttempt,
                                   "Packet has not been forwarded up at the expected TX attempt");
@@ -2130,7 +2162,7 @@ WifiGcrTestSuite::WifiGcrTestSuite()
                                         {GCR_CAPABLE_STA, WIFI_STANDARD_80211be}},
                                .numGroupcastPackets = 300,
                                .packetSize = 200,
-                               .maxNumMpdusInPsdu = 1024, // capped to 64 because not lowest is HT
+                               .maxNumMpdusInPsdu = 1024, // capped to 64 because lowest is HT
                                .rtsThreshold = maxRtsCtsThreshold},
                               {}),
                 TestCase::Duration::QUICK);
@@ -2141,7 +2173,7 @@ WifiGcrTestSuite::WifiGcrTestSuite()
                                         {GCR_CAPABLE_STA, WIFI_STANDARD_80211be}},
                                .numGroupcastPackets = 300,
                                .packetSize = 200,
-                               .maxNumMpdusInPsdu = 1024, // capped to 256 because not lowest is HE
+                               .maxNumMpdusInPsdu = 1024, // capped to 256 because lowest is HE
                                .rtsThreshold = maxRtsCtsThreshold},
                               {}),
                 TestCase::Duration::QUICK);
@@ -2190,7 +2222,7 @@ WifiGcrTestSuite::WifiGcrTestSuite()
                                .maxNumMpdusInPsdu = 2,
                                .maxLifetime = MilliSeconds(1),
                                .rtsThreshold = maxRtsCtsThreshold,
-                               .duration = Seconds(4.0)},
+                               .duration = Seconds(3.0)},
                               {.expectedMinSkippedRetries = 2,
                                .packetsPauzeAggregation = 4,
                                .packetsResumeAggregation = 100}),
