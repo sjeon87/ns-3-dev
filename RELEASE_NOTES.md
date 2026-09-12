@@ -53,6 +53,7 @@ Python 3.10 to 3.14.
 - (lr-wpan) !2916 Pcap files are now correctly generated with and without FCS cases.
 - (mesh) #1341 Fixed dot11s regression that ignored the link rate, degrading the HWMP routing metric to hop count.
 - (sixlowpan) #1342 Fixed a deserialization error in the MESH header.
+- (dsdv) #1364 Fixed a crash in LookForQueuedPackets() when no route to the next hop was found; packets are now left queued instead of being sent on a route with no output device. Multi-interface DSDV still cannot route until per-interface address advertisement is implemented.
 - (dsr) !2762 Fixes header format to comply with RFC4728. Also other minor bug fixes and modernization.
 - (zigbee) In the NWK, broadcast initiator devices are now registered in the BTT to avoid receiving retransmissions.
 - (wifi) !2945 CTS-to-self frames are now transmitted over the bandwidth of the frame they protect, so that transmissions in the rest of the TXOP are no longer limited to 20 MHz.
