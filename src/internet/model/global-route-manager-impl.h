@@ -28,6 +28,7 @@
 #include <map>
 #include <queue>
 #include <stdint.h>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -762,7 +763,7 @@ class GlobalRouteManagerLSDB
     uint32_t GetNumExtLSAs() const;
 
   private:
-    typedef std::map<IpAddress, GlobalRoutingLSA<IpManager>*>
+    typedef std::unordered_map<IpAddress, GlobalRoutingLSA<IpManager>*>
         LSDBMap_t; //!< container of IPv4 addresses / Link State Advertisements
     typedef std::pair<IpAddress, GlobalRoutingLSA<IpManager>*>
         LSDBPair_t; //!< pair of IPv4 addresses / Link State Advertisements
@@ -770,6 +771,15 @@ class GlobalRouteManagerLSDB
     LSDBMap_t m_database; //!< database of IPv4 addresses / Link State Advertisements
     std::vector<GlobalRoutingLSA<IpManager>*>
         m_extdatabase; //!< database of External Link State Advertisements
+
+    /**
+     * Index of the Link State Advertisements by the link data of their
+     * transit network link records, so GetLSAByLinkData does not have to
+     * scan every link record in the database. Rebuilt lazily after
+     * insertions.
+     */
+    mutable std::unordered_map<IpAddress, GlobalRoutingLSA<IpManager>*> m_linkDataIndex;
+    mutable bool m_linkDataIndexValid{false}; //!< Whether m_linkDataIndex is up to date.
 };
 
 /**
@@ -910,6 +920,15 @@ class GlobalRouteManagerImpl
 
   private:
     SPFVertex<T>* m_spfroot; //!< the root node
+
+    /**
+     * Aggregates of the node owning the current SPF root, resolved once per
+     * SPFCalculate run; the route installation helpers run once per SPF
+     * vertex and would otherwise re-resolve them through GetObject for
+     * every vertex.
+     */
+    Ptr<GlobalRouter<IpManager>> m_rootRouter; //!< The root node's global router.
+    Ptr<Ip> m_rootIp;                          //!< The root node's Ip instance.
     GlobalRouteManagerLSDB<IpManager>*
         m_lsdb; //!< the Link State DataBase (LSDB) of the Global Route Manager
 
@@ -1069,8 +1088,13 @@ class GlobalRouteManagerImpl
      *
      * @param l the global routing link record
      * @param v the vertex
+     * @param localHint the local address of the paired point-to-point link
+     *                  record, used to find the outgoing interface when the
+     *                  stub is one of the root's own point-to-point networks
      */
-    void SPFIntraAddStub(GlobalRoutingLinkRecord<IpManager>* l, SPFVertex<T>* v);
+    void SPFIntraAddStub(GlobalRoutingLinkRecord<IpManager>* l,
+                         SPFVertex<T>* v,
+                         IpAddress localHint = IpAddress());
 
     /**
      * @brief Add an external route to the routing tables

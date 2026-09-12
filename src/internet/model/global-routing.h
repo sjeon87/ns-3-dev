@@ -92,7 +92,10 @@
 #include "ns3/random-variable-stream.h"
 
 #include <list>
+#include <map>
 #include <stdint.h>
+#include <unordered_map>
+#include <vector>
 
 namespace ns3
 {
@@ -520,6 +523,10 @@ class GlobalRouting : public std::enable_if_t<std::is_same_v<Ipv4RoutingProtocol
     /// Set to true if this interface should respond to interface events by globally recomputing
     /// routes
     bool m_respondToInterfaceEvents;
+    /// Set to true to also install a host route for every remote router
+    /// interface address (the historical behavior). By default only network
+    /// (prefix) routes are installed, as a real OSPF router would.
+    bool m_installHostRoutes;
     /// A uniform random number generator for randomly routing packets among ECMP
     Ptr<UniformRandomVariable> m_rand;
 
@@ -545,6 +552,15 @@ class GlobalRouting : public std::enable_if_t<std::is_same_v<Ipv4RoutingProtocol
     typedef typename std::list<IpRoutingTableEntry*>::iterator ASExternalRoutesI;
 
     /**
+     * @brief Whether host routes are installed in addition to network routes.
+     * @return True if host routes are installed.
+     */
+    bool InstallHostRoutes() const
+    {
+        return m_installHostRoutes;
+    }
+
+    /**
      * @brief Lookup in the forwarding table for destination.
      * @param dest destination address
      * @param oif output interface if any (put 0 otherwise)
@@ -555,6 +571,30 @@ class GlobalRouting : public std::enable_if_t<std::is_same_v<Ipv4RoutingProtocol
     HostRoutes m_hostRoutes;             //!< Routes to hosts
     NetworkRoutes m_networkRoutes;       //!< Routes to networks
     ASExternalRoutes m_ASexternalRoutes; //!< External routes imported
+
+    /**
+     * Host routes indexed by destination address, in insertion order.
+     *
+     * With global routing every node ends up with a host route per
+     * destination in the topology, so the per-packet lookup and the
+     * duplicate check on insertion must not scan the whole host route
+     * list. The values are the ECMP candidate sets used by LookupGlobal.
+     */
+    std::unordered_map<IpAddress, std::vector<IpRoutingTableEntry*>> m_hostRoutesByDest;
+
+    /**
+     * Network routes indexed by prefix length (longest first) and network,
+     * in insertion order.
+     *
+     * LookupGlobal performs a longest prefix match on every routed packet;
+     * the index reduces it to one hash probe per distinct prefix length
+     * instead of a scan of the whole network route list, and also serves
+     * the duplicate check on insertion.
+     */
+    std::map<uint16_t,
+             std::unordered_map<IpAddress, std::vector<IpRoutingTableEntry*>>,
+             std::greater<>>
+        m_networkRoutesByPrefix;
 
     Ptr<Ip> m_ip; //!< associated IPv4 instance
 };

@@ -15,7 +15,7 @@
 #include "ns3/ptr.h"
 #include "ns3/traced-callback.h"
 
-#include <list>
+#include <vector>
 
 namespace ns3
 {
@@ -24,6 +24,7 @@ class NetDevice;
 class Packet;
 class Node;
 class NdiscCache;
+class Icmpv6L4Protocol;
 class Ipv6InterfaceAddress;
 class Ipv6Address;
 class Ipv6Header;
@@ -216,7 +217,7 @@ class Ipv6Interface : public Object
      * @param index index
      * @return Ipv6InterfaceAddress address whose index is i
      */
-    Ipv6InterfaceAddress GetAddress(uint32_t index) const;
+    const Ipv6InterfaceAddress& GetAddress(uint32_t index) const;
 
     /**
      * @brief Get an address which is in the same network prefix as destination.
@@ -296,18 +297,18 @@ class Ipv6Interface : public Object
     /**
      * @brief Container for the Ipv6InterfaceAddresses.
      */
-    typedef std::list<std::pair<Ipv6InterfaceAddress, Ipv6Address>> Ipv6InterfaceAddressList;
+    typedef std::vector<std::pair<Ipv6InterfaceAddress, Ipv6Address>> Ipv6InterfaceAddressList;
 
     /**
      * @brief Container Iterator for the Ipv6InterfaceAddresses.
      */
-    typedef std::list<std::pair<Ipv6InterfaceAddress, Ipv6Address>>::iterator
+    typedef std::vector<std::pair<Ipv6InterfaceAddress, Ipv6Address>>::iterator
         Ipv6InterfaceAddressListI;
 
     /**
      * @brief Const Container Iterator for the Ipv6InterfaceAddresses.
      */
-    typedef std::list<std::pair<Ipv6InterfaceAddress, Ipv6Address>>::const_iterator
+    typedef std::vector<std::pair<Ipv6InterfaceAddress, Ipv6Address>>::const_iterator
         Ipv6InterfaceAddressListCI;
 
     /**
@@ -336,6 +337,17 @@ class Ipv6Interface : public Object
     bool m_forwarding;
 
     /**
+     * @brief Whether the associated NetDevice is a loopback device.
+     */
+    bool m_isLoopback{false};
+
+    /**
+     * @brief Tell the node's Ipv6L3Protocol that this interface's address
+     * set changed, so it can invalidate its local address index.
+     */
+    void NotifyAddressChanged();
+
+    /**
      * @brief The metric.
      */
     uint16_t m_metric;
@@ -359,6 +371,11 @@ class Ipv6Interface : public Object
      * @brief Neighbor cache.
      */
     Ptr<NdiscCache> m_ndCache;
+
+    /**
+     * @brief Cached ICMPv6 protocol of the node.
+     */
+    Ptr<Icmpv6L4Protocol> m_icmpv6;
 
     /**
      * @brief Current hop limit.

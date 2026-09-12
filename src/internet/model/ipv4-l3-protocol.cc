@@ -490,9 +490,11 @@ bool
 Ipv4L3Protocol::IsDestinationAddress(Ipv4Address address, uint32_t iif) const
 {
     // First check the incoming interface for a unicast address match
-    for (uint32_t i = 0; i < GetNAddresses(iif); i++)
+    Ptr<Ipv4Interface> iface = GetInterface(iif);
+    const uint32_t nAddresses = iface->GetNAddresses();
+    for (uint32_t i = 0; i < nAddresses; i++)
     {
-        Ipv4InterfaceAddress iaddr = GetAddress(iif, i);
+        const Ipv4InterfaceAddress& iaddr = iface->GetAddress(i);
         if (address == iaddr.GetLocal())
         {
             NS_LOG_LOGIC("For me (destination " << address << " match)");
@@ -807,7 +809,8 @@ Ipv4L3Protocol::Send(Ptr<Packet> packet,
             // ANY source matches any interface
             bool sendIt = source.IsAny();
             // check if some specific address on outInterface matches
-            for (uint32_t index = 0; !sendIt && index < outInterface->GetNAddresses(); index++)
+            const uint32_t nAddresses = outInterface->GetNAddresses();
+            for (uint32_t index = 0; !sendIt && index < nAddresses; index++)
             {
                 if (outInterface->GetAddress(index).GetLocal() == source)
                 {
@@ -835,9 +838,10 @@ Ipv4L3Protocol::Send(Ptr<Packet> packet,
     {
         Ptr<Ipv4Interface> outInterface = *ifaceIter;
         uint32_t ifaceIndex = GetInterfaceForDevice(outInterface->GetDevice());
-        for (uint32_t j = 0; j < GetNAddresses(ifaceIndex); j++)
+        const uint32_t nAddresses = GetNAddresses(ifaceIndex);
+        for (uint32_t j = 0; j < nAddresses; j++)
         {
-            Ipv4InterfaceAddress ifAddr = GetAddress(ifaceIndex, j);
+            const Ipv4InterfaceAddress& ifAddr = GetAddress(ifaceIndex, j);
             NS_LOG_LOGIC("Testing address " << ifAddr.GetLocal() << " with mask "
                                             << ifAddr.GetMask());
             if (destination.IsSubnetDirectedBroadcast(ifAddr.GetMask()) &&
@@ -1078,9 +1082,11 @@ Ipv4L3Protocol::LocalDeliver(Ptr<const Packet> packet, const Ipv4Header& ip, uin
     NS_LOG_FUNCTION(this << packet << &ip << iif);
     Ptr<Packet> p = packet->Copy(); // need to pass a non-const packet up
     Ipv4Header ipHeader = ip;
+    bool reassembled = false;
 
     if (!ipHeader.IsLastFragment() || ipHeader.GetFragmentOffset() != 0)
     {
+        reassembled = true;
         NS_LOG_LOGIC("Received a fragment, processing " << *p);
         bool isPacketComplete;
         isPacketComplete = ProcessFragment(p, ipHeader, iif);
@@ -1106,9 +1112,10 @@ Ipv4L3Protocol::LocalDeliver(Ptr<const Packet> packet, const Ipv4Header& ip, uin
     Ptr<IpL4Protocol> protocol = GetProtocol(ipHeader.GetProtocol(), iif);
     if (protocol)
     {
-        // we need to make a copy in the unlikely event we hit the
-        // RX_ENDPOINT_UNREACH codepath
-        Ptr<Packet> copy = p->Copy();
+        // The RX_ENDPOINT_UNREACH codepath needs the pre-Receive packet.
+        // For non-reassembled packets the original suffices, so the copy is
+        // only needed when the packet was rebuilt from fragments.
+        Ptr<const Packet> preReceived = reassembled ? Ptr<const Packet>(p->Copy()) : packet;
         IpL4Protocol::RxStatus status = protocol->Receive(p, ipHeader, GetInterface(iif));
         switch (status)
         {
@@ -1137,7 +1144,7 @@ Ipv4L3Protocol::LocalDeliver(Ptr<const Packet> packet, const Ipv4Header& ip, uin
             }
             if (!subnetDirected)
             {
-                GetIcmp()->SendDestUnreachPort(ipHeader, copy);
+                GetIcmp()->SendDestUnreachPort(ipHeader, preReceived);
             }
         }
     }
@@ -1561,6 +1568,7 @@ Ipv4L3Protocol::Fragments::Fragments()
     : m_moreFragment(false)
 {
     NS_LOG_FUNCTION(this);
+    m_frontier = m_fragments.end();
 }
 
 void
@@ -1585,7 +1593,28 @@ Ipv4L3Protocol::Fragments::AddFragment(Ptr<Packet> fragment,
         m_moreFragment = moreFragment;
     }
 
-    m_fragments.insert(it, std::pair<Ptr<Packet>, uint16_t>(fragment, fragmentOffset));
+    auto inserted =
+        m_fragments.insert(it, std::pair<Ptr<Packet>, uint16_t>(fragment, fragmentOffset));
+
+    // Update the contiguity frontier.  A fragment starting inside the
+    // contiguous region extends it (overlaps do exist), possibly absorbing
+    // previously received fragments beyond the old gap; each fragment is
+    // absorbed at most once, so the check is amortized constant time.
+    if (fragmentOffset <= m_contiguousEnd)
+    {
+        m_contiguousEnd = std::max(m_contiguousEnd, fragmentOffset + fragment->GetSize());
+        while (m_frontier != m_fragments.end() && m_frontier->second <= m_contiguousEnd)
+        {
+            m_contiguousEnd =
+                std::max(m_contiguousEnd, m_frontier->second + m_frontier->first->GetSize());
+            ++m_frontier;
+        }
+    }
+    else if (m_frontier == m_fragments.end() || fragmentOffset < m_frontier->second)
+    {
+        // New first gap-side fragment.
+        m_frontier = inserted;
+    }
 }
 
 bool
@@ -1593,29 +1622,7 @@ Ipv4L3Protocol::Fragments::IsEntire() const
 {
     NS_LOG_FUNCTION(this);
 
-    bool ret = !m_moreFragment && !m_fragments.empty();
-
-    if (ret)
-    {
-        uint16_t lastEndOffset = 0;
-
-        for (auto it = m_fragments.begin(); it != m_fragments.end(); it++)
-        {
-            // overlapping fragments do exist
-            NS_LOG_LOGIC("Checking overlaps " << lastEndOffset << " - " << it->second);
-
-            if (lastEndOffset < it->second)
-            {
-                ret = false;
-                break;
-            }
-            // fragments might overlap in strange ways
-            uint16_t fragmentEnd = it->first->GetSize() + it->second;
-            lastEndOffset = std::max(lastEndOffset, fragmentEnd);
-        }
-    }
-
-    return ret;
+    return !m_moreFragment && !m_fragments.empty() && m_frontier == m_fragments.end();
 }
 
 Ptr<Packet>

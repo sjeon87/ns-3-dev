@@ -14,7 +14,7 @@
 #include "ns3/ptr.h"
 #include "ns3/traced-callback.h"
 
-#include <list>
+#include <vector>
 
 namespace ns3
 {
@@ -23,6 +23,7 @@ class NetDevice;
 class Packet;
 class Node;
 class ArpCache;
+class ArpL3Protocol;
 class Ipv4InterfaceAddress;
 class Ipv4Address;
 class Ipv4Header;
@@ -161,7 +162,7 @@ class Ipv4Interface : public Object
      * @param index Index of Ipv4InterfaceAddress to return
      * @returns The Ipv4InterfaceAddress address whose index is i
      */
-    Ipv4InterfaceAddress GetAddress(uint32_t index) const;
+    const Ipv4InterfaceAddress& GetAddress(uint32_t index) const;
 
     /**
      * @returns the number of Ipv4InterfaceAddress stored on this interface
@@ -215,26 +216,28 @@ class Ipv4Interface : public Object
     /**
      * @brief Container for the Ipv4InterfaceAddresses.
      */
-    typedef std::list<Ipv4InterfaceAddress> Ipv4InterfaceAddressList;
+    typedef std::vector<Ipv4InterfaceAddress> Ipv4InterfaceAddressList;
 
     /**
      * @brief Container Iterator for the Ipv4InterfaceAddresses.
      */
-    typedef std::list<Ipv4InterfaceAddress>::const_iterator Ipv4InterfaceAddressListCI;
+    typedef std::vector<Ipv4InterfaceAddress>::const_iterator Ipv4InterfaceAddressListCI;
 
     /**
      * @brief Const Container Iterator for the Ipv4InterfaceAddresses.
      */
-    typedef std::list<Ipv4InterfaceAddress>::iterator Ipv4InterfaceAddressListI;
+    typedef std::vector<Ipv4InterfaceAddress>::iterator Ipv4InterfaceAddressListI;
 
     bool m_ifup;                        //!< The state of this interface
     bool m_forwarding;                  //!< Forwarding state.
+    bool m_isLoopback{false};           //!< Whether the device is a loopback device
     uint16_t m_metric;                  //!< Interface metric
     Ipv4InterfaceAddressList m_ifaddrs; //!< Address list
     Ptr<Node> m_node;                   //!< The associated node
     Ptr<NetDevice> m_device;            //!< The associated NetDevice
     Ptr<TrafficControlLayer> m_tc;      //!< The associated TrafficControlLayer
     Ptr<ArpCache> m_cache;              //!< ARP cache
+    Ptr<ArpL3Protocol> m_arp;           //!< Cached ARP protocol of the node
     Callback<void, Ptr<Ipv4Interface>, Ipv4InterfaceAddress>
         m_removeAddressCallback; //!< remove address callback
     Callback<void, Ptr<Ipv4Interface>, Ipv4InterfaceAddress>
