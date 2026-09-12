@@ -4177,7 +4177,14 @@ TcpSocketBase::PersistTimeout()
     NS_LOG_LOGIC("PersistTimeout expired at " << Simulator::Now().GetSeconds());
     m_persistTimeout =
         std::min(Seconds(60), Time(2 * m_persistTimeout)); // max persist timeout = 60s
-    Ptr<Packet> p = m_txBuffer->CopyFromSequence(1, m_tcb->m_nextTxSequence)->GetPacketCopy();
+    // When the tx buffer contains data at m_nextTxSequence, probe with 1 byte
+    // of that data (RFC 1122 section 4.2.2.17). When the buffer has been
+    // fully drained past m_nextTxSequence (CopyFromSequence returns nullptr),
+    // fall back to a zero-length segment: the peer will respond with an ACK
+    // carrying its current receive window, which is sufficient to detect the
+    // window reopening.
+    TcpTxItem* outItem = m_txBuffer->CopyFromSequence(1, m_tcb->m_nextTxSequence);
+    Ptr<Packet> p = (outItem != nullptr) ? outItem->GetPacketCopy() : Create<Packet>();
     m_txBuffer->ResetLastSegmentSent();
     TcpHeader tcpHeader;
     tcpHeader.SetSequenceNumber(m_tcb->m_nextTxSequence);
