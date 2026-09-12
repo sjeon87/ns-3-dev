@@ -18,6 +18,7 @@
 #include "ipv4-end-point.h"
 #include "ipv4-route.h"
 #include "ipv4-routing-protocol.h"
+#include "ipv4-source-route-tag.h"
 #include "ipv4.h"
 #include "ipv6-end-point.h"
 #include "ipv6-l3-protocol.h"
@@ -27,6 +28,7 @@
 #include "tcp-congestion-ops.h"
 #include "tcp-header.h"
 #include "tcp-l4-protocol.h"
+#include "tcp-option-rfc793.h"
 #include "tcp-option-sack-permitted.h"
 #include "tcp-option-sack.h"
 #include "tcp-option-ts.h"
@@ -39,6 +41,7 @@
 #include "ns3/abort.h"
 #include "ns3/data-rate.h"
 #include "ns3/double.h"
+#include "ns3/hash.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
 #include "ns3/log.h"
@@ -103,6 +106,16 @@ TcpSocketBase::GetTypeId()
             //                   EnumValue (CLOSED),
             //                   MakeEnumAccessor (&TcpSocketBase::m_state),
             //                   MakeEnumChecker (CLOSED, "Closed"))
+            .AddAttribute("KeepAliveInterval",
+                          "Time between the keep-alives which are not answered",
+                          TimeValue(Seconds(75)),
+                          MakeTimeAccessor(&TcpSocketBase::m_keepAliveInterval),
+                          MakeTimeChecker())
+            .AddAttribute("KeepAliveRetries",
+                          "Number of unanswered keep-alives before the connection is dropped",
+                          UintegerValue(9),
+                          MakeUintegerAccessor(&TcpSocketBase::m_keepAliveRetries),
+                          MakeUintegerChecker<uint32_t>())
             .AddAttribute("MaxSegLifetime",
                           "Maximum segment lifetime in seconds, use for TIME_WAIT state transition "
                           "to CLOSED state",
@@ -429,6 +442,11 @@ TcpSocketBase::TcpSocketBase(const TcpSocketBase& sock)
       m_retxThresh(sock.m_retxThresh),
       m_limitedTx(sock.m_limitedTx),
       m_isFirstPartialAck(sock.m_isFirstPartialAck),
+      m_activeOpen(sock.m_activeOpen),
+      m_sndUrgentPoint(sock.m_sndUrgentPoint),
+      m_rcvUrgentPoint(sock.m_rcvUrgentPoint),
+      m_advertisedMss(sock.m_advertisedMss),
+      m_segmentSizeAdjusted(sock.m_segmentSizeAdjusted),
       m_txTrace(sock.m_txTrace),
       m_rxTrace(sock.m_rxTrace),
       m_pacingTimer(Timer::CANCEL_ON_DESTROY),
@@ -750,6 +768,16 @@ TcpSocketBase::Connect(const Address& address)
     // If haven't do so, Bind() this socket first
     if (InetSocketAddress::IsMatchingType(address))
     {
+        // A local OPEN call for an invalid remote IP address must be rejected
+        // as an error (RFC 9293, Section 3.9.1.5, MUST-46)
+        Ipv4Address peer = InetSocketAddress::ConvertFrom(address).GetIpv4();
+        if (peer.IsBroadcast() || peer.IsMulticast())
+        {
+            NS_LOG_ERROR("Cannot connect to the broadcast or multicast address " << peer);
+            m_errno = ERROR_INVAL;
+            return -1;
+        }
+
         if (m_endPoint == nullptr)
         {
             if (Bind() == -1)
@@ -781,6 +809,15 @@ TcpSocketBase::Connect(const Address& address)
         {
             Ipv4Address v4Addr = v6Addr.GetIpv4MappedAddress();
             return Connect(InetSocketAddress(v4Addr, transport.GetPort()));
+        }
+
+        // A local OPEN call for an invalid remote IP address must be rejected
+        // as an error (RFC 9293, Section 3.9.1.5, MUST-46)
+        if (v6Addr.IsMulticast())
+        {
+            NS_LOG_ERROR("Cannot connect to the multicast address " << v6Addr);
+            m_errno = ERROR_INVAL;
+            return -1;
         }
 
         if (m_endPoint6 == nullptr)
@@ -912,8 +949,9 @@ TcpSocketBase::ShutdownRecv()
 int
 TcpSocketBase::Send(Ptr<Packet> p, uint32_t flags)
 {
-    NS_LOG_FUNCTION(this << p);
-    NS_ABORT_MSG_IF(flags, "use of flags is not supported in TcpSocketBase::Send()");
+    NS_LOG_FUNCTION(this << p << flags);
+    NS_ABORT_MSG_IF(flags & ~static_cast<uint32_t>(MSG_FLAG_OOB),
+                    "only MSG_FLAG_OOB is supported in TcpSocketBase::Send()");
     if (m_state == ESTABLISHED || m_state == SYN_SENT || m_state == CLOSE_WAIT)
     {
         // Store the packet into Tx buffer
@@ -921,6 +959,16 @@ TcpSocketBase::Send(Ptr<Packet> p, uint32_t flags)
         { // TxBuffer overflow, send failed
             m_errno = ERROR_MSGSIZE;
             return -1;
+        }
+
+        if (flags & MSG_FLAG_OOB)
+        {
+            // The urgent pointer points to the sequence number of the octet
+            // following the urgent data (RFC 9293, Section 3.8.5, MUST-62).
+            // Advancing it segment after segment supports a sequence of urgent
+            // data of any length (MUST-31)
+            m_sndUrgentPoint = m_txBuffer->TailSequence();
+            NS_LOG_INFO("Urgent data up to " << m_sndUrgentPoint);
         }
         if (m_shutdownSend)
         {
@@ -1156,6 +1204,19 @@ TcpSocketBase::DoConnect()
     if (m_state == CLOSED || m_state == LISTEN || m_state == SYN_SENT || m_state == LAST_ACK ||
         m_state == CLOSE_WAIT)
     { // send a SYN packet and change state into SYN_SENT
+        // The connection is being opened actively, which has to be told apart
+        // from a passive open (RFC 9293, Section 3.5, MUST-11)
+        m_activeOpen = true;
+
+        if (m_tcp->IsClockDrivenIsnEnabled())
+        {
+            // Pick the initial sequence number from the clock (RFC 9293,
+            // Section 3.4.1, MUST-8)
+            m_tcb->m_nextTxSequence = GenerateIsn();
+            m_tcb->m_highTxMark = m_tcb->m_nextTxSequence;
+            m_txBuffer->SetHeadSequence(m_tcb->m_nextTxSequence);
+        }
+
         // send a SYN packet with ECE and CWR flags set if sender is ECN capable
         if (m_tcb->m_useEcn == TcpSocketState::On)
         {
@@ -1432,6 +1493,26 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
 
     m_rxTrace(packet, tcpHeader, this);
 
+    Ipv4SourceRouteTag returnRoute;
+    if (packet->RemovePacketTag(returnRoute) && !m_appSourceRoute)
+    {
+        // The way back recorded by the datagram which arrived, which the
+        // segments of this connection follow unless the application asked for
+        // a route of its own (RFC 9293, Section 3.9.2.1, MUST-52 and MUST-53)
+        m_sourceRoute = returnRoute.GetRoute();
+        NS_LOG_LOGIC("Saved a return route of " << m_sourceRoute.size() << " hops");
+    }
+
+    // Something came in, so the connection is not idle
+    RearmKeepAlive();
+
+    if (tcpHeader.GetFlags() & TcpHeader::URG)
+    {
+        // The urgent field is processed for every incoming segment, even when
+        // the receive window is zero (RFC 9293, Section 3.8.4, MUST-66)
+        ProcessUrgentPointer(tcpHeader);
+    }
+
     if (tcpHeader.GetFlags() & TcpHeader::SYN)
     {
         /* The window field in a segment where the SYN bit is set (i.e., a <SYN>
@@ -1463,6 +1544,28 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
         // DeliveredData accounting.
         m_tcb->m_sackEnabled = m_sackEnabled;
 
+        if (m_advertisedMss == 0)
+        {
+            // Save the value to advertise in the MSS option before it is
+            // reduced below: the advertised MSS reflects our configured
+            // segment size regardless of the peer MSS and of the size of the
+            // TCP options (RFC 6691, Section 2)
+            m_advertisedMss = m_tcb->m_segmentSize;
+        }
+
+        if (tcpHeader.HasOption(TcpOption::MSS))
+        {
+            ProcessOptionMss(tcpHeader.GetOption(TcpOption::MSS));
+        }
+        else
+        {
+            // No MSS option received: assume the default maximum segment size
+            // of 536 bytes for IPv4 and 1220 bytes for IPv6 (RFC 9293,
+            // Section 3.7.1)
+            uint32_t defaultMss = (m_endPoint != nullptr) ? 536 : 1220;
+            m_tcb->m_segmentSize = std::min(m_tcb->m_segmentSize, defaultMss);
+        }
+
         // When receiving a <SYN> or <SYN-ACK> we should adapt TS to the other end
         if (tcpHeader.HasOption(TcpOption::TS) && m_timestampEnabled)
         {
@@ -1472,6 +1575,21 @@ TcpSocketBase::DoForwardUp(Ptr<Packet> packet, const Address& fromAddress, const
         else
         {
             m_timestampEnabled = false;
+        }
+
+        if (m_timestampEnabled && !m_segmentSizeAdjusted)
+        {
+            // The MSS counts only data octets, it does not count the TCP
+            // header or the TCP options, so the sender must reduce the TCP data
+            // length to account for the options it includes (RFC 6691, Section
+            // 2): decrease the segment size by the size of the timestamp
+            // option (and its padding), which is carried by every segment
+            const uint32_t tsOptionSize = 12;
+            NS_ASSERT(m_tcb->m_segmentSize > tsOptionSize);
+            m_tcb->m_segmentSize -= tsOptionSize;
+            m_segmentSizeAdjusted = true;
+            NS_LOG_INFO("Decreased the segment size to " << m_tcb->m_segmentSize
+                                                         << " to accommodate the TCP options");
         }
 
         // Initialize cWnd and ssThresh
@@ -2200,8 +2318,14 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
                 m_recoveryOps->DoRecovery(m_tcb, currentDelivered, false);
             }
 
-            // If the packet is already retransmitted do not retransmit it
-            if (!m_txBuffer->IsRetransmittedDataAcked(ackNumber + m_tcb->m_segmentSize))
+            // In NewReno-style recovery (RFC 6582, Section 3.2), a partial ACK
+            // implies that the first unacknowledged segment was also lost:
+            // retransmit it, unless it has been already retransmitted. With
+            // SACK, retransmissions are governed by the scoreboard and the
+            // pipe (RFC 6675, Section 5), and are performed by
+            // SendPendingData(), so no forced retransmission must occur here
+            if (!m_sackEnabled &&
+                !m_txBuffer->IsRetransmittedDataAcked(ackNumber + m_tcb->m_segmentSize))
             {
                 DoRetransmit(); // Assume the next seq is lost. Retransmit lost packet
                 m_tcb->m_cWndInfl = SafeSubtraction(m_tcb->m_cWndInfl, bytesAcked);
@@ -2211,26 +2335,18 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
             // previously lost and now successfully received. All others have
             // been processed when they come under the form of dupACKs
             m_congestionControl->PktsAcked(m_tcb, 1, m_tcb->m_srtt);
-            NewAck(ackNumber, m_isFirstPartialAck);
-
-            if (m_isFirstPartialAck)
-            {
-                NS_LOG_DEBUG("Partial ACK of " << ackNumber
-                                               << " and this is the first (RTO will be reset);"
-                                                  " cwnd set to "
-                                               << m_tcb->m_cWnd << " recover seq: " << m_recover
-                                               << " dupAck count: " << m_dupAckCount);
-                m_isFirstPartialAck = false;
-            }
-            else
-            {
-                NS_LOG_DEBUG("Partial ACK of "
-                             << ackNumber
-                             << " and this is NOT the first (RTO will not be reset)"
-                                " cwnd set to "
-                             << m_tcb->m_cWnd << " recover seq: " << m_recover
-                             << " dupAck count: " << m_dupAckCount);
-            }
+            // RFC 6298, Section 5.3: restart the retransmission timer on every
+            // ACK acknowledging new data. This is the Slow-but-Steady variant
+            // of NewReno (RFC 3782, Section 4), which departs from RFC 6582,
+            // Section 3.2, step 3, where only the first partial ACK of a fast
+            // recovery resets the timer: a recovery spanning several partial
+            // ACKs would otherwise be cut short by a spurious timeout
+            NewAck(ackNumber, true);
+            NS_LOG_DEBUG("Partial ACK of " << ackNumber
+                                           << " in fast recovery (RTO reset);"
+                                              " cwnd set to "
+                                           << m_tcb->m_cWnd << " recover seq: " << m_recover
+                                           << " dupAck count: " << m_dupAckCount);
         }
         // From RFC 6675 section 5.1
         // In addition, a new recovery phase (as described in Section 5) MUST NOT
@@ -2249,7 +2365,18 @@ TcpSocketBase::ProcessAck(const SequenceNumber32& ackNumber,
                     m_txBuffer->GetSacked() == 0,
                     "Some segment got dup-acked in CA_LOSS state: " << m_txBuffer->GetSacked());
             }
-            NewAck(ackNumber, true);
+            // Impatient variant of NewReno (RFC 3782, Section 4): after a
+            // retransmission timeout, reset the retransmit timer only upon the
+            // first partial acknowledgment, so that a long series of partial
+            // ACKs does not prevent the timer from firing again
+            NewAck(ackNumber, m_isFirstPartialAck);
+            if (m_isFirstPartialAck)
+            {
+                NS_LOG_DEBUG("Partial ACK of " << ackNumber
+                                               << " in CA_LOSS and this is the first"
+                                                  " (RTO will be reset)");
+                m_isFirstPartialAck = false;
+            }
         }
         else if (m_tcb->m_congState == TcpSocketState::CA_CWR)
         {
@@ -2527,7 +2654,14 @@ TcpSocketBase::ProcessSynRcvd(Ptr<Packet> packet,
     uint8_t tcpflags =
         tcpHeader.GetFlags() & ~(TcpHeader::PSH | TcpHeader::URG | TcpHeader::CWR | TcpHeader::ECE);
 
-    if (tcpflags == 0 ||
+    // A SYN+ACK acknowledging our SYN completes a simultaneous open (RFC 9293,
+    // Section 3.5, MUST-10): its SYN repeats the one which brought us here,
+    // and only an endpoint which opened the connection actively can receive it
+    bool simultaneousOpen =
+        m_activeOpen && tcpflags == (TcpHeader::SYN | TcpHeader::ACK) &&
+        m_tcb->m_nextTxSequence + SequenceNumber32(1) == tcpHeader.GetAckNumber();
+
+    if (tcpflags == 0 || simultaneousOpen ||
         (tcpflags == TcpHeader::ACK &&
          m_tcb->m_nextTxSequence + SequenceNumber32(1) == tcpHeader.GetAckNumber()))
     { // If it is bare data, accept it and move to ESTABLISHED state. This is
@@ -2554,7 +2688,17 @@ TcpSocketBase::ProcessSynRcvd(Ptr<Packet> packet,
         // Always respond to first data packet to speed up the connection.
         // Remove to get the behaviour of old NS-3 code.
         m_delAckCount = m_delAckMaxCount;
-        NotifyNewConnectionCreated(this, fromAddress);
+        if (m_activeOpen)
+        {
+            // The connection was opened actively, so the application which
+            // called Connect() is the one to notify (RFC 9293, Section 3.5,
+            // MUST-11)
+            NotifyConnectionSucceeded();
+        }
+        else
+        {
+            NotifyNewConnectionCreated(this, fromAddress);
+        }
         ReceivedAck(packet, tcpHeader);
         // Update the pacing rate based on RTT measurement so far
         UpdatePacingRate();
@@ -2956,6 +3100,11 @@ TcpSocketBase::SendEmptyPacket(uint8_t flags)
     bool isAck = flags == TcpHeader::ACK;
     if (hasSyn)
     {
+        // The MSS option should be sent in every SYN segment when the receive
+        // MSS differs from the default, and may be sent always (RFC 9293,
+        // Section 3.7.1, SHLD-5 and MAY-3): always send it
+        AddOptionMss(header);
+
         if (m_winScalingEnabled)
         { // The window scaling option is set only on SYN packets
             AddOptionWScale(header);
@@ -3102,7 +3251,13 @@ TcpSocketBase::SetupEndpoint()
         return -1;
     }
     NS_LOG_LOGIC("Route exists");
-    m_endPoint->SetLocalAddress(route->GetSource());
+    if (m_endPoint->GetLocalAddress() == Ipv4Address::GetAny())
+    {
+        // The application did not specify a local address, so the IP layer is
+        // asked to select one (RFC 9293, Section 3.9.1.1, MUST-44). Otherwise
+        // the address it bound is the one to use (MUST-43 and MUST-45)
+        m_endPoint->SetLocalAddress(route->GetSource());
+    }
     return 0;
 }
 
@@ -3132,7 +3287,11 @@ TcpSocketBase::SetupEndpoint6()
         return -1;
     }
     NS_LOG_LOGIC("Route exists");
-    m_endPoint6->SetLocalAddress(route->GetSource());
+    if (m_endPoint6->GetLocalAddress() == Ipv6Address::GetAny())
+    {
+        // See the IPv4 variant: RFC 9293, Section 3.9.1.1, MUST-43 to MUST-45
+        m_endPoint6->SetLocalAddress(route->GetSource());
+    }
     return 0;
 }
 
@@ -3170,10 +3329,20 @@ TcpSocketBase::CompleteFork(Ptr<Packet> p [[maybe_unused]],
     // Change the cloned socket from LISTEN state to SYN_RCVD
     NS_LOG_DEBUG("LISTEN -> SYN_RCVD");
     m_state = SYN_RCVD;
+    // Reached through a passive open (RFC 9293, Section 3.5, MUST-11)
+    m_activeOpen = false;
     m_synCount = m_synRetries;
     m_dataRetrCount = m_dataRetries;
     SetupCallback();
     // Set the sequence number and send SYN+ACK
+    if (m_tcp->IsClockDrivenIsnEnabled())
+    {
+        // The initial sequence number is picked from the clock (RFC 9293,
+        // Section 3.4.1, MUST-8)
+        m_tcb->m_nextTxSequence = GenerateIsn();
+        m_tcb->m_highTxMark = m_tcb->m_nextTxSequence;
+        m_txBuffer->SetHeadSequence(m_tcb->m_nextTxSequence);
+    }
     m_tcb->m_rxBuffer->SetNextRxSequence(h.GetSequenceNumber() + SequenceNumber32(1));
 
     /* Check if we received an ECN SYN packet. Change the ECN state of receiver to ECN_IDLE if
@@ -3210,6 +3379,16 @@ TcpSocketBase::ConnectionSucceeded()
 void
 TcpSocketBase::AddSocketTags(const Ptr<Packet>& p, bool isEct) const
 {
+    if (!m_sourceRoute.empty())
+    {
+        // The route the application asked for, or the one the opening segment
+        // of a passively opened connection recorded (RFC 9293, Section
+        // 3.9.2.1, MUST-51 and MUST-53)
+        Ipv4SourceRouteTag routeTag;
+        routeTag.SetRoute(m_sourceRoute);
+        p->AddPacketTag(routeTag);
+    }
+
     /*
      * Add tags for each socket option.
      * Note that currently the socket adds both IPv4 tag and IPv6 tag
@@ -3366,7 +3545,23 @@ TcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withA
             m_state = LAST_ACK;
         }
     }
+    if (m_txBuffer->SizeFromSequence(seq + SequenceNumber32(sz)) == 0)
+    {
+        // No data is queued after this segment, so it is the last of the
+        // buffer and says so (RFC 9293, Section 3.9.1.3, MUST-61)
+        flags |= TcpHeader::PSH;
+    }
+
     TcpHeader header;
+    if (m_sndUrgentPoint > seq)
+    {
+        // Urgent data reaches beyond the start of this segment: flag it and
+        // point past its last octet, saturating the 16 bit field for urgent
+        // data longer than that (RFC 9293, Section 3.8.5)
+        flags |= TcpHeader::URG;
+        uint32_t offset = (m_sndUrgentPoint - seq);
+        header.SetUrgentPointer(static_cast<uint16_t>(std::min(offset, 65535U)));
+    }
     header.SetFlags(flags);
     header.SetSequenceNumber(seq);
     header.SetAckNumber(m_tcb->m_rxBuffer->NextRxSequence());
@@ -3727,6 +3922,17 @@ TcpSocketBase::AdvertisedWindowSize(bool scale) const
                       "Unexpected sequence number values");
         w = static_cast<uint32_t>(m_tcb->m_rxBuffer->MaxRxSequence() -
                                   m_tcb->m_rxBuffer->NextRxSequence());
+    }
+
+    // Silly window syndrome avoidance in the receiver (RFC 9293, Section
+    // 3.8.6.2.2, MUST-39): the window is not reopened for the few bytes the
+    // application read, but kept where it is until the space it frees is
+    // worth a segment or half of the buffer
+    uint32_t threshold = std::min(m_tcb->m_segmentSize, m_tcb->m_rxBuffer->MaxBufferSize() / 2);
+    if (w > m_advWnd && w < threshold)
+    {
+        NS_LOG_LOGIC("Not growing the advertised window to " << w << ", below " << threshold);
+        w = m_advWnd;
     }
 
     // Ugly, but we are not modifying the state, that variable
@@ -4177,8 +4383,15 @@ TcpSocketBase::PersistTimeout()
     NS_LOG_LOGIC("PersistTimeout expired at " << Simulator::Now().GetSeconds());
     m_persistTimeout =
         std::min(Seconds(60), Time(2 * m_persistTimeout)); // max persist timeout = 60s
-    Ptr<Packet> p = m_txBuffer->CopyFromSequence(1, m_tcb->m_nextTxSequence)->GetPacketCopy();
-    m_txBuffer->ResetLastSegmentSent();
+    // The probe carries one octet of data when there is one to send, and none
+    // when the buffer holds nothing beyond what was sent (RFC 9293, Section
+    // 3.8.6.1, which leaves the octet optional)
+    TcpTxItem* outItem = m_txBuffer->CopyFromSequence(1, m_tcb->m_nextTxSequence);
+    Ptr<Packet> p = outItem ? outItem->GetPacketCopy() : Create<Packet>();
+    if (outItem)
+    {
+        m_txBuffer->ResetLastSegmentSent();
+    }
     TcpHeader tcpHeader;
     tcpHeader.SetSequenceNumber(m_tcb->m_nextTxSequence);
     tcpHeader.SetAckNumber(m_tcb->m_rxBuffer->NextRxSequence());
@@ -4453,6 +4666,148 @@ TcpSocketBase::SetPersistTimeout(Time timeout)
     m_persistTimeout = timeout;
 }
 
+void
+TcpSocketBase::SetIpv4SourceRoute(const std::vector<Ipv4Address>& route)
+{
+    NS_LOG_FUNCTION(this << route.size());
+    m_sourceRoute = route;
+    // A route the application specified takes precedence over the one a
+    // received datagram recorded (RFC 9293, Section 3.9.2.1, MUST-52)
+    m_appSourceRoute = !route.empty();
+}
+
+std::vector<Ipv4Address>
+TcpSocketBase::GetIpv4SourceRoute() const
+{
+    return m_sourceRoute;
+}
+
+void
+TcpSocketBase::SetKeepAlive(bool keepAlive)
+{
+    NS_LOG_FUNCTION(this << keepAlive);
+    m_keepAlive = keepAlive;
+    if (m_keepAlive)
+    {
+        RearmKeepAlive();
+    }
+    else
+    {
+        m_keepAliveEvent.Cancel();
+    }
+}
+
+bool
+TcpSocketBase::GetKeepAlive() const
+{
+    return m_keepAlive;
+}
+
+void
+TcpSocketBase::SetKeepAliveTime(Time keepAliveTime)
+{
+    NS_LOG_FUNCTION(this << keepAliveTime);
+    m_keepAliveTime = keepAliveTime;
+}
+
+Time
+TcpSocketBase::GetKeepAliveTime() const
+{
+    return m_keepAliveTime;
+}
+
+void
+TcpSocketBase::RearmKeepAlive()
+{
+    if (!m_keepAlive)
+    {
+        return;
+    }
+
+    m_keepAliveEvent.Cancel();
+    m_keepAlivesSent = 0;
+    m_keepAliveEvent = Simulator::Schedule(m_keepAliveTime, &TcpSocketBase::KeepAliveTimeout, this);
+}
+
+void
+TcpSocketBase::KeepAliveTimeout()
+{
+    NS_LOG_FUNCTION(this);
+
+    if (m_state != ESTABLISHED)
+    {
+        return;
+    }
+
+    if (BytesInFlight() > 0 || m_txBuffer->SizeFromSequence(m_tcb->m_nextTxSequence) > 0)
+    {
+        // Sent data is still outstanding, so the connection is not idle and
+        // the retransmissions are the ones probing the peer (RFC 9293,
+        // Section 3.8.4, MUST-26)
+        m_keepAliveEvent =
+            Simulator::Schedule(m_keepAliveTime, &TcpSocketBase::KeepAliveTimeout, this);
+        return;
+    }
+
+    if (m_keepAlivesSent > m_keepAliveRetries)
+    {
+        // Only a whole series of unanswered keep-alives tells a dead
+        // connection apart from a lost probe (RFC 9293, Section 3.8.4,
+        // MUST-29)
+        NS_LOG_LOGIC("The peer answered none of the " << m_keepAlivesSent << " keep-alives");
+        m_errno = ERROR_NOTCONN;
+        SendRST();
+        CloseAndNotify();
+        return;
+    }
+
+    SendKeepAlive();
+    m_keepAlivesSent++;
+    m_keepAliveEvent =
+        Simulator::Schedule(m_keepAliveInterval, &TcpSocketBase::KeepAliveTimeout, this);
+}
+
+void
+TcpSocketBase::SendKeepAlive()
+{
+    NS_LOG_FUNCTION(this);
+
+    // The probe holds no data and takes the sequence number of the last octet
+    // the peer acknowledged, so that the answer to it is an acknowledgment
+    // (RFC 9293, Section 3.8.4)
+    Ptr<Packet> p = Create<Packet>();
+    TcpHeader header;
+    header.SetFlags(TcpHeader::ACK);
+    header.SetSequenceNumber(m_tcb->m_nextTxSequence - 1);
+    header.SetAckNumber(m_tcb->m_rxBuffer->NextRxSequence());
+    header.SetWindowSize(AdvertisedWindowSize());
+
+    if (m_endPoint != nullptr)
+    {
+        header.SetSourcePort(m_endPoint->GetLocalPort());
+        header.SetDestinationPort(m_endPoint->GetPeerPort());
+        AddOptions(header);
+        m_txTrace(p, header, this);
+        m_tcp->SendPacket(p,
+                          header,
+                          m_endPoint->GetLocalAddress(),
+                          m_endPoint->GetPeerAddress(),
+                          m_boundnetdevice);
+    }
+    else
+    {
+        header.SetSourcePort(m_endPoint6->GetLocalPort());
+        header.SetDestinationPort(m_endPoint6->GetPeerPort());
+        AddOptions(header);
+        m_txTrace(p, header, this);
+        m_tcp->SendPacket(p,
+                          header,
+                          m_endPoint6->GetLocalAddress(),
+                          m_endPoint6->GetPeerAddress(),
+                          m_boundnetdevice);
+    }
+}
+
 Time
 TcpSocketBase::GetPersistTimeout() const
 {
@@ -4571,6 +4926,128 @@ TcpSocketBase::ProcessOptionSack(const Ptr<const TcpOption> option)
     }
 
     return m_txBuffer->Update(s->GetSackList(), MakeCallback(&TcpRateOps::SkbDelivered, m_rateOps));
+}
+
+void
+TcpSocketBase::ProcessUrgentPointer(const TcpHeader& header)
+{
+    NS_LOG_FUNCTION(this << header);
+
+    // The urgent pointer is an offset from the sequence number of the segment
+    // and points past the last octet of urgent data (RFC 9293, Section 3.8.5)
+    SequenceNumber32 urgentPoint = header.GetSequenceNumber() + header.GetUrgentPointer();
+
+    if (urgentPoint <= m_rcvUrgentPoint)
+    {
+        // The urgent pointer cannot recede, but a receiver has to be robust
+        // against invalid values (RFC 9293, Section 3.8.5)
+        NS_LOG_LOGIC("Ignoring an urgent pointer which does not advance");
+        return;
+    }
+
+    bool wasPending = HasPendingUrgentData();
+    m_rcvUrgentPoint = urgentPoint;
+    NS_LOG_INFO("Urgent data pending up to " << m_rcvUrgentPoint);
+
+    if (!wasPending || HasPendingUrgentData())
+    {
+        // The application is informed whenever an urgent pointer is received
+        // and there was previously no pending urgent data, or whenever the
+        // urgent pointer advances (RFC 9293, Section 3.8.5, MUST-32)
+        NotifyUrgentData();
+    }
+}
+
+bool
+TcpSocketBase::HasPendingUrgentData() const
+{
+    return m_rcvUrgentPoint > m_tcb->m_rxBuffer->NextRxSequence();
+}
+
+uint32_t
+TcpSocketBase::GetUrgentDataSize() const
+{
+    NS_LOG_FUNCTION(this);
+    if (!HasPendingUrgentData())
+    {
+        return 0;
+    }
+    return m_rcvUrgentPoint - m_tcb->m_rxBuffer->NextRxSequence();
+}
+
+SequenceNumber32
+TcpSocketBase::GenerateIsn() const
+{
+    NS_LOG_FUNCTION(this);
+
+    // M, the 4 microsecond clock (RFC 9293, Section 3.4.1)
+    uint32_t clock = static_cast<uint32_t>(Simulator::Now().GetMicroSeconds() / 4);
+
+    // F(), a hash of the connection identifying parameters and of a secret key
+    std::ostringstream identity;
+    if (m_endPoint != nullptr)
+    {
+        identity << m_endPoint->GetLocalAddress() << ":" << m_endPoint->GetLocalPort() << ":"
+                 << m_endPoint->GetPeerAddress() << ":" << m_endPoint->GetPeerPort();
+    }
+    else if (m_endPoint6 != nullptr)
+    {
+        identity << m_endPoint6->GetLocalAddress() << ":" << m_endPoint6->GetLocalPort() << ":"
+                 << m_endPoint6->GetPeerAddress() << ":" << m_endPoint6->GetPeerPort();
+    }
+    identity << ":" << m_tcp->GetIsnSecret();
+
+    SequenceNumber32 isn(clock + Hash32(identity.str()));
+    NS_LOG_LOGIC("Generated the initial sequence number " << isn);
+    return isn;
+}
+
+void
+TcpSocketBase::ProcessOptionMss(const Ptr<const TcpOption> option)
+{
+    NS_LOG_FUNCTION(this << option);
+
+    Ptr<const TcpOptionMSS> mss = DynamicCast<const TcpOptionMSS>(option);
+    NS_LOG_INFO(m_node->GetId() << " Received a MSS option with value " << mss->GetMSS());
+    m_tcb->m_segmentSize = std::min(m_tcb->m_segmentSize, static_cast<uint32_t>(mss->GetMSS()));
+}
+
+void
+TcpSocketBase::AddOptionMss(TcpHeader& header)
+{
+    NS_LOG_FUNCTION(this << header);
+    Ptr<TcpOptionMSS> option = CreateObject<TcpOptionMSS>();
+    if (m_advertisedMss == 0)
+    {
+        m_advertisedMss = m_tcb->m_segmentSize;
+    }
+
+    // The advertised MSS is bounded by the largest message which can be
+    // received and reassembled, which the MTU of the interface the connection
+    // runs over gives (RFC 9293, Section 3.7.1, MUST-67)
+    uint32_t mss = std::min(m_advertisedMss, 65535U);
+    if (m_endPoint)
+    {
+        Ptr<Ipv4> ipv4 = m_node->GetObject<Ipv4>();
+        int32_t interface = ipv4->GetInterfaceForAddress(m_endPoint->GetLocalAddress());
+        if (interface >= 0)
+        {
+            mss = std::min(mss, static_cast<uint32_t>(ipv4->GetMtu(interface)) - 40);
+        }
+    }
+    else if (m_endPoint6)
+    {
+        Ptr<Ipv6> ipv6 = m_node->GetObject<Ipv6>();
+        int32_t interface = ipv6->GetInterfaceForAddress(m_endPoint6->GetLocalAddress());
+        if (interface >= 0)
+        {
+            mss = std::min(mss, static_cast<uint32_t>(ipv6->GetMtu(interface)) - 60);
+        }
+    }
+
+    option->SetMSS(static_cast<uint16_t>(mss));
+    header.AppendOption(option);
+    NS_LOG_INFO(m_node->GetId() << " Add option MSS " << option->GetMSS());
 }
 
 void

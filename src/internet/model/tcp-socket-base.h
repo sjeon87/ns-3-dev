@@ -209,6 +209,24 @@ class TcpSocketBase : public TcpSocket
 {
   public:
     /**
+     * @brief Specify the source route the segments of this connection follow
+     *
+     * @RFC{9293}, Section 3.9.2.1 requires an application to be able to
+     * specify a source route when it opens a connection (MUST-51), and that
+     * route to take precedence over the one a received datagram recorded
+     * (MUST-52).
+     *
+     * @param route The addresses of the route, the last of which is the peer.
+     */
+    void SetIpv4SourceRoute(const std::vector<Ipv4Address>& route);
+
+    /**
+     * @brief Get the source route the segments of this connection follow
+     * @return The addresses of the route.
+     */
+    std::vector<Ipv4Address> GetIpv4SourceRoute() const;
+
+    /**
      * Get the type ID.
      * @brief Get the type ID.
      * @return the object TypeId
@@ -643,7 +661,8 @@ class TcpSocketBase : public TcpSocket
     int Close() override;        // Close by app: Kill socket upon tx buffer emptied
     int ShutdownSend() override; // Assert the m_shutdownSend flag to prevent send to network
     int ShutdownRecv() override; // Assert the m_shutdownRecv flag to prevent forward to app
-    int Send(Ptr<Packet> p, uint32_t flags) override; // Call by app to send data to network
+    int Send(Ptr<Packet> p, uint32_t flags) override;
+    uint32_t GetUrgentDataSize() const override;
     int SendTo(Ptr<Packet> p,
                uint32_t flags,
                const Address& toAddress) override; // Same as Send(), toAddress is insignificant
@@ -731,6 +750,10 @@ class TcpSocketBase : public TcpSocket
     void SetTcpNoDelay(bool noDelay) override;
     bool GetTcpNoDelay() const override;
     void SetPersistTimeout(Time timeout) override;
+    void SetKeepAlive(bool keepAlive) override;
+    bool GetKeepAlive() const override;
+    void SetKeepAliveTime(Time keepAliveTime) override;
+    Time GetKeepAliveTime() const override;
     Time GetPersistTimeout() const override;
     bool SetAllowBroadcast(bool allowBroadcast) override;
     bool GetAllowBroadcast() const override;
@@ -1217,6 +1240,30 @@ class TcpSocketBase : public TcpSocket
     virtual void PersistTimeout();
 
     /**
+     * @brief Send a keep-alive, or drop a connection whose peer stopped answering
+     *
+     * @RFC{9293}, Section 3.8.4 allows an implementation to probe an idle
+     * connection, as long as the probes are sent when no data is outstanding
+     * and nothing was received for the configured interval (MUST-26), and as
+     * long as a single probe left unanswered is not read as a dead connection
+     * (MUST-29).
+     */
+    void KeepAliveTimeout();
+
+    /**
+     * @brief Send a keep-alive probe
+     */
+    void SendKeepAlive();
+
+    /**
+     * @brief Restart the keep-alive timer of an active connection
+     *
+     * Called whenever a segment is sent or received, since the keep-alives
+     * only probe the connections which are idle.
+     */
+    void RearmKeepAlive();
+
+    /**
      * @brief Retransmit the first segment marked as lost, without considering
      * available window nor pacing.
      */
@@ -1277,6 +1324,57 @@ class TcpSocketBase : public TcpSocket
      * @returns the Window Scale factor
      */
     uint8_t CalculateWScale() const;
+
+    /**
+     * @brief Process the urgent pointer of an incoming segment
+     *
+     * @param header The TCP header of the segment.
+     */
+    void ProcessUrgentPointer(const TcpHeader& header);
+
+    /**
+     * @brief Check whether urgent data is pending on the connection
+     *
+     * @return true if urgent data has not been consumed yet.
+     */
+    bool HasPendingUrgentData() const;
+
+    /**
+     * @brief Generate the initial sequence number of a connection
+     *
+     * @RFC{9293}, Section 3.4.1 (MUST-8) requires the initial sequence number
+     * to be selected from a clock, so that the sequence numbers of distinct
+     * connections between the same pair of sockets do not overlap. The value
+     * is the 4 microsecond clock plus a hash of the connection identifying
+     * parameters and of a per-node secret, which is not computable from the
+     * outside (MUST-9).
+     *
+     * @return The initial sequence number.
+     */
+    SequenceNumber32 GenerateIsn() const;
+
+    /**
+     * @brief Read the MSS option from other side
+     *
+     * The maximum segment size to use when sending data is set to the
+     * minimum of our configured segment size and the value advertised by
+     * the peer (@RFC{9293}, Section 3.7.1).
+     *
+     * @param option MSS option from the header
+     */
+    void ProcessOptionMss(const Ptr<const TcpOption> option);
+
+    /**
+     * @brief Add the MSS option to the header
+     *
+     * The MSS option should be sent in every SYN segment when the receive
+     * MSS differs from the default, and may be sent always (@RFC{9293},
+     * Section 3.7.1, SHLD-5 and MAY-3): it is always sent. The advertised
+     * value is our current segment size.
+     *
+     * @param header TcpHeader where the method should add the option
+     */
+    void AddOptionMss(TcpHeader& header);
 
     /**
      * @brief Read the SACK PERMITTED option
@@ -1408,6 +1506,14 @@ class TcpSocketBase : public TcpSocket
     Time m_clockGranularity{Seconds(0.001)}; //!< Clock Granularity used in RTO calcs
     Time m_delAckTimeout;                    //!< Time to delay an ACK
     Time m_persistTimeout;                   //!< Time between sending 1-byte probes
+    std::vector<Ipv4Address> m_sourceRoute;  //!< Source route of the segments sent
+    bool m_appSourceRoute{false};            //!< The application specified the source route
+    bool m_keepAlive{false};                 //!< Keep-alives are enabled
+    Time m_keepAliveTime;                    //!< Idle time before the first keep-alive
+    Time m_keepAliveInterval;                //!< Time between unanswered keep-alives
+    uint32_t m_keepAliveRetries{0};          //!< Unanswered keep-alives before dropping
+    uint32_t m_keepAlivesSent{0};            //!< Keep-alives sent without an answer
+    EventId m_keepAliveEvent{};              //!< Keep-alive event
     Time m_cnTimeout;                        //!< Timeout for connection retry
 
     // History of RTT
@@ -1481,7 +1587,13 @@ class TcpSocketBase : public TcpSocket
     Ptr<TcpRateOps> m_rateOps;                 //!< Rate operations
 
     // Guesses over the other connection end
-    bool m_isFirstPartialAck{true}; //!< First partial ACK during RECOVERY
+    bool m_isFirstPartialAck{true}; //!< First partial ACK after a retransmission timeout (CA_LOSS)
+    bool m_activeOpen{false};       //!< True if SYN_RCVD was reached through an active open
+    SequenceNumber32 m_sndUrgentPoint{0}; //!< Sequence number past the urgent data being sent
+    SequenceNumber32 m_rcvUrgentPoint{0}; //!< Sequence number past the urgent data received
+    uint32_t m_advertisedMss{0}; //!< MSS advertised in the MSS option (our configured segment size)
+    bool m_segmentSizeAdjusted{
+        false}; //!< True if the segment size has been reduced by the size of the TCP options
 
     // The following three traces pass a packet with a TCP header
     TracedCallback<Ptr<const Packet>,

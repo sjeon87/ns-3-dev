@@ -34,6 +34,7 @@ set(source_files
     model/ipv4-end-point.cc
     model/global-routing.cc
     model/ipv4-header.cc
+    model/ipv4-source-route-tag.cc
     model/ipv4-interface-address.cc
     model/ipv4-interface.cc
     model/ipv4-l3-protocol.cc
@@ -165,6 +166,7 @@ set(header_files
     model/ipv4-end-point.h
     model/global-routing.h
     model/ipv4-header.h
+    model/ipv4-source-route-tag.h
     model/ipv4-interface-address.h
     model/ipv4-interface.h
     model/ipv4-l3-protocol.h
@@ -278,6 +280,7 @@ if((applications
   set(ns3tcp_sources
       test/ns3tcp-cubic-test-suite.cc
       test/ns3tcp-loss-test-suite.cc
+      test/ns3tcp-recovery-fsm-test-suite.cc
       test/ns3tcp-socket-writer.cc
       test/ns3tcp-state-test-suite.cc
   )
@@ -362,12 +365,17 @@ set(test_sources
     test/tcp-ledbat-test.cc
     test/tcp-linux-reno-test.cc
     test/tcp-loss-test.cc
+    test/tcp-lost-retransmission-test.cc
     test/tcp-lp-test.cc
     test/tcp-option-test.cc
+    test/tcp-mss-test.cc
     test/tcp-pacing-test.cc
+    test/tcp-partial-ack-rto-test.cc
+    test/tcp-sack-partial-ack-test.cc
     test/tcp-pkts-acked-test.cc
     test/tcp-prr-recovery-test.cc
     test/tcp-rate-ops-test.cc
+    test/tcp-rfc9293-test.cc
     test/tcp-rto-test.cc
     test/tcp-rtt-estimation.cc
     test/tcp-rx-buffer-test.cc
