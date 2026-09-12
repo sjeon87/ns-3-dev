@@ -21,11 +21,16 @@
 #include "ns3/dsdv-helper.h"
 #include "ns3/dsdv-packet.h"
 #include "ns3/dsdv-rtable.h"
+#include "ns3/inet-socket-address.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv4-address-helper.h"
+#include "ns3/ipv4-interface-container.h"
 #include "ns3/mesh-helper.h"
 #include "ns3/mobility-helper.h"
+#include "ns3/on-off-helper.h"
+#include "ns3/packet-sink-helper.h"
 #include "ns3/pcap-file.h"
+#include "ns3/point-to-point-helper.h"
 #include "ns3/simulator.h"
 #include "ns3/string.h"
 #include "ns3/test.h"
@@ -201,6 +206,73 @@ DsdvTableTestCase::DoRun()
 /**
  * @ingroup dsdv-test
  *
+ * @brief Regression test for the unchecked LookupRoute() in LookForQueuedPackets().
+ *
+ * On a three-node chain the interior node advertises only its first interface
+ * address, so the sender never obtains a route whose next hop is advertised.
+ * LookForQueuedPackets() used to ignore the failed LookupRoute() and forward on
+ * a route with a null output device, crashing in Ipv4L3Protocol::SendRealOut.
+ * The simulation must now complete without crashing; packets are instead left
+ * queued (multi-interface DSDV routing is a separate, known limitation).
+ */
+class DsdvLookForQueuedPacketsTestCase : public TestCase
+{
+  public:
+    DsdvLookForQueuedPacketsTestCase();
+    ~DsdvLookForQueuedPacketsTestCase() override = default;
+    void DoRun() override;
+};
+
+DsdvLookForQueuedPacketsTestCase::DsdvLookForQueuedPacketsTestCase()
+    : TestCase("Check that LookForQueuedPackets handles a failed route lookup")
+{
+}
+
+void
+DsdvLookForQueuedPacketsTestCase::DoRun()
+{
+    NodeContainer nodes;
+    nodes.Create(3);
+
+    PointToPointHelper pointToPoint;
+    pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
+    pointToPoint.SetChannelAttribute("Delay", StringValue("2ms"));
+
+    DsdvHelper dsdv;
+    InternetStackHelper internet;
+    internet.SetRoutingHelper(dsdv);
+    internet.Install(nodes);
+
+    Ipv4AddressHelper address;
+    NetDeviceContainer devices01 = pointToPoint.Install(nodes.Get(0), nodes.Get(1));
+    address.SetBase("10.1.1.0", "255.255.255.252");
+    Ipv4InterfaceContainer interfaces01 = address.Assign(devices01);
+    NetDeviceContainer devices12 = pointToPoint.Install(nodes.Get(1), nodes.Get(2));
+    address.SetBase("10.1.2.0", "255.255.255.252");
+    address.Assign(devices12);
+
+    uint16_t port = 9;
+    PacketSinkHelper sink("ns3::UdpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), port));
+    ApplicationContainer sinkApp = sink.Install(nodes.Get(0));
+    sinkApp.Start(Seconds(0.0));
+    sinkApp.Stop(Seconds(3.0));
+
+    OnOffHelper onoff("ns3::UdpSocketFactory", InetSocketAddress(interfaces01.GetAddress(0), port));
+    onoff.SetAttribute("DataRate", StringValue("2kbps"));
+    onoff.SetAttribute("PacketSize", UintegerValue(64));
+    ApplicationContainer srcApp = onoff.Install(nodes.Get(2));
+    srcApp.Start(Seconds(1.0));
+    srcApp.Stop(Seconds(3.0));
+
+    // Reaching the end of Run() without crashing is the regression check.
+    Simulator::Stop(Seconds(3.0));
+    Simulator::Run();
+    Simulator::Destroy();
+}
+
+/**
+ * @ingroup dsdv-test
+ *
  * @brief DSDV test suite
  */
 class DsdvTestSuite : public TestSuite
@@ -211,5 +283,6 @@ class DsdvTestSuite : public TestSuite
     {
         AddTestCase(new DsdvHeaderTestCase(), TestCase::Duration::QUICK);
         AddTestCase(new DsdvTableTestCase(), TestCase::Duration::QUICK);
+        AddTestCase(new DsdvLookForQueuedPacketsTestCase(), TestCase::Duration::QUICK);
     }
 } g_dsdvTestSuite; ///< the test suite
