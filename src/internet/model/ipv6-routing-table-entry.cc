@@ -10,6 +10,9 @@
 
 #include "ns3/assert.h"
 
+#include <iomanip>
+#include <sstream>
+
 namespace ns3
 {
 
@@ -201,6 +204,13 @@ Ipv6RoutingTableEntry::CreateNetworkRouteTo(Ipv6Address network,
     return Ipv6RoutingTableEntry(network, networkPrefix, nextHop, interface, prefixToUse);
 }
 
+std::ostream&
+operator<<(std::ostream& os, const Ipv6RoutingTableEntry& route)
+{
+    route.Print(os, std::to_string(route.GetInterface()));
+    return os;
+}
+
 Ipv6RoutingTableEntry
 Ipv6RoutingTableEntry::CreateNetworkRouteTo(Ipv6Address network,
                                             Ipv6Prefix networkPrefix,
@@ -219,48 +229,6 @@ uint32_t
 Ipv6RoutingTableEntry::GetInterface() const
 {
     return m_interface;
-}
-
-std::ostream&
-operator<<(std::ostream& os, const Ipv6RoutingTableEntry& route)
-{
-    if (route.IsDefault())
-    {
-        NS_ASSERT(route.IsGateway());
-        os << "default out: " << route.GetInterface() << ", next hop: " << route.GetGateway();
-    }
-    else if (route.IsHost())
-    {
-        if (route.IsGateway())
-        {
-            os << "host: " << route.GetDest() << ", out: " << route.GetInterface()
-               << ", next hop: " << route.GetGateway();
-        }
-        else
-        {
-            os << "host: " << route.GetDest() << ", out: " << route.GetInterface();
-        }
-    }
-    else if (route.IsNetwork())
-    {
-        if (route.IsGateway())
-        {
-            os << "network: " << route.GetDestNetwork() << "/ "
-               << int(route.GetDestNetworkPrefix().GetPrefixLength())
-               << ", out: " << route.GetInterface() << ", next hop: " << route.GetGateway();
-        }
-        else
-        {
-            os << "network: " << route.GetDestNetwork() << "/"
-               << int(route.GetDestNetworkPrefix().GetPrefixLength())
-               << ", out: " << route.GetInterface();
-        }
-    }
-    else
-    {
-        NS_ASSERT(false);
-    }
-    return os;
 }
 
 bool
@@ -366,4 +334,44 @@ operator<<(std::ostream& os, const Ipv6MulticastRoutingTableEntry& route)
     return os;
 }
 
+std::string
+Ipv6RoutingTableEntry::GetPrintColumnHeader(const std::string& additionalColumns)
+{
+    std::string header =
+        "Destination                    Next Hop                   Flag Met Ref Use Iface";
+    return additionalColumns.empty() ? header : header + " " + additionalColumns;
+}
+
+void
+Ipv6RoutingTableEntry::Print(std::ostream& os,
+                             const std::string& interfaceName,
+                             const std::string& metric,
+                             const std::string& additionalValues) const
+{
+    std::ostringstream destination;
+    std::ostringstream gateway;
+    std::string flags{"U"};
+
+    destination << GetDest() << "/"
+                << static_cast<uint32_t>(GetDestNetworkPrefix().GetPrefixLength());
+    gateway << GetGateway();
+
+    if (IsHost())
+    {
+        flags += "H";
+    }
+    else if (IsGateway())
+    {
+        flags += "G";
+    }
+
+    os << std::left << std::setw(31) << destination.str() << std::setw(27) << gateway.str()
+       << std::setw(5) << flags << std::setw(4) << metric << "-   "
+       << "-   " << interfaceName;
+
+    if (!additionalValues.empty())
+    {
+        os << " " << additionalValues;
+    }
+}
 } /* namespace ns3 */

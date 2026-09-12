@@ -710,50 +710,19 @@ Ipv4StaticRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit
         << ", Local time: " << m_ipv4->GetObject<Node>()->GetLocalTime().As(unit)
         << ", Ipv4StaticRouting table" << std::endl;
 
-    if (GetNRoutes() > 0)
+    *os << Ipv4RoutingTableEntry::GetPrintColumnHeader() << '\n';
+
+    for (uint32_t j = 0; j < GetNRoutes(); ++j)
     {
-        *os << "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface"
-            << std::endl;
-        for (uint32_t j = 0; j < GetNRoutes(); j++)
+        const auto route = GetRoute(j);
+        std::string interfaceName = Names::FindName(m_ipv4->GetNetDevice(route.GetInterface()));
+        if (interfaceName.empty())
         {
-            std::ostringstream dest;
-            std::ostringstream gw;
-            std::ostringstream mask;
-            std::ostringstream flags;
-            Ipv4RoutingTableEntry route = GetRoute(j);
-            dest << route.GetDest();
-            *os << std::setw(16) << dest.str();
-            gw << route.GetGateway();
-            *os << std::setw(16) << gw.str();
-            mask << route.GetDestNetworkMask();
-            *os << std::setw(16) << mask.str();
-            flags << "U";
-            if (route.IsHost())
-            {
-                flags << "HS";
-            }
-            else if (route.IsGateway())
-            {
-                flags << "GS";
-            }
-            *os << std::setw(6) << flags.str();
-            *os << std::setw(7) << GetMetric(j);
-            // Ref ct not implemented
-            *os << "-"
-                << "      ";
-            // Use not implemented
-            *os << "-"
-                << "   ";
-            if (!Names::FindName(m_ipv4->GetNetDevice(route.GetInterface())).empty())
-            {
-                *os << Names::FindName(m_ipv4->GetNetDevice(route.GetInterface()));
-            }
-            else
-            {
-                *os << route.GetInterface();
-            }
-            *os << std::endl;
+            interfaceName = std::to_string(route.GetInterface());
         }
+
+        route.Print(*os, interfaceName, std::to_string(GetMetric(j)));
+        *os << '\n';
     }
     *os << std::endl;
     // Restore the previous ostream state

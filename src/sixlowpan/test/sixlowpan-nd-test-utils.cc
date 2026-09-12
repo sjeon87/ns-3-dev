@@ -86,7 +86,7 @@ GenerateRoutingTableOutput(uint32_t numNodes, Time time)
         // ---- Static routing (priority 0) ----
         oss << "  Priority: 0 Protocol: ns3::Ipv6StaticRouting" << std::endl;
         oss << NodeHeader(nodeId, time, "Ipv6StaticRouting table") << std::endl;
-        oss << "Destination                    Next Hop                   Flag Met Ref Use If"
+        oss << "Destination                    Next Hop                   Flag Met Ref Use Iface"
             << std::endl;
 
         oss << std::setw(31) << "::1/128" << std::setw(27) << "::" << std::setw(5) << "UH"

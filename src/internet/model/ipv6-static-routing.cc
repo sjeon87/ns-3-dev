@@ -87,44 +87,16 @@ Ipv6StaticRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit
 
     if (GetNRoutes() > 0)
     {
-        *os << "Destination                    Next Hop                   Flag Met Ref Use If"
-            << std::endl;
+        *os << Ipv6RoutingTableEntry::GetPrintColumnHeader() << std::endl;
         for (uint32_t j = 0; j < GetNRoutes(); j++)
         {
-            std::ostringstream dest;
-            std::ostringstream gw;
-            std::ostringstream mask;
-            std::ostringstream flags;
             Ipv6RoutingTableEntry route = GetRoute(j);
-            dest << route.GetDest() << "/" << int(route.GetDestNetworkPrefix().GetPrefixLength());
-            *os << std::setw(31) << dest.str();
-            gw << route.GetGateway();
-            *os << std::setw(27) << gw.str();
-            flags << "U";
-            if (route.IsHost())
+            std::string interfaceName = Names::FindName(m_ipv6->GetNetDevice(route.GetInterface()));
+            if (interfaceName.empty())
             {
-                flags << "H";
+                interfaceName = std::to_string(route.GetInterface());
             }
-            else if (route.IsGateway())
-            {
-                flags << "G";
-            }
-            *os << std::setw(5) << flags.str();
-            *os << std::setw(4) << GetMetric(j);
-            // Ref ct not implemented
-            *os << "-"
-                << "   ";
-            // Use not implemented
-            *os << "-"
-                << "   ";
-            if (!Names::FindName(m_ipv6->GetNetDevice(route.GetInterface())).empty())
-            {
-                *os << Names::FindName(m_ipv6->GetNetDevice(route.GetInterface()));
-            }
-            else
-            {
-                *os << route.GetInterface();
-            }
+            route.Print(*os, interfaceName, std::to_string(GetMetric(j)));
             *os << std::endl;
         }
     }

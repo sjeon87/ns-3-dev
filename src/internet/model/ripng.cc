@@ -501,6 +501,9 @@ RipNg::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
     NS_LOG_FUNCTION(this << stream);
 
     std::ostream* os = stream->GetStream();
+    // Copy the current ostream state
+    std::ios oldState(nullptr);
+    oldState.copyfmt(*os);
     *os << std::resetiosflags(std::ios::adjustfield) << std::setiosflags(std::ios::left);
 
     *os << "Node: " << m_ipv6->GetObject<Node>()->GetId() << ", Time: " << Now().As(unit)
@@ -509,8 +512,7 @@ RipNg::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 
     if (!m_routes.empty())
     {
-        *os << "Destination                    Next Hop                   Flag Met Ref Use If"
-            << std::endl;
+        *os << Ipv6RoutingTableEntry::GetPrintColumnHeader() << std::endl;
         for (auto it = m_routes.begin(); it != m_routes.end(); it++)
         {
             RipNgRoutingTableEntry* route = it->first;
@@ -518,46 +520,21 @@ RipNg::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 
             if (status == RipNgRoutingTableEntry::RIPNG_VALID)
             {
-                std::ostringstream dest;
-                std::ostringstream gw;
-                std::ostringstream mask;
-                std::ostringstream flags;
+                std::string interfaceName =
+                    Names::FindName(m_ipv6->GetNetDevice(route->GetInterface()));
+                if (interfaceName.empty())
+                {
+                    interfaceName = std::to_string(route->GetInterface());
+                }
 
-                dest << route->GetDest() << "/"
-                     << int(route->GetDestNetworkPrefix().GetPrefixLength());
-                *os << std::setw(31) << dest.str();
-                gw << route->GetGateway();
-                *os << std::setw(27) << gw.str();
-                flags << "U";
-                if (route->IsHost())
-                {
-                    flags << "H";
-                }
-                else if (route->IsGateway())
-                {
-                    flags << "G";
-                }
-                *os << std::setw(5) << flags.str();
-                *os << std::setw(4) << int(route->GetRouteMetric());
-                // Ref ct not implemented
-                *os << "-"
-                    << "   ";
-                // Use not implemented
-                *os << "-"
-                    << "   ";
-                if (!Names::FindName(m_ipv6->GetNetDevice(route->GetInterface())).empty())
-                {
-                    *os << Names::FindName(m_ipv6->GetNetDevice(route->GetInterface()));
-                }
-                else
-                {
-                    *os << route->GetInterface();
-                }
+                route->Print(*os, interfaceName, std::to_string(route->GetRouteMetric()));
                 *os << std::endl;
             }
         }
     }
     *os << std::endl;
+    // Restore the previous ostream state
+    os->copyfmt(oldState);
 }
 
 void

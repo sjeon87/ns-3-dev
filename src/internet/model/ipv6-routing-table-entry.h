@@ -13,6 +13,7 @@
 
 #include <list>
 #include <ostream>
+#include <string>
 #include <vector>
 
 namespace ns3
@@ -181,6 +182,27 @@ class Ipv6RoutingTableEntry
      * @return IPv6Route object
      */
     static Ipv6RoutingTableEntry CreateDefaultRoute(Ipv6Address nextHop, uint32_t interface);
+
+    /**
+     * @brief Get the routing table column header.
+     *
+     * @param additionalColumns Additional column names appended to the header
+     * @return The formatted column header
+     */
+    static std::string GetPrintColumnHeader(const std::string& additionalColumns = "");
+
+    /**
+     * @brief Print this entry as a routing table row.
+     *
+     * @param os Output stream
+     * @param interfaceName Interface name or index
+     * @param metric Route metric
+     * @param additionalValues Additional values appended to the row
+     */
+    void Print(std::ostream& os,
+               const std::string& interfaceName,
+               const std::string& metric = "-",
+               const std::string& additionalValues = "") const;
 
   private:
     /**

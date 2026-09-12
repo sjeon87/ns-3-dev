@@ -21,6 +21,7 @@
 #include "ns3/ipv6-global-routing-helper.h"
 #include "ns3/ipv6-packet-info-tag.h"
 #include "ns3/ipv6-route.h"
+#include "ns3/ipv6-routing-table-entry.h"
 #include "ns3/log.h"
 #include "ns3/neighbor-cache-helper.h"
 #include "ns3/node-container.h"
@@ -37,6 +38,7 @@
 #include "ns3/udp-socket-factory.h"
 #include "ns3/uinteger.h"
 
+#include <sstream>
 #include <vector>
 using namespace ns3;
 
@@ -238,6 +240,68 @@ LinkTest::DoRun()
     Simulator::Run();
     Simulator::Stop(Seconds(10));
     Simulator::Destroy();
+}
+
+/**
+ * @ingroup internet-test
+ *
+ * @brief IPv4 and IPv6 routing table entry printing test.
+ */
+class RoutingTableEntryPrintTestCase : public TestCase
+{
+  public:
+    RoutingTableEntryPrintTestCase();
+
+  private:
+    void DoRun() override;
+};
+
+RoutingTableEntryPrintTestCase::RoutingTableEntryPrintTestCase()
+    : TestCase("Routing table entry printing")
+{
+}
+
+void
+RoutingTableEntryPrintTestCase::DoRun()
+{
+    NS_TEST_EXPECT_MSG_EQ(
+        Ipv4RoutingTableEntry::GetPrintColumnHeader("Tag"),
+        "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface Tag",
+        "IPv4 extended routing table header is incorrect");
+
+    const auto ipv4Route = Ipv4RoutingTableEntry::CreateNetworkRouteTo(Ipv4Address("10.1.0.0"),
+                                                                       Ipv4Mask("255.255.0.0"),
+                                                                       Ipv4Address("10.0.0.1"),
+                                                                       2);
+    std::ostringstream ipv4Output;
+    ipv4Route.Print(ipv4Output, "eth0", "5", "7");
+    NS_TEST_EXPECT_MSG_EQ(
+        ipv4Output.str(),
+        "10.1.0.0        10.0.0.1        255.255.0.0     UG    5      -      -   eth0 7",
+        "IPv4 routing table entry is formatted incorrectly");
+
+    NS_TEST_EXPECT_MSG_EQ(
+        Ipv6RoutingTableEntry::GetPrintColumnHeader("Tag"),
+        "Destination                    Next Hop                   Flag Met Ref Use Iface Tag",
+        "IPv6 extended routing table header is incorrect");
+
+    const auto ipv6Route = Ipv6RoutingTableEntry::CreateNetworkRouteTo(Ipv6Address("2001:db8:1::"),
+                                                                       Ipv6Prefix(64),
+                                                                       Ipv6Address("fe80::1"),
+                                                                       2);
+    std::ostringstream ipv6Output;
+    ipv6Route.Print(ipv6Output, "eth0", "5", "9");
+    const std::string ipv6Columns =
+        "2001:db8:1::/64" + std::string(16, ' ') + "fe80::1" + std::string(20, ' ');
+    NS_TEST_EXPECT_MSG_EQ(ipv6Output.str(),
+                          ipv6Columns + "UG   5   -   -   eth0 9",
+                          "IPv6 routing table entry is formatted incorrectly");
+
+    std::ostringstream streamOutput;
+    streamOutput << ipv6Route;
+    NS_TEST_EXPECT_MSG_EQ(streamOutput.str(),
+                          ipv6Columns + "UG   -   -   -   2",
+                          "Routing table entry stream operator is formatted incorrectly");
 }
 
 /**
@@ -2968,6 +3032,7 @@ Ipv4GlobalRoutingTestSuite::Ipv4GlobalRoutingTestSuite()
     AddTestCase(new EcmpRouteCalculationTestCase, TestCase::Duration::QUICK);
     AddTestCase(new GlobalRoutingv4ProtocolTestCase, TestCase::Duration::QUICK);
     AddTestCase(new GlobalRoutingv6ProtocolTestCase, TestCase::Duration::QUICK);
+    AddTestCase(new RoutingTableEntryPrintTestCase, TestCase::Duration::QUICK);
 }
 
 static Ipv4GlobalRoutingTestSuite
