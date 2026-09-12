@@ -9,6 +9,8 @@
 #ifndef NS3_LOG_MACROS_ENABLED_H
 #define NS3_LOG_MACROS_ENABLED_H
 
+#include <sstream>
+
 /**
  * @file
  * @ingroup logging
@@ -19,7 +21,6 @@
 //   NS_LOG_APPEND_TIME_PREFIX_IMPL
 //   NS_LOG_APPEND_NODE_PREFIX_IMPL
 // need to be defined in all configurations (debug, release, optimized)
-// for use by NS_FATAL_...
 
 /**
  * @ingroup logging
@@ -121,10 +122,10 @@
  * Preferred format is something like (assuming the node id is
  * accessible from `var`:
  * @code
- *   if (var)
- *     {
- *       std::clog << "[node " << var->GetObject<Node> ()->GetId () << "] ";
- *     }
+ * if (var)
+ * {
+ * std::clog << "[node " << var->GetObject<Node> ()->GetId () << "] ";
+ * }
  * @endcode
  */
 #define NS_LOG_APPEND_CONTEXT
@@ -142,7 +143,7 @@
  * Since this appears immediately before the `do { ... } while false`
  * construct of \c NS_LOG(level, msg), it must have the form
  * @code
- *   #define NS_LOG_CONDITION    if (condition)
+ * #define NS_LOG_CONDITION    if (condition)
  * @endcode
  */
 #define NS_LOG_CONDITION
@@ -173,14 +174,38 @@
     {                                                                                              \
         if (g_log.IsEnabled(level))                                                                \
         {                                                                                          \
-            NS_LOG_APPEND_TIME_PREFIX;                                                             \
-            NS_LOG_APPEND_NODE_PREFIX;                                                             \
-            NS_LOG_APPEND_CONTEXT;                                                                 \
-            NS_LOG_APPEND_FUNC_PREFIX;                                                             \
-            NS_LOG_APPEND_LEVEL_PREFIX(level);                                                     \
-            auto flags = std::clog.setf(std::ios_base::boolalpha);                                 \
-            std::clog << msg << std::endl;                                                         \
-            std::clog.flags(flags);                                                                \
+            if (!g_log.CheckNodeAndTime())                                                         \
+            {                                                                                      \
+                break;                                                                             \
+            }                                                                                      \
+            if (g_log.HasStringFilter())                                                           \
+            {                                                                                      \
+                std::ostringstream ns3_log_msg_oss;                                                \
+                auto flags = ns3_log_msg_oss.setf(std::ios_base::boolalpha);                       \
+                ns3_log_msg_oss << msg;                                                            \
+                ns3_log_msg_oss.flags(flags);                                                      \
+                if (!g_log.CheckString(ns3_log_msg_oss.str()))                                     \
+                {                                                                                  \
+                    break;                                                                         \
+                }                                                                                  \
+                NS_LOG_APPEND_TIME_PREFIX;                                                         \
+                NS_LOG_APPEND_NODE_PREFIX;                                                         \
+                NS_LOG_APPEND_CONTEXT;                                                             \
+                NS_LOG_APPEND_FUNC_PREFIX;                                                         \
+                NS_LOG_APPEND_LEVEL_PREFIX(level);                                                 \
+                std::clog << ns3_log_msg_oss.str() << std::endl;                                   \
+            }                                                                                      \
+            else                                                                                   \
+            {                                                                                      \
+                NS_LOG_APPEND_TIME_PREFIX;                                                         \
+                NS_LOG_APPEND_NODE_PREFIX;                                                         \
+                NS_LOG_APPEND_CONTEXT;                                                             \
+                NS_LOG_APPEND_FUNC_PREFIX;                                                         \
+                NS_LOG_APPEND_LEVEL_PREFIX(level);                                                 \
+                auto flags = std::clog.setf(std::ios_base::boolalpha);                             \
+                std::clog << msg << std::endl;                                                     \
+                std::clog.flags(flags);                                                            \
+            }                                                                                      \
         }                                                                                          \
     } while (false)
 
@@ -198,10 +223,29 @@
     {                                                                                              \
         if (g_log.IsEnabled(ns3::LOG_FUNCTION))                                                    \
         {                                                                                          \
-            NS_LOG_APPEND_TIME_PREFIX;                                                             \
-            NS_LOG_APPEND_NODE_PREFIX;                                                             \
-            NS_LOG_APPEND_CONTEXT;                                                                 \
-            std::clog << g_log.Name() << ":" << __FUNCTION__ << "()" << std::endl;                 \
+            if (!g_log.CheckNodeAndTime())                                                         \
+            {                                                                                      \
+                break;                                                                             \
+            }                                                                                      \
+            if (g_log.HasStringFilter())                                                           \
+            {                                                                                      \
+                std::string func_sig = std::string(__FUNCTION__) + "()";                           \
+                if (!g_log.CheckString(func_sig))                                                  \
+                {                                                                                  \
+                    break;                                                                         \
+                }                                                                                  \
+                NS_LOG_APPEND_TIME_PREFIX;                                                         \
+                NS_LOG_APPEND_NODE_PREFIX;                                                         \
+                NS_LOG_APPEND_CONTEXT;                                                             \
+                std::clog << g_log.Name() << ":" << func_sig << std::endl;                         \
+            }                                                                                      \
+            else                                                                                   \
+            {                                                                                      \
+                NS_LOG_APPEND_TIME_PREFIX;                                                         \
+                NS_LOG_APPEND_NODE_PREFIX;                                                         \
+                NS_LOG_APPEND_CONTEXT;                                                             \
+                std::clog << g_log.Name() << ":" << __FUNCTION__ << "()" << std::endl;             \
+            }                                                                                      \
         }                                                                                          \
     } while (false)
 
@@ -234,14 +278,38 @@
     {                                                                                              \
         if (g_log.IsEnabled(ns3::LOG_FUNCTION))                                                    \
         {                                                                                          \
-            NS_LOG_APPEND_TIME_PREFIX;                                                             \
-            NS_LOG_APPEND_NODE_PREFIX;                                                             \
-            NS_LOG_APPEND_CONTEXT;                                                                 \
-            std::clog << g_log.Name() << ":" << __FUNCTION__ << "(";                               \
-            auto flags = std::clog.setf(std::ios_base::boolalpha);                                 \
-            ns3::ParameterLogger(std::clog) << parameters;                                         \
-            std::clog.flags(flags);                                                                \
-            std::clog << ")" << std::endl;                                                         \
+            if (!g_log.CheckNodeAndTime())                                                         \
+            {                                                                                      \
+                break;                                                                             \
+            }                                                                                      \
+            if (g_log.HasStringFilter())                                                           \
+            {                                                                                      \
+                std::ostringstream ns3_log_msg_oss;                                                \
+                auto flags = ns3_log_msg_oss.setf(std::ios_base::boolalpha);                       \
+                ns3::ParameterLogger(ns3_log_msg_oss) << parameters;                               \
+                ns3_log_msg_oss.flags(flags);                                                      \
+                std::string func_sig =                                                             \
+                    std::string(__FUNCTION__) + "(" + ns3_log_msg_oss.str() + ")";                 \
+                if (!g_log.CheckString(func_sig))                                                  \
+                {                                                                                  \
+                    break;                                                                         \
+                }                                                                                  \
+                NS_LOG_APPEND_TIME_PREFIX;                                                         \
+                NS_LOG_APPEND_NODE_PREFIX;                                                         \
+                NS_LOG_APPEND_CONTEXT;                                                             \
+                std::clog << g_log.Name() << ":" << func_sig << std::endl;                         \
+            }                                                                                      \
+            else                                                                                   \
+            {                                                                                      \
+                NS_LOG_APPEND_TIME_PREFIX;                                                         \
+                NS_LOG_APPEND_NODE_PREFIX;                                                         \
+                NS_LOG_APPEND_CONTEXT;                                                             \
+                std::clog << g_log.Name() << ":" << __FUNCTION__ << "(";                           \
+                auto flags = std::clog.setf(std::ios_base::boolalpha);                             \
+                ns3::ParameterLogger(std::clog) << parameters;                                     \
+                std::clog.flags(flags);                                                            \
+                std::clog << ")" << std::endl;                                                     \
+            }                                                                                      \
         }                                                                                          \
     } while (false)
 

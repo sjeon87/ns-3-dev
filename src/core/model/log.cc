@@ -100,6 +100,24 @@ static TimePrinter g_logTimePrinter = nullptr;
 static NodePrinter g_logNodePrinter = nullptr;
 
 /**
+ * Global Callback pointers for fast-path evaluation
+ */
+static NodeIdCallback g_logNodeIdCb = nullptr;
+static TimeCallback g_logTimeCb = nullptr;
+
+void
+LogSetNodeIdCallback(NodeIdCallback cb)
+{
+    g_logNodeIdCb = cb;
+}
+
+void
+LogSetTimeCallback(TimeCallback cb)
+{
+    g_logTimeCb = cb;
+}
+
+/**
  * @ingroup logging
  * Handler for the undocumented \c print-list token in NS_LOG
  * which triggers printing of the list of log components, then exits.
@@ -210,6 +228,45 @@ LogComponent::EnvVarCheck()
 
     for (const auto& lev : flags)
     {
+        // Node Filter
+        if (lev.rfind("node=", 0) == 0)
+        {
+            try
+            {
+                SetNodeFilter(std::stoul(lev.substr(5)));
+            }
+            catch (...)
+            {
+            }
+            continue;
+        }
+
+        // Time Filter
+        if (lev.rfind("time=", 0) == 0)
+        {
+            auto colon = lev.find(':', 5);
+            if (colon != std::string::npos)
+            {
+                try
+                {
+                    double min = std::stod(lev.substr(5, colon - 5));
+                    double max = std::stod(lev.substr(colon + 1));
+                    SetTimeFilter(min, max);
+                }
+                catch (...)
+                {
+                }
+            }
+            continue;
+        }
+
+        // String Match Filter
+        if (lev.rfind("match=", 0) == 0)
+        {
+            SetStringFilter(lev.substr(6));
+            continue;
+        }
+
         if (lev == "**")
         {
             level |= LOG_LEVEL_ALL | LOG_PREFIX_ALL;
@@ -273,6 +330,65 @@ LogComponent::GetLevelLabel(const LogLevel level)
         return it->second;
     }
     return "unknown";
+}
+
+void
+LogComponent::SetNodeFilter(uint32_t nodeId)
+{
+    m_hasNodeFilter = true;
+    m_nodeFilter = nodeId;
+}
+
+void
+LogComponent::SetTimeFilter(double minTime, double maxTime)
+{
+    m_hasTimeFilter = true;
+    m_timeMin = minTime;
+    m_timeMax = maxTime;
+}
+
+void
+LogComponent::SetStringFilter(const std::string& filter)
+{
+    if (!m_stringFilter)
+    {
+        m_stringFilter = new std::string(filter); // Intentionally leaked
+    }
+    else
+    {
+        *m_stringFilter = filter;
+    }
+}
+
+bool
+LogComponent::CheckNodeAndTime() const
+{
+    if (m_hasNodeFilter && g_logNodeIdCb)
+    {
+        if (g_logNodeIdCb() != m_nodeFilter)
+        {
+            return false;
+        }
+    }
+    if (m_hasTimeFilter && g_logTimeCb)
+    {
+        double now = g_logTimeCb();
+        if (now < m_timeMin || now > m_timeMax)
+        {
+            return false;
+        }
+    }
+    return true; // Passes early filters
+}
+
+bool
+LogComponent::CheckString(const std::string& message) const
+{
+    if (!m_stringFilter)
+    {
+        return true;
+    }
+    return message.find(*m_stringFilter) != std::string::npos;
 }
 
 void
@@ -451,6 +567,12 @@ CheckEnvironmentVariables()
         StringVector flags = SplitString(value, "|");
         for (const auto& flag : flags)
         {
+            if (flag.rfind("node=", 0) == 0 || flag.rfind("time=", 0) == 0 ||
+                flag.rfind("match=", 0) == 0)
+            {
+                continue; // It is a valid filter flag, let it pass
+            }
+
             // Handle wild cards
             if (flag == "*" || flag == "**")
             {

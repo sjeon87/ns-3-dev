@@ -47,11 +47,11 @@
  * Use the environment variable NS_LOG to define a ':'-separated list of
  * logging components to enable. For example (using bash syntax),
  * @code
- *   $ NS_LOG="OlsrAgent" ./ns3 run ...
+ * $ NS_LOG="OlsrAgent" ./ns3 run ...
  * @endcode
  * would enable one component at all log levels.
  * @code
- *   $NS_LOG="OlsrAgent:Ipv4L3Protocol" ./ns3 run ...
+ * $NS_LOG="OlsrAgent:Ipv4L3Protocol" ./ns3 run ...
  * @endcode
  * would enable two components, at all log levels, etc.
  * \c NS_LOG="*" will enable all available log components at all levels.
@@ -59,7 +59,7 @@
  * To control more selectively the log levels for each component, use
  * this syntax:
  * @code
- *   $ NS_LOG='Component1=func|warn:Component2=error|debug'
+ * $ NS_LOG='Component1=func|warn:Component2=error|debug'
  * @endcode
  * This example would enable the \c func, and \c warn log
  * levels for 'Component1' and the \c error and \c debug log levels
@@ -71,7 +71,7 @@
  * generally, use of (at least) NS_LOG_FUNCTION(this) is preferred,
  * with the any function parameters added:
  * @code
- *   NS_LOG_FUNCTION (this << arg1 << args);
+ * NS_LOG_FUNCTION (this << arg1 << args);
  * @endcode
  * Use NS_LOG_FUNCTION_NOARGS() only in static functions with no arguments.
  */
@@ -80,8 +80,11 @@
 namespace ns3
 {
 
+typedef uint32_t (*NodeIdCallback)(void);
+typedef double (*TimeCallback)(void);
+
 /**
- *  Logging severity classes and levels.
+ * Logging severity classes and levels.
  */
 enum LogLevel
 {
@@ -178,16 +181,16 @@ void LogComponentDisableAll(LogLevel level);
  * outside of namespace ns3, and after the inclusion of
  * NS_LOG_COMPONENT_DEFINE, such as follows:
  * @code
- *   namespace ns3 {
- *     NS_LOG_COMPONENT_DEFINE ("...");
+ * namespace ns3 {
+ * NS_LOG_COMPONENT_DEFINE ("...");
  *
- *     // Definitions within the ns3 namespace
+ * // Definitions within the ns3 namespace
  *
- *   } // namespace ns3
+ * } // namespace ns3
  *
- *   using ns3::g_log;
+ * using ns3::g_log;
  *
- *   // Further definitions outside of the ns3 namespace
+ * // Further definitions outside of the ns3 namespace
  * @endcode
  *
  * @param [in] name The log component name.
@@ -315,6 +318,18 @@ void LogSetNodePrinter(NodePrinter np);
 NodePrinter LogGetNodePrinter();
 
 /**
+ * Set the callback to retrieve the current simulation Node ID.
+ * @param [in] cb The NodeId callback.
+ */
+void LogSetNodeIdCallback(NodeIdCallback cb);
+
+/**
+ * Set the callback to retrieve the current simulation Time.
+ * @param [in] cb The Time callback.
+ */
+void LogSetTimeCallback(TimeCallback cb);
+
+/**
  * A single log component configuration.
  */
 class LogComponent
@@ -326,8 +341,8 @@ class LogComponent
      * @param [in] name The user-visible name for this component.
      * @param [in] file The source code file which defined this LogComponent.
      * @param [in] mask LogLevels blocked for this LogComponent.  Blocking
-     *                  a log level helps prevent recursion by logging in
-     *                  functions which help implement the logging facility.
+     * a log level helps prevent recursion by logging in
+     * functions which help implement the logging facility.
      */
     LogComponent(const std::string& name, const std::string& file, const LogLevel mask = LOG_NONE);
 
@@ -352,29 +367,34 @@ class LogComponent
      * @return \c true if all levels are disabled.
      */
     bool IsNoneEnabled() const;
+
     /**
      * Enable this LogComponent at \c level
      *
      * @param [in] level The LogLevel to enable.
      */
     void Enable(const LogLevel level);
+
     /**
      * Disable logging at \c level for this LogComponent.
      *
      * @param [in] level The LogLevel to disable.
      */
     void Disable(const LogLevel level);
+
     /**
      * Get the name of this LogComponent.
      *
      * @return The name of this LogComponent.
      */
     std::string Name() const;
+
     /**
      * Get the compilation unit defining this LogComponent.
      * @returns The file name.
      */
     std::string File() const;
+
     /**
      * Get the string label for the given LogLevel.
      *
@@ -382,12 +402,54 @@ class LogComponent
      * @return The string label for \c level.
      */
     static std::string GetLevelLabel(const LogLevel level);
+
     /**
      * Prevent the enabling of a specific LogLevel.
      *
      * @param [in] level The LogLevel to block.
      */
     void SetMask(const LogLevel level);
+
+    /**
+     * Check fast-path filters (Node ID and Time).
+     * @return \c true if message passes fast-path filtering.
+     */
+    bool CheckNodeAndTime() const;
+
+    /**
+     * Check if this LogComponent has an active string filter.
+     * @return \c true if a filter is set.
+     */
+    bool HasStringFilter() const
+    {
+        return m_stringFilter != nullptr;
+    }
+
+    /**
+     * Check if the evaluated message passes the string filter.
+     * @param [in] message The message to check.
+     * @return \c true if the message passes the filter or if no filter is set.
+     */
+    bool CheckString(const std::string& message) const;
+
+    /**
+     * Set a node ID filter for this LogComponent.
+     * @param [in] nodeId The node ID to isolate.
+     */
+    void SetNodeFilter(uint32_t nodeId);
+
+    /**
+     * Set a time window filter for this LogComponent.
+     * @param [in] minTime Window start.
+     * @param [in] maxTime Window end.
+     */
+    void SetTimeFilter(double minTime, double maxTime);
+
+    /**
+     * Set a string filter for this LogComponent.
+     * @param [in] filter The string to filter by.
+     */
+    void SetStringFilter(const std::string& filter);
 
     /**
      * LogComponent name map.
@@ -423,8 +485,15 @@ class LogComponent
     std::string m_name; //!< LogComponent name.
     std::string m_file; //!< File defining this LogComponent.
 
-    // end of class LogComponent
-};
+    // Filter State
+    bool m_hasNodeFilter{false};
+    uint32_t m_nodeFilter{0};
+    bool m_hasTimeFilter{false};
+    double m_timeMin{0.0};
+    double m_timeMax{0.0};
+    std::string* m_stringFilter{nullptr}; //!< Leaked string pointer to survive static destruction.
+
+}; // end of class LogComponent
 
 /**
  * Get the LogComponent registered with the given name.
