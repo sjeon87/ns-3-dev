@@ -1012,6 +1012,15 @@ Rectangle(``"xMin|xMax|yMin|yMax"``) to the underlying Rectangle.  The modeler
 must specify these operators and the string syntactical representation of an
 instance of the new class.
 
+If the new type should appear correctly in the generated API documentation,
+it must also be registered in
+``utils/print-introspected-doxygen.cc``.  The
+``print-introspected-doxygen`` tool maintains a manual list of
+``AttributeValue`` helper types, so adding a new type with
+``ATTRIBUTE_HELPER_HEADER``, ``ATTRIBUTE_HELPER_CPP``, or
+``ATTRIBUTE_VALUE_DEFINE_WITH_NAME`` is not sufficient by itself to make
+the generated Doxygen output complete.
+
 ConfigStore
 ***********
 

@@ -10,6 +10,8 @@
 #include "log.h"
 #include "string.h"
 
+#include <algorithm>
+
 /**
  * @file
  * @ingroup attributes
@@ -22,12 +24,54 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("AttributeValue");
 
+namespace
+{
+
+/**
+ * @internal
+ * Get the mutable storage used for AttributeValue documentation registrations.
+ *
+ * @returns The registration vector.
+ * @endinternal
+ */
+std::vector<AttributeDocumentationRegistration>&
+GetMutableAttributeDocumentationRegistrations()
+{
+    static std::vector<AttributeDocumentationRegistration> g_registrations;
+    return g_registrations;
+}
+
+} // namespace
+
 AttributeValue::AttributeValue()
 {
 }
 
 AttributeValue::~AttributeValue()
 {
+}
+
+bool
+RegisterAttributeDocumentation(const std::string& name, const std::string& header)
+{
+    auto& registrations = GetMutableAttributeDocumentationRegistrations();
+    const auto duplicate =
+        std::find_if(registrations.begin(),
+                     registrations.end(),
+                     [&name, &header](const auto& registration) {
+                         return registration.m_name == name && registration.m_header == header;
+                     });
+    if (duplicate == registrations.end())
+    {
+        registrations.push_back({name, header});
+    }
+    return true;
+}
+
+const std::vector<AttributeDocumentationRegistration>&
+GetAttributeDocumentationRegistrations()
+{
+    return GetMutableAttributeDocumentationRegistrations();
 }
 
 AttributeAccessor::AttributeAccessor()

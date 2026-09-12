@@ -210,6 +210,12 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
         std::string SerializeToString(Ptr<const AttributeChecker> checker) const override;         \
         bool DeserializeFromString(std::string value,                                              \
                                    Ptr<const AttributeChecker> checker) override;                  \
+        /** @cond */                                                                               \
+        static std::string GetAttributeDocumentationFile()                                         \
+        {                                                                                          \
+            return __FILE__;                                                                       \
+        }                                                                                          \
+        /** @endcond */                                                                            \
                                                                                                    \
       private:                                                                                     \
         type m_value;                                                                              \
@@ -320,6 +326,14 @@ MakeSimpleAttributeChecker(std::string name, std::string underlying)
         NS_ABORT_MSG_UNLESS(iss.eof(),                                                             \
                             "Attribute value \"" << value << "\" is not properly formatted");      \
         return !iss.bad() && !iss.fail();                                                          \
+    }                                                                                              \
+    namespace                                                                                      \
+    {                                                                                              \
+    /** @cond */                                                                                   \
+    [[maybe_unused]] const bool g_register##name##AttributeDocumentation =                         \
+        ::ns3::RegisterAttributeDocumentation(#name,                                               \
+                                              name##Value::GetAttributeDocumentationFile());       \
+    /** @endcond */                                                                                \
     }
 
 /**

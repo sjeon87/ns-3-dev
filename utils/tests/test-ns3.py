@@ -28,6 +28,7 @@ ns3_script = os.sep.join([ns3_path, "ns3"])
 ns3rc_script = os.sep.join([ns3_path, ".ns3rc"])
 usual_outdir = os.sep.join([ns3_path, "build"])
 usual_lib_outdir = os.sep.join([usual_outdir, "lib"])
+cmake_cache_dir = os.path.abspath(os.path.join(ns3_path, "cmake-cache"))
 
 # Move the current working directory to the ns-3-dev folder
 os.chdir(ns3_path)
@@ -35,12 +36,12 @@ os.chdir(ns3_path)
 # Cmake commands
 num_threads = max(1, os.cpu_count() - 1)
 cmake_build_project_command = "cmake --build {cmake_cache} -j".format(
-    ns3_path=ns3_path, cmake_cache=os.path.abspath(os.path.join(ns3_path, "cmake-cache"))
+    ns3_path=ns3_path, cmake_cache=cmake_cache_dir
 )
 cmake_build_target_command = partial(
     "cmake --build {cmake_cache} -j {jobs} --target {target}".format,
     jobs=num_threads,
-    cmake_cache=os.path.abspath(os.path.join(ns3_path, "cmake-cache")),
+    cmake_cache=cmake_cache_dir,
 )
 win32 = sys.platform == "win32"
 macos = sys.platform == "darwin"
@@ -2903,6 +2904,44 @@ class NS3ExpectedUseTestCase(NS3BaseTestCase):
         self.assertEqual(return_code, 0)
         self.assertIn(cmake_build_target_command(target="doxygen-no-build"), stdout)
         self.assertIn("Built target doxygen-no-build", stdout)
+
+    def test_11_PrintIntrospectedDoxygenAttributeValidation(self):
+        """!
+        Test validation of the print-introspected-doxygen AttributeValue table
+        @return None
+        """
+        if macos:
+            env = {"CC": "clang", "CXX": "clang++"}
+            return_code, stdout, stderr = run_ns3("clean")
+            self.assertEqual(return_code, 0)
+            return_code, stdout, stderr = run_ns3(
+                'configure -d release -G "{generator}" --enable-examples --enable-tests',
+                env=env,
+                generator=platform_makefiles,
+            )
+            self.config_ok(return_code, stdout, stderr)
+
+        return_code, stdout, stderr = run_program(
+            "cmake",
+            '--build "{cmake_cache}" -j {jobs} --target print-introspected-doxygen'.format(
+                cmake_cache=cmake_cache_dir,
+                jobs=num_threads,
+            ),
+        )
+        self.assertEqual(return_code, 0)
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(usual_outdir, "utils", f"ns3-dev-print-introspected-doxygen{ext}")
+            )
+        )
+        self.assertIn(f"ns3-dev-print-introspected-doxygen{ext}", stdout)
+
+        return_code, stdout, stderr = run_ns3(
+            'run "print-introspected-doxygen --validate-attribute-table" --no-build'
+        )
+        self.assertEqual(return_code, 0, stderr)
+        self.assertEqual(stderr, "")
+        self.assertIn("Attribute documentation table validation passed.", stdout)
 
     def test_12_SphinxDocumentation(self):
         """!
