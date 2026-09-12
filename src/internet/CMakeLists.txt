@@ -321,6 +321,7 @@ set(test_sources
     test/ipv4-packet-info-tag-test-suite.cc
     test/ipv4-raw-test.cc
     test/ipv4-rip-test.cc
+    test/ipv4-routing-table-entry-test-suite.cc
     test/ipv4-static-routing-test-suite.cc
     test/ipv4-test.cc
     test/ipv6-address-duplication-test.cc
@@ -334,6 +335,7 @@ set(test_sources
     test/ipv6-packet-info-tag-test-suite.cc
     test/ipv6-raw-test.cc
     test/ipv6-ripng-test.cc
+    test/ipv6-routing-table-entry-test-suite.cc
     test/ipv6-test.cc
     test/neighbor-cache-test.cc
     test/rtt-test.cc

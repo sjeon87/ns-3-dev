@@ -117,7 +117,7 @@ GenerateRoutingTableOutput(uint32_t numNodes, Time time)
         // ---- Global routing (priority -10, empty) ----
         oss << "  Priority: -10 Protocol: ns3::Ipv6GlobalRouting" << std::endl;
         oss << NodeHeader(nodeId, time, "Ipv6GlobalRouting table") << std::endl;
-        oss << "Destination                    Next Hop                   Flag Met Ref Use Iface"
+        oss << "Destination                    Next Hop                   Flag Met Ref Use If"
             << std::endl
             << std::endl;
     }

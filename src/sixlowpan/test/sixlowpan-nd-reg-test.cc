@@ -115,7 +115,7 @@ class SixLowPanNdOneLNRegTest : public TestCase
             "2001::200:ff:fe00:2/128        fe80::200:ff:fe00:2        UH   0   -   -   1\n\n"
             "  Priority: -10 Protocol: ns3::Ipv6GlobalRouting\n"
             "Node: 0, Time: +5s, Local time: +5s, Ipv6GlobalRouting table\n"
-            "Destination                    Next Hop                   Flag Met Ref Use Iface\n\n"
+            "Destination                    Next Hop                   Flag Met Ref Use If\n\n"
             "Node: 1, Time: +5s, Local time: +5s, Ipv6ListRouting table\n"
             "  Priority: 0 Protocol: ns3::Ipv6StaticRouting\n"
             "Node: 1, Time: +5s, Local time: +5s, Ipv6StaticRouting table\n"
@@ -125,7 +125,7 @@ class SixLowPanNdOneLNRegTest : public TestCase
             "::/0                           fe80::200:ff:fe00:1        UG   0   -   -   1\n\n"
             "  Priority: -10 Protocol: ns3::Ipv6GlobalRouting\n"
             "Node: 1, Time: +5s, Local time: +5s, Ipv6GlobalRouting table\n"
-            "Destination                    Next Hop                   Flag Met Ref Use Iface\n\n";
+            "Destination                    Next Hop                   Flag Met Ref Use If\n\n";
         NS_TEST_EXPECT_MSG_EQ(routingTableStream.str(),
                               expectedRoutingTableStream,
                               "Routing table does not match expected.");

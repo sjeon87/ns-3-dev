@@ -503,77 +503,27 @@ GlobalRouting<T>::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit 
     *os << std::resetiosflags(std::ios::adjustfield) << std::setiosflags(std::ios::left);
 
     std::string name;
-    std::string header;
     if constexpr (IsIpv4)
     {
         name = "Ipv4";
-        header = "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface";
     }
     else
     {
         name = "Ipv6";
-        header = "Destination                    Next Hop                   Flag Met Ref Use Iface";
     }
 
     *os << "Node: " << m_ip->template GetObject<Node>()->GetId() << ", Time: " << Now().As(unit)
         << ", Local time: " << m_ip->template GetObject<Node>()->GetLocalTime().As(unit) << ", "
         << name << "GlobalRouting table" << std::endl
-        << header << std::endl;
+        << IpRoutingTableEntry::GetPrintColumnHeader() << std::endl;
 
     if (GetNRoutes() > 0)
     {
         for (uint32_t j = 0; j < GetNRoutes(); j++)
         {
-            std::ostringstream dest;
-            std::ostringstream gw;
-            std::ostringstream mask;
-            std::ostringstream flags;
             IpRoutingTableEntry route = GetRoute(j);
-            if constexpr (IsIpv4)
-            {
-                dest << route.GetDest();
-                *os << std::setw(16) << dest.str();
-                gw << route.GetGateway();
-                *os << std::setw(16) << gw.str();
-                mask << route.GetDestNetworkMask();
-                *os << std::setw(16) << mask.str();
-            }
-            else
-            {
-                dest << route.GetDest() << "/"
-                     << int(route.GetDestNetworkPrefix().GetPrefixLength());
-                *os << std::setw(31) << dest.str();
-                gw << route.GetGateway();
-                *os << std::setw(27) << gw.str();
-            }
-            flags << "U";
-            if (route.IsHost())
-            {
-                flags << "H";
-            }
-            else if (route.IsGateway())
-            {
-                flags << "G";
-            }
-            *os << std::setw(6) << flags.str();
-            // Metric not implemented
-            *os << "-"
-                << "   ";
-            // Ref ct not implemented
-            *os << "-"
-                << "   ";
-            // Use not implemented
-            *os << "-"
-                << "   ";
-            if (!Names::FindName(m_ip->GetNetDevice(route.GetInterface())).empty())
-            {
-                *os << Names::FindName(m_ip->GetNetDevice(route.GetInterface()));
-            }
-            else
-            {
-                *os << route.GetInterface();
-            }
-            *os << std::endl;
+            std::string ifaceName = Names::FindName(m_ip->GetNetDevice(route.GetInterface()));
+            route.PrintRoutingTableEntry(*os, {}, ifaceName);
         }
     }
     *os << std::endl;

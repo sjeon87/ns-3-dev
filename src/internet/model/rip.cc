@@ -523,8 +523,7 @@ Rip::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 
     if (!m_routes.empty())
     {
-        *os << "Destination     Gateway         Genmask         Flags Metric Ref    Use Iface"
-            << std::endl;
+        *os << Ipv4RoutingTableEntry::GetPrintColumnHeader() << std::endl;
         for (auto it = m_routes.begin(); it != m_routes.end(); it++)
         {
             RipRoutingTableEntry* route = it->first;
@@ -532,42 +531,9 @@ Rip::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 
             if (status == RipRoutingTableEntry::RIP_VALID)
             {
-                std::ostringstream dest;
-                std::ostringstream gw;
-                std::ostringstream mask;
-                std::ostringstream flags;
-                dest << route->GetDest();
-                *os << std::setw(16) << dest.str();
-                gw << route->GetGateway();
-                *os << std::setw(16) << gw.str();
-                mask << route->GetDestNetworkMask();
-                *os << std::setw(16) << mask.str();
-                flags << "U";
-                if (route->IsHost())
-                {
-                    flags << "HS";
-                }
-                else if (route->IsGateway())
-                {
-                    flags << "GS";
-                }
-                *os << std::setw(6) << flags.str();
-                *os << std::setw(7) << int(route->GetRouteMetric());
-                // Ref ct not implemented
-                *os << "-"
-                    << "      ";
-                // Use not implemented
-                *os << "-"
-                    << "   ";
-                if (!Names::FindName(m_ipv4->GetNetDevice(route->GetInterface())).empty())
-                {
-                    *os << Names::FindName(m_ipv4->GetNetDevice(route->GetInterface()));
-                }
-                else
-                {
-                    *os << route->GetInterface();
-                }
-                *os << std::endl;
+                std::string ifaceName =
+                    Names::FindName(m_ipv4->GetNetDevice(route->GetInterface()));
+                route->PrintRoutingTableEntry(*os, route->GetRouteMetric(), ifaceName);
             }
         }
     }

@@ -509,8 +509,7 @@ RipNg::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 
     if (!m_routes.empty())
     {
-        *os << "Destination                    Next Hop                   Flag Met Ref Use If"
-            << std::endl;
+        *os << Ipv6RoutingTableEntry::GetPrintColumnHeader() << std::endl;
         for (auto it = m_routes.begin(); it != m_routes.end(); it++)
         {
             RipNgRoutingTableEntry* route = it->first;
@@ -518,42 +517,9 @@ RipNg::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const
 
             if (status == RipNgRoutingTableEntry::RIPNG_VALID)
             {
-                std::ostringstream dest;
-                std::ostringstream gw;
-                std::ostringstream mask;
-                std::ostringstream flags;
-
-                dest << route->GetDest() << "/"
-                     << int(route->GetDestNetworkPrefix().GetPrefixLength());
-                *os << std::setw(31) << dest.str();
-                gw << route->GetGateway();
-                *os << std::setw(27) << gw.str();
-                flags << "U";
-                if (route->IsHost())
-                {
-                    flags << "H";
-                }
-                else if (route->IsGateway())
-                {
-                    flags << "G";
-                }
-                *os << std::setw(5) << flags.str();
-                *os << std::setw(4) << int(route->GetRouteMetric());
-                // Ref ct not implemented
-                *os << "-"
-                    << "   ";
-                // Use not implemented
-                *os << "-"
-                    << "   ";
-                if (!Names::FindName(m_ipv6->GetNetDevice(route->GetInterface())).empty())
-                {
-                    *os << Names::FindName(m_ipv6->GetNetDevice(route->GetInterface()));
-                }
-                else
-                {
-                    *os << route->GetInterface();
-                }
-                *os << std::endl;
+                std::string ifaceName =
+                    Names::FindName(m_ipv6->GetNetDevice(route->GetInterface()));
+                route->PrintRoutingTableEntry(*os, route->GetRouteMetric(), ifaceName);
             }
         }
     }
