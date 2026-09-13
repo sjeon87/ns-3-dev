@@ -47,6 +47,23 @@ that update.
 The current implementation covers all the above features of DSDV. The current implementation also has a request queue
 to buffer packets that have no routes to destination. The default is set to buffer up to 5 packets per destination.
 
+Scope and Limitations
+*********************
+
+Multi-interface nodes: the protocol advertises, on every DSDV interface, that
+interface's own address, so each neighbour learns the address it can actually
+use as a next hop. A node with N DSDV interfaces is therefore reachable
+through N addresses, each advertised on its own interface; delivery of a
+packet addressed to any of the node's addresses, whichever interface it
+arrives on, follows IP's ``StrongEndSystemModel`` attribute (weak end-system
+model by default for IPv4).
+
+Unresolvable next hops: when a queued packet's route points at a next hop the
+routing table cannot currently resolve, the packet remains in the request
+queue (bounded by ``MaxQueueLen`` and ``MaxQueueTime``) so that a subsequent
+routing update can still resolve it; packets that expire in the queue are
+dropped through the queue's drop path.
+
 References
 **********
 
