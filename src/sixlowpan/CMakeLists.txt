@@ -4,7 +4,6 @@ if(${ENABLE_EXAMPLES})
       test/sixlowpan-examples-test-suite.cc
   )
 endif()
-
 build_lib(
   LIBNAME sixlowpan
   SOURCE_FILES
@@ -32,11 +31,13 @@ build_lib(
     model/sixlowpan-simple-flooding.h
     model/sixlowpan-nd-binding-table.h
   LIBRARIES_TO_LINK ${libinternet}
+                    ${libcsma}
   TEST_SOURCES
     ${example_as_test_suite}
     test/mock-net-device.cc
     test/sixlowpan-compression-threshold-test.cc
     test/sixlowpan-ghc-test.cc
+    test/sixlowpan-plain-ipv6-coexistence-test.cc
     test/sixlowpan-fragmentation-test.cc
     test/sixlowpan-hc1-test.cc
     test/sixlowpan-iphc-stateful-test.cc

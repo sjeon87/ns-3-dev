@@ -88,6 +88,14 @@ SixLowPanNetDevice::GetTypeId()
                           UintegerValue(0x0),
                           MakeUintegerAccessor(&SixLowPanNetDevice::m_compressionThreshold),
                           MakeUintegerChecker<uint32_t>())
+            .AddAttribute("EnablePlainIpv6",
+                          "When a packet falls below the compression threshold, send it as "
+                          "genuine plain IPv6 (EtherType 0x86DD) instead of 6LoWPAN-framed "
+                          "uncompressed IPv6. Allows 6LoWPAN and plain IPv6 to coexist on the "
+                          "same link (see issue #1360). Ignored when UseMeshUnder is true.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&SixLowPanNetDevice::m_allowPlainIpv6),
+                          MakeBooleanChecker())
             .AddAttribute("UseMeshUnder",
                           "The node is part of a mesh-under network: MESH and BC0 "
                           "headers are added to sent packets, and received mesh-under "
@@ -207,6 +215,21 @@ SixLowPanNetDevice::SetNetDevice(Ptr<NetDevice> device)
                                     protocolType,
                                     device,
                                     false);
+
+    // Also listen for plain (uncompressed) IPv6 frames on the same underlying
+    // device, so 6LoWPAN and plain IPv6 can coexist on shared links such as
+    // Ethernet or WiFi (see issue #1360). Devices that cannot discriminate by
+    // EtherType (e.g., LrWpanNetDevice, protocolType == 0) already receive
+    // everything through the handler above, so this second registration is
+    // only meaningful when the device supports real EtherType dispatch.
+    if (protocolType != 0)
+    {
+        m_node->RegisterProtocolHandler(
+            MakeCallback(&SixLowPanNetDevice::ReceivePlainIpv6FromDevice, this),
+            iana::ieee802numbers::IPV6,
+            device,
+            false);
+    }
 }
 
 void
@@ -322,6 +345,33 @@ SixLowPanNetDevice::DoDispose()
     m_fragments.clear();
 
     NetDevice::DoDispose();
+}
+
+void
+SixLowPanNetDevice::ReceivePlainIpv6FromDevice(Ptr<NetDevice> incomingPort,
+                                               Ptr<const Packet> packet,
+                                               uint16_t protocol,
+                                               const Address& src,
+                                               const Address& dst,
+                                               PacketType packetType)
+{
+    NS_LOG_FUNCTION(this << incomingPort << packet << protocol << src << dst);
+
+    // This is already a plain, uncompressed IPv6 packet (EtherType 0x86DD),
+    // with no 6LoWPAN dispatch byte and nothing to decompress. Hand it
+    // straight up to the IP layer.
+    Ptr<Packet> copyPkt = packet->Copy();
+
+    if (!m_promiscRxCallback.IsNull())
+    {
+        m_promiscRxCallback(this, copyPkt, iana::ieee802numbers::IPV6, src, dst, packetType);
+    }
+
+    if (!m_rxCallback(this, copyPkt, iana::ieee802numbers::IPV6, src))
+    {
+        NS_LOG_INFO("Drop packet due to no protocol handler");
+        m_macRxDropTrace(copyPkt);
+    }
 }
 
 void
@@ -814,14 +864,27 @@ SixLowPanNetDevice::DoSend(Ptr<Packet> packet,
 
     if (pktSize < compressionThreshold)
     {
-        NS_LOG_LOGIC("Compressed packet too short, using uncompressed one");
-        packet = origPacket;
-        SixLowPanIpv6 ipv6UncompressedHdr;
-        packet->AddHeader(ipv6UncompressedHdr);
-        pktSize = packet->GetSize();
-        if (useMesh)
+        if (m_allowPlainIpv6 && !useMesh)
         {
-            pktSize += meshHdr.GetSerializedSize() + bc0Hdr.GetSerializedSize();
+            // Send as genuine plain IPv6 (EtherType 0x86DD) rather than
+            // 6LoWPAN-framed uncompressed IPv6, so this coexists cleanly
+            // with a plain IPv6 stack sharing the same underlying device.
+            NS_LOG_LOGIC("Compressed packet too short, sending as plain IPv6");
+            packet = origPacket;
+            protocolNumber = iana::ieee802numbers::IPV6;
+            pktSize = packet->GetSize();
+        }
+        else
+        {
+            NS_LOG_LOGIC("Compressed packet too short, using uncompressed one");
+            packet = origPacket;
+            SixLowPanIpv6 ipv6UncompressedHdr;
+            packet->AddHeader(ipv6UncompressedHdr);
+            pktSize = packet->GetSize();
+            if (useMesh)
+            {
+                pktSize += meshHdr.GetSerializedSize() + bc0Hdr.GetSerializedSize();
+            }
         }
     }
 
