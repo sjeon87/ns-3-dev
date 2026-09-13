@@ -40,6 +40,7 @@ Python 3.10 to 3.14.
 
 ### New user-visible features
 
+- (core) Logging output can now be filtered by simulation time window and by node id (simulator context), using new global `NS_LOG` tokens (e.g., `NS_LOG="1.2s/1.5s:ContextId=0,[2-4],6:PacketSink"`) or the `LogSetTimeWindow()` and `LogSetContextFilter()` functions.
 - (network) IANA protocol and link types are now centralized in network module headers.
 
 - Added support for `nlohmann/json`, a header-only C++ third-party library for JSON parsing and serialization.

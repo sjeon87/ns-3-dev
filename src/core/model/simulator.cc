@@ -117,6 +117,7 @@ GetImpl()
         //
         LogSetTimePrinter(&DefaultTimePrinter);
         LogSetNodePrinter(&DefaultNodePrinter);
+        LogSetFilterSources(&Simulator::Now, &Simulator::GetContext);
     }
     return *pimpl;
 }
@@ -138,6 +139,7 @@ Simulator::Destroy()
      */
     LogSetTimePrinter(nullptr);
     LogSetNodePrinter(nullptr);
+    LogSetFilterSources(nullptr, nullptr);
     (*pimpl)->Destroy();
     (*pimpl)->Unref();
     *pimpl = nullptr;
@@ -350,6 +352,7 @@ Simulator::SetImplementation(Ptr<SimulatorImpl> impl)
     //
     LogSetTimePrinter(&DefaultTimePrinter);
     LogSetNodePrinter(&DefaultNodePrinter);
+    LogSetFilterSources(&Simulator::Now, &Simulator::GetContext);
 }
 
 Ptr<SimulatorImpl>

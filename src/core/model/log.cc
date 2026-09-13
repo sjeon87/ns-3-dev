@@ -10,14 +10,19 @@
 #include "assert.h"
 #include "environment-variable.h"
 #include "fatal-error.h"
+#include "nstime.h"
+#include "simulator.h"
 #include "string.h"
 
 #include <algorithm> // transform
-#include <ctype.h>   // toupper
+#include <charconv>
+#include <ctype.h> // toupper
 #include <iostream>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 /**
  * @file
@@ -101,6 +106,68 @@ static NodePrinter g_logNodePrinter = nullptr;
 
 /**
  * @ingroup logging
+ * The log filter simulation time source.
+ * This is private to the logging implementation.
+ */
+static LogTimeSource g_logTimeSource = nullptr;
+/**
+ * @ingroup logging
+ * The log filter simulator context source.
+ * This is private to the logging implementation.
+ */
+static LogContextSource g_logContextSource = nullptr;
+/**
+ * @ingroup logging
+ * Whether a time window or context filter is configured.
+ * Kept as a simple flag so LogIsFiltered() is trivially cheap when no
+ * filter is in use.
+ * This is private to the logging implementation.
+ */
+static bool g_logFilterConfigured = false;
+
+/**
+ * @ingroup logging
+ * Log filter configuration.
+ * This is private to the logging implementation.
+ */
+struct LogFilterConfig
+{
+    bool timeWindow{false}; //!< Whether a time window is configured.
+    Time minTime;           //!< Time window lower bound (inclusive).
+    Time maxTime;           //!< Time window upper bound (inclusive).
+    /** Context id ranges (inclusive bounds); single ids have equal bounds. */
+    std::vector<std::pair<uint32_t, uint32_t>> contexts;
+};
+
+/**
+ * @ingroup logging
+ * Get the log filter configuration, constructed on first use so no
+ * Time objects are created during static initialization.
+ * This is private to the logging implementation.
+ *
+ * @return The log filter configuration.
+ */
+static LogFilterConfig&
+GetLogFilterConfig()
+{
+    static LogFilterConfig config;
+    return config;
+}
+
+/**
+ * @ingroup logging
+ * Recompute \c g_logFilterConfigured from the filter configuration.
+ * This is private to the logging implementation.
+ */
+static void
+UpdateLogFilterConfigured()
+{
+    const auto& config = GetLogFilterConfig();
+    g_logFilterConfigured = config.timeWindow || !config.contexts.empty();
+}
+
+/**
+ * @ingroup logging
  * Handler for the undocumented \c print-list token in NS_LOG
  * which triggers printing of the list of log components, then exits.
  *
@@ -176,6 +243,120 @@ GetLogComponent(const std::string name)
         NS_FATAL_ERROR("Log component \"" << name << "\" does not exist.");
     }
     return *ret;
+}
+
+/** Unnamed namespace for log line assembly buffers. */
+namespace
+{
+
+/**
+ * A streambuf appending to a std::string whose capacity is reused
+ * between log lines, so steady-state logging does not allocate.
+ */
+class LogLineBuf : public std::streambuf
+{
+  public:
+    std::string m_line; //!< The log line being assembled.
+
+  protected:
+    /**
+     * Append a character sequence to the line.
+     *
+     * @param s The characters to append.
+     * @param n The number of characters to append.
+     * @return The number of characters appended.
+     */
+    std::streamsize xsputn(const char* s, std::streamsize n) override
+    {
+        m_line.append(s, static_cast<std::size_t>(n));
+        return n;
+    }
+
+    /**
+     * Append a single character to the line.
+     *
+     * @param c The character to append, or EOF.
+     * @return A value other than EOF on success.
+     */
+    int_type overflow(int_type c) override
+    {
+        if (!traits_type::eq_int_type(c, traits_type::eof()))
+        {
+            m_line.push_back(traits_type::to_char_type(c));
+        }
+        return traits_type::not_eof(c);
+    }
+};
+
+/** A memory buffer and the ostream assembling a log line into it. */
+struct LogLine
+{
+    LogLineBuf buf;        //!< The line buffer.
+    std::ostream os{&buf}; //!< The stream assembling the line.
+};
+
+/**
+ * Whether this thread's LogLine has been destroyed.
+ *
+ * Trivially destructible, so it remains readable during program shutdown,
+ * after the buffer's own thread_local destructor has run.  Core itself logs
+ * during static destruction (e.g. Time::Clear() from ~Time of static
+ * attribute defaults), so this must be handled.
+ */
+thread_local bool g_logLineDestroyed = false;
+
+/** Arm g_logLineDestroyed when the thread's LogLine is destroyed. */
+struct LogLineHolder
+{
+    LogLine line; //!< The line buffer and stream.
+
+    ~LogLineHolder()
+    {
+        g_logLineDestroyed = true;
+    }
+};
+
+/** @return The thread-local log line buffer. */
+LogLine&
+GetLogLine()
+{
+    thread_local LogLineHolder holder;
+    return holder.line;
+}
+
+} // unnamed namespace
+
+std::ostream&
+LogLineBegin()
+{
+    if (g_logLineDestroyed)
+    {
+        // Logging during program shutdown, after this thread's buffer is
+        // gone: stream directly to std::clog, which is kept alive by
+        // std::ios_base::Init.
+        return std::clog;
+    }
+    // The buffer is empty here except for nested logging (a user-defined
+    // operator<< that itself logs while a log message is being assembled);
+    // then the inner line is appended to the outer line in progress and
+    // LogLineCommit() flushes both, matching the historical interleaving of
+    // direct std::clog streaming.
+    return GetLogLine().os;
+}
+
+void
+LogLineCommit(std::ostream& os)
+{
+    if (&os == &std::clog)
+    {
+        std::clog << std::endl;
+        return;
+    }
+    auto& line = static_cast<LogLineBuf*>(os.rdbuf())->m_line;
+    line.push_back('\n');
+    std::clog.write(line.data(), static_cast<std::streamsize>(line.size()));
+    std::clog.flush();
+    line.clear();
 }
 
 void
@@ -421,6 +602,184 @@ ComponentExists(std::string componentName)
 
 /**
  * @ingroup logging
+ * Parse a log filter time window of the form `min/max`, where either
+ * bound (but not both) may be omitted.
+ * This is private to the logging implementation.
+ *
+ * @param [in] window The time window specification.
+ */
+static void
+ParseTimeWindow(const std::string& window)
+{
+    auto slash = window.find('/');
+    if (slash == std::string::npos)
+    {
+        NS_FATAL_ERROR("Invalid log time window \"" << window << "\": expected 'min/max'");
+    }
+    std::string minStr = window.substr(0, slash);
+    std::string maxStr = window.substr(slash + 1);
+    if (minStr.empty() && maxStr.empty())
+    {
+        NS_FATAL_ERROR("Invalid log time window \"" << window
+                                                    << "\": at least one bound is required");
+    }
+    auto& config = GetLogFilterConfig();
+    config.minTime = minStr.empty() ? Time::Min() : Time(minStr);
+    config.maxTime = maxStr.empty() ? Time::Max() : Time(maxStr);
+    if (config.minTime > config.maxTime)
+    {
+        NS_FATAL_ERROR("Invalid log time window \"" << window << "\": min is later than max");
+    }
+    config.timeWindow = true;
+    UpdateLogFilterConfigured();
+}
+
+/**
+ * @ingroup logging
+ * Parse a single context id for the log context filter.
+ * This is private to the logging implementation.
+ *
+ * @param [in] item The context id string.
+ * @param [in] contexts The full filter specification, for error messages.
+ * @return The context id.
+ */
+static uint32_t
+ParseContextId(const std::string& item, const std::string& contexts)
+{
+    uint32_t id{};
+    auto [ptr, ec] = std::from_chars(item.data(), item.data() + item.size(), id);
+    if (ec != std::errc() || ptr != item.data() + item.size())
+    {
+        NS_FATAL_ERROR("Invalid context id \"" << item << "\" in log context filter \"" << contexts
+                                               << "\"");
+    }
+    return id;
+}
+
+/**
+ * @ingroup logging
+ * Parse a log context filter: a comma-separated list of context ids,
+ * `[min-max]` ranges, and `-1` (no context).  An empty string clears
+ * the filter.
+ * This is private to the logging implementation.
+ *
+ * @param [in] contexts The context filter specification.
+ */
+static void
+ParseContextFilter(const std::string& contexts)
+{
+    auto& config = GetLogFilterConfig();
+    config.contexts.clear();
+    if (!contexts.empty())
+    {
+        for (const auto& item : SplitString(contexts, ","))
+        {
+            if (item == "-1")
+            {
+                config.contexts.emplace_back(Simulator::NO_CONTEXT, Simulator::NO_CONTEXT);
+            }
+            else if (item.size() > 1 && item.front() == '[' && item.back() == ']')
+            {
+                std::string inner = item.substr(1, item.size() - 2);
+                auto dash = inner.find('-');
+                if (dash == std::string::npos)
+                {
+                    NS_FATAL_ERROR("Invalid context range \""
+                                   << item << "\" in log context filter \"" << contexts
+                                   << "\": expected '[min-max]'");
+                }
+                uint32_t min = ParseContextId(inner.substr(0, dash), contexts);
+                uint32_t max = ParseContextId(inner.substr(dash + 1), contexts);
+                if (min > max)
+                {
+                    NS_FATAL_ERROR("Invalid context range \""
+                                   << item << "\" in log context filter \"" << contexts
+                                   << "\": min is greater than max");
+                }
+                config.contexts.emplace_back(min, max);
+            }
+            else
+            {
+                uint32_t id = ParseContextId(item, contexts);
+                config.contexts.emplace_back(id, id);
+            }
+        }
+    }
+    UpdateLogFilterConfigured();
+}
+
+void
+LogSetTimeWindow(const Time& minTime, const Time& maxTime)
+{
+    if (minTime > maxTime)
+    {
+        NS_FATAL_ERROR("Invalid log time window: min " << minTime << " is later than max "
+                                                       << maxTime);
+    }
+    auto& config = GetLogFilterConfig();
+    config.minTime = minTime;
+    config.maxTime = maxTime;
+    config.timeWindow = true;
+    UpdateLogFilterConfigured();
+}
+
+void
+LogSetTimeWindow(const std::string& window)
+{
+    if (window.empty())
+    {
+        GetLogFilterConfig().timeWindow = false;
+        UpdateLogFilterConfigured();
+        return;
+    }
+    ParseTimeWindow(window);
+}
+
+void
+LogSetContextFilter(const std::string& contexts)
+{
+    ParseContextFilter(contexts);
+}
+
+void
+LogSetFilterSources(LogTimeSource timeSource, LogContextSource contextSource)
+{
+    g_logTimeSource = timeSource;
+    g_logContextSource = contextSource;
+}
+
+bool
+LogIsFiltered()
+{
+    if (!g_logFilterConfigured)
+    {
+        return false;
+    }
+    const auto& config = GetLogFilterConfig();
+    if (config.timeWindow && g_logTimeSource)
+    {
+        Time now = (*g_logTimeSource)();
+        if (now < config.minTime || now > config.maxTime)
+        {
+            return true;
+        }
+    }
+    if (!config.contexts.empty() && g_logContextSource)
+    {
+        uint32_t context = (*g_logContextSource)();
+        auto inRange = [context](const auto& range) {
+            return context >= range.first && context <= range.second;
+        };
+        if (std::none_of(config.contexts.begin(), config.contexts.end(), inRange))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @ingroup logging
  * Parse the \c NS_LOG environment variable.
  * This is private to the logging implementation.
  */
@@ -431,6 +790,29 @@ CheckEnvironmentVariables()
 
     for (auto& [component, value] : dict)
     {
+        if (component.find('/') != std::string::npos)
+        {
+            // A global time window filter token, e.g. "1.2s/1.5s"
+            if (!value.empty())
+            {
+                NS_FATAL_ERROR("Invalid time window \""
+                               << component << "=" << value
+                               << "\" in env variable NS_LOG: flags are not allowed");
+            }
+            ParseTimeWindow(component);
+            continue;
+        }
+        if (component == "ContextId")
+        {
+            // The global context (node id) filter token
+            if (value.empty())
+            {
+                NS_FATAL_ERROR("Empty ContextId filter in env variable NS_LOG; "
+                               "expected e.g. ContextId=0,[2-4],6");
+            }
+            ParseContextFilter(value);
+            continue;
+        }
         if (component != "*" && component != "***" && !ComponentExists(component))
         {
             NS_LOG_UNCOND("Invalid or unregistered component name \"" << component << "\"");
