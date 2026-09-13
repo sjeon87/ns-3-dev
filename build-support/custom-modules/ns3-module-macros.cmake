@@ -368,6 +368,10 @@ function(build_lib_reexport_third_party_libraries libname libraries_to_link)
                       $<INSTALL_INTERFACE:include>
     INTERFACE ${exported_include_directories}
   )
+  target_include_directories(
+    ${libname} SYSTEM
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_OUTPUT_DIRECTORY}/include-system>
+  )
 endfunction()
 
 function(build_lib_export_definitions_as_interface_definitions libname)

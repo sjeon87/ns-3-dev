@@ -164,6 +164,11 @@ set(source_files
     model/global-value.cc
     model/trace-source-accessor.cc
     model/config.cc
+    model/db.cc
+    model/dbm.cc
+    model/mhz.cc
+    model/dbm-per-mhz.cc
+    model/unit-attribute-serialize.cc
     model/callback.cc
     model/names.cc
     model/vector.cc
@@ -285,6 +290,12 @@ set(header_files
     model/type-name.h
     model/uinteger.h
     model/uniform-random-bit-generator.h
+    model/units.h
+    model/db.h
+    model/dbm.h
+    model/mhz.h
+    model/dbm-per-mhz.h
+    model/unit-attribute-serialize.h
     model/valgrind.h
     model/vector.h
     model/warnings.h
@@ -330,6 +341,7 @@ set(test_sources
     test/trickle-timer-test-suite.cc
     test/tuple-value-test-suite.cc
     test/type-id-test-suite.cc
+    test/units-test-suite.cc
     test/watchdog-test-suite.cc
     test/val-array-test-suite.cc
     test/matrix-array-test-suite.cc
@@ -365,4 +377,25 @@ if(${ENABLE_TESTS})
       ${test-exec}
     )
   endforeach()
+endif()
+
+# Add mp-units header-only library support third-party/mp-units is not processed
+# by the ns-3 module machinery, so we reference paths directly here rather than
+# via an add_subdirectory mechanism.
+if(EXISTS
+   ${PROJECT_SOURCE_DIR}/third-party/mp-units/core/include
+)
+  target_include_directories(
+    ${libcore}
+    PUBLIC
+      $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third-party/mp-units/core/include>
+      $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third-party/mp-units/systems/include>
+  )
+  target_compile_definitions(
+    ${libcore}
+    PUBLIC MP_UNITS_API_CONTRACTS=0
+           MP_UNITS_HOSTED=1
+           MP_UNITS_API_STD_FORMAT=1
+           MP_UNITS_API_NATURAL_UNITS=1
+  )
 endif()

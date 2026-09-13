@@ -1341,6 +1341,39 @@ of a namespace, add a trailing comment to its closing brace.
 
   } // namespace ns3
 
+Unit symbol imports
+===================
+
+The mp-units library places unit symbols (``Hz``, ``MHz``, ``W``, ``mW``, etc.)
+in the namespace ``mp_units::si::unit_symbols``.  The rules for importing these
+symbols differ between implementation files and headers.
+
+**Implementation files (.cc)**:  A ``using namespace`` directive at file scope
+is acceptable because it is confined to one translation unit::
+
+    using namespace mp_units::si::unit_symbols;
+
+**Header files (.h)**:  A ``using namespace`` directive in a header leaks the
+entire symbol set into every file that includes it, directly or transitively.
+Instead, use the short symbols that ``units.h`` exports via selective ``using``
+declarations (currently ``Hz``, ``MHz``, ``GHz``, ``W``, and ``mW``).  These
+are available automatically to any header that includes ``units.h``::
+
+    // Good -- uses symbol exported by units.h
+    MHz_t GetTxBandwidth(WifiMode mode, MHz_t maxBw = 20.0 * MHz) const;
+
+    // Bad -- verbose fully qualified form (works, but hard to read)
+    MHz_t GetTxBandwidth(WifiMode mode,
+                         MHz_t maxBw = 20.0 * mp_units::si::mega<mp_units::si::hertz>) const;
+
+If a unit symbol is not already exported by ``units.h``, authors may either add
+a selective ``using`` declaration in their own header or use the fully qualified
+form (e.g., ``mp_units::si::unit_symbols::kHz``).
+
+The two cases where this guidance matters in practice are default argument
+values and ``constexpr`` initializers -- the only contexts in which a header
+must spell out a unit-symbol expression.
+
 Unused variables
 ================
 

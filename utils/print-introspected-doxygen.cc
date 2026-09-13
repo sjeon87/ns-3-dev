@@ -1590,6 +1590,9 @@ PrintAttributeImplementations(std::ostream& os)
       // All three (Value, Access and Checkers) defined, but custom
       { "Boolean",        "bool",           false, "boolean.h"          },
       { "Callback",       "CallbackBase",   true,  "callback.h"         },
+      { "Db",             "dB_t",           false, "db.h"               },
+      { "Dbm",            "dBm_t",          false, "dbm.h"              },
+      { "DbmPerMhz",      "dBm_per_MHz_t",  false, "dbm-per-mhz.h"      },
       { "Double",         "double",         false, "double.h"           },
       { "Enum",           "T",              false, "enum.h"             },
       { "Integer",        "int64_t",        false, "integer.h"          },

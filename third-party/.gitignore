@@ -5,3 +5,4 @@
 !.gitignore
 !.clang-format-ignore
 !nlohmann/
+!mp-units/

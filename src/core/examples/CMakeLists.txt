@@ -14,6 +14,7 @@ set(base_examples
     system-path-examples
     templated-classes
     test-string-value-formatting
+    units-example
 )
 
 foreach(
