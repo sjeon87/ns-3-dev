@@ -106,6 +106,7 @@ class BulkSendApplication : public SourceApplication
     uint32_t m_seq{0};                   //!< Sequence
     Ptr<Packet> m_unsentPacket;          //!< Variable to cache unsent packet
     bool m_enableSeqTsSizeHeader{false}; //!< Enable or disable the SeqTsSizeHeader
+    TypeId m_recoveryTypeId;             //!< The TCP recovery TypeId to use
 
     /// Traced Callback: retransmitted packets
     TracedCallback<Ptr<const Packet>,
