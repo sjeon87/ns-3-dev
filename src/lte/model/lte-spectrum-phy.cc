@@ -56,32 +56,6 @@ TbId_t::TbId_t(const uint16_t a, const uint8_t b)
 {
 }
 
-/**
- * Equality operator
- *
- * @param a lhs
- * @param b rhs
- * @returns true if rnti and layer are equal
- */
-bool
-operator==(const TbId_t& a, const TbId_t& b)
-{
-    return ((a.m_rnti == b.m_rnti) && (a.m_layer == b.m_layer));
-}
-
-/**
- * Less than operator
- *
- * @param a lhs
- * @param b rhs
- * @returns true if rnti less than ro rnti equal and layer less than
- */
-bool
-operator<(const TbId_t& a, const TbId_t& b)
-{
-    return ((a.m_rnti < b.m_rnti) || ((a.m_rnti == b.m_rnti) && (a.m_layer < b.m_layer)));
-}
-
 NS_OBJECT_ENSURE_REGISTERED(LteSpectrumPhy);
 
 LteSpectrumPhy::LteSpectrumPhy()

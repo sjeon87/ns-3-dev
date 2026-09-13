@@ -33,18 +33,6 @@ EpcEnbApplication::EpsFlowId_t::EpsFlowId_t(const uint16_t a, const uint8_t b)
 {
 }
 
-bool
-operator==(const EpcEnbApplication::EpsFlowId_t& a, const EpcEnbApplication::EpsFlowId_t& b)
-{
-    return ((a.m_rnti == b.m_rnti) && (a.m_bid == b.m_bid));
-}
-
-bool
-operator<(const EpcEnbApplication::EpsFlowId_t& a, const EpcEnbApplication::EpsFlowId_t& b)
-{
-    return ((a.m_rnti < b.m_rnti) || ((a.m_rnti == b.m_rnti) && (a.m_bid < b.m_bid)));
-}
-
 TypeId
 EpcEnbApplication::GetTypeId()
 {

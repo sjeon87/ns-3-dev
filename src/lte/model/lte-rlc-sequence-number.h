@@ -11,6 +11,7 @@
 
 #include "ns3/assert.h"
 
+#include <compare>
 #include <iostream>
 #include <limits>
 #include <stdint.h>
@@ -137,66 +138,43 @@ class SequenceNumber10
     }
 
     /**
-     * greater than operator
-     * @param other the object to compare
-     * @returns true if greater than
+     * Three-way comparison (spaceship) operator.
+     * @param other sequence number to compare to this one
+     * @returns The result of the comparison.
      */
-    bool operator>(const SequenceNumber10& other) const
+    constexpr std::strong_ordering operator<=>(const SequenceNumber10& other) const
     {
         NS_ASSERT(m_modulusBase == other.m_modulusBase);
+
+        if (m_value == other.m_value)
+        {
+            return std::strong_ordering::equivalent;
+        }
+
         uint16_t v1 = (m_value - m_modulusBase) % 1024;
         uint16_t v2 = (other.m_value - other.m_modulusBase) % 1024;
-        return v1 > v2;
+
+        if (v1 > v2)
+        {
+            return std::strong_ordering::greater;
+        }
+
+        return std::strong_ordering::less;
     }
 
     /**
-     * equality operator
-     * @param other the object to compare
-     * @returns true if equal
+     * @brief Equality comparison operator.
+     *
+     * Two sequence numbers are considered equal if their raw sequence values
+     * are identical. The modulus base is assumed to be consistent between
+     * compared objects and is not independently validated here.
+     *
+     * @param other The sequence number to compare with.
+     * @return true if the sequence numbers are equal, false otherwise.
      */
-    bool operator==(const SequenceNumber10& other) const
+    constexpr bool operator==(const SequenceNumber10& other) const
     {
-        return (m_value == other.m_value);
-    }
-
-    /**
-     * inequality operator
-     * @param other the object to compare
-     * @returns true if not equal
-     */
-    bool operator!=(const SequenceNumber10& other) const
-    {
-        return (m_value != other.m_value);
-    }
-
-    /**
-     * less than or equal operator
-     * @param other the object to compare
-     * @returns true if less than or equal
-     */
-    bool operator<=(const SequenceNumber10& other) const
-    {
-        return (!this->operator>(other));
-    }
-
-    /**
-     * greater than or equal operator
-     * @param other the object to compare
-     * @returns true if greater than or equal
-     */
-    bool operator>=(const SequenceNumber10& other) const
-    {
-        return (this->operator>(other) || this->operator==(other));
-    }
-
-    /**
-     * less than operator
-     * @param other the object to compare
-     * @returns true if less than
-     */
-    bool operator<(const SequenceNumber10& other) const
-    {
-        return !this->operator>(other) && m_value != other.m_value;
+        return (*this <=> other) == std::strong_ordering::equivalent;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const SequenceNumber10& val);

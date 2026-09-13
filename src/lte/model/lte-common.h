@@ -12,6 +12,7 @@
 #include "ns3/uinteger.h"
 
 #include <cmath>
+#include <compare>
 
 // see 36.213 section 8
 #define UL_PUSCH_TTIS_DELAY 4
@@ -43,8 +44,13 @@ struct LteFlowId_t
      */
     LteFlowId_t(const uint16_t a, const uint8_t b);
 
-    friend bool operator==(const LteFlowId_t& a, const LteFlowId_t& b);
-    friend bool operator<(const LteFlowId_t& a, const LteFlowId_t& b);
+    /**
+     * Three-way comparison operator.
+     *
+     * @param other The object to compare against.
+     * @return A std::strong_ordering indicating the relative order.
+     */
+    auto operator<=>(const LteFlowId_t& other) const = default;
 };
 
 /// ImsiLcidPair structure
@@ -63,8 +69,13 @@ struct ImsiLcidPair_t
      */
     ImsiLcidPair_t(const uint64_t a, const uint8_t b);
 
-    friend bool operator==(const ImsiLcidPair_t& a, const ImsiLcidPair_t& b);
-    friend bool operator<(const ImsiLcidPair_t& a, const ImsiLcidPair_t& b);
+    /**
+     * Three-way comparison operator.
+     *
+     * @param other The object to compare against.
+     * @return A std::strong_ordering indicating the relative order.
+     */
+    auto operator<=>(const ImsiLcidPair_t& other) const = default;
 };
 
 /**
@@ -93,21 +104,12 @@ struct LteUeConfig_t
     LteUeConfig_t();
 
     /**
-     * Equality operator
+     * Three-way comparison operator.
      *
-     * @param a lhs
-     * @param b rhs
-     * @returns true if "equal"
+     * @param other The object to compare against.
+     * @return A std::strong_ordering indicating the relative order.
      */
-    friend bool operator==(const LteUeConfig_t& a, const LteUeConfig_t& b);
-    /**
-     * Less than operator
-     *
-     * @param a lhs
-     * @param b rhs
-     * @returns true if "less than"
-     */
-    friend bool operator<(const LteUeConfig_t& a, const LteUeConfig_t& b);
+    auto operator<=>(const LteUeConfig_t& other) const = default;
 };
 
 /// LteFfConverter class

@@ -23,6 +23,7 @@
 #include "ns3/traced-callback.h"
 #include "ns3/virtual-net-device.h"
 
+#include <compare>
 #include <map>
 
 namespace ns3
@@ -152,21 +153,16 @@ class EpcEnbApplication : public Application
         EpsFlowId_t(const uint16_t a, const uint8_t b);
 
         /**
-         * Comparison operator
+         * @brief Three-way comparison (spaceship) operator.
          *
-         * @param a first application
-         * @param b second application
-         * @returns true is the applications are "equal"
-         */
-        friend bool operator==(const EpsFlowId_t& a, const EpsFlowId_t& b);
-        /**
-         * Less than operator
+         * The comparison is performed lexicographically, first by RNTI and then by
+         * bearer identifier (BID).
          *
-         * @param a first application
-         * @param b second application
-         * @returns true is the applications are "equal"
+         * @param a first EPS flow identifier
+         * @param b second EPS flow identifier
+         * @returns The result of the comparison.
          */
-        friend bool operator<(const EpsFlowId_t& a, const EpsFlowId_t& b);
+        friend auto operator<=>(const EpsFlowId_t& a, const EpsFlowId_t& b) = default;
     };
 
   private:

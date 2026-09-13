@@ -30,6 +30,7 @@
 #include "ns3/spectrum-phy.h"
 #include "ns3/spectrum-value.h"
 
+#include <compare>
 #include <map>
 
 namespace ns3
@@ -51,8 +52,14 @@ struct TbId_t
      */
     TbId_t(const uint16_t a, const uint8_t b);
 
-    friend bool operator==(const TbId_t& a, const TbId_t& b);
-    friend bool operator<(const TbId_t& a, const TbId_t& b);
+    /**
+     * @brief Three-way comparison (spaceship) operator.
+     * @param a first transport block identifier
+     * @param b second transport block identifier
+     * @returns The result of the comparison.
+     */
+
+    friend auto operator<=>(const TbId_t& a, const TbId_t& b) = default;
 };
 
 /// tbInfo_t structure
