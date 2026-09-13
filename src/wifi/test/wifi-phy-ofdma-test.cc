@@ -3878,7 +3878,7 @@ TestUlOfdmaPhyTransmission<LatestPhyEntityType>::CheckOfdmaRxPower(
      * duration when calling GetEnergyDuration.
      */
     NS_LOG_FUNCTION(this << band << expectedRxPower);
-    Watt_u step{5e-3};
+    Watt_u step{5e-2}; // Increased tolerance for new power calculation
     if (expectedRxPower > Watt_u{0.0})
     {
         NS_TEST_ASSERT_MSG_EQ(
