@@ -70,6 +70,11 @@ TcpL4Protocol::GetTypeId()
                           TypeIdValue(RttMeanDeviation::GetTypeId()),
                           MakeTypeIdAccessor(&TcpL4Protocol::m_rttTypeId),
                           MakeTypeIdChecker())
+            .AddAttribute("SocketImplType",
+                          "TCP socket implementation type (TcpSocketBase or a derived class).",
+                          TypeIdValue(TcpSocketBase::GetTypeId()),
+                          MakeTypeIdAccessor(&TcpL4Protocol::m_socketImplTypeId),
+                          MakeTypeIdChecker())
             .AddAttribute("SocketType",
                           "Socket type of TCP objects.",
                           TypeIdValue(TcpCubic::GetTypeId()),
@@ -179,22 +184,35 @@ TcpL4Protocol::DoDispose()
 Ptr<Socket>
 TcpL4Protocol::CreateSocket(TypeId congestionTypeId)
 {
-    return CreateSocket(congestionTypeId, m_recoveryTypeId);
+    return CreateSocket(m_socketImplTypeId, congestionTypeId, m_recoveryTypeId);
 }
 
 Ptr<Socket>
 TcpL4Protocol::CreateSocket(TypeId congestionTypeId, TypeId recoveryTypeId)
 {
-    NS_LOG_FUNCTION(this << congestionTypeId.GetName());
+    return CreateSocket(m_socketImplTypeId, congestionTypeId, recoveryTypeId);
+}
+
+Ptr<Socket>
+TcpL4Protocol::CreateSocket(TypeId socketImplType, TypeId congestionTypeId, TypeId recoveryTypeId)
+{
+    NS_LOG_FUNCTION(this << socketImplType.GetName() << congestionTypeId.GetName());
+    NS_ABORT_MSG_UNLESS(socketImplType == TcpSocketBase::GetTypeId() ||
+                            socketImplType.IsChildOf(TcpSocketBase::GetTypeId()),
+                        "SocketImplType '" << socketImplType.GetName()
+                                           << "' must be TcpSocketBase or a derived class");
     ObjectFactory rttFactory;
+    ObjectFactory socketFactory;
     ObjectFactory congestionAlgorithmFactory;
     ObjectFactory recoveryAlgorithmFactory;
     rttFactory.SetTypeId(m_rttTypeId);
+    socketFactory.SetTypeId(socketImplType);
     congestionAlgorithmFactory.SetTypeId(congestionTypeId);
     recoveryAlgorithmFactory.SetTypeId(recoveryTypeId);
 
     Ptr<RttEstimator> rtt = rttFactory.Create<RttEstimator>();
-    Ptr<TcpSocketBase> socket = CreateObject<TcpSocketBase>();
+    // Create TCP socket using the SocketImplType attribute (defaults to TcpSocketBase)
+    Ptr<TcpSocketBase> socket = socketFactory.Create<TcpSocketBase>();
     Ptr<TcpCongestionOps> algo = congestionAlgorithmFactory.Create<TcpCongestionOps>();
     Ptr<TcpRecoveryOps> recovery = recoveryAlgorithmFactory.Create<TcpRecoveryOps>();
 
@@ -211,7 +229,7 @@ TcpL4Protocol::CreateSocket(TypeId congestionTypeId, TypeId recoveryTypeId)
 Ptr<Socket>
 TcpL4Protocol::CreateSocket()
 {
-    return CreateSocket(m_congestionTypeId, m_recoveryTypeId);
+    return CreateSocket(m_socketImplTypeId, m_congestionTypeId, m_recoveryTypeId);
 }
 
 Ipv4EndPoint*
