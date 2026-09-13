@@ -1,0 +1,168 @@
+.. include:: replace.txt
+.. highlight:: cpp
+.. highlight:: bash
+
+Neighborhood Discovery Protocol
+===============================
+
+The |ns3| model for the Neighborhood Discovery Protocol (NHDP), specified
+in Internet RFC 6130, is intended to support mobile ad hoc networks (MANETs)
+at the IP layer, by discovering one-hop and two-hop neighbor relationships.
+
+NHDP sends and receives HELLO messages.  Each node sends information in
+the HELLO about its interface and associated address(es).
+Each node also informs its one-hop neighbors about those neighbors that
+it has heard, and whether the neighbor relationship is considered to
+be one-way (if a node has heard from a neighbor but doesn't see its
+own addresses in the neighbor's HELLO) or symmetric (the node finds its
+address in the neighbor's HELLO).   This information sharing allows
+each node to locally build and maintain state about its one-hop and
+two-hop neighborhood.  HELLO messages are sent periodically, and can
+also be extended with messaging from client protocols.
+
+NHDP derives from the Optimized Link State Routing (OLSR) protocol; the
+neighbor discovery aspects of OLSR (RFC 3626) were refactored into a
+separate protocol entity (NHDP) that provides neighbor discovery service
+to next-generation MANET protocols such as AODVv2 and OLSRv2.  NHDP
+also uses the generalized MANET packet format known as PacketBB (RFC 5444).
+NHDP message encoding uses a PacketBB-defined 'Type-Length-Value (TLV)'
+encoding.
+
+The following figure illustrates the relationship between NHDP and a
+client protocol such as OLSRv2 (RFC 7181).  NHDP sends and receives HELLO
+messages and uses the information gathered, and its local information, to build
+three information repositories:  a Link Set, a Neighbor Set, and a 2-Hop
+Neighbor set.  It shares this information with OLSRv2.  NHDP also provides
+a mechanism for OLSRv2 to add or extract protocol-specific information
+from the HELLO messages.  In the case of OLSRv2, it adds TLVs for
+selecting Multipoint Relays to the HELLO messages; the NHDP instance
+just treats these as opaque TLVs and allows OLSRv2 clients to read
+and write them.  The figure also depicts the other information bases
+in OLSRv2 and the other OLSRv2 messages that are sent without coordination
+from NHDP.  The basis for this figure is the diagram of OLSR data flow from
+Wikipedia, authored by Gonsie, available under the Creative Commons
+Attribution-Share Alike 3.0 Unported license, downloaded from
+https://en.wikipedia.org/wiki/File:Olsr-overview.pdf on 2 March 2025.
+
+.. _fig-nhdp-olsr-architecture:
+
+.. figure:: figures/nhdp-olsr-architecture.*
+
+    NHDP architecture
+
+Scope and Limitations
+---------------------
+
+The current |ns3| model supports single interface devices.  A node may have
+more than one address on its (single) MANET interface, and NHDP tracks
+neighbors as lists of addresses, as specified in RFC 6130 (Sec. 12.3).  The
+primary motivation is IPv6 operation: an IPv6 MANET node typically carries
+both a link-local address (used as the locator for on-link HELLO exchange)
+and a topology-independent routing address such as a Unique Local Address
+(ULA, RFC 4193); NHDP advertises and tracks both.
+
+Each ``NhdpClient`` instance operates over a single address family, selected
+by the ``AddressMode`` attribute (``Ipv4``, the default, or ``Ipv6``).  RFC 6130
+is address-family agnostic, but Sec. 12.1 implies that a router uses a single
+address length; run two instances on a node for simultaneous IPv4 and IPv6
+operation.  In IPv4 mode the multicast destination defaults to the RFC 5498
+``LL-MANET-Routers`` address ``224.0.0.109`` (configurable via the ``Address``
+attribute); in IPv6 mode the RFC 5498 IPv6 ``LL-MANET-Routers`` address
+``FF02::6D`` is used and HELLOs are sourced from the interface's link-local
+address.
+
+The following NHDP features are described in RFC 6130 but are not yet
+included in the |ns3| model:
+
+* Support for multiple MANET interfaces (including the Interface Information Base)
+* ``OTHER_NEIGHB`` address blocks (advertising and processing third-party lost/symmetric neighbors)
+* More generalized support for carrying messages of other protocols as part of NHDP HELLOs
+* Heuristics to allow some HELLOs to be sent without full link information
+
+Usage
+-----
+
+NHDP as a standalone application is straightforward to install in the typical |ns3| way
+of creating a helper and installing it to a container of nodes.  However, the more interesting
+usage will be to install it along with some other client protocol (such as OLSRv2) that can make
+use of the neighbor information.  In the example OLSRv2 protocol in this repository, at node
+initialization time, the OLSRv2 protocol traverses the list of applications on the node, and
+when it finds NHDP, hooks the HELLO send and receive traces, which allows OLSRv2 to piggyback
+TLVs (for MPR selectors) on the NHDP HELLOs, as well as to process the neighbor information
+in NHDP HELLos.
+
+Helpers
+~~~~~~~
+
+The following example code shows how to use the class :cpp:class:`NhdpHelper`:
+
+::
+
+    NhdpHelper nhdpHelper;
+    ApplicationContainer apps = nhdpHelper.Install(nodes);
+
+
+Attributes
+~~~~~~~~~~
+
+Class :cpp:class:`NhdpClient` contains the following attributes:
+
+* ``Address``: Multicast address to use.
+* ``Port``: UDP port to use.
+* ``HelloInterval``: Default maximum interval between HELLOs on a MANET interface.
+* ``HelloMinInterval``: Default minimum interval between HELLOs on a MANET interface.
+* ``RefreshInterval``: Default maximum interval between advertisements of each 1-hop neighbor in a HELLO.
+* ``LHoldTime``: Time to advertise former 1-hop neighbor addresses as lost for removal from Link Set.
+* ``HHoldTime``: Time advertised for the validity of messages sent from a MANET interface.
+* ``HystAccept``: Link quality threshold at or above which a link becomes usable.
+* ``HystReject``: Link quality threshold below which a link becomes unusable.
+* ``InitialQuality``: The initial quality of a newly identified link.
+* ``InitialPending``: If true, newly identified links are considered pending, and are not usable until quality reaches HystAccept.
+* ``HPMaxJitter``: MAXJITTER used in periodically generated HELLO messages.
+* ``HTMaxJitter``: MAXJITTER used in externally triggered HELLO messages.
+* ``NHoldTime``: Time to advertise former 1-hop neighbor addresses as lost for removal from TwoHopSets.
+* ``IHoldTime``: Time to record recently used local interface addresses.
+* ``BypassMode``: Whether to bypass the sending of messages on the channel.
+
+Traces
+~~~~~~
+
+Class :cpp:class:`NhdpClient` contains the following trace sources:
+
+* ``NeighborChange``: Notification that neighbor information base changed.
+* ``LinkChange``: Notification that link information base changed.
+* ``TwoHopChange``: Notification that two-hop information base changed.
+* ``LostNeighborChange``: Notification that lost neighbor information base changed.
+* ``LinkFailure``: Trace of reported L2 link failure.
+* ``HelloSend``: Read-only trace of the contents of a sent HELLO.
+* ``HelloRecv``: Read-only trace of the contents of a received HELLO.
+* ``HelloMessageSend``: Trace of (modifiable) PbbMessage before it is sent out as HELLO.
+* ``HelloMessageRecv``: Trace of PbbMessage HELLO after it has been processed by NHDP.
+* ``Tx``: Trace of Packet just before sending to UDP socket.
+
+Examples and Tests
+------------------
+An example is provided.
+
+nhdp-example.cc
+~~~~~~~~~~~~~~~
+This is a trivial example illustrating how to install and configure NHDP on two Wi-Fi mobile
+adhoc nodes, running a small simulation for 10 seconds.  The example is configured to print
+debug log messages from the two nodes illustrating the generation and reception of the
+HELLO messages.
+
+Validation
+----------
+
+There has been no validation against external sources.
+
+References
+----------
+
+[`1 <https://www.ietf.org/rfc/rfc6130.htm>`_] RFC 6130: Mobile Ad Hoc Network (MANET) Neighborhood Discovery Protocol (NHDP)
+
+[`2 <https://www.ietf.org/rfc/rfc3626.htm>`_] RFC 3626: Optimized Link State Routing Protocol (OLSR)
+
+[`3 <https://www.ietf.org/rfc/rfc5444.html>`_] RFC 5444: Generalized Mobile Ad Hoc Network (MANET) Packet/Message Format
+
+[`4 <https://www.ietf.org/rfc/rfc7181.html>`_] RFC 7181: The Optimized Link State Routing Protocol Version 2

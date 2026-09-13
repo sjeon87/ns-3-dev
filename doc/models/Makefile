@@ -40,6 +40,9 @@ SOURCES = \
 	$(SRC)/fd-net-device/doc/dpdk-net-device.rst \
 	$(SRC)/fd-net-device/doc/netmap-net-device.rst \
 	$(SRC)/tap-bridge/doc/tap.rst \
+	$(SRC)/manet/doc/source/manet.rst \
+	$(SRC)/manet/doc/source/introduction.rst \
+	$(SRC)/manet/doc/source/nhdp.rst \
 	$(SRC)/mesh/doc/source/mesh.rst \
 	$(SRC)/mesh/doc/source/mesh-user.rst \
 	$(SRC)/mesh/doc/source/mesh-design.rst \
@@ -179,6 +182,7 @@ SOURCEFIGS = \
 	$(SRC)/wifi/doc/source/figures/spectrum-wifi-phy-multiple-interfaces.png \
 	$(SRC)/wifi/doc/source/figures/cca-channel-switching-multiple-interfaces.pdf \
 	$(SRC)/wifi/doc/source/figures/cca-channel-switching-multiple-interfaces.png \
+	$(SRC)/manet/doc/source/figures/nhdp-olsr-architecture.png \
 	$(SRC)/lte/doc/source/figures/epc-ctrl-arch.dia \
 	$(SRC)/lte/doc/source/figures/epc-data-flow-dl.dia \
 	$(SRC)/lte/doc/source/figures/epc-data-flow-dl-with-split.dia \
