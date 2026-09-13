@@ -19,6 +19,7 @@
 #include "ns3/iana-ieee802-numbers.h"
 #include "ns3/icmpv6-l4-protocol.h"
 #include "ns3/internet-stack-helper.h"
+#include "ns3/ipv4-address.h"
 #include "ns3/ipv6-static-routing-helper.h"
 #include "ns3/log.h"
 #include "ns3/lte-enb-net-device.h"
@@ -58,12 +59,12 @@ NoBackhaulEpcHelper::NotifyConstructionCompleted()
     // since we use point-to-point links for links between the core network nodes,
     // we use a /30 subnet which can hold exactly two addresses
     // (remember that net broadcast and null address are not valid)
-    m_x2Ipv4AddressHelper.SetBase("12.0.0.0", "255.255.255.252");
-    m_s11Ipv4AddressHelper.SetBase("13.0.0.0", "255.255.255.252");
-    m_s5Ipv4AddressHelper.SetBase("14.0.0.0", "255.255.255.252");
+    m_x2Ipv4AddressHelper.SetBase(m_x2NetworkAddress, "255.255.255.252");
+    m_s11Ipv4AddressHelper.SetBase(m_s11NetworkAddress, "255.255.255.252");
+    m_s5Ipv4AddressHelper.SetBase(m_s5NetworkAddress, "255.255.255.252");
 
     // we use a /8 net for all UEs
-    m_uePgwAddressHelper.SetBase("7.0.0.0", "255.0.0.0");
+    m_uePgwAddressHelper.SetBase(m_ueNetworkAddress, m_ueNetworkMask);
 
     // we use a /64 IPv6 net all UEs
     m_uePgwAddressHelper6.SetBase("7777:f00d::", Ipv6Prefix(64));
@@ -289,7 +290,32 @@ NoBackhaulEpcHelper::GetTypeId()
                           "Enable Pcap for X2 link",
                           BooleanValue(false),
                           MakeBooleanAccessor(&NoBackhaulEpcHelper::m_x2LinkEnablePcap),
-                          MakeBooleanChecker());
+                          MakeBooleanChecker())
+            .AddAttribute("X2NetworkAddress",
+                          "The base IPv4 network address for X2 point-to-point links",
+                          Ipv4AddressValue(Ipv4Address("12.0.0.0")),
+                          MakeIpv4AddressAccessor(&NoBackhaulEpcHelper::m_x2NetworkAddress),
+                          MakeIpv4AddressChecker())
+            .AddAttribute("S11NetworkAddress",
+                          "The base IPv4 network address for S11 point-to-point links",
+                          Ipv4AddressValue(Ipv4Address("13.0.0.0")),
+                          MakeIpv4AddressAccessor(&NoBackhaulEpcHelper::m_s11NetworkAddress),
+                          MakeIpv4AddressChecker())
+            .AddAttribute("S5NetworkAddress",
+                          "The base IPv4 network address for S5 point-to-point links",
+                          Ipv4AddressValue(Ipv4Address("14.0.0.0")),
+                          MakeIpv4AddressAccessor(&NoBackhaulEpcHelper::m_s5NetworkAddress),
+                          MakeIpv4AddressChecker())
+            .AddAttribute("UeNetworkAddress",
+                          "The base IPv4 network address for UE address allocation",
+                          Ipv4AddressValue(Ipv4Address("7.0.0.0")),
+                          MakeIpv4AddressAccessor(&NoBackhaulEpcHelper::m_ueNetworkAddress),
+                          MakeIpv4AddressChecker())
+            .AddAttribute("UeNetworkMask",
+                          "The IPv4 network mask for UE address allocation",
+                          Ipv4MaskValue(Ipv4Mask("255.0.0.0")),
+                          MakeIpv4MaskAccessor(&NoBackhaulEpcHelper::m_ueNetworkMask),
+                          MakeIpv4MaskChecker());
     return tid;
 }
 

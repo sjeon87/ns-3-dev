@@ -13,6 +13,7 @@
 
 #include "ns3/emu-fd-net-device-helper.h"
 #include "ns3/epc-x2.h"
+#include "ns3/ipv4-address.h"
 #include "ns3/log.h"
 #include "ns3/lte-enb-net-device.h"
 #include "ns3/lte-enb-rrc.h"
@@ -51,12 +52,12 @@ EmuEpcHelper::NotifyConstructionCompleted()
     NS_LOG_LOGIC("SGW MAC address: " << m_sgwMacAddress);
     sgwDevice->SetAttribute("Address", Mac48AddressValue(m_sgwMacAddress.c_str()));
 
-    // Address of the SGW: 10.0.0.1
-    m_epcIpv4AddressHelper.SetBase("10.0.0.0", "255.255.255.0", "0.0.0.1");
+    // Address of the SGW: <network>.0.0.1
+    m_epcIpv4AddressHelper.SetBase(m_epcIpv4Address, "255.255.255.0", "0.0.0.1");
     m_sgwIpIfaces = m_epcIpv4AddressHelper.Assign(sgwDevices);
 
-    // Address of the first eNB: 10.0.0.101
-    m_epcIpv4AddressHelper.SetBase("10.0.0.0", "255.255.255.0", "0.0.0.101");
+    // Address of the first eNB: <network>.0.0.101
+    m_epcIpv4AddressHelper.SetBase(m_epcIpv4Address, "255.255.255.0", "0.0.0.101");
 }
 
 EmuEpcHelper::~EmuEpcHelper()
@@ -91,7 +92,13 @@ EmuEpcHelper::GetTypeId()
                           "First 5 bytes of the eNB MAC address base",
                           StringValue("00:00:00:eb:00"),
                           MakeStringAccessor(&EmuEpcHelper::m_enbMacAddressBase),
-                          MakeStringChecker());
+                          MakeStringChecker())
+            .AddAttribute("EpcIpv4Address",
+                          "The base IPv4 network address for the EPC emulation network "
+                          "(S1-U, X2-U, X2-C interfaces over EmuFdNetDevice)",
+                          Ipv4AddressValue(Ipv4Address("10.0.0.0")),
+                          MakeIpv4AddressAccessor(&EmuEpcHelper::m_epcIpv4Address),
+                          MakeIpv4AddressChecker());
     return tid;
 }
 

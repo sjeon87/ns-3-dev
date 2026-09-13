@@ -340,6 +340,7 @@ set(test_sources
     test/test-asn1-encoding.cc
     test/test-epc-tft-classifier.cc
     test/test-lte-antenna.cc
+    test/test-lte-epc-configurable-ip.cc
     test/test-lte-epc-e2e-data.cc
     test/test-lte-handover-delay.cc
     test/test-lte-handover-failure.cc

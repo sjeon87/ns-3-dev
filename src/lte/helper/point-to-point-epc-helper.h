@@ -60,6 +60,11 @@ class PointToPointEpcHelper : public NoBackhaulEpcHelper
      */
 
     /**
+     * Base network address for S1-U interface
+     */
+    Ipv4Address m_s1uNetworkAddress{"10.0.0.0"};
+
+    /**
      * Helper to assign addresses to S1-U NetDevices
      */
     Ipv4AddressHelper m_s1uIpv4AddressHelper;
@@ -81,6 +86,11 @@ class PointToPointEpcHelper : public NoBackhaulEpcHelper
      * want to support.
      */
     uint16_t m_s1uLinkMtu;
+
+    /**
+     * Base network address for S1-AP (S1-MME) interface
+     */
+    Ipv4Address m_s1apNetworkAddress{"11.0.0.0"};
 
     /**
      * Helper to assign addresses to S1-MME NetDevices

@@ -287,8 +287,11 @@ class Node(PyVizObject):
                     mac48Addr = ns.Mac48Address.ConvertFrom(dev.GetAddress())
                     lines.append("    <b>MAC Address:</b> %s (Generated)" % (mac48Addr,))
                 else:
-                    mac48Addr = ns.Mac48Address.ConvertFrom(dev.GetAddress())
-                    lines.append("    <b>MAC Address:</b> %s" % (mac48Addr,))
+                    if ns.Mac48Address.IsMatchingType(dev.GetAddress()):
+                        mac48Addr = ns.Mac48Address.ConvertFrom(dev.GetAddress())
+                        lines.append("    <b>MAC Address:</b> %s" % (mac48Addr,))
+                    else:
+                        lines.append("    <b>MAC Address:</b> N/A")
 
                 if ipv4:
                     ipv4_idx = ipv4.GetInterfaceForDevice(dev)

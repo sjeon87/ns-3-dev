@@ -13,6 +13,7 @@
 #include "point-to-point-epc-helper.h"
 
 #include "ns3/boolean.h"
+#include "ns3/ipv4-address.h"
 #include "ns3/log.h"
 #include "ns3/point-to-point-helper.h"
 #include "ns3/string.h"
@@ -40,8 +41,8 @@ PointToPointEpcHelper::NotifyConstructionCompleted()
     // since we use point-to-point links for the backhaul links,
     // we use a /30 subnet which can hold exactly two addresses
     // (remember that net broadcast and null address are not valid)
-    m_s1uIpv4AddressHelper.SetBase("10.0.0.0", "255.255.255.252");
-    m_s1apIpv4AddressHelper.SetBase("11.0.0.0", "255.255.255.252");
+    m_s1uIpv4AddressHelper.SetBase(m_s1uNetworkAddress, "255.255.255.252");
+    m_s1apIpv4AddressHelper.SetBase(m_s1apNetworkAddress, "255.255.255.252");
 }
 
 PointToPointEpcHelper::~PointToPointEpcHelper()
@@ -81,10 +82,20 @@ PointToPointEpcHelper::GetTypeId()
                           MakeStringAccessor(&PointToPointEpcHelper::m_s1uLinkPcapPrefix),
                           MakeStringChecker())
             .AddAttribute("S1uLinkEnablePcap",
-                          "Enable Pcap for X2 link",
+                          "Enable Pcap for S1-U link",
                           BooleanValue(false),
                           MakeBooleanAccessor(&PointToPointEpcHelper::m_s1uLinkEnablePcap),
-                          MakeBooleanChecker());
+                          MakeBooleanChecker())
+            .AddAttribute("S1uNetworkAddress",
+                          "The base IPv4 network address for S1-U point-to-point links",
+                          Ipv4AddressValue(Ipv4Address("10.0.0.0")),
+                          MakeIpv4AddressAccessor(&PointToPointEpcHelper::m_s1uNetworkAddress),
+                          MakeIpv4AddressChecker())
+            .AddAttribute("S1apNetworkAddress",
+                          "The base IPv4 network address for S1-AP (S1-MME) point-to-point links",
+                          Ipv4AddressValue(Ipv4Address("11.0.0.0")),
+                          MakeIpv4AddressAccessor(&PointToPointEpcHelper::m_s1apNetworkAddress),
+                          MakeIpv4AddressChecker());
     return tid;
 }
 

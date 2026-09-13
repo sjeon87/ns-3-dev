@@ -107,6 +107,16 @@ class NoBackhaulEpcHelper : public EpcHelper
 
   private:
     /**
+     * Base network address for UE IPv4 address allocation
+     */
+    Ipv4Address m_ueNetworkAddress{"7.0.0.0"};
+
+    /**
+     * Network mask for UE IPv4 address allocation
+     */
+    Ipv4Mask m_ueNetworkMask{"255.0.0.0"};
+
+    /**
      * helper to assign IPv4 addresses to UE devices as well as to the TUN device of the SGW/PGW
      */
     Ipv4AddressHelper m_uePgwAddressHelper;
@@ -156,6 +166,11 @@ class NoBackhaulEpcHelper : public EpcHelper
     uint16_t m_gtpuUdpPort;
 
     /**
+     * Base network address for S11 interface
+     */
+    Ipv4Address m_s11NetworkAddress{"13.0.0.0"};
+
+    /**
      * Helper to assign addresses to S11 NetDevices
      */
     Ipv4AddressHelper m_s11Ipv4AddressHelper;
@@ -185,6 +200,11 @@ class NoBackhaulEpcHelper : public EpcHelper
      */
 
     /**
+     * Base network address for S5 interface
+     */
+    Ipv4Address m_s5NetworkAddress{"14.0.0.0"};
+
+    /**
      * Helper to assign addresses to S5 NetDevices
      */
     Ipv4AddressHelper m_s5Ipv4AddressHelper;
@@ -208,6 +228,11 @@ class NoBackhaulEpcHelper : public EpcHelper
      * Map storing for each IMSI the corresponding eNB NetDevice
      */
     std::map<uint64_t, Ptr<NetDevice>> m_imsiEnbDeviceMap;
+
+    /**
+     * Base network address for X2 interface
+     */
+    Ipv4Address m_x2NetworkAddress{"12.0.0.0"};
 
     /**
      * helper to assign addresses to X2 NetDevices
