@@ -1090,54 +1090,6 @@ FlentApplication::StopApplication() // Called at time specified by Stop
     NS_LOG_FUNCTION(this);
     FillXValues();
     ProcessRawValues();
-    if (m_testName == "ping")
-    {
-        m_ping->TraceDisconnectWithoutContext(
-            "Rtt",
-            MakeCallback(&FlentApplication::TraceReceivedPing, this));
-    }
-    else if (m_testName == "tcp_upload")
-    {
-        m_ping->TraceDisconnectWithoutContext(
-            "Rtt",
-            MakeCallback(&FlentApplication::TraceReceivedPing, this));
-        m_bulkSendUp[0]->TraceDisconnectWithoutContext(
-            "Tx",
-            MakeCallback(&FlentApplication::TraceSentPacket, this).Bind(0));
-    }
-    else if (m_testName == "tcp_download")
-    {
-        m_ping->TraceDisconnectWithoutContext(
-            "Rtt",
-            MakeCallback(&FlentApplication::TraceReceivedPing, this));
-        m_packetSinkDown[0]->TraceDisconnectWithoutContext(
-            "Rx",
-            MakeCallback(&FlentApplication::TraceReceivedPacket, this).Bind(0));
-    }
-    else if (m_testName == "rrul")
-    {
-        m_ping->TraceDisconnectWithoutContext(
-            "Rtt",
-            MakeCallback(&FlentApplication::TraceReceivedPing, this));
-        m_udpclient[0]->TraceDisconnectWithoutContext(
-            "RxWithSeqTsEchoHeader",
-            MakeCallback(&FlentApplication::TraceReceivedUdpPing1, this));
-        m_udpclient[1]->TraceDisconnectWithoutContext(
-            "RxWithSeqTsEchoHeader",
-            MakeCallback(&FlentApplication::TraceReceivedUdpPing2, this));
-        m_udpclient[2]->TraceDisconnectWithoutContext(
-            "RxWithSeqTsEchoHeader",
-            MakeCallback(&FlentApplication::TraceReceivedUdpPing3, this));
-        for (uint32_t i = 0; i < 4; ++i)
-        {
-            m_packetSinkDown[i]->TraceDisconnectWithoutContext(
-                "Rx",
-                MakeCallback(&FlentApplication::TraceReceivedPacket, this).Bind(i));
-            m_bulkSendUp[i]->TraceDisconnectWithoutContext(
-                "Tx",
-                MakeCallback(&FlentApplication::TraceSentPacket, this).Bind(i));
-        }
-    }
 
     std::string outputPath = m_outputFilename.empty() ? m_testName + ".flent" : m_outputFilename;
     std::ofstream out(outputPath);
