@@ -11,6 +11,7 @@
 #include "ns3/assert.h"
 #include "ns3/deprecated.h"
 
+#include <algorithm>
 #include <iterator>
 #include <ostream>
 #include <stdint.h>
@@ -25,6 +26,14 @@ namespace ns3
 /**
  * @ingroup packet
  * Concept matching a forward iterator whose value type is uint8_t.
+ * @note This concept accepts reverse iterators (rbegin/rend)
+ * when the underlying iterator satisfies forward iterator requirements.
+ * The current implementation of Write/Read relies only on increment
+ * and dereference, so reverse iteration works transparently.
+ *
+ * Any future optimization using contiguous iterators (like using memcpy)
+ * must explicitly handle reverse iterators, as std::reverse_iterator
+ * does not model std::contiguous_iterator.
  */
 template <typename It>
 concept Uint8tForwardIterator =
@@ -259,33 +268,35 @@ class Buffer
          */
         void Write(const uint8_t* buffer, uint32_t size);
         /**
-         * @param start the start of the data to copy
-         * @param end the end of the data to copy
+         * @param begin the start of the data to copy
+         * @param end one-past-the-end of the data to copy
          *
-         * Write the data delimited by start and end in internal buffer
+         * Write the data delimited by begin and end in internal buffer
          * and advance the iterator position by the number of bytes
          * copied.
          * The input iterators _must_ not point to the same Buffer as
          * we do to avoid overlapping copies. This is enforced
          * in debug builds by asserts.
          */
-        void Write(Iterator start, Iterator end);
+        void Write(Iterator begin, Iterator end);
 
         /**
          * @brief Write a range of uint8_t values into the buffer.
          *
          * @tparam Iter a forward iterator with value type uint8_t
-         * @param first start of the range to copy in
-         * @param last one-past-the-end of the range to copy in
+         * @param begin start of the range to copy in
+         * @param end one-past-the-end of the range to copy in
          *
-         * Advances the iterator position by std::distance(first, last) bytes.
+         * Advances the iterator position by std::distance(begin, end) bytes.
+         * Supports both forward and reverse iterators (rbegin/rend), since
+         * iteration is performed element-by-element.
          */
         template <Uint8tForwardIterator Iter>
-        void Write(Iter first, Iter last)
+        void Write(Iter begin, Iter end)
         {
-            for (; first != last; ++first)
+            for (; begin != end; ++begin)
             {
-                WriteU8(*first);
+                WriteU8(*begin);
             }
         }
 
@@ -396,17 +407,19 @@ class Buffer
          * @brief Read into a range of uint8_t storage from the buffer.
          *
          * @tparam Iter a forward iterator with value type uint8_t
-         * @param first start of the destination range
-         * @param last one-past-the-end of the destination range
+         * @param begin start of the destination range
+         * @param end one-past-the-end of the destination range
          *
-         * Advances the iterator position by std::distance(first, last) bytes.
+         * Advances the iterator position by std::distance(begin, end) bytes.
+         * Supports both forward and reverse iterators (rbegin/rend), since
+         * iteration is performed element-by-element.
          */
         template <Uint8tForwardIterator Iter>
-        void Read(Iter first, Iter last)
+        void Read(Iter begin, Iter end)
         {
-            for (; first != last; ++first)
+            for (; begin != end; ++begin)
             {
-                *first = ReadU8();
+                *begin = ReadU8();
             }
         }
 
@@ -593,6 +606,40 @@ class Buffer
      * pointing to this Buffer.
      */
     void AddAtEnd(const Buffer& o);
+
+    /**
+     * @brief Append a range of uint8_t values at the end of the Buffer.
+     *
+     * @tparam Iter a forward iterator with value type uint8_t
+     * @param begin start of the range to copy in
+     * @param end one-past-the-end of the range to copy in
+     *
+     * The Buffer grows by std::distance(begin, end) bytes, which are then
+     * filled with the contents of the range. This is a convenience wrapper
+     * over AddAtEnd() followed by Buffer::Iterator::Write(); use the latter
+     * directly to write at an arbitrary position rather than at the end.
+     *
+     * @note Any call to this method invalidates any Iterator
+     * pointing to this Buffer.
+     */
+    template <Uint8tForwardIterator Iter>
+    void Write(Iter begin, Iter end)
+    {
+        const auto distance = std::distance(begin, end);
+        NS_ASSERT_MSG(distance >= 0, "Buffer::Write(): begin is past end");
+        const auto size = static_cast<uint32_t>(distance);
+        if (size == 0)
+        {
+            // AddAtEnd() may reallocate even for a zero-sized request, so skip it entirely.
+            return;
+        }
+        AddAtEnd(size);
+        // AddAtEnd() invalidates every Iterator, so End() must be taken after it.
+        Buffer::Iterator i = End();
+        i.Prev(size);
+        i.Write(begin, end);
+    }
+
     /**
      * @param start size to remove
      *
@@ -674,6 +721,35 @@ class Buffer
      * @returns the amount of bytes copied
      */
     uint32_t CopyData(uint8_t* buffer, uint32_t size) const;
+
+    /**
+     * @brief Copy data from the start of the Buffer into a range of uint8_t storage.
+     *
+     * @tparam Iter a forward iterator with value type uint8_t
+     * @param begin start of the destination range
+     * @param end one-past-the-end of the destination range
+     * @return the amount of bytes copied
+     *
+     * @note Copies at most std::distance(begin, end) bytes, starting at the
+     * beginning of the Buffer. Fewer bytes are copied, and the remainder of
+     * the destination range is left untouched, if the Buffer holds less than
+     * that. The Buffer is not modified and holds no read cursor, so repeated
+     * calls copy the same bytes; use Buffer::Iterator::Read() to read
+     * sequentially or from an arbitrary position.
+     */
+    template <Uint8tForwardIterator Iter>
+    uint32_t CopyData(Iter begin, Iter end) const
+    {
+        const auto distance = std::distance(begin, end);
+        NS_ASSERT_MSG(distance >= 0, "Buffer::CopyData(): begin is past end");
+        const auto size = std::min(static_cast<uint32_t>(distance), GetSize());
+        Buffer::Iterator i = Begin();
+        for (uint32_t k = 0; k < size; ++k, ++begin)
+        {
+            *begin = i.ReadU8();
+        }
+        return size;
+    }
 
     /**
      * @brief Copy constructor
@@ -1102,7 +1178,6 @@ Buffer::Iterator::ReadU16()
     uint16_t data = byte1;
     data <<= 8;
     data |= byte0;
-
     return data;
 }
 

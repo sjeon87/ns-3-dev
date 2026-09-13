@@ -11,6 +11,10 @@
 #include "ns3/random-variable-stream.h"
 #include "ns3/test.h"
 
+#include <array>
+#include <deque>
+#include <vector>
+
 using namespace ns3;
 
 /**
@@ -391,6 +395,283 @@ BufferTest::DoRun()
         NS_TEST_ASSERT_MSG_EQ((src == dst),
                               true,
                               "Buffer iterator-pair Write/Read round-trip failed");
+    }
+
+    {
+        constexpr uint32_t N = 100;
+
+        std::vector<uint8_t> writeData(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            writeData[k] = static_cast<uint8_t>(k * 3 + 7);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(writeData.begin(), writeData.end());
+
+        std::vector<uint8_t> readData(N, 0);
+        it = b.Begin();
+        it.Read(readData.begin(), readData.end());
+
+        NS_TEST_ASSERT_MSG_EQ(writeData.size(), readData.size(), "Vector size mismatch");
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(writeData[k], readData[k], "Vector mismatch at index " << k);
+        }
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(), 0, "Iterator not at end after vector read");
+    }
+
+    {
+        constexpr uint32_t N = 64;
+
+        std::array<uint8_t, N> writeData{};
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            writeData[k] = static_cast<uint8_t>(k * 5 + 11);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(writeData.begin(), writeData.end());
+
+        std::array<uint8_t, N> readData{};
+        it = b.Begin();
+        it.Read(readData.begin(), readData.end());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(writeData[k], readData[k], "Array mismatch at index " << k);
+        }
+    }
+
+    {
+        constexpr uint32_t N = 50;
+
+        std::deque<uint8_t> writeData(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            writeData[k] = static_cast<uint8_t>(k * 7 + 3);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(writeData.begin(), writeData.end());
+
+        std::deque<uint8_t> readData(N);
+        it = b.Begin();
+        it.Read(readData.begin(), readData.end());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(writeData[k], readData[k], "Deque mismatch at index " << k);
+        }
+    }
+
+    {
+        constexpr uint32_t N = 10;
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().WriteU8(0xAB, N);
+
+        std::vector<uint8_t> empty;
+        Buffer::Iterator it = b.Begin();
+        it.Write(empty.begin(), empty.end());
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(), N, "Empty write should not advance iterator");
+
+        std::vector<uint8_t> got(N, 0);
+        it = b.Begin();
+        it.Read(got.begin(), got.end());
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(got[k], 0xAB, "Empty write modified buffer at index " << k);
+        }
+    }
+
+    {
+        constexpr uint32_t N = 5;
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().WriteU8(0xAA, N);
+
+        std::vector<uint8_t> empty;
+        Buffer::Iterator it = b.Begin();
+        it.Read(empty.begin(), empty.end());
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(), N, "Empty read should not advance iterator");
+    }
+    {
+        constexpr uint32_t N = 50;
+
+        std::vector<uint8_t> original(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            original[k] = static_cast<uint8_t>(k);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+
+        Buffer::Iterator it = b.Begin();
+        it.Write(original.rbegin(), original.rend());
+
+        std::vector<uint8_t> result(N);
+        it = b.Begin();
+        it.Read(result.begin(), result.end());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(result[k],
+                                  original[N - 1 - k],
+                                  "Reverse write mismatch at index " << k);
+        }
+    }
+    {
+        constexpr uint32_t N = 50;
+
+        std::vector<uint8_t> original(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            original[k] = static_cast<uint8_t>(k);
+        }
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().Write(original.begin(), original.end());
+
+        std::vector<uint8_t> result(N);
+        Buffer::Iterator it = b.Begin();
+        it.Read(result.rbegin(), result.rend());
+
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(result[k],
+                                  original[N - 1 - k],
+                                  "Reverse read mismatch at index " << k);
+        }
+    }
+    {
+        constexpr uint32_t N = 10;
+
+        Buffer b;
+        b.AddAtEnd(N);
+        b.Begin().WriteU8(0xCD, N);
+
+        std::vector<uint8_t> empty;
+        Buffer::Iterator it = b.Begin();
+        it.Write(empty.rbegin(), empty.rend());
+
+        NS_TEST_ASSERT_MSG_EQ(it.GetRemainingSize(),
+                              N,
+                              "Empty reverse write should not advance iterator");
+    }
+
+    // Buffer::Write() appends to an empty Buffer, growing it by the range size.
+    {
+        constexpr uint32_t N = 40;
+
+        std::vector<uint8_t> data(N);
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            data[k] = static_cast<uint8_t>(k * 2 + 1);
+        }
+
+        Buffer b;
+        b.Write(data.begin(), data.end());
+
+        NS_TEST_ASSERT_MSG_EQ(b.GetSize(), N, "Buffer::Write did not grow the Buffer");
+
+        std::vector<uint8_t> result(N, 0);
+        NS_TEST_ASSERT_MSG_EQ(b.CopyData(result.begin(), result.end()),
+                              N,
+                              "Buffer::CopyData returned the wrong count");
+        for (uint32_t k = 0; k < N; ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(data[k], result[k], "Buffer::Write mismatch at index " << k);
+        }
+    }
+
+    // Successive Buffer::Write() calls append rather than overwrite, and preserve
+    // bytes already present in the Buffer.
+    {
+        Buffer b;
+        b.AddAtEnd(2);
+        b.Begin().WriteU8(0xAB, 2);
+
+        const std::array<uint8_t, 3> first{0x11, 0x22, 0x33};
+        const std::array<uint8_t, 2> second{0x44, 0x55};
+        b.Write(first.begin(), first.end());
+        b.Write(second.begin(), second.end());
+
+        const std::vector<uint8_t> expected{0xAB, 0xAB, 0x11, 0x22, 0x33, 0x44, 0x55};
+        NS_TEST_ASSERT_MSG_EQ(b.GetSize(), expected.size(), "Appended size mismatch");
+
+        std::vector<uint8_t> result(expected.size(), 0);
+        b.CopyData(result.begin(), result.end());
+        for (uint32_t k = 0; k < expected.size(); ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(expected[k], result[k], "Append mismatch at index " << k);
+        }
+    }
+
+    // Buffer::Write() accepts reverse iterators, and an empty range is a no-op.
+    {
+        const std::array<uint8_t, 4> data{0x01, 0x02, 0x03, 0x04};
+
+        Buffer b;
+        b.Write(data.rbegin(), data.rend());
+
+        std::array<uint8_t, 4> result{};
+        b.CopyData(result.begin(), result.end());
+        for (uint32_t k = 0; k < data.size(); ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(result[k],
+                                  data[data.size() - 1 - k],
+                                  "Reverse Buffer::Write mismatch at index " << k);
+        }
+
+        const std::vector<uint8_t> empty;
+        b.Write(empty.begin(), empty.end());
+        NS_TEST_ASSERT_MSG_EQ(b.GetSize(), data.size(), "Empty Buffer::Write changed the size");
+    }
+
+    // Buffer::CopyData() clamps to the Buffer size and leaves the rest of the
+    // destination range untouched; it holds no cursor, so it is repeatable.
+    {
+        const std::array<uint8_t, 3> data{0x7A, 0x7B, 0x7C};
+
+        Buffer b;
+        b.Write(data.begin(), data.end());
+
+        std::vector<uint8_t> result(6, 0xEE);
+        NS_TEST_ASSERT_MSG_EQ(b.CopyData(result.begin(), result.end()),
+                              data.size(),
+                              "CopyData should clamp to the Buffer size");
+        for (uint32_t k = 0; k < data.size(); ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(result[k], data[k], "CopyData mismatch at index " << k);
+        }
+        for (uint32_t k = data.size(); k < result.size(); ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(result[k], 0xEE, "CopyData overwrote past the Buffer size");
+        }
+
+        std::vector<uint8_t> again(data.size(), 0);
+        b.CopyData(again.begin(), again.end());
+        for (uint32_t k = 0; k < data.size(); ++k)
+        {
+            NS_TEST_ASSERT_MSG_EQ(again[k], data[k], "CopyData is not repeatable at index " << k);
+        }
     }
 }
 
