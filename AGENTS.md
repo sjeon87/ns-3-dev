@@ -158,6 +158,13 @@ class MyClass
 - Avoid adding a commit message body to explain the commit; allow a
   human reviewer to add one if he or she deems necessary.
 
+### Reviewing submissions
+
+When asked to triage or review a submission (a GitLab merge request or issue),
+read `TRIAGE.md` first and follow the rubric and guardrails it defines. The agent
+produces a draft review for a human maintainer; it must not post, comment, label,
+approve, merge, or close anything without explicit per-action approval.
+
 ## Common Development Tasks
 
 ### Running Single Tests
