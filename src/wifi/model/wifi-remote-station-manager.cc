@@ -874,6 +874,22 @@ WifiRemoteStationManager::GetBlockAckTxVector(Mac48Address to,
     return v;
 }
 
+WifiTxVector
+WifiRemoteStationManager::GetBlockAckReqTxVector(Mac48Address to,
+                                                 const WifiTxVector& dataTxVector) const
+{
+    return GetBlockAckTxVector(to, dataTxVector);
+}
+
+WifiTxVector
+WifiRemoteStationManager::GetBlockAckReqTxVector(Mac48Address to, MHz_u allowedWidth)
+{
+    WifiMacHeader hdr(WIFI_MAC_QOSDATA);
+    hdr.SetAddr1(to);
+    auto txVector = GetDataTxVector(hdr, allowedWidth);
+    return GetBlockAckReqTxVector(to, txVector);
+}
+
 WifiMode
 WifiRemoteStationManager::GetControlAnswerMode(WifiMode reqMode) const
 {
@@ -1764,7 +1780,7 @@ WifiRemoteStationManager::AddStationHeOperation(Mac48Address from, const HeOpera
 {
     NS_LOG_FUNCTION(this << from << heOperation);
     auto state = LookupState(from);
-    if (auto operation6GHz = heOperation.m_6GHzOpInfo)
+    if (auto& operation6GHz = heOperation.m_6GHzOpInfo)
     {
         switch (operation6GHz->m_chWid)
         {

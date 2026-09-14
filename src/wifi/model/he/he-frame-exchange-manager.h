@@ -53,7 +53,7 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
     HeFrameExchangeManager();
     ~HeFrameExchangeManager() override;
 
-    bool StartFrameExchange(Ptr<QosTxop> edca, Time availableTime, bool initialFrame) override;
+    bool StartFrameExchange() override;
     void CalculateAcknowledgmentTime(WifiAcknowledgment* acknowledgment) const override;
     void CalculateProtectionTime(WifiProtection* protection) const override;
     std::optional<Mac48Address> FindTxopHolder(const WifiMacHeader& hdr,
@@ -151,6 +151,7 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
     void StartProtection(const WifiTxParameters& txParams) override;
     void ProtectionCompleted() override;
     void TransmissionSucceeded() override;
+    WifiTxVector GetBlockAckReqTxVector(Mac48Address to) const override;
 
     /**
      * Clear the TXOP holder if the intra-BSS NAV counted down to zero (includes the case

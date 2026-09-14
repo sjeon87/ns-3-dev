@@ -8,6 +8,7 @@
 
 #include "frame-exchange-manager.h"
 
+#include "adhoc-wifi-mac.h"
 #include "ap-wifi-mac.h"
 #include "gcr-manager.h"
 #include "snr-tag.h"
@@ -21,11 +22,6 @@
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT WIFI_FEM_NS_LOG_APPEND_CONTEXT
-
-// Time (in nanoseconds) to be added to the PSDU duration to yield the duration
-// of the timer that is started when the PHY indicates the start of the reception
-// of a frame and we are waiting for a response.
-#define PSDU_DURATION_SAFEGUARD 400
 
 namespace ns3
 {
@@ -79,8 +75,10 @@ FrameExchangeManager::Reset()
     m_navEnd = Simulator::Now();
     m_mpdu = nullptr;
     m_txParams.Clear();
-    m_ongoingRxInfo.macHdr.reset();
-    m_ongoingRxInfo.endOfPsduRx = Time{};
+    m_ongoingRxInfo.Reset();
+    m_sentRtsTo.clear();
+    m_sentFrameTo.clear();
+    m_protectedStas.clear();
     m_dcf = nullptr;
 }
 
@@ -91,6 +89,7 @@ FrameExchangeManager::DoDispose()
     Reset();
     m_fragmentedPacket = nullptr;
     m_mac = nullptr;
+    m_adhocMac = nullptr;
     m_apMac = nullptr;
     m_staMac = nullptr;
     m_txMiddle = nullptr;
@@ -140,6 +139,7 @@ FrameExchangeManager::SetWifiMac(Ptr<WifiMac> mac)
 {
     NS_LOG_FUNCTION(this << mac);
     m_mac = mac;
+    m_adhocMac = DynamicCast<AdhocWifiMac>(mac);
     m_apMac = DynamicCast<ApWifiMac>(m_mac);
     m_staMac = DynamicCast<StaWifiMac>(mac);
 }
@@ -206,8 +206,7 @@ FrameExchangeManager::ResetPhy()
             m_phy->SetReceiveErrorCallback(MakeNullCallback<void, Ptr<const WifiPsdu>>());
         }
         m_phy = nullptr;
-        m_ongoingRxInfo.macHdr.reset();
-        m_ongoingRxInfo.endOfPsduRx = Time{};
+        m_ongoingRxInfo.Reset();
     }
 }
 
@@ -295,6 +294,13 @@ FrameExchangeManager::RxStartIndication(WifiTxVector txVector, Time psduDuration
     NS_ASSERT_MSG(!m_txTimer.IsRunning() || !m_navResetEvent.IsPending(),
                   "The TX timer and the NAV reset event cannot be both running");
 
+    const auto now = Simulator::Now();
+    if (now > m_ongoingRxInfo.endOfPpduRx)
+    {
+        // this is a new PPDU being received
+        m_ongoingRxInfo.Reset();
+    }
+
     // No need to reschedule timeouts if PSDU duration is null. In this case,
     // PHY-RXEND immediately follows PHY-RXSTART (e.g. when PPDU has been filtered)
     // and CCA will take over
@@ -304,15 +310,15 @@ FrameExchangeManager::RxStartIndication(WifiTxVector txVector, Time psduDuration
         NS_LOG_DEBUG("Rescheduling timeout event");
         if (m_txTimer.GetReason() == WifiTxTimer::WAIT_DATA_AFTER_PS_POLL)
         {
-            // postpone the timer expiration by an additional SIFS, so that SendNormalAck() and
-            // SendBlockAck() detect that this is a frame exchange initiated by us and take usual
-            // actions in case of successful transmission
-            m_txTimer.Reschedule(psduDuration + m_phy->GetSifs() +
-                                 NanoSeconds(PSDU_DURATION_SAFEGUARD));
+            // SendNormalAck() or SendBlockAck() must detect that this is a frame exchange initiated
+            // by us and take usual actions in case of successful transmission; to this end, we
+            // postpone the timer expiration by an additional SIFS (plus a time step, because
+            // SendNormalAck() and SendBlockAck() are scheduled afterwards)
+            m_txTimer.Reschedule(psduDuration + m_phy->GetSifs() + TimeStep(1));
         }
         else
         {
-            m_txTimer.Reschedule(psduDuration + NanoSeconds(PSDU_DURATION_SAFEGUARD));
+            m_txTimer.Reschedule(psduDuration);
             // PHY has switched to RX, so we can reset the ack timeout
             m_channelAccessManager->NotifyAckTimeoutResetNow();
         }
@@ -323,7 +329,15 @@ FrameExchangeManager::RxStartIndication(WifiTxVector txVector, Time psduDuration
         m_navResetEvent.Cancel();
     }
 
-    m_ongoingRxInfo = {std::nullopt, txVector, Simulator::Now() + psduDuration};
+    if (txVector.IsUlMu() && m_ongoingRxInfo.txVector.IsUlMu())
+    {
+        // extract elements from the MU user info map of the current TXVECTOR and insert them in
+        // the input TXVECTOR
+        txVector.GetHeMuUserInfoMap().merge(m_ongoingRxInfo.txVector.GetHeMuUserInfoMap());
+    }
+
+    m_ongoingRxInfo.txVector = txVector;
+    m_ongoingRxInfo.endOfPpduRx = now + psduDuration;
 }
 
 void
@@ -332,14 +346,15 @@ FrameExchangeManager::ReceivedMacHdr(const WifiMacHeader& macHdr,
                                      Time psduDuration)
 {
     NS_LOG_FUNCTION(this << macHdr << txVector << psduDuration.As(Time::MS));
-    m_ongoingRxInfo = {macHdr, txVector, Simulator::Now() + psduDuration};
+    const auto aid = !txVector.IsUlMu() ? SU_STA_ID : txVector.GetHeMuUserInfoMap().cbegin()->first;
+    m_ongoingRxInfo.macHdrs[aid] = macHdr;
     UpdateNav(macHdr, txVector, psduDuration);
 }
 
 std::optional<std::reference_wrapper<const FrameExchangeManager::OngoingRxInfo>>
 FrameExchangeManager::GetOngoingRxInfo() const
 {
-    if (m_ongoingRxInfo.endOfPsduRx >= Simulator::Now())
+    if (m_ongoingRxInfo.endOfPpduRx >= Simulator::Now())
     {
         return m_ongoingRxInfo;
     }
@@ -347,11 +362,14 @@ FrameExchangeManager::GetOngoingRxInfo() const
 }
 
 std::optional<std::reference_wrapper<const WifiMacHeader>>
-FrameExchangeManager::GetReceivedMacHdr() const
+FrameExchangeManager::GetReceivedMacHdr(uint16_t aid) const
 {
-    if (auto info = GetOngoingRxInfo(); info.has_value() && info->get().macHdr.has_value())
+    if (auto info = GetOngoingRxInfo())
     {
-        return info->get().macHdr.value();
+        if (auto hdrIt = info->get().macHdrs.find(aid); hdrIt != info->get().macHdrs.cend())
+        {
+            return hdrIt->second;
+        }
     }
     return std::nullopt;
 }
@@ -381,8 +399,7 @@ FrameExchangeManager::StartTransmission(Ptr<Txop> dcf, MHz_u allowedWidth)
     if (!mpdu)
     {
         NS_LOG_DEBUG("Queue empty");
-        NotifyChannelReleased(m_dcf);
-        m_dcf = nullptr;
+        NotifyChannelReleased();
         return false;
     }
 
@@ -1107,8 +1124,7 @@ FrameExchangeManager::TransmissionSucceeded()
     }
     else
     {
-        NotifyChannelReleased(m_dcf);
-        m_dcf = nullptr;
+        NotifyChannelReleased();
     }
 }
 
@@ -1124,15 +1140,18 @@ FrameExchangeManager::TransmissionFailed(bool forceCurrentCw)
     // reset TXNAV because transmission failed
     ResetTxNav();
     // A non-QoS station always releases the channel upon a transmission failure
-    NotifyChannelReleased(m_dcf);
-    m_dcf = nullptr;
+    NotifyChannelReleased();
 }
 
 void
-FrameExchangeManager::NotifyChannelReleased(Ptr<Txop> txop)
+FrameExchangeManager::NotifyChannelReleased()
 {
-    NS_LOG_FUNCTION(this << txop);
-    txop->NotifyChannelReleased(m_linkId);
+    NS_LOG_FUNCTION(this);
+    if (m_dcf)
+    {
+        m_dcf->NotifyChannelReleased(m_linkId);
+        m_dcf = nullptr;
+    }
     m_protectedStas.clear();
 }
 
