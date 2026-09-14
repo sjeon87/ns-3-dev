@@ -445,17 +445,16 @@ Address pools can be configured on the DHCPv6 server using the following API:
 .. sourcecode:: cpp
 
   Ptr<Dhcp6Server> server = DynamicCast<Dhcp6Server>(dhcpServerApp.Get(0));
-  server->AddSubnet(Ipv6Address("2001:db8::"), Ipv6Prefix(64), Ipv6Address("2001:db8::1"), Ipv6Address("2001:db8::ff"));
+  server->AddSubnet(Ipv6NetworkAddress(Ipv6Address("2001:db8::"), 64), Ipv6Address("2001:db8::1"), Ipv6Address("2001:db8::ff"));
 
 In the line above, the ``AddSubnet()`` method has the following parameters:
 
-1. ``Ipv6Address("2001:db8::")`` - The address pool that is managed by the server.
-2. ``Ipv6Prefix(64)`` - The prefix of the address pool
-3. ``Ipv6Address("2001:db8::1")`` - The minimum address that can be assigned to a client.
-4. ``Ipv6Address("2001:db8::ff")`` - The maximum address that can be assigned to a client.
+1. ``Ipv6NetworkAddress(Ipv6Address("2001:db8::"), 64)`` - The address pool network and prefix length managed by the server.
+2. ``Ipv6Address("2001:db8::1")`` - The minimum address that can be assigned to a client.
+3. ``Ipv6Address("2001:db8::ff")`` - The maximum address that can be assigned to a client.
 
-Essentially, parameters 1 and 2 define the subnet(s) managed by the server, while parameters
-3 and 4 define the range of addresses that can be assigned.
+Essentially, parameter 1 defines the subnet(s) managed by the server, while parameters
+2 and 3 define the range of addresses that can be assigned.
 If this method is not called, the server will not have any subnet configured and will not be able to assign addresses to clients.
 While it does not throw an error, a user who does not configure any subnets on the server will not see any addresses leased to the client.
 
