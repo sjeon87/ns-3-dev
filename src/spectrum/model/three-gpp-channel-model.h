@@ -15,6 +15,8 @@
 
 #include "ns3/channel-condition-model.h"
 
+#include <array>
+#include <map>
 #include <unordered_map>
 
 namespace ns3
@@ -173,9 +175,16 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
         double m_dis3D;                                //!< 3D distance between tx and rx
         DoubleVector m_clusterShadowing;               //!< cluster shadowing
         DoubleVector m_clusterPower;                   //!< cluster powers
-        DoubleVector m_attenuation_dB;   //!< vector that stores the attenuation of the blockage
-        uint8_t m_cluster1st;            //!< index of the first strongest cluster
-        uint8_t m_cluster2nd;            //!< index of the second-strongest cluster
+        DoubleVector m_attenuation_dB; //!< vector that stores the attenuation of the blockage
+        uint8_t m_cluster1st;          //!< index of the first strongest cluster
+        uint8_t m_cluster2nd;          //!< index of the second-strongest cluster
+        /**
+         * Number of rays per stored cluster entry consumed by GetNewChannel. Equal to the
+         * scenario table's rays per cluster, except under the large bandwidth modeling of
+         * TR 38.901 Sec. 7.6.2.2, where each ray is expanded into its own single-ray tap
+         * and this is 1. Zero means "use the scenario table value".
+         */
+        uint8_t m_numRaysPerCluster{0};
         Vector m_txSpeed;                //!< TX velocity
         Vector m_rxSpeed;                //!< RX velocity
         DoubleVector m_delayConsistency; //!< cluster delay for consistency update
@@ -345,6 +354,10 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
      * @param table3gpp the 3gpp parameters from the table
      * @param aMob the a node mobility model
      * @param bMob the b node mobility model
+     * @param antennaA the antenna array of one link end, used only by the large bandwidth
+     * modeling of TR 38.901 Sec. 7.6.2.2 to derive the array aperture in Equation (7.6-8);
+     * may be nullptr, in which case that end does not contribute to the aperture
+     * @param antennaB the antenna array of the other link end, see antennaA
      * @return ThreeGppChannelParams structure with all the channel parameters generated
      * according 38.901 steps from 4 to 10.
      */
@@ -352,7 +365,35 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
         Ptr<const ChannelCondition> channelCondition,
         Ptr<const ParamsTable> table3gpp,
         Ptr<const MobilityModel> aMob,
-        Ptr<const MobilityModel> bMob) const;
+        Ptr<const MobilityModel> bMob,
+        Ptr<const PhasedArrayModel> antennaA = nullptr,
+        Ptr<const PhasedArrayModel> antennaB = nullptr) const;
+
+    /**
+     * @brief Apply the intra-cluster angular and delay spread modeling of TR 38.901
+     *        Sec. 7.6.2.2 (large bandwidth and large antenna arrays).
+     *
+     * Re-draws the per-ray offset angles as unif(-2, 2) per cluster and ray (7.6-5), draws
+     * ray-relative delays as unif(0, 2 cDS), derives unequal ray powers (7.6-6) and computes
+     * the number of rays per cluster from the bandwidth and array aperture (7.6-8). Each ray
+     * then becomes its own single-ray tap: the per-cluster structures of channelParams
+     * (delays, powers, angles, XPRs, phases, Doppler terms) are expanded to one entry per
+     * (cluster, ray) pair, the sub-cluster mapping of Table 7.5-5 is not applied, and
+     * m_numRaysPerCluster is set to 1. When the spatial-consistency draw context is active,
+     * the offset angles and relative delays are drawn from the spatially-correlated fields
+     * (TR 38.901 Sec. 7.6.3.1, optional large bandwidth extension).
+     *
+     * @param channelParams Channel parameters holding the cluster-level structures of steps
+     *        5-7; expanded in place to per-ray taps.
+     * @param table3gpp 3GPP parameters table (cDS, cASA, cASD, cZSA, uLgZSD, XPR statistics).
+     * @param antennaA Antenna array of one link end; with antennaB it provides the aperture
+     *        terms of (7.6-8) as the per-dimension maximum over the two arrays. May be nullptr.
+     * @param antennaB Antenna array of the other link end, see antennaA.
+     */
+    void ApplyLargeBandwidthRayModeling(Ptr<ThreeGppChannelParams> channelParams,
+                                        Ptr<const ParamsTable> table3gpp,
+                                        Ptr<const PhasedArrayModel> antennaA,
+                                        Ptr<const PhasedArrayModel> antennaB) const;
 
     /**
      * @brief Large-scale channel parameters (3GPP TR 38.901).
@@ -388,12 +429,154 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
      * specified LOS/NLOS condition, including delay spread (DS), angular spreads
      * (ASD/ASA/ZSD/ZSA), and K-factor for LOS.
      *
-     * @param losCondition Line-of-sight condition (LOS or NLOS).
+     * When the `InterUeSpatialConsistency` attribute is enabled, the independent
+     * normal variates feeding the cross-correlation multiply are not drawn i.i.d.
+     * per link; instead they are samples of spatially-correlated Gaussian random
+     * fields (one field per site, channel condition and LSP, see
+     * SampleSpatiallyCorrelatedNormal), evaluated at the terminal position. Links
+     * from the same site to nearby terminals then obtain correlated LSPs, as
+     * required by the drop-based spatial-consistency procedure of 3GPP TR 38.901,
+     * Sec. 7.6.3.1.
+     *
+     * @param channelCondition Channel condition of the link (LOS/NLOS and O2I state).
      * @param table3gpp Pointer to the 3GPP parameters table (means, std-devs, sqrt correlation).
+     * @param siteMob Mobility model of the endpoint with the smallest node id (the "site").
+     * @param termMob Mobility model of the endpoint with the largest node id (the "terminal").
      * @return LargeScaleParameters structure containing the generated LSPs.
      */
-    LargeScaleParameters GenerateLSPs(const ChannelCondition::LosConditionValue losCondition,
-                                      Ptr<const ParamsTable> table3gpp) const;
+    LargeScaleParameters GenerateLSPs(Ptr<const ChannelCondition> channelCondition,
+                                      Ptr<const ParamsTable> table3gpp,
+                                      Ptr<const MobilityModel> siteMob,
+                                      Ptr<const MobilityModel> termMob) const;
+
+    /**
+     * @brief Per-LSP spatial correlation distances of TR 38.901 Table 7.5-6.
+     *
+     * Distances are returned in the LSP-vector order used by GenerateLSPs:
+     * LOS slot [SF, K, DS, ASD, ASA, ZSD, ZSA] (7 entries) and NLOS/O2I slots
+     * [SF, DS, ASD, ASA, ZSD, ZSA] (6 entries, last entry unused). Scenarios
+     * without a Table 7.5-6 column (V2V, NTN) fall back to the UMa distances.
+     *
+     * @param los Output array of LOS correlation distances in meters.
+     * @param nlos Output array of NLOS correlation distances in meters.
+     * @param o2i Output array of O2I correlation distances in meters.
+     */
+    void GetLspCorrelationDistances(std::array<double, 7>& los,
+                                    std::array<double, 7>& nlos,
+                                    std::array<double, 7>& o2i) const;
+
+    /**
+     * @brief Sample a unit-variance, spatially-correlated Gaussian random field.
+     *
+     * This implements the inter-UE (drop-based) spatial consistency of 3GPP
+     * TR 38.901, Sec. 7.6.3.1: each (site, condition slot, LSP index) triple
+     * owns an independent 2D Gaussian field over the horizontal plane, obtained
+     * by filtering i.i.d. N(0,1) grid values with a separable exponential kernel
+     * exp(-|d|/corrDist). The filter is evaluated lazily at the requested
+     * position over a hash-stored grid with spacing corrDist/2; the weights are
+     * L2-normalized, so the marginal distribution is exactly N(0,1) while two
+     * samples of the same field decorrelate with horizontal distance on the
+     * scale of corrDist.
+     *
+     * Grid cell values are a deterministic hash of the field key and cell
+     * coordinates (mixed with the global RNG seed/run) and are memoized, so
+     * the field is a pure function of position: every link evaluated at any
+     * time, and every model instance, observes the same underlying field.
+     * The cross-instance repeatability matters for callers that re-create
+     * the channel model per evaluated location (e.g. a REM generator).
+     *
+     * @param siteNodeId Node id of the site endpoint owning the field.
+     * @param condSlot Channel condition slot (0=LOS, 1=NLOS, 2=O2I).
+     * @param varId Identifier of the random variate (LSP index, or a
+     *        cluster/ray-specific variate id, see ScFieldNormal).
+     * @param position Sampling position (only x and y are used).
+     * @param corrDist Correlation distance in meters; non-positive values
+     *        degrade to a single deterministic draw at the position.
+     * @return A sample of the field with N(0,1) marginal distribution.
+     */
+    double SampleSpatiallyCorrelatedNormal(uint32_t siteNodeId,
+                                           uint8_t condSlot,
+                                           uint32_t varId,
+                                           const Vector& position,
+                                           double corrDist) const;
+
+    /**
+     * @brief Correlation distance of the cluster and ray specific random
+     *        variables, TR 38.901 Table 7.6.3.1-2.
+     *
+     * Scenarios without a Table 7.6.3.1-2 column (V2V, NTN) fall back to the
+     * UMa distances.
+     *
+     * @param losCondition The LOS condition of the link.
+     * @param isO2i Whether the link is O2I.
+     * @return The correlation distance in meters.
+     */
+    double GetClusterCorrelationDistance(ChannelCondition::LosConditionValue losCondition,
+                                         bool isO2i) const;
+
+    /**
+     * @brief Context enabling spatially-consistent draws of the cluster and
+     *        ray specific random variables of one link.
+     *
+     * Set by GenerateChannelParameters for the duration of the channel
+     * parameter generation when the InterUeSpatialConsistency attribute is
+     * enabled, and consumed by ScNormal/ScUniform01 in the generation
+     * helpers. When inactive, the helpers fall back to the i.i.d. random
+     * variables.
+     */
+    struct ScDrawContext
+    {
+        bool active{false};     ///< whether spatially-consistent draws are active
+        uint32_t siteNodeId{0}; ///< node id of the site endpoint
+        uint8_t condSlot{0};    ///< condition slot (0=LOS, 1=NLOS, 2=O2I)
+        Vector termPos;         ///< terminal position sampling the fields
+        double corrDist{0};     ///< cluster-RV correlation distance in meters
+    };
+
+    /**
+     * @brief Draw a N(0,1) variate for the cluster/ray-specific variable varId.
+     *
+     * Returns a sample of the per-site spatially-correlated field of varId when
+     * the spatial-consistency draw context is active, and an i.i.d. draw of
+     * m_normalRv otherwise (see ScDrawContext).
+     *
+     * @param varId Identifier of the variate, unique per (variable class,
+     *        cluster, ray, polarization) so distinct draws use independent
+     *        fields. Must not collide with the LSP indices 0-6, see
+     *        ScFieldVarId.
+     * @return A standard-normal sample.
+     */
+    double ScNormal(uint32_t varId) const;
+
+    /**
+     * @brief Draw a U(0,1) variate for the cluster/ray-specific variable varId.
+     *
+     * Probability-integral transform of ScNormal, so the uniform variate is
+     * spatially consistent when the draw context is active (see ScDrawContext).
+     * The result is clamped away from 0 and 1 so log() and tan() consumers
+     * remain finite.
+     *
+     * @param varId Identifier of the variate, see ScNormal.
+     * @return A uniform sample in (0, 1).
+     */
+    double ScUniform01(uint32_t varId) const;
+
+    /**
+     * @brief Build the field identifier of one cluster/ray-specific variate.
+     *
+     * LSP fields use varIds 0-6; cluster/ray-specific variates are offset
+     * beyond them and packed as (class, cluster, ray/polarization).
+     *
+     * @param varClass Variable class (delay, cluster shadowing, angle sign, ...).
+     * @param cluster Cluster index.
+     * @param ray Ray index (or polarization index, or 0 when unused).
+     * @return The field identifier.
+     */
+    static uint32_t ScFieldVarId(uint8_t varClass, uint8_t cluster, uint8_t ray)
+    {
+        return 8 + ((static_cast<uint32_t>(varClass) << 16) |
+                    (static_cast<uint32_t>(cluster) << 8) | static_cast<uint32_t>(ray));
+    }
 
     /**
      * Generate the cluster delays.
@@ -862,12 +1045,13 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
      * @param[out] clusterPhase 3D array [numClusters][raysPerCluster][4] with initial
      * phases (radians).
      * @param reducedClusterNumber Number of (possibly reduced) clusters to generate.
-     * @param table3gpp Pointer to the 3GPP parameters table (uXpr, sigXpr, rays per
-     * cluster).
+     * @param raysPerCluster Number of rays per cluster to generate.
+     * @param table3gpp Pointer to the 3GPP parameters table (uXpr, sigXpr).
      */
     void GenerateCrossPolPowerRatiosAndInitialPhases(Double2DVector* crossPolarizationPowerRatios,
                                                      Double3DVector* clusterPhase,
                                                      const uint8_t reducedClusterNumber,
+                                                     const uint8_t raysPerCluster,
                                                      Ptr<const ParamsTable> table3gpp) const;
     /**
      * @brief Identify the two strongest base clusters and append their derived subclusters.
@@ -1112,6 +1296,56 @@ class ThreeGppChannelModel : public MatrixBasedChannelModel
     Ptr<UniformRandomVariable> m_uniformRv;
     /// normal random variable
     Ptr<NormalRandomVariable> m_normalRv;
+    /// enables inter-UE (drop-based) spatially consistent LSP generation
+    bool m_interUeSpatialConsistency;
+
+    /**
+     * @brief Cached filter window of the spatially-correlated field sampler.
+     *
+     * The window (grid origin, separable exponential weights and their
+     * L2 normalization) depends only on the sampling position and the
+     * correlation distance, which are shared by every variate drawn for one
+     * link, so it is computed once and reused across the thousands of field
+     * draws of one channel generation (see SampleSpatiallyCorrelatedNormal).
+     */
+    struct FieldWindow
+    {
+        int64_t ix{0};               ///< grid x-coordinate of the first window cell
+        int64_t iy{0};               ///< grid y-coordinate of the first window cell
+        std::array<double, 14> wx{}; ///< separable filter weights along x
+        std::array<double, 14> wy{}; ///< separable filter weights along y
+        double invL2Norm{0};         ///< reciprocal L2 norm of the 2D weights
+    };
+
+    /// position the cached filter windows were computed for
+    mutable Vector m_fieldWindowPos;
+    /**
+     * Cached filter windows keyed by correlation distance, valid for
+     * m_fieldWindowPos. `mutable` because the cache is refreshed from within
+     * the `const` channel-parameter generator.
+     */
+    mutable std::map<double, FieldWindow> m_fieldWindowCache;
+    /**
+     * Spatial-consistency draw context of the link whose channel parameters
+     * are being generated, see ScDrawContext. `mutable` because it is set
+     * from within the `const` channel-parameter generator.
+     */
+    mutable ScDrawContext m_scDrawCtx;
+
+    /**
+     * Sentinel value of m_cluster1st/m_cluster2nd meaning that no sub-cluster mapping is
+     * applied (large bandwidth modeling of TR 38.901 Sec. 7.6.2.2, which replaces the fixed
+     * sub-cluster structure with per-ray delays).
+     */
+    static constexpr uint8_t NO_SUBCLUSTERS{0xFF};
+
+    /// enable the intra-cluster modeling of TR 38.901 Sec. 7.6.2.2
+    bool m_largeBandwidthArrayModeling{false};
+    /// simulation bandwidth B in Hz used by Equation (7.6-8)
+    double m_channelBandwidth{0.0};
+    /// upper limit Mmax on the number of rays per cluster in Equation (7.6-8)
+    uint8_t m_maxRaysPerCluster{20};
+
     /// uniform random variable used to shuffle an array in GetNewChannel
     Ptr<UniformRandomVariable> m_uniformRvShuffle;
     /**

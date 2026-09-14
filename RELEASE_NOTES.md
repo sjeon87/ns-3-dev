@@ -40,6 +40,9 @@ Python 3.10 to 3.14.
 
 ### New user-visible features
 
+- (propagation) New `InterUeSpatialConsistency` attributes of `ThreeGppPropagationLossModel` and `ThreeGppChannelConditionModel` enable inter-UE (drop-based) spatially consistent shadow fading and LOS/NLOS state per 3GPP TR 38.901 Sec. 7.6.3.1.
+- (spectrum) A new `InterUeSpatialConsistency` attribute of `ThreeGppChannelModel` extends the drop-based spatial consistency to the large-scale parameters and the cluster and ray specific variables of the fast fading.
+- (spectrum) New `LargeBandwidthArrayModeling`, `ChannelBandwidth` and `MaxRaysPerCluster` attributes of `ThreeGppChannelModel` implement the large bandwidth and large antenna array modeling of 3GPP TR 38.901 Sec. 7.6.2.2.
 - (network) IANA protocol and link types are now centralized in network module headers.
 
 - Added support for `nlohmann/json`, a header-only C++ third-party library for JSON parsing and serialization.
@@ -50,6 +53,8 @@ Python 3.10 to 3.14.
 
 ### Bugs fixed
 
+- (spectrum) The fixed ray-to-subcluster mapping of the two strongest clusters of the 3GPP TR 38.901 fast-fading model now follows Table 7.5-5; the previous mapping was shifted by one ray.
+- (spectrum) A blockage attenuation of A dB now scales the LOS ray amplitude of the 3GPP TR 38.901 fast-fading model by `10^(-A/20)`; it was previously applied as `10^(-A/10)`, doubling the attenuation.
 - (lr-wpan) !2916 Pcap files are now correctly generated with and without FCS cases.
 - (mesh) #1341 Fixed dot11s regression that ignored the link rate, degrading the HWMP routing metric to hop count.
 - (sixlowpan) #1342 Fixed a deserialization error in the MESH header.
