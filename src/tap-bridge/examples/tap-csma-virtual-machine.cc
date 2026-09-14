@@ -110,6 +110,14 @@ main(int argc, char* argv[])
     tapBridge.Install(nodes.Get(1), devices.Get(1));
 
     //
+    // Write a pcap trace of the emulated traffic. Promiscuous mode is required
+    // here: in UseBridge mode the frames crossing the CSMA channel are
+    // addressed to the machines behind the taps, not to the ns-3 devices
+    // themselves, so a non-promiscuous trace would come out nearly empty.
+    //
+    csma.EnablePcapAll("tap-csma-virtual-machine", true);
+
+    //
     // Run the simulation for ten minutes to give the user time to play around
     //
     Simulator::Stop(Seconds(600.));
