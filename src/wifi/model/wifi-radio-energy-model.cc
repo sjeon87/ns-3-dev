@@ -108,7 +108,10 @@ WifiRadioEnergyModel::SetEnergySource(const Ptr<energy::EnergySource> source)
     NS_LOG_FUNCTION(this << source);
     NS_ASSERT(source);
     m_source = source;
-    m_switchToOffEvent.Cancel();
+    // The following scheduling replaces this event. Cancel() retains the old callback in the
+    // scheduler until its original time, which can accumulate on repeated state changes.
+    // Remove() costs more but releases the obsolete callback immediately.
+    m_switchToOffEvent.Remove();
     const auto durationToOff = GetMaximumTimeInState(m_currentState);
     m_switchToOffEvent = Simulator::Schedule(durationToOff,
                                              &WifiRadioEnergyModel::ChangeState,
@@ -292,7 +295,10 @@ WifiRadioEnergyModel::ChangeState(int newState)
 
     if (newPhyState != WifiPhyState::OFF)
     {
-        m_switchToOffEvent.Cancel();
+        // The following scheduling replaces this event. Cancel() retains the old callback in the
+        // scheduler until its original time, which can accumulate on repeated state changes.
+        // Remove() costs more but releases the obsolete callback immediately.
+        m_switchToOffEvent.Remove();
         const auto durationToOff = GetMaximumTimeInState(newPhyState);
         m_switchToOffEvent = Simulator::Schedule(durationToOff,
                                                  &WifiRadioEnergyModel::ChangeState,
@@ -368,7 +374,10 @@ WifiRadioEnergyModel::HandleEnergyChanged()
     NS_LOG_DEBUG("WifiRadioEnergyModel:Energy is changed!");
     if (m_currentState != WifiPhyState::OFF)
     {
-        m_switchToOffEvent.Cancel();
+        // The following scheduling replaces this event. Cancel() retains the old callback in the
+        // scheduler until its original time, which can accumulate on repeated state changes.
+        // Remove() costs more but releases the obsolete callback immediately.
+        m_switchToOffEvent.Remove();
         const auto durationToOff = GetMaximumTimeInState(m_currentState);
         m_switchToOffEvent = Simulator::Schedule(durationToOff,
                                                  &WifiRadioEnergyModel::ChangeState,
