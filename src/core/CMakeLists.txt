@@ -178,6 +178,7 @@ set(source_files
     model/node-printer.cc
     model/show-progress.cc
     model/time-printer.cc
+    model/time-span.cc
     model/system-wall-clock-ms.cc
     model/system-wall-clock-timestamp.cc
     model/length.cc
@@ -268,12 +269,14 @@ set(header_files
     model/simulator.h
     model/singleton.h
     model/string.h
+    model/struct.h
     model/synchronizer.h
     model/system-path.h
     model/system-wall-clock-ms.h
     model/system-wall-clock-timestamp.h
     model/test.h
     model/time-printer.h
+    model/time-span.h
     model/timer-impl.h
     model/timer.h
     model/trace-source-accessor.h
@@ -312,6 +315,7 @@ set(test_sources
     test/hash-test-suite.cc
     test/int64x64-test-suite.cc
     test/length-test-suite.cc
+    test/log-test-suite.cc
     test/many-uniform-random-variables-one-get-value-call-test-suite.cc
     test/names-test-suite.cc
     test/nlohmann-json-test-suite.cc
@@ -322,6 +326,7 @@ set(test_sources
     test/sample-test-suite.cc
     test/simulator-test-suite.cc
     test/splitstring-test-suite.cc
+    test/struct-value-test-suite.cc
     test/system-path-test-suite.cc
     test/threaded-test-suite.cc
     test/time-test-suite.cc
