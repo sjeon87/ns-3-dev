@@ -41,7 +41,6 @@ main(int argc, char* argv[])
 {
     double simTime = 20.0;
     double updatePeriodS = 10.0;
-    double windowSizeS = 5.0;
     double node1InitialSkew = 1.0;
     double node2Skew = 1.5;
     double node1CorrectedSkew = 2.0;
@@ -62,7 +61,6 @@ main(int argc, char* argv[])
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::DynamicSkewScheduler");
     schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(updatePeriodS)));
-    schedulerFactory.Set("WindowSize", TimeValue(Seconds(windowSizeS)));
     schedulerFactory.Set("MinimumSkew", DoubleValue(0.5));
     schedulerFactory.Set("MaximumSkew", DoubleValue(2.0));
     Simulator::SetScheduler(schedulerFactory);

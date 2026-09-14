@@ -148,13 +148,8 @@ DynamicSkewScheduler::GetTypeId()
                                           DoubleValue(0.1),
                                           MakeDoubleAccessor(&DynamicSkewScheduler::m_minSkew),
                                           MakeDoubleChecker<double>())
-                            .AddAttribute("WindowSize",
-                                          "The lookahead window.",
-                                          TimeValue(Seconds(100.0)),
-                                          MakeTimeAccessor(&DynamicSkewScheduler::m_windowSize),
-                                          MakeTimeChecker())
                             .AddAttribute("UpdatePeriod",
-                                          "How frequently skew changes.",
+                                          "How long a skew holds before it is redrawn.",
                                           TimeValue(Seconds(10.0)),
                                           MakeTimeAccessor(&DynamicSkewScheduler::m_updatePeriod),
                                           MakeTimeChecker());
@@ -162,7 +157,6 @@ DynamicSkewScheduler::GetTypeId()
 }
 
 DynamicSkewScheduler::DynamicSkewScheduler()
-    : m_initialized(false)
 {
     NS_LOG_FUNCTION(this);
     m_epochTable = CreateObject<EpochTable>();
@@ -173,7 +167,6 @@ DynamicSkewScheduler::DynamicSkewScheduler()
 DynamicSkewScheduler::~DynamicSkewScheduler()
 {
     NS_LOG_FUNCTION(this);
-    Simulator::Cancel(m_cleanupEvent);
     m_epochTable = nullptr;
     if (g_currentScheduler == this)
     {
@@ -218,86 +211,128 @@ DynamicSkewScheduler::ChangeCurrentSkew(uint32_t nodeId, double skew)
     }
 }
 
-void
-DynamicSkewScheduler::ExtendEpochTable(uint32_t nodeId, Time targetNodeTime)
+Time
+DynamicSkewScheduler::GetEffectiveUpdatePeriod() const
 {
-    if (m_updatePeriod.IsZero())
+    return m_updatePeriod.IsZero() ? Seconds(1.0) : m_updatePeriod;
+}
+
+void
+DynamicSkewScheduler::ApplySkew(uint32_t nodeId, double skew)
+{
+    NS_LOG_FUNCTION(this << nodeId << skew);
+
+    Time simNow = Simulator::Now();
+    Time localNow = m_epochTable->HasNode(nodeId)
+                        ? m_epochTable->GetNodeTimeFromSimulatorTime(nodeId, simNow)
+                        : simNow;
+
+    // The anchor nominally spans one update period, which is how long this skew holds before
+    // it is redrawn. Times past its end are resolved by extrapolating at the same skew, so the
+    // anchor also stays valid for events scheduled further ahead than that.
+    Time span = GetEffectiveUpdatePeriod();
+    Time nodeSpan = Time::FromDouble(span.GetDouble() * skew, Time::NS);
+    if (nodeSpan <= Time(0))
     {
-        m_updatePeriod = Seconds(1.0);
+        // A very small skew can round the node-side span down to nothing, which would leave
+        // the anchor ill-formed and the node without a clock at all.
+        nodeSpan = TimeStep(1);
     }
 
-    Time currentSimTime = Seconds(0);
-    Time currentNodeTime = Seconds(0);
+    EpochTable::Epoch anchor;
+    anchor.simulatorStartTime = simNow;
+    anchor.simulatorEndTime = simNow + span;
+    anchor.nodeStartTime = localNow;
+    anchor.nodeEndTime = localNow + nodeSpan;
+    anchor.skew = skew;
 
+    m_epochTable->SetSingleEpoch(nodeId, anchor);
+}
+
+void
+DynamicSkewScheduler::EnsureAnchor(uint32_t nodeId)
+{
     if (m_epochTable->HasNode(nodeId))
     {
-        currentSimTime = m_epochTable->GetMaxSimulatorTime(nodeId);
-        currentNodeTime = m_epochTable->GetMaxNodeTime(nodeId);
+        // The node already has a clock, supplied from outside the scheduler. Leave it alone:
+        // callers pin a node's epoch to make it a fixed time reference, and redrawing its skew
+        // would defeat that.
+        return;
     }
-    else if (Simulator::Now() > Seconds(0))
-    {
-        currentSimTime = Simulator::Now();
-    }
-
-    while (currentNodeTime <= targetNodeTime)
-    {
-        double skew = m_uv->GetValue(m_minSkew, m_maxSkew);
-        Time duration = m_updatePeriod;
-
-        EpochTable::Epoch epoch;
-        epoch.simulatorStartTime = currentSimTime;
-        epoch.simulatorEndTime = currentSimTime + duration;
-        epoch.nodeStartTime = currentNodeTime;
-        epoch.nodeEndTime =
-            currentNodeTime + Time::FromDouble(duration.GetDouble() * skew, Time::NS);
-        epoch.skew = skew;
-
-        m_epochTable->AddEpoch(nodeId, epoch);
-
-        currentSimTime = epoch.simulatorEndTime;
-        currentNodeTime = epoch.nodeEndTime;
-    }
+    m_selfAnchored.insert(nodeId);
+    ApplySkew(nodeId, m_uv->GetValue(m_minSkew, m_maxSkew));
 }
 
 void
-DynamicSkewScheduler::StartCleanupTask()
+DynamicSkewScheduler::ReprojectTop(uint32_t nodeId)
 {
-    m_cleanupEvent = Simulator::Schedule(m_windowSize, &DynamicSkewScheduler::Cleanup, this);
+    auto it = m_nodeQueues.find(nodeId);
+    if (it == m_nodeQueues.end() || it->second.empty())
+    {
+        return;
+    }
+
+    Event top = it->second.top();
+    Time simTs = m_epochTable->GetSimulatorTimeFromNodeTime(
+        nodeId,
+        Time::FromInteger(top.key.m_ts, Time::GetResolution()));
+
+    Time now = Simulator::Now();
+    if (simTs < now)
+    {
+        simTs = now;
+    }
+
+    top.key.m_ts = simTs.GetTimeStep();
+    m_projectedQueue.Update(nodeId, top);
 }
 
 void
-DynamicSkewScheduler::Cleanup()
+DynamicSkewScheduler::ScheduleSkewRedraw(uint32_t nodeId)
 {
-    Time safeMargin = Seconds(1.0);
-    Time cutoff = (Simulator::Now() > safeMargin) ? Simulator::Now() - safeMargin : Seconds(0);
+    // Mark the redraw outstanding before scheduling it. Simulator::Schedule re-enters Insert,
+    // which consults this flag to decide whether the chain needs starting; were the flag set
+    // afterwards, that nested call would schedule a further redraw and recurse without bound.
+    m_redrawPending.insert(nodeId);
+    uint64_t generation = ++m_redrawGen[nodeId];
 
-    m_epochTable->PruneEpochTable(cutoff);
+    // A redraw is scheduler housekeeping rather than a node's own event. Scheduling it with
+    // whatever context happens to be executing, as Simulator::Schedule would, files it in that
+    // node's local queue and reinterprets its delay as that node's local time.
+    Simulator::ScheduleWithContext(Simulator::NO_CONTEXT,
+                                   GetEffectiveUpdatePeriod(),
+                                   &DynamicSkewScheduler::RedrawSkew,
+                                   this,
+                                   nodeId,
+                                   generation);
+}
 
-    bool anyPending = false;
-    for (const auto& [nodeId, queue] : m_nodeQueues)
+void
+DynamicSkewScheduler::RedrawSkew(uint32_t nodeId, uint64_t generation)
+{
+    if (generation != m_redrawGen[nodeId])
     {
-        if (!queue.empty())
-        {
-            anyPending = true;
-            break;
-        }
+        // A correction reset this node's timer after the redraw was scheduled, so a newer one
+        // is outstanding and this generation is stale.
+        return;
     }
+    m_redrawPending.erase(nodeId);
 
-    if (anyPending)
+    ApplySkew(nodeId, m_uv->GetValue(m_minSkew, m_maxSkew));
+    ReprojectTop(nodeId);
+
+    // Only continue the redraw chain while the node still has work pending, so a quiescent
+    // node cannot hold Simulator::Run() open forever.
+    auto it = m_nodeQueues.find(nodeId);
+    if (m_selfAnchored.count(nodeId) && it != m_nodeQueues.end() && !it->second.empty())
     {
-        m_cleanupEvent = Simulator::Schedule(m_windowSize, &DynamicSkewScheduler::Cleanup, this);
+        ScheduleSkewRedraw(nodeId);
     }
 }
 
 void
 DynamicSkewScheduler::Insert(const Event& ev)
 {
-    if (!m_initialized)
-    {
-        m_initialized = true;
-        StartCleanupTask();
-    }
-
     uint32_t context = ev.key.m_context;
 
     if (context == ns3::Simulator::NO_CONTEXT)
@@ -306,56 +341,38 @@ DynamicSkewScheduler::Insert(const Event& ev)
         return;
     }
 
-    if (m_epochTable)
+    if (!m_epochTable)
     {
-        Time simNow = Simulator::Now();
-        Time scheduledGlobalTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
+        return;
+    }
 
-        if (!m_epochTable->HasNode(context))
-        {
-            ExtendEpochTable(context, simNow + m_windowSize);
-        }
+    EnsureAnchor(context);
 
-        Time delay = scheduledGlobalTs - simNow;
-        Time localNow = m_epochTable->GetNodeTimeFromSimulatorTime(context, simNow);
-        Time nodeLocalTs = localNow + delay;
+    Time simNow = Simulator::Now();
+    Time scheduledGlobalTs = Time::FromInteger(ev.key.m_ts, Time::GetResolution());
+    Time delay = scheduledGlobalTs - simNow;
+    Time nodeLocalTs = m_epochTable->GetNodeTimeFromSimulatorTime(context, simNow) + delay;
 
-        ExtendEpochTable(context, nodeLocalTs);
+    Event localEv = ev;
+    localEv.key.m_ts = nodeLocalTs.GetTimeStep();
 
-        Event localEv = ev;
-        localEv.key.m_ts = nodeLocalTs.GetTimeStep();
+    auto& queue = m_nodeQueues[context];
+    bool wasEmpty = queue.empty();
+    uint32_t oldTopUid = wasEmpty ? 0 : queue.top().key.m_uid;
 
-        auto& queue = m_nodeQueues[context];
-        bool wasEmpty = queue.empty();
+    queue.push(localEv);
 
-        uint32_t oldTopUid;
-        if (wasEmpty)
-        {
-            oldTopUid = 0;
-        }
-        else
-        {
-            oldTopUid = queue.top().key.m_uid;
-        }
+    if (wasEmpty || queue.top().key.m_uid != oldTopUid)
+    {
+        ReprojectTop(context);
+    }
 
-        queue.push(localEv);
-
-        if (wasEmpty || queue.top().key.m_uid != oldTopUid)
-        {
-            Event newTop = queue.top();
-            Time simTs = m_epochTable->GetSimulatorTimeFromNodeTime(
-                context,
-                Time::FromInteger(newTop.key.m_ts, Time::GetResolution()));
-
-            Time now = Simulator::Now();
-            if (simTs < now)
-            {
-                simTs = now;
-            }
-
-            newTop.key.m_ts = simTs.GetTimeStep();
-            m_projectedQueue.Update(context, newTop);
-        }
+    // Restart the free-running drift chain if it has lapsed, which it has both for a node
+    // seen for the first time and for one whose queue previously drained. Nodes whose clock
+    // was pinned from outside the scheduler never drift, so they are skipped.
+    if (m_selfAnchored.count(context) && !m_redrawPending.count(context))
+    {
+        ScheduleSkewRedraw(context);
     }
 }
 
@@ -425,17 +442,7 @@ DynamicSkewScheduler::RemoveNext()
 
     if (!queue.empty())
     {
-        Event newTop = queue.top();
-        Time simTs = m_epochTable->GetSimulatorTimeFromNodeTime(
-            context,
-            Time::FromInteger(newTop.key.m_ts, Time::GetResolution()));
-        Time now = Simulator::Now();
-        if (simTs < now)
-        {
-            simTs = now;
-        }
-        newTop.key.m_ts = simTs.GetTimeStep();
-        m_projectedQueue.Update(context, newTop);
+        ReprojectTop(context);
     }
     else
     {
@@ -458,53 +465,21 @@ DynamicSkewScheduler::Remove(const Event& ev)
 void
 DynamicSkewScheduler::ChangeSkew(uint32_t nodeId, double skew)
 {
-    if (!m_initialized)
-    {
-        m_initialized = true;
-        StartCleanupTask();
-    }
-
     if (!m_epochTable)
     {
         NS_LOG_WARN("ChangeSkew: EpochTable unavailable.");
         return;
     }
 
-    Time simNow = Simulator::Now();
-    Time localNow;
+    ApplySkew(nodeId, skew);
+    ReprojectTop(nodeId);
 
-    if (m_epochTable->HasNode(nodeId))
+    // The correction holds for one update period, after which free-running drift resumes.
+    // A pinned node stays exactly where the caller put it.
+    auto it = m_nodeQueues.find(nodeId);
+    if (m_selfAnchored.count(nodeId) && it != m_nodeQueues.end() && !it->second.empty())
     {
-        localNow = m_epochTable->GetNodeTimeFromSimulatorTime(nodeId, simNow);
-    }
-    else
-    {
-        localNow = simNow;
-    }
-
-    Time newSimEnd = simNow + m_updatePeriod;
-
-    auto scaledSteps = static_cast<int64_t>(m_updatePeriod.GetTimeStep() * skew);
-    Time newNodeEnd = localNow + Time::FromInteger(scaledSteps, Time::GetResolution());
-
-    m_epochTable->InsertEpoch(nodeId, simNow, newSimEnd, localNow, newNodeEnd, skew);
-
-    ExtendEpochTable(nodeId, localNow + m_windowSize);
-
-    auto& queue = m_nodeQueues[nodeId];
-    if (!queue.empty())
-    {
-        Event top = queue.top();
-        Time newSimTs = m_epochTable->GetSimulatorTimeFromNodeTime(
-            nodeId,
-            Time::FromInteger(top.key.m_ts, Time::GetResolution()));
-        Time now = Simulator::Now();
-        if (newSimTs < now)
-        {
-            newSimTs = now;
-        }
-        top.key.m_ts = newSimTs.GetTimeStep();
-        m_projectedQueue.Update(nodeId, top);
+        ScheduleSkewRedraw(nodeId);
     }
 }
 

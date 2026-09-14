@@ -204,6 +204,28 @@ EpochTable::InsertEpoch(uint32_t nodeId,
     epochs.push_back(newEpoch);
 }
 
+void
+EpochTable::SetSingleEpoch(uint32_t nodeId, const Epoch& epoch)
+{
+    NS_LOG_FUNCTION(this << nodeId << epoch.simulatorStartTime << epoch.simulatorEndTime
+                         << epoch.nodeStartTime << epoch.nodeEndTime << epoch.skew);
+
+    if (epoch.simulatorStartTime >= epoch.simulatorEndTime ||
+        epoch.nodeStartTime >= epoch.nodeEndTime)
+    {
+        NS_LOG_ERROR("EpochTable: Epoch not well formed!");
+        return;
+    }
+
+    Epoch toInsert = epoch;
+    toInsert.nodeId = nodeId;
+    toInsert.index = 0;
+
+    auto& epochs = m_epochTable[nodeId];
+    epochs.clear();
+    epochs.push_back(toInsert);
+}
+
 bool
 EpochTable::HasNode(uint32_t nodeId) const
 {

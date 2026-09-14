@@ -209,35 +209,58 @@ class DynamicSkewScheduler : public Scheduler
 
   protected:
     /**
-     * @brief Schedule the periodic cleanup task.
-     * Virtual so derived schedulers can customize the cleanup cadence or side effects.
-     */
-    virtual void StartCleanupTask();
-
-    /**
-     * @brief Ensure the epoch table covers the target node time (Algorithm 4).
-     * Virtual so derived schedulers can constrain how epochs are generated.
+     * @brief Give a node a clock anchor if it does not have one yet, drawing its initial skew.
      * @param nodeId The node context.
-     * @param targetNodeTime The local time that needs to be reached.
      */
-    virtual void ExtendEpochTable(uint32_t nodeId, Time targetNodeTime);
+    void EnsureAnchor(uint32_t nodeId);
 
     /**
-     * @brief Periodic cleanup event handler (PruneEpochsBefore).
-     * Virtual so derived schedulers can extend or replace the pruning behavior.
+     * @brief Re-anchor a node's clock at the current time with a new skew.
+     *
+     * @param nodeId The node context.
+     * @param skew The new clock skew.
      */
-    virtual void Cleanup();
+    void ApplySkew(uint32_t nodeId, double skew);
+
+    /**
+     * @brief Re-project a node's earliest pending event into simulator time.
+     * @param nodeId The node context.
+     */
+    void ReprojectTop(uint32_t nodeId);
+
+    /**
+     * @brief Schedule the next free-running skew redraw for a node.
+     * @param nodeId The node context.
+     */
+    void ScheduleSkewRedraw(uint32_t nodeId);
+
+    /**
+     * @brief Redraw a node's free-running skew, then queue the following redraw.
+     * @param nodeId The node context.
+     * @param generation The redraw generation this event was scheduled for
+     */
+    void RedrawSkew(uint32_t nodeId, uint64_t generation);
 
     Ptr<EpochTable> m_epochTable;    //!< The epoch table instance
     double m_maxSkew;                //!< Maximum allowed clock skew
     double m_minSkew;                //!< Minimum allowed clock skew
-    Time m_windowSize;               //!< Duration of the lookahead window
-    Time m_updatePeriod;             //!< How often the skew changes (upsilon)
-    EventId m_cleanupEvent;          //!< The ID of the next scheduled cleanup event
-    Ptr<UniformRandomVariable> m_uv; //!< RNG for assigning node skew per epoch
+    Time m_updatePeriod;             //!< How long a skew holds before it is redrawn (upsilon)
+    Ptr<UniformRandomVariable> m_uv; //!< RNG for assigning node skew
 
   private:
-    bool m_initialized; //!< specific initialization flag
+    /**
+     * @brief Get how long a skew holds for, substituting a default if none was configured.
+     * @return The effective update period.
+     */
+    Time GetEffectiveUpdatePeriod() const;
+
+    std::unordered_map<uint32_t, uint64_t>
+        m_redrawGen; //!< Generation of the newest redraw scheduled, per node
+
+    std::unordered_set<uint32_t> m_redrawPending; //!< Nodes with a redraw already outstanding
+
+    std::unordered_set<uint32_t>
+        m_selfAnchored; //!< Nodes whose clock this scheduler created, and so may redraw
 
     std::priority_queue<Scheduler::Event, std::vector<Scheduler::Event>, EventSimTimeCmp>
         m_globalQueue; //!< Q_sim: Holds global/physical simulator events

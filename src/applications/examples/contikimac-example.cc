@@ -6,86 +6,62 @@
  * Author: Ishaan Lagwankar <lagwanka@msu.edu>
  */
 
+#include "ns3/bounded-skew-scheduler.h"
 #include "ns3/core-module.h"
+#include "ns3/dynamic-skew-scheduler.h"
+#include "ns3/epoch-table.h"
+#include "ns3/internet-module.h"
+#include "ns3/local-clock-helper.h"
 #include "ns3/mac48-address.h"
 #include "ns3/node-container.h"
-#include "ns3/node.h"
-#include "ns3/packet.h"
+#include "ns3/ntp-client.h"
+#include "ns3/ntp-server.h"
+#include "ns3/point-to-point-module.h"
+#include "ns3/scheduler-clock.h"
 #include "ns3/simple-channel.h"
 #include "ns3/simple-net-device.h"
 #include "ns3/static-skew-scheduler.h"
 
-#include <cmath>
-#include <numeric>
-#include <utility>
+#include <iostream>
 #include <vector>
 
 /**
  * @file
  * @ingroup applications
  *
- * This example demonstrates ContikiMAC-style radio duty cycling over a real sender/receiver
- * node pair connected by a SimpleNetDevice: the sender periodically transmits a
- * real packet for a fixed burst duration, and the receiver performs periodic clear-channel
- * assessments (CCAs) using its own (possibly skewed) local clock.
+ * ContikiMAC duty cycling between a sender and a receiver with a skewed clock.
  */
 
 using namespace ns3;
 
-Time g_ts;                      //!< Transmission duration
-Time g_ti;                      //!< Inter-packet gap between sender retransmissions
-Time g_tc;                      //!< Time between the receiver's two CCAs in a wake cycle
-Time g_ccaWakeupInterval;       //!< Time between successive receiver wake cycles
-bool g_isChannelActive = false; //!< Whether the sender is currently transmitting
-
-bool g_inBlackout = false;               //!< Whether the receiver is currently in a blackout
-Time g_blackoutStart = Seconds(0);       //!< Simulation time the current blackout started
-Time g_prevBlackoutStart = Seconds(0);   //!< Simulation time the previous blackout started
-std::vector<double> g_observedDurations; //!< Observed blackout durations, in seconds
-std::vector<double> g_observedIntervals; //!< Observed intervals between blackouts, in seconds
-
-std::vector<std::pair<double, int>>
-    g_timeline; //!< (time, channel-busy) samples for the whole run, for plotting
+Time g_ts;                       //!< Transmission duration
+Time g_ti;                       //!< Gap between transmissions
+Time g_tc;                       //!< Gap between the two CCAs
+Time g_tr;                       //!< CCA duration
+Time g_wakeInterval;             //!< Receiver wake interval
+bool g_channelActive = false;    //!< Whether the sender is transmitting
+Time g_nextTxStart = Seconds(0); //!< Start of the next transmission
 
 /**
- * @brief One receiver wake cycle and whether either of its CCAs sensed the channel as busy.
+ * @brief One receiver wake cycle.
  */
 struct Message
 {
-    double cycleStart; //!< Simulation time the wake cycle's CCA1 fired, in seconds
-    bool hit;          //!< Whether CCA1 or its CCA2 followup sensed the channel as busy
+    double cycleStart; //!< Time CCA1 fired, in seconds
+    bool hit;          //!< Whether either CCA heard the sender
 };
 
-std::vector<Message> g_messages; //!< One entry per receiver wake cycle so far
+std::vector<Message> g_messages; //!< Every wake cycle
 
-Ptr<SimpleNetDevice> g_senderDevice;   //!< The sender's net device
-Ptr<SimpleNetDevice> g_receiverDevice; //!< The receiver's net device
+Ptr<SimpleNetDevice> g_senderDevice;   //!< Sender device
+Ptr<SimpleNetDevice> g_receiverDevice; //!< Receiver device
 
-/**
- * @brief Start a sender transmission burst and schedule its end.
- */
-void SenderTxStart();
-
-/**
- * @brief End the current transmission burst and schedule the next one.
- */
 void SenderTxEnd();
-
-/**
- * @brief Perform the receiver's first CCA of a wake cycle.
- * @param context the receiver node's context ID.
- */
 void ReceiverCCA1(uint32_t context);
 
 /**
- * @brief Perform the receiver's second (follow-up) CCA, after CCA1 sensed a busy channel.
- * @param context the receiver node's context ID.
- */
-void ReceiverCCA2(uint32_t context);
-
-/**
- * @brief No-op receive handler
- * @return true (packet accepted)
+ * @brief Accept a received packet.
+ * @return true
  */
 bool
 ReceiverReceive(Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address&)
@@ -93,72 +69,69 @@ ReceiverReceive(Ptr<NetDevice>, Ptr<const Packet>, uint16_t, const Address&)
     return true;
 }
 
+/**
+ * @brief Check whether the channel is busy during a CCA.
+ * @param start CCA start.
+ * @param end CCA end.
+ * @return true if busy.
+ */
+bool
+IsChannelBusyDuring(Time start, Time end)
+{
+    return g_channelActive || (g_nextTxStart >= start && g_nextTxStart < end);
+}
+
+/**
+ * @brief Start a transmission.
+ */
 void
 SenderTxStart()
 {
-    g_isChannelActive = true;
-
-    Ptr<Packet> packet = Create<Packet>(64);
-    g_senderDevice->Send(packet, g_receiverDevice->GetAddress(), 0x0001);
-
+    g_channelActive = true;
+    g_senderDevice->Send(Create<Packet>(64), g_receiverDevice->GetAddress(), 0x0001);
     Simulator::Schedule(g_ts, &SenderTxEnd);
 }
 
+/**
+ * @brief End a transmission.
+ */
 void
 SenderTxEnd()
 {
-    g_isChannelActive = false;
+    g_channelActive = false;
+    g_nextTxStart = Simulator::Now() + g_ti;
     Simulator::Schedule(g_ti, &SenderTxStart);
 }
 
+/**
+ * @brief Second CCA of a wake cycle.
+ * @param context receiver node ID.
+ */
 void
 ReceiverCCA2(uint32_t context)
 {
     Time now = Simulator::Now();
-    if (g_isChannelActive)
+    if (IsChannelBusyDuring(now, now + g_tr))
     {
-        if (g_inBlackout)
-        {
-            g_inBlackout = false;
-            g_observedDurations.push_back((now - g_blackoutStart).GetSeconds());
-        }
-        g_timeline.emplace_back(now.GetSeconds(), 1);
         g_messages.back().hit = true;
     }
-    else
-    {
-        if (!g_inBlackout)
-        {
-            g_inBlackout = true;
-            g_blackoutStart = now;
-            if (g_prevBlackoutStart.GetSeconds() > 0)
-            {
-                g_observedIntervals.push_back((g_blackoutStart - g_prevBlackoutStart).GetSeconds());
-            }
-            g_prevBlackoutStart = g_blackoutStart;
-        }
-        g_timeline.emplace_back(now.GetSeconds(), 0);
-    }
-
-    Simulator::ScheduleWithContext(context, g_ccaWakeupInterval - g_tc, &ReceiverCCA1, context);
+    Simulator::ScheduleWithContext(context, g_wakeInterval - g_tc, &ReceiverCCA1, context);
 }
 
+/**
+ * @brief First CCA of a wake cycle.
+ * @param context receiver node ID.
+ */
 void
 ReceiverCCA1(uint32_t context)
 {
     Time now = Simulator::Now();
     g_messages.push_back({now.GetSeconds(), false});
 
-    if (g_isChannelActive)
+    if (IsChannelBusyDuring(now, now + g_tr))
     {
-        if (g_inBlackout)
-        {
-            g_inBlackout = false;
-            g_observedDurations.push_back((now - g_blackoutStart).GetSeconds());
-        }
-        g_timeline.emplace_back(now.GetSeconds(), 1);
         g_messages.back().hit = true;
-        Simulator::ScheduleWithContext(context, g_ccaWakeupInterval, &ReceiverCCA1, context);
+        Simulator::ScheduleWithContext(context, g_wakeInterval, &ReceiverCCA1, context);
     }
     else
     {
@@ -169,33 +142,86 @@ ReceiverCCA1(uint32_t context)
 int
 main(int argc, char* argv[])
 {
-    uint32_t ts_us = 2082;
-    uint32_t ti_us = 1367;
-    uint32_t tc_us = 612;
+    uint32_t tsUs = 2082;
+    uint32_t tiUs = 1367;
+    uint32_t tcUs = 612;
+    uint32_t trUs = 333;
+    uint32_t phaseUs = 1000;
     double skew = 1.0005;
+    double skewMin = 0.0;
+    double skewMax = 0.0;
     double simTime = 50.0;
+    bool mapScheduler = false;
+    bool bounded = false;
+    uint32_t epsilonUs = 500;
+    bool ntp = false;
+    double ntpPollS = 1.0;
+    uint32_t runNumber = 1;
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("ts", "Transmission duration in microseconds", ts_us);
-    cmd.AddValue("ti", "Inter-packet gap in microseconds", ti_us);
-    cmd.AddValue("tc", "Time between CCAs in microseconds", tc_us);
-    cmd.AddValue("skew", "Clock skew multiplier", skew);
-    cmd.AddValue("simTime", "Simulation time in seconds", simTime);
+    cmd.AddValue("ts", "Transmission duration (us)", tsUs);
+    cmd.AddValue("ti", "Gap between transmissions (us)", tiUs);
+    cmd.AddValue("tc", "Gap between CCAs (us)", tcUs);
+    cmd.AddValue("tr", "CCA duration (us)", trUs);
+    cmd.AddValue("phase", "Receiver's first CCA offset (us)", phaseUs);
+    cmd.AddValue("skew", "Receiver clock skew", skew);
+    cmd.AddValue("skewMin", "Lower bound of a skew band (0 uses --skew)", skewMin);
+    cmd.AddValue("skewMax", "Upper bound of a skew band (0 uses --skew)", skewMax);
+    cmd.AddValue("simTime", "Simulation time (s)", simTime);
+    cmd.AddValue("mapScheduler", "Use the MapScheduler", mapScheduler);
+    cmd.AddValue("bounded", "Use the BoundedSkewScheduler", bounded);
+    cmd.AddValue("epsilon", "BoundedSkewScheduler drift bound (us)", epsilonUs);
+    cmd.AddValue("ntp", "Use the DynamicSkewScheduler with NTP", ntp);
+    cmd.AddValue("ntpPoll", "NTP poll interval (s)", ntpPollS);
+    cmd.AddValue("run", "RNG run number", runNumber);
     cmd.Parse(argc, argv);
 
+    bool banded = skewMin > 0.0 && skewMax > 0.0;
+    if (banded)
+    {
+        NS_ABORT_MSG_IF(skewMin > skewMax, "skewMin must not exceed skewMax");
+        skew = 0.5 * (skewMin + skewMax);
+    }
+    else
+    {
+        skewMin = skewMax = skew;
+    }
+
     LogComponentDisableAll(LOG_LEVEL_ALL);
+    RngSeedManager::SetRun(runNumber);
 
-    g_ts = MicroSeconds(ts_us);
-    g_ti = MicroSeconds(ti_us);
-    g_tc = MicroSeconds(tc_us);
-
-    Time totalCycleTime = g_ts + g_ti;
-    g_ccaWakeupInterval = totalCycleTime * 50;
+    g_ts = MicroSeconds(tsUs);
+    g_ti = MicroSeconds(tiUs);
+    g_tc = MicroSeconds(tcUs);
+    g_tr = MicroSeconds(trUs);
+    g_wakeInterval = (g_ts + g_ti) * 50;
 
     ObjectFactory factory;
-    factory.SetTypeId("ns3::StaticSkewScheduler");
-    factory.Set("MinimumSkew", DoubleValue(skew));
-    factory.Set("MaximumSkew", DoubleValue(skew));
+    if (mapScheduler)
+    {
+        factory.SetTypeId("ns3::MapScheduler");
+    }
+    else if (ntp)
+    {
+        factory.SetTypeId("ns3::DynamicSkewScheduler");
+        factory.Set("MinimumSkew", DoubleValue(skewMin));
+        factory.Set("MaximumSkew", DoubleValue(skewMax));
+        factory.Set("UpdatePeriod", TimeValue(Seconds(ntpPollS) / 2));
+    }
+    else if (bounded)
+    {
+        // Symmetric band about 1.0.
+        factory.SetTypeId("ns3::BoundedSkewScheduler");
+        factory.Set("MinimumSkew", DoubleValue(2.0 - skewMax));
+        factory.Set("MaximumSkew", DoubleValue(skewMax));
+        factory.Set("Epsilon", TimeValue(MicroSeconds(epsilonUs)));
+    }
+    else
+    {
+        factory.SetTypeId("ns3::StaticSkewScheduler");
+        factory.Set("MinimumSkew", DoubleValue(skewMin));
+        factory.Set("MaximumSkew", DoubleValue(skewMax));
+    }
     Simulator::SetScheduler(factory);
 
     NodeContainer nodes;
@@ -220,9 +246,58 @@ main(int argc, char* argv[])
 
     uint32_t receiverContext = receiverNode->GetId();
 
+    if (ntp)
+    {
+        Ptr<EpochTable> table = DynamicSkewScheduler::GetCurrentEpochTable();
+        NS_ABORT_MSG_IF(!table, "The dynamic skew scheduler is not active");
+
+        // The sender is the time reference.
+        EpochTable::Epoch reference;
+        reference.simulatorStartTime = Seconds(0);
+        reference.simulatorEndTime = Seconds(simTime) + Seconds(10.0);
+        reference.nodeStartTime = Seconds(0);
+        reference.nodeEndTime = reference.simulatorEndTime;
+        reference.skew = 1.0;
+        table->AddEpoch(senderNode->GetId(), reference);
+
+        // NTP runs on a separate link.
+        PointToPointHelper p2p;
+        p2p.SetDeviceAttribute("DataRate", StringValue("10Mbps"));
+        p2p.SetChannelAttribute("Delay", StringValue("2ms"));
+        NetDeviceContainer ntpDevices = p2p.Install(nodes);
+
+        InternetStackHelper internet;
+        internet.Install(nodes);
+
+        Ipv4AddressHelper address;
+        address.SetBase("10.1.1.0", "255.255.255.0");
+        Ipv4InterfaceContainer ntpInterfaces = address.Assign(ntpDevices);
+
+        LocalClockHelper clockHelper;
+        clockHelper.SetClockType("ns3::SchedulerClock");
+        clockHelper.Install(receiverNode);
+        Ptr<SchedulerClock> receiverClock = receiverNode->GetObject<SchedulerClock>();
+        receiverClock->SetNodeId(receiverContext);
+        receiverClock->SetEpochTable(table);
+
+        uint16_t ntpPort = 123;
+
+        Ptr<NtpServer> serverApp = CreateObject<NtpServer>();
+        serverApp->Setup(ntpPort, MicroSeconds(200));
+        senderNode->AddApplication(serverApp);
+        serverApp->SetStartTime(Seconds(0.0));
+        serverApp->SetStopTime(Seconds(simTime));
+
+        Ptr<NtpClient> clientApp = CreateObject<NtpClient>();
+        clientApp->Setup(ntpInterfaces.GetAddress(0), ntpPort, Seconds(ntpPollS));
+        receiverNode->AddApplication(clientApp);
+        clientApp->SetStartTime(Seconds(0.5));
+        clientApp->SetStopTime(Seconds(simTime));
+    }
+
     Simulator::Schedule(Seconds(0.0), &SenderTxStart);
     Simulator::ScheduleWithContext(receiverContext,
-                                   MicroSeconds(1000),
+                                   MicroSeconds(phaseUs),
                                    &ReceiverCCA1,
                                    receiverContext);
 
@@ -230,39 +305,7 @@ main(int argc, char* argv[])
     Simulator::Run();
     Simulator::Destroy();
 
-    double delta_f = std::abs(skew - 1.0);
-    double theo_dur = 0.0;
-    double theo_rep = 0.0;
-
-    if (delta_f > 0.0 && g_ti > g_tc)
-    {
-        theo_dur = (g_ti.GetSeconds() - g_tc.GetSeconds()) / delta_f;
-        theo_rep = (g_ts.GetSeconds() + g_tc.GetSeconds()) / delta_f;
-    }
-
-    double sim_dur = 0.0;
-    double sim_rep = 0.0;
-    if (!g_observedDurations.empty())
-    {
-        sim_dur = std::accumulate(g_observedDurations.begin(), g_observedDurations.end(), 0.0) /
-                  g_observedDurations.size();
-    }
-    if (!g_observedIntervals.empty())
-    {
-        sim_rep = std::accumulate(g_observedIntervals.begin(), g_observedIntervals.end(), 0.0) /
-                  g_observedIntervals.size();
-    }
-
-    std::cout << "Params: ts=" << ts_us << "us, ti=" << ti_us << "us, tc=" << tc_us
-              << "us, skew=" << skew << " | Theo: Dur=" << theo_dur << "s, Rep=" << theo_rep << "s"
-              << " | Sim: Dur=" << sim_dur << "s, Rep=" << sim_rep << "s" << std::endl;
-
-    std::cout << "TIMELINE:" << std::endl;
-    for (const auto& event : g_timeline)
-    {
-        std::cout << event.first << "," << event.second << std::endl;
-    }
-
+    // <cycle>,<cycle start s>,<hit>
     std::cout << "MESSAGES:" << std::endl;
     for (std::size_t i = 0; i < g_messages.size(); ++i)
     {

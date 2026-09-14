@@ -101,6 +101,14 @@ class EpochTable : public Object
                      double skew);
 
     /**
+     * @brief Replace all of a node's epochs with a single epoch.
+     *
+     * @param nodeId The ID of the node.
+     * @param epoch The epoch to store.
+     */
+    void SetSingleEpoch(uint32_t nodeId, const Epoch& epoch);
+
+    /**
      * @brief Convert local Node Time to global Simulator Time.
      *
      * @param nodeId The ID of the node context.

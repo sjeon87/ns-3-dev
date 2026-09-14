@@ -176,8 +176,8 @@ main(int argc, char* argv[])
     ObjectFactory schedulerFactory;
     schedulerFactory.SetTypeId("ns3::DynamicSkewScheduler");
     schedulerFactory.Set("MinimumSkew", DoubleValue(1.0 - skewJitterPpm * 1.0e-6));
-    schedulerFactory.Set("MaximumSkew", DoubleValue(1.0 + skewJitterPpm * 1.0e-6));
     schedulerFactory.Set("UpdatePeriod", TimeValue(Seconds(skewUpdatePeriodS)));
+    schedulerFactory.Set("MaximumSkew", DoubleValue(1.0 + skewJitterPpm * 1.0e-6));
     Simulator::SetScheduler(schedulerFactory);
 
     NodeContainer clients(client1, client2, client3);
