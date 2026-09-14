@@ -12,12 +12,14 @@
 
 #include "ns3/abort.h"
 #include "ns3/aodv-helper.h"
+#include "ns3/aodv-packet.h"
 #include "ns3/boolean.h"
 #include "ns3/config.h"
 #include "ns3/double.h"
 #include "ns3/icmpv4.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/ipv4-address-helper.h"
+#include "ns3/ipv4-header.h"
 #include "ns3/mobility-helper.h"
 #include "ns3/mobility-model.h"
 #include "ns3/pcap-file.h"
@@ -25,6 +27,7 @@
 #include "ns3/rng-seed-manager.h"
 #include "ns3/simulator.h"
 #include "ns3/string.h"
+#include "ns3/udp-header.h"
 #include "ns3/uinteger.h"
 #include "ns3/yans-wifi-helper.h"
 
@@ -124,6 +127,9 @@ ChainRegressionTest::DoRun()
     Ptr<Node> node = m_nodes->Get(m_size / 2);
     Ptr<MobilityModel> mob = node->GetObject<MobilityModel>();
     Simulator::Schedule(Time(m_time / 3), &MobilityModel::SetPosition, mob, Vector(1e5, 1e5, 1e5));
+
+    Config::ConnectWithoutContext("/NodeList/*/$ns3::Ipv4L3Protocol/Tx",
+                                  MakeCallback(&ChainRegressionTest::TxPkt, this));
 
     Simulator::Stop(m_time);
     Simulator::Run();
@@ -239,16 +245,52 @@ ChainRegressionTest::CreateDevices()
     m_socket->Connect(dst);
 
     SendPing();
-
-    // 4. write PCAP
-    wifiPhy.EnablePcapAll(CreateTempDirFilename(m_prefix));
 }
 
 void
 ChainRegressionTest::CheckResults()
 {
-    for (uint32_t i = 0; i < m_size; ++i)
+    if (m_size == 5)
     {
-        NS_PCAP_TEST_EXPECT_EQ(m_prefix << "-" << i << "-0.pcap");
+        NS_TEST_ASSERT_MSG_EQ(m_rreqCount, 14, "Routing broken: Expected exactly 14 RREQs");
+        NS_TEST_ASSERT_MSG_EQ(m_rrepCount, 48, "Routing broken: Expected exactly 48 RREPs");
+    }
+    else if (m_size == 3)
+    {
+        NS_TEST_ASSERT_MSG_EQ(m_rreqCount, 6, "Routing broken: Expected exactly 6 RREQs");
+        NS_TEST_ASSERT_MSG_EQ(m_rrepCount, 30, "Routing broken: Expected exactly 30 RREPs");
+    }
+}
+
+void
+ChainRegressionTest::TxPkt(Ptr<const Packet> packet, Ptr<Ipv4> ipv4, uint32_t interface)
+{
+    Ptr<Packet> p = packet->Copy();
+
+    Ipv4Header ipv4Header;
+    p->RemoveHeader(ipv4Header);
+
+    if (ipv4Header.GetProtocol() == 17)
+    {
+        UdpHeader udpHeader;
+        p->RemoveHeader(udpHeader);
+
+        if (udpHeader.GetDestinationPort() == 654)
+        {
+            aodv::TypeHeader tHeader;
+            p->PeekHeader(tHeader);
+
+            if (tHeader.IsValid())
+            {
+                if (tHeader.Get() == aodv::AODVTYPE_RREQ)
+                {
+                    m_rreqCount++;
+                }
+                else if (tHeader.Get() == aodv::AODVTYPE_RREP)
+                {
+                    m_rrepCount++;
+                }
+            }
+        }
     }
 }
