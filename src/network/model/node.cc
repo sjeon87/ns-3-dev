@@ -19,6 +19,7 @@
 #include "ns3/global-value.h"
 #include "ns3/log.h"
 #include "ns3/object-vector.h"
+#include "ns3/pointer.h"
 #include "ns3/simulator.h"
 #include "ns3/uinteger.h"
 

@@ -63,3 +63,24 @@ build_lib_example(
   LIBRARIES_TO_LINK ${libcore}
                     ${libnetwork}
 )
+
+build_lib_example(
+  NAME static-skew-scheduler-example
+  SOURCE_FILES static-skew-scheduler-example.cc
+  LIBRARIES_TO_LINK ${libcore}
+                    ${libnetwork}
+)
+
+build_lib_example(
+  NAME dynamic-skew-scheduler-example
+  SOURCE_FILES dynamic-skew-scheduler-example.cc
+  LIBRARIES_TO_LINK ${libcore}
+                    ${libnetwork}
+)
+
+build_lib_example(
+  NAME bounded-skew-scheduler-example
+  SOURCE_FILES bounded-skew-scheduler-example.cc
+  LIBRARIES_TO_LINK ${libcore}
+                    ${libnetwork}
+)

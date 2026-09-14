@@ -2,6 +2,7 @@ set(source_files
     helper/application-container.cc
     helper/application-helper.cc
     helper/delay-jitter-estimation.cc
+    helper/local-clock-helper.cc
     helper/net-device-container.cc
     helper/node-container.cc
     helper/packet-socket-helper.cc
@@ -44,6 +45,7 @@ set(source_files
     utils/ipv4-address.cc
     utils/ipv6-address.cc
     utils/llc-snap-header.cc
+    utils/local-clock.cc
     utils/mac16-address.cc
     utils/mac48-address.cc
     utils/mac64-address.cc
@@ -66,6 +68,7 @@ set(source_files
     utils/queue-size.cc
     utils/queue.cc
     utils/radiotap-header.cc
+    utils/scheduler-clock.cc
     utils/simple-channel.cc
     utils/simple-net-device.cc
     utils/sll-header.cc
@@ -76,6 +79,7 @@ set(header_files
     helper/application-container.h
     helper/application-helper.h
     helper/delay-jitter-estimation.h
+    helper/local-clock-helper.h
     helper/net-device-container.h
     helper/node-container.h
     helper/packet-socket-helper.h
@@ -124,6 +128,7 @@ set(header_files
     utils/ipv4-address.h
     utils/ipv6-address.h
     utils/llc-snap-header.h
+    utils/local-clock.h
     utils/lollipop-counter.h
     utils/mac16-address.h
     utils/mac48-address.h
@@ -149,6 +154,7 @@ set(header_files
     utils/queue-size.h
     utils/queue.h
     utils/radiotap-header.h
+    utils/scheduler-clock.h
     utils/sequence-number.h
     utils/simple-channel.h
     utils/simple-net-device.h
