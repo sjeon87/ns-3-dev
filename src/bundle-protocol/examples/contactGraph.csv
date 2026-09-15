@@ -1,0 +1,16 @@
+a contact +1000  +4000   dtn://earth/dsn   dtn://mars/tgo      20000000
+a range   +1000  +4000   dtn://earth/dsn   dtn://mars/tgo      838.0
+a contact +1000  +4000   dtn://mars/tgo    dtn://earth/dsn     20000000
+a range   +1000  +4000   dtn://mars/tgo    dtn://earth/dsn     838.0
+a contact +1000  +20000  dtn://earth/dsn   dtn://mars/mro      20000000
+a range   +1000  +20000  dtn://earth/dsn   dtn://mars/mro      838.0
+a contact +1000  +20000  dtn://mars/mro    dtn://earth/dsn     20000000
+a range   +1000  +20000  dtn://mars/mro    dtn://earth/dsn     838.0
+a contact +5000  +20000  dtn://mars/tgo    dtn://mars/ingenuity 20000000
+a range   +5000  +20000  dtn://mars/tgo    dtn://mars/ingenuity 0.003
+a contact +5000  +20000  dtn://mars/ingenuity dtn://mars/tgo   20000000
+a range   +5000  +20000  dtn://mars/ingenuity dtn://mars/tgo   0.003
+a contact +9000  +20000  dtn://mars/mro    dtn://mars/ingenuity 20000000
+a range   +9000  +20000  dtn://mars/mro    dtn://mars/ingenuity 0.003
+a contact +9000  +20000  dtn://mars/ingenuity dtn://mars/mro   20000000
+a range   +9000  +20000  dtn://mars/ingenuity dtn://mars/mro   0.003
