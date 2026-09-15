@@ -40,6 +40,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (network) `Buffer::Deserialize`, `ByteTagList::Deserialize`, `PacketMetadata::Deserialize`, `PacketTagList::Deserialize` and `Packet::Deserialize` functions return now the number of deserialized bytes instead of just `1` for a successful deserialization.
 * (sixlowpan) The `SixLowPanNetDevice` attributes `MeshUnderJitter` and `MeshCacheLength` moved to the mesh-under forwarding policy: use `SixLowPanSimpleFlooding::MeshUnderJitter` and `SixLowPanMeshUnderRouting::MeshCacheLength`, reachable through the device's `MeshUnderRouting` attribute (e.g., `MeshUnderRouting/MeshUnderJitter` in a `Config` path). The old device attributes are deprecated and forward to the current policy.
 * (internet) the `Ipv4InterfaceAddress` functions related to the setup of a secondary address have been removed. This includes `SetPrimary`, `SetSecondary`, and `IsSecondary`. If users have a need for this feature in the future, please document the need by opening a Work Item on ns-3-dev tracker.
+* (spectrum) Added an overload to `PhasedArraySpectrumPropagationLossModel::CalcRxPowerSpectralDensity()` that takes the beamforming vectors of the two phased arrays explicitly, so that a gain can be evaluated for vectors other than the ones currently set on the arrays; the existing overload forwards the arrays' current vectors. The private virtual `DoCalcRxPowerSpectralDensity()` and, in `ThreeGppSpectrumPropagationLossModel`, `SionnaRtSpectrumPropagationLossModel` and `TwoRaySpectrumPropagationLossModel`, the protected `GetLongTerm()`, `CalcLongTerm()`, `CalculateLongTermComponent()` and `CalcBeamformingGain()` methods now require the beamforming vectors as parameters instead of reading them from the arrays (this is a deliberate API change without overloads or deprecation, to avoid keeping a code path that evaluates beam state at reception time).
 
 ### Changes to build system
 
@@ -48,6 +49,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 ### Changed behavior
 
 * (sixlowpan) Mesh-under forwarding on the receive path is no longer unconditional. A node relays received mesh-under packets only when both `UseMeshUnder` and `ForwardMesh` are enabled; a node with `UseMeshUnder` alone decodes and delivers mesh packets without relaying them; a node without `UseMeshUnder` receiving a mesh-under packet drops it with a warning (`DROP_MESH_NOT_ENABLED` in the drop trace), as this is a network misconfiguration. Previously, every node relayed mesh-under packets regardless of its configuration.
+* (spectrum) `MultiModelSpectrumChannel` now evaluates a `PhasedArraySpectrumPropagationLossModel` with the beamforming vector that the transmitter's phased array had when the transmission started, instead of the one it holds when the signal arrives after the propagation delay. Results change only when that vector is modified while a signal is in flight.
 
 ## Changes from ns-3.47 to ns-3.48
 
