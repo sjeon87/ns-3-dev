@@ -1,0 +1,177 @@
+/*
+ * Copyright (c) 2025 Universita' di Firenze, Italy
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * Author: Tommaso Pecorella <tommaso.pecorella@unifi.it>
+ */
+
+#ifndef IPV6_NETWORK_ADDRESS_H
+#define IPV6_NETWORK_ADDRESS_H
+
+#include "ipv6-address.h"
+
+#include <compare>
+#include <optional>
+#include <ostream>
+#include <stdint.h>
+
+namespace ns3
+{
+
+/**
+ * @ingroup address
+ * @ingroup ipv6
+ *
+ * @brief a class to store IPv6 network address information, i.e.,
+ * an address and the number of bits in the network part.
+ *
+ * This class can be used to represent either an address and its
+ * prefix (e.g., 2001:db8::1/64), or a network (e.g., 2001:db8::/64).
+ */
+class Ipv6NetworkAddress
+{
+  public:
+    /**
+     * Address length when converted to an Address[bytes].
+     * In this case it's 18: 16 (IPv6 address) + 1 (prefix length)
+     */
+    static constexpr uint8_t ADDRESS_LENGTH = 17;
+
+    Ipv6NetworkAddress() = default;
+
+    /**
+     * @brief Configure address, mask and broadcast address
+     * @param address the address
+     * @param networkLength the CIDR size
+     */
+    Ipv6NetworkAddress(Ipv6Address address, uint8_t networkLength = MAX_PREFIX_LENGTH);
+
+    /**
+     * @brief Return the Type of address.
+     * @return type of address
+     */
+    static uint8_t GetType();
+
+    /**
+     * @brief If the Address matches the type.
+     * @param address other address
+     * @return true if the type matches, false otherwise
+     */
+    static bool IsMatchingType(const Address& address);
+
+    /**
+     * @brief Convert to Address object
+     */
+    operator Address() const;
+
+    /**
+     * @brief Convert the Address object into an Ipv6NetworkAddress.
+     * @param address address to convert
+     * @return an Ipv6NetworkAddress
+     */
+    static Ipv6NetworkAddress ConvertFrom(const Address& address);
+
+    /**
+     * @brief convert the Ipv6NetworkAddress object to an Address object.
+     * @return the Address object corresponding to this object.
+     */
+    Address ConvertTo() const;
+
+    /**
+     * @brief Get the IPv6 address
+     * @returns the IPv6 address
+     */
+    Ipv6Address GetAddress() const;
+
+    /**
+     * @brief Get the network part length (in bits)
+     * @returns the network part length (in bits)
+     */
+    uint8_t GetNetworkLength() const;
+
+    /**
+     * @brief Get the network address
+     *
+     * The network address is made by the first n bits of the address,
+     * where n is the NetworkLength.
+     *
+     * @returns the network address
+     */
+    Ipv6NetworkAddress GetNetwork() const;
+
+    /**
+     * @brief Clean the entry so that this is a pure network address.
+     */
+    void MakeNetwork();
+
+    /**
+     * @brief Checks if a network is a subnet of another network.
+     *
+     * As an example, 2001:db8:cafe::/64 is contained in 2001:db8::/32
+     *
+     * This can be used to check if an address is part of a network,
+     * because an address is automatically converted into an address with
+     * a /128 mask, e.g., "2001:db8:cafe::1/128"
+     *
+     * Note: The comparison is based on the network length of the object.
+     * The operand network length is irrelevant. I.e.,
+     * "2001:db8:cafe::/16" will include "2001:db8:f00d::/64".
+     *
+     * @param other the network to check
+     * @return true if the network is a subnet of this network.
+     */
+    bool Includes(const Ipv6NetworkAddress& other) const;
+
+    /// Maximum prefix length.
+    static constexpr uint16_t MAX_PREFIX_LENGTH = 128;
+
+    /**
+     * @brief Equality comparison operator.
+     *
+     * @param other the other address to compare with
+     * @return true if the addresses and network lengths are equal
+     */
+    constexpr bool operator==(const Ipv6NetworkAddress& other) const
+    {
+        return m_address == other.m_address && m_networkLength == other.m_networkLength;
+    }
+
+    /**
+     * @brief Three-way comparison operator.
+     *
+     * The ordering is address-first, length-second.
+     *
+     * @param other the other address to compare with
+     * @return comparison result
+     */
+    constexpr std::strong_ordering operator<=>(const Ipv6NetworkAddress& other) const
+    {
+        if (m_address == other.m_address)
+        {
+            return m_networkLength <=> other.m_networkLength;
+        }
+
+        return m_address <=> other.m_address;
+    }
+
+  private:
+    // Initialized by default to "::/0", to enable checks on correct initialization.
+    Ipv6Address m_address;                            //!< Address
+    uint8_t m_networkLength{0};                       //!< Network length
+    mutable std::optional<Ipv6Address> m_networkAddr; //!< Cached network address
+};
+
+/**
+ * @brief Stream insertion operator. The address is printed in CIDR notation,
+ * e.g., 2001:db8:f00d::beef:cafe/64
+ *
+ * @param os the reference to the output stream
+ * @param addr the Ipv6InterfaceAddress
+ * @returns the reference to the output stream
+ */
+std::ostream& operator<<(std::ostream& os, const Ipv6NetworkAddress& addr);
+
+} // namespace ns3
+
+#endif /* IPV6_NETWORK_ADDRESS_H */

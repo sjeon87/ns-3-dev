@@ -9,6 +9,7 @@
 #define IPV4_INTERFACE_ADDRESS_H
 
 #include "ns3/ipv4-address.h"
+#include "ns3/ipv4-network-address.h"
 
 #include <ostream>
 #include <stdint.h>
@@ -48,34 +49,22 @@ class Ipv4InterfaceAddress
 
     /**
      * @brief Configure local address, mask and broadcast address
+     * @param address the local address
+     */
+    Ipv4InterfaceAddress(Ipv4NetworkAddress address);
+
+    /**
+     * @brief Configure local address, mask and broadcast address
      * @param local the local address
      * @param mask the network mask
      */
     Ipv4InterfaceAddress(Ipv4Address local, Ipv4Mask mask);
+
     /**
      * Copy constructor
      * @param o the object to copy
      */
     Ipv4InterfaceAddress(const Ipv4InterfaceAddress& o);
-
-    /**
-     * @brief Set local address
-     * @param local the address
-     *
-     * @note Functionally identical to `Ipv4InterfaceAddress::SetAddress`.
-     *       The method corresponds to the linux variable in_ifaddr.ifa_local
-     *       `Ipv4InterfaceAddress::SetAddress` is to be preferred.
-     */
-    void SetLocal(Ipv4Address local);
-
-    /**
-     * @brief Set local address
-     * @param address the address
-     *
-     * @note Functionally identical to `Ipv4InterfaceAddress::SetLocal`.
-     *       This function is consistent with `Ipv6InterfaceAddress::SetAddress`.
-     */
-    void SetAddress(Ipv4Address address);
 
     /**
      * @brief Get the local address
@@ -97,10 +86,13 @@ class Ipv4InterfaceAddress
     Ipv4Address GetAddress() const;
 
     /**
-     * @brief Set the network mask
-     * @param mask the network mask
+     * @brief Get the local address
+     * @returns the local address
+     *
+     * @note Functionally identical to `Ipv4InterfaceAddress::GetLocal`.
+     *       This function is consistent with `Ipv6InterfaceAddress::GetAddress`.
      */
-    void SetMask(Ipv4Mask mask);
+    Ipv4NetworkAddress GetNetworkAddress() const;
 
     /**
      * @brief Get the network mask
@@ -134,10 +126,9 @@ class Ipv4InterfaceAddress
     bool IsInSameSubnet(const Ipv4Address b) const;
 
   private:
-    Ipv4Address m_local; //!< Interface address
+    Ipv4NetworkAddress m_local; //!< Interface address
     // Note:  m_peer may be added in future when necessary
     // Ipv4Address m_peer;   // Peer destination address (in Linux:  m_address)
-    uint8_t m_prefixLength{24}; //!< Network mask length
 
     InterfaceAddressScope_e m_scope; //!< Address scope
 
@@ -163,8 +154,7 @@ std::ostream& operator<<(std::ostream& os, const Ipv4InterfaceAddress& addr);
 inline bool
 operator==(const Ipv4InterfaceAddress& a, const Ipv4InterfaceAddress& b)
 {
-    return (a.m_local == b.m_local && a.m_prefixLength == b.m_prefixLength &&
-            a.m_scope == b.m_scope);
+    return (a.m_local == b.m_local && a.m_scope == b.m_scope);
 }
 
 } // namespace ns3

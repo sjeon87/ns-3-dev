@@ -22,6 +22,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (wifi) Added a new `ForceDisassociation` attribute to `StaWifiMac` to force a non-AP STA to disassociate from the current AP, which can be optionally notified through a Disassociation frame.
 
 * Added the `nlohmann/json` library to enable JSON parsing and serialization within ns-3.
+* (network) Added an implementation of RFC 5444, the Generalized MANET Packet/Message Format: `Rfc5444Packet`, `Rfc5444Message`, `Rfc5444AddressBlock`, `Rfc5444Tlv`, and `Rfc5444AddressTlv` in `rfc5444.h`.
 * (network) `NetDevice` gained a `GetPaddingThreshold()` virtual method with a default implementation (returning 0) suitable for almost all existing devices. Payloads below this length may be padded by the link, with the padding delivered to the receiver as data. `CsmaNetDevice` and `FdNetDevice` override it (46 octets for Ethernet framing), and `SixLowPanNetDevice` uses it as a floor for its `CompressionThreshold` attribute so that small packets are sent uncompressed on padding links.
 * (zigbee) It is now possible to send ZDO commands. The inclusion of ZDO in the Zigbee stack is optional and can be removed via helper configuration.
 
@@ -40,6 +41,7 @@ This file is a best-effort approach to solving this issue; we will do our best b
 * (network) `Buffer::Deserialize`, `ByteTagList::Deserialize`, `PacketMetadata::Deserialize`, `PacketTagList::Deserialize` and `Packet::Deserialize` functions return now the number of deserialized bytes instead of just `1` for a successful deserialization.
 * (sixlowpan) The `SixLowPanNetDevice` attributes `MeshUnderJitter` and `MeshCacheLength` moved to the mesh-under forwarding policy: use `SixLowPanSimpleFlooding::MeshUnderJitter` and `SixLowPanMeshUnderRouting::MeshCacheLength`, reachable through the device's `MeshUnderRouting` attribute (e.g., `MeshUnderRouting/MeshUnderJitter` in a `Config` path). The old device attributes are deprecated and forward to the current policy.
 * (internet) the `Ipv4InterfaceAddress` functions related to the setup of a secondary address have been removed. This includes `SetPrimary`, `SetSecondary`, and `IsSecondary`. If users have a need for this feature in the future, please document the need by opening a Work Item on ns-3-dev tracker.
+* (network) The PacketBB (`Pbb*`) classes of `packetbb.h` are deprecated in favor of the `Rfc5444*` classes of `rfc5444.h`, and will be removed in a future release.
 
 ### Changes to build system
 

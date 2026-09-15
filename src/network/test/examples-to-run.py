@@ -9,6 +9,7 @@
 cpp_examples = [
     ("main-packet-header", "True", "True"),
     ("main-packet-tag", "True", "True"),
+    ("rfc5444-example", "True", "True"),
 ]
 
 # A list of Python examples to run in order to ensure that they remain

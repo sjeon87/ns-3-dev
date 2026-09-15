@@ -4,6 +4,7 @@ set(base_examples
     main-packet-header
     main-packet-tag
     packet-socket-apps
+    rfc5444-example
     sequence-number-example
 )
 

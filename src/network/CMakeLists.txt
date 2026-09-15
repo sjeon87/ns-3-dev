@@ -42,7 +42,9 @@ set(source_files
     utils/inet-socket-address.cc
     utils/inet6-socket-address.cc
     utils/ipv4-address.cc
+    utils/ipv4-network-address.cc
     utils/ipv6-address.cc
+    utils/ipv6-network-address.cc
     utils/llc-snap-header.cc
     utils/mac16-address.cc
     utils/mac48-address.cc
@@ -66,6 +68,7 @@ set(source_files
     utils/queue-size.cc
     utils/queue.cc
     utils/radiotap-header.cc
+    utils/rfc5444.cc
     utils/simple-channel.cc
     utils/simple-net-device.cc
     utils/sll-header.cc
@@ -122,7 +125,9 @@ set(header_files
     utils/inet-socket-address.h
     utils/inet6-socket-address.h
     utils/ipv4-address.h
+    utils/ipv4-network-address.h
     utils/ipv6-address.h
+    utils/ipv6-network-address.h
     utils/llc-snap-header.h
     utils/lollipop-counter.h
     utils/mac16-address.h
@@ -149,6 +154,7 @@ set(header_files
     utils/queue-size.h
     utils/queue.h
     utils/radiotap-header.h
+    utils/rfc5444.h
     utils/sequence-number.h
     utils/simple-channel.h
     utils/simple-net-device.h
@@ -168,6 +174,7 @@ build_lib(
     test/drop-tail-queue-test-suite.cc
     test/error-model-test-suite.cc
     test/ipv6-address-test-suite.cc
+    test/ipvx-network-address-test.cc
     test/lollipop-counter-test.cc
     test/network-traced-callback-typedef-test-suite.cc
     test/packet-metadata-test.cc
@@ -176,6 +183,7 @@ build_lib(
     test/packetbb-test-suite.cc
     test/pcap-explicit-filename-test-suite.cc
     test/pcap-file-test-suite.cc
+    test/rfc5444-test-suite.cc
     test/sequence-number-test-suite.cc
     test/simple-net-device-test.cc
     test/test-data-rate.cc

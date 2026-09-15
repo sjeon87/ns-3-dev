@@ -16,6 +16,11 @@
 
 #include "ns3/assert.h"
 #include "ns3/log.h"
+#include "ns3/warnings.h"
+
+// This file implements the deprecated Pbb* classes; silence the deprecation
+// warnings their definitions would raise.
+NS_WARNING_PUSH_DEPRECATED;
 
 static const uint8_t VERSION = 0;
 /* Packet flags */
@@ -3010,3 +3015,5 @@ PbbAddressTlv::IsMultivalue() const
 }
 
 } /* namespace ns3 */
+
+NS_WARNING_POP;

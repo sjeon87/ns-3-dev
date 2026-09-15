@@ -22,11 +22,12 @@
 namespace ns3
 {
 
-class Node;
 class AttributeValue;
-class Time;
-class Ipv6InterfaceContainer;
 class Icmpv6OptionSixLowPanCapabilityIndication;
+class Ipv6InterfaceContainer;
+class Ipv6NetworkAddress;
+class Node;
+class Time;
 
 /**
  * @ingroup sixlowpan
@@ -111,7 +112,10 @@ class SixLowPanHelper
      * @param [in] context The context prefix.
      * @param [in] validity the context validity time (relative to the actual time).
      */
-    void AddContext(NetDeviceContainer c, uint8_t contextId, Ipv6Prefix context, Time validity);
+    void AddContext(NetDeviceContainer c,
+                    uint8_t contextId,
+                    Ipv6NetworkAddress context,
+                    Time validity);
 
     /**
      * @brief Renew a compression Context in a set of NetDevices.

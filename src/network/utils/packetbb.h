@@ -7,16 +7,21 @@
  */
 /* These classes implement RFC 5444 - The Generalized Mobile Ad Hoc Network
  * (MANET) Packet/PbbMessage Format
- * See: https://datatracker.ietf.org/doc/html/rfc5444 for details */
+ * See: https://datatracker.ietf.org/doc/html/rfc5444 for details
+ *
+ * The Pbb* classes are DEPRECATED in favor of the Rfc5444* classes in
+ * rfc5444.h, and will be removed in a future release. */
 
 #ifndef PACKETBB_H
 #define PACKETBB_H
 
 #include "ns3/address.h"
 #include "ns3/buffer.h"
+#include "ns3/deprecated.h"
 #include "ns3/header.h"
 #include "ns3/ptr.h"
 #include "ns3/simple-ref-count.h"
+#include "ns3/warnings.h"
 
 #include <list>
 
@@ -28,6 +33,12 @@ class PbbMessage;
 class PbbAddressBlock;
 class PbbTlv;
 class PbbAddressTlv;
+
+// The deprecated Pbb* classes refer to one another (members, typedefs, and
+// base classes); silence the deprecation warnings those references would
+// raise within this header. Uses of the classes outside this header still
+// warn.
+NS_WARNING_PUSH_DEPRECATED;
 
 /** Used in Messages to determine whether it contains IPv4 or IPv6 addresses */
 enum PbbAddressLength
@@ -41,7 +52,7 @@ enum PbbAddressLength
  *
  * Acts similar to a C++ STL container.  Should not be used for Address TLVs.
  */
-class PbbTlvBlock
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbTlvBlock
 {
   public:
     /// PbbTlv container iterator
@@ -199,7 +210,7 @@ class PbbTlvBlock
  *
  * Acts similar to a C++ STL container.
  */
-class PbbAddressTlvBlock
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbAddressTlvBlock
 {
   public:
     /// PbbAddressTlv iterator for PbbAddressTlvBlock
@@ -362,7 +373,8 @@ class PbbAddressTlvBlock
  *
  * See: \RFC{5444} for details.
  */
-class PbbPacket : public SimpleRefCount<PbbPacket, Header>
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbPacket
+    : public SimpleRefCount<PbbPacket, Header>
 {
   public:
     /// PbbTlv iterator for PbbPacket
@@ -671,7 +683,8 @@ class PbbPacket : public SimpleRefCount<PbbPacket, Header>
  * virtual base class, when creating a message, you should instantiate either
  * PbbMessageIpv4 or PbbMessageIpv6.
  */
-class PbbMessage : public SimpleRefCount<PbbMessage>
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbMessage
+    : public SimpleRefCount<PbbMessage>
 {
   public:
     /// PbbTlv iterator
@@ -1096,7 +1109,8 @@ class PbbMessage : public SimpleRefCount<PbbMessage>
  *
  * This message will only contain IPv4 addresses.
  */
-class PbbMessageIpv4 : public PbbMessage
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbMessageIpv4
+    : public PbbMessage
 {
   public:
     PbbMessageIpv4();
@@ -1124,7 +1138,8 @@ class PbbMessageIpv4 : public PbbMessage
  *
  * This message will only contain IPv6 addresses.
  */
-class PbbMessageIpv6 : public PbbMessage
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbMessageIpv6
+    : public PbbMessage
 {
   public:
     PbbMessageIpv6();
@@ -1153,7 +1168,8 @@ class PbbMessageIpv6 : public PbbMessage
  * This is a pure virtual base class, when creating address blocks, you should
  * instantiate either PbbAddressBlockIpv4 or PbbAddressBlockIpv6.
  */
-class PbbAddressBlock : public SimpleRefCount<PbbAddressBlock>
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbAddressBlock
+    : public SimpleRefCount<PbbAddressBlock>
 {
   public:
     /// Address iterator
@@ -1577,7 +1593,8 @@ class PbbAddressBlock : public SimpleRefCount<PbbAddressBlock>
  *
  * This address block will only contain IPv4 addresses.
  */
-class PbbAddressBlockIpv4 : public PbbAddressBlock
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbAddressBlockIpv4
+    : public PbbAddressBlock
 {
   public:
     PbbAddressBlockIpv4();
@@ -1599,7 +1616,8 @@ class PbbAddressBlockIpv4 : public PbbAddressBlock
  *
  * This address block will only contain IPv6 addresses.
  */
-class PbbAddressBlockIpv6 : public PbbAddressBlock
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbAddressBlockIpv6
+    : public PbbAddressBlock
 {
   public:
     PbbAddressBlockIpv6();
@@ -1619,7 +1637,8 @@ class PbbAddressBlockIpv6 : public PbbAddressBlock
 /**
  * @brief A packet or message TLV
  */
-class PbbTlv : public SimpleRefCount<PbbTlv>
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbTlv
+    : public SimpleRefCount<PbbTlv>
 {
   public:
     PbbTlv();
@@ -1808,7 +1827,8 @@ class PbbTlv : public SimpleRefCount<PbbTlv>
 /**
  * @brief An Address TLV
  */
-class PbbAddressTlv : public PbbTlv
+class NS_DEPRECATED_3_49("Use the Rfc5444* classes from rfc5444.h instead") PbbAddressTlv
+    : public PbbTlv
 {
   public:
     /**
@@ -1877,6 +1897,8 @@ class PbbAddressTlv : public PbbTlv
      */
     bool IsMultivalue() const;
 };
+
+NS_WARNING_POP;
 
 } /* namespace ns3 */
 

@@ -121,6 +121,15 @@ Ipv4Mask::GetOnes()
     return ones;
 }
 
+void
+Ipv4Mask::SetPrefixLength(uint16_t prefixLength)
+{
+    NS_LOG_FUNCTION(this << prefixLength);
+    NS_ABORT_MSG_IF(prefixLength > 32, "IPv4 prefix length must be between 0 and 32");
+
+    m_mask = prefixLength == 0 ? 0U : 0xffffffffU << (32U - prefixLength);
+}
+
 uint16_t
 Ipv4Mask::GetPrefixLength() const
 {

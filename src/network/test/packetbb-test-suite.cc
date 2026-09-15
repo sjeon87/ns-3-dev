@@ -11,10 +11,15 @@
 #include "ns3/packetbb.h"
 #include "ns3/ptr.h"
 #include "ns3/test.h"
+#include "ns3/warnings.h"
 
 #include <cstring>
 #include <iostream>
 #include <vector>
+
+// This file tests the deprecated Pbb* classes, which remain covered until
+// their removal; silence the deprecation warnings their use would raise.
+NS_WARNING_PUSH_DEPRECATED;
 
 using namespace ns3;
 
@@ -3228,3 +3233,5 @@ PbbTestSuite::PbbTestSuite()
 }
 
 static PbbTestSuite pbbTestSuite; //!< Static variable for test initialization
+
+NS_WARNING_POP;
