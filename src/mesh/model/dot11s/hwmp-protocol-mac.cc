@@ -66,25 +66,44 @@ HwmpProtocolMac::ReceiveData(Ptr<Packet> packet, const WifiMacHeader& header)
     m_stats.rxData++;
     m_stats.rxDataBytes += packet->GetSize();
 
-    /// @todo address extension
     Mac48Address destination;
     Mac48Address source;
+    if (header.GetAddr1().IsGroup())
+    {
+        // Group addressed frames use the three-address format
+        // (IEEE 802.11-2012, Table 8-19)
+        destination = header.GetAddr1();
+        source = header.GetAddr3();
+    }
+    else
+    {
+        source = header.GetAddr4();
+        destination = header.GetAddr3();
+    }
     switch (meshHdr.GetAddressExt())
     {
     case 0:
-        source = header.GetAddr4();
-        destination = header.GetAddr3();
+        break;
+    case 1:
+        // Group addressed frame carried on behalf of a station outside the mesh: the mesh SA
+        // stays in the 802.11 header and the originating station is in Address 4
+        tag.SetProxiedAddresses(meshHdr.GetAddr4(), destination);
+        m_protocol->LearnProxy(meshHdr.GetAddr4(), source);
+        break;
+    case 2:
+        // Individually addressed frame carried on behalf of stations outside the mesh: both of
+        // them are in Address 5 and Address 6
+        tag.SetProxiedAddresses(meshHdr.GetAddr6(), meshHdr.GetAddr5());
+        m_protocol->LearnProxy(meshHdr.GetAddr6(), source);
         break;
     default:
-        NS_FATAL_ERROR("6-address scheme is not yet supported and 4-address extension is not "
-                       "supposed to be used for data frames.");
+        NS_FATAL_ERROR("The 4-address extension is not supposed to be used for data frames.");
     }
     tag.SetSeqno(meshHdr.GetMeshSeqno());
     tag.SetTtl(meshHdr.GetMeshTtl());
     packet->AddPacketTag(tag);
 
-    if ((destination == Mac48Address::GetBroadcast()) &&
-        (m_protocol->DropDataFrame(meshHdr.GetMeshSeqno(), source)))
+    if (destination.IsGroup() && (m_protocol->DropDataFrame(meshHdr.GetMeshSeqno(), source)))
     {
         NS_LOG_DEBUG("Dropping frame; source " << source << " dest " << destination << " seqno "
                                                << meshHdr.GetMeshSeqno());
@@ -219,8 +238,42 @@ HwmpProtocolMac::UpdateOutcomingFrame(Ptr<Packet> packet,
     MeshHeader meshHdr;
     meshHdr.SetMeshSeqno(tag.GetSeqno());
     meshHdr.SetMeshTtl(tag.GetTtl());
+    if (tag.IsProxied())
+    {
+        // The addresses of the stations outside the mesh travel in the Mesh Address Extension
+        // subfield, while the 802.11 header carries the addresses of the mesh STAs proxying for
+        // them (IEEE 802.11-2012, Table 8-19). A group addressed frame needs the source alone,
+        // since its destination is the group address carried by the 802.11 header
+        if (header.GetAddr1().IsGroup())
+        {
+            meshHdr.SetAddressExt(1);
+            meshHdr.SetAddr4(tag.GetProxiedSource());
+        }
+        else
+        {
+            meshHdr.SetAddressExt(2);
+            meshHdr.SetAddr5(tag.GetProxiedDestination());
+            meshHdr.SetAddr6(tag.GetProxiedSource());
+        }
+    }
     packet->AddHeader(meshHdr);
-    header.SetAddr1(tag.GetAddress());
+    if (!header.GetAddr1().IsGroup())
+    {
+        header.SetAddr1(tag.GetAddress());
+    }
+    else if (!tag.GetAddress().IsGroup())
+    {
+        // A group addressed frame sent as a chain of individually addressed
+        // frames no longer fits the three-address format, whose Address 1 is
+        // both the RA and the DA. Move it to the four-address format, which
+        // keeps the group DA in Address 3 (IEEE 802.11-2012, Table 8-19)
+        const auto destination = header.GetAddr1();
+        const auto source = header.GetAddr3();
+        header.SetAddr1(tag.GetAddress());
+        header.SetAddr3(destination);
+        header.SetAddr4(source);
+        header.SetDsTo();
+    }
     header.SetQosMeshControlPresent();
     return true;
 }
