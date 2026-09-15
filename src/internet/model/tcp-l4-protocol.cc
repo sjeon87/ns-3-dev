@@ -70,11 +70,19 @@ TcpL4Protocol::GetTypeId()
                           TypeIdValue(RttMeanDeviation::GetTypeId()),
                           MakeTypeIdAccessor(&TcpL4Protocol::m_rttTypeId),
                           MakeTypeIdChecker())
-            .AddAttribute("SocketType",
-                          "Socket type of TCP objects.",
+            .AddAttribute("CongestionType",
+                          "Congestion control algorithm used by the socket.",
                           TypeIdValue(TcpCubic::GetTypeId()),
                           MakeTypeIdAccessor(&TcpL4Protocol::m_congestionTypeId),
                           MakeTypeIdChecker())
+            .AddAttribute("SocketType",
+                          "Congestion control algorithm used by the socket.",
+                          TypeIdValue(TcpCubic::GetTypeId()),
+                          MakeTypeIdAccessor(&TcpL4Protocol::SetSocketTypeId,
+                                             &TcpL4Protocol::GetSocketTypeId),
+                          MakeTypeIdChecker(),
+                          TypeId::SupportLevel::DEPRECATED,
+                          "Use 'CongestionType' instead.")
             .AddAttribute("RecoveryType",
                           "Recovery type of TCP objects.",
                           TypeIdValue(TcpPrrRecovery::GetTypeId()),
@@ -88,6 +96,32 @@ TcpL4Protocol::GetTypeId()
                           MakeObjectMapAccessor(&TcpL4Protocol::m_sockets),
                           MakeObjectMapChecker<TcpSocketBase>());
     return tid;
+}
+
+void
+TcpL4Protocol::SetSocketTypeId(TypeId tid)
+{
+    NS_LOG_FUNCTION(this << tid);
+    // This setter intentionally skips forwarding when tid equals the default
+    // (TcpCubic). This guards against ns-3's attribute initialization order:
+    // 'CongestionType' is declared before 'SocketType' in GetTypeId(), so its
+    // default is written to m_congestionTypeId first. An unconditional forward
+    // here would overwrite a user-configured CongestionType with the SocketType
+    // default on every object construction.
+    //
+    // If the default congestion algorithm is ever changed from TcpCubic, this
+    // guard and both AddAttribute() defaults in GetTypeId() must be updated.
+    if (tid != TcpCubic::GetTypeId())
+    {
+        m_congestionTypeId = tid;
+    }
+}
+
+TypeId
+TcpL4Protocol::GetSocketTypeId() const
+{
+    NS_LOG_FUNCTION(this);
+    return m_congestionTypeId;
 }
 
 TcpL4Protocol::TcpL4Protocol()
