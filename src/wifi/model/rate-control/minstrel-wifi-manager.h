@@ -354,6 +354,7 @@ class MinstrelWifiManager : public WifiRemoteStationManager
     /// Provides uniform random variables.
     Ptr<UniformRandomVariable> m_uniformRandomVariable;
 
+    NS_DEPRECATED_3_47("Use RateUsed in the base class instead")
     TracedValue<uint64_t> m_currentRate; //!< Trace rate changes
 };
 

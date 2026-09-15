@@ -152,7 +152,12 @@ WifiRemoteStationManager::GetTypeId()
                 "MacTxFinalDataFailed",
                 "The transmission of a data packet has exceeded the maximum number of attempts",
                 MakeTraceSourceAccessor(&WifiRemoteStationManager::m_macTxFinalDataFailed),
-                "ns3::Mac48Address::TracedCallback");
+                "ns3::Mac48Address::TracedCallback")
+            .AddTraceSource(
+                "RateUsed",
+                "The data rate used for a transmission to a specific remote station and link",
+                MakeTraceSourceAccessor(&WifiRemoteStationManager::m_rateUsed),
+                "ns3::WifiRemoteStationManager::RateUsedTracedCallback");
     return tid;
 }
 

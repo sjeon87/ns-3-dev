@@ -74,7 +74,9 @@ AarfWifiManager::GetTypeId()
             .AddTraceSource("Rate",
                             "Traced value for rate changes (b/s)",
                             MakeTraceSourceAccessor(&AarfWifiManager::m_currentRate),
-                            "ns3::TracedValueCallback::Uint64");
+                            "ns3::TracedValueCallback::Uint64",
+                            TypeId::SupportLevel::DEPRECATED,
+                            "use RateUsed trace in the base class instead");
     return tid;
 }
 
@@ -256,6 +258,9 @@ AarfWifiManager::DoGetDataTxVector(WifiRemoteStation* st, MHz_u allowedWidth)
     }
     WifiMode mode = GetSupported(station, station->m_rate);
     uint64_t rate = mode.GetDataRate(channelWidth);
+
+    m_rateUsed(DataRate(rate), GetAddress(station), 0);
+
     if (m_currentRate != rate)
     {
         NS_LOG_DEBUG("New datarate: " << rate);

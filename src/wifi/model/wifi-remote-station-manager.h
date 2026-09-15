@@ -1223,6 +1223,17 @@ class WifiRemoteStationManager : public Object
                                              Mac48Address remoteAddress);
 
     /**
+     * TracedCallback signature for rate used events.
+     *
+     * @param [in] rate The data rate used.
+     * @param [in] address The remote station MAC address.
+     * @param [in] linkId The ID of the link used for this transmission.
+     */
+    typedef void (*RateUsedTracedCallback)(DataRate rate,
+                                           Mac48Address remoteAddress,
+                                           uint8_t linkId);
+
+    /**
      * Return the WifiPhy.
      *
      * @return a pointer to the WifiPhy
@@ -1407,6 +1418,7 @@ class WifiRemoteStationManager : public Object
     uint8_t m_linkId;             //!< the ID of the link this object is associated with
     bool m_incrRetryCountUnderBa; //!< whether  to increment the retry count of frames that are
                                   //!< part of a Block Ack agreement
+    TracedCallback<DataRate, Mac48Address, uint8_t> m_rateUsed; //!< Rate used traced callback
 
   private:
     /**

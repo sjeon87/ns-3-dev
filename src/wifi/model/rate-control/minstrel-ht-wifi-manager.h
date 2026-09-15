@@ -229,14 +229,6 @@ class MinstrelHtWifiManager : public WifiRemoteStationManager
         uint8_t maxStreams{};               //!< maximum number of spatial streams
     };
 
-    /**
-     * TracedCallback signature for rate change events.
-     *
-     * @param [in] rate The new rate.
-     * @param [in] address The remote station MAC address.
-     */
-    typedef void (*RateChangeTracedCallback)(const uint64_t rate, const Mac48Address remoteAddress);
-
   private:
     void DoInitialize() override;
     WifiRemoteStation* DoCreateStation() const override;
@@ -718,6 +710,7 @@ class MinstrelHtWifiManager : public WifiRemoteStationManager
 
     Ptr<UniformRandomVariable> m_uniformRandomVariable; //!< Provides uniform random variables.
 
+    NS_DEPRECATED_3_47("Use RateUsed in the base class instead")
     TracedValue<uint64_t> m_currentRate; //!< Trace rate changes
 };
 
