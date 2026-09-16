@@ -7,3 +7,6 @@
 [submodule "contrib/magister-stats"]
 	path = contrib/magister-stats
 	url = https://github.com/sns3/stats.git
+[submodule "contrib/nr"]
+	path = contrib/nr
+	url = https://ssethj@github.com/ssethj/nr.git
