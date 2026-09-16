@@ -1,0 +1,3 @@
+[submodule "contrib/satellite"]
+	path = contrib/satellite
+	url = https://ssethj@github.com/ssethj/sns3-satellite
