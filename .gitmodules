@@ -10,3 +10,6 @@
 [submodule "contrib/nr"]
 	path = contrib/nr
 	url = https://ssethj@github.com/ssethj/nr.git
+[submodule "src/quic"]
+	path = src/quic
+	url = https://github.com/signetlabdei/quic

@@ -30,6 +30,12 @@ build_lib(
     model/udp-echo-server.cc
     model/udp-server.cc
     model/udp-trace-client.cc
+    model/quic-echo-client.cc
+    model/quic-echo-server.cc
+    model/quic-client.cc
+    model/quic-server.cc
+    helper/quic-echo-helper.cc
+    helper/quic-client-server-helper.cc
   HEADER_FILES
     helper/bulk-send-helper.h
     helper/on-off-helper.h
@@ -60,6 +66,12 @@ build_lib(
     model/udp-echo-server.h
     model/udp-server.h
     model/udp-trace-client.h
+    model/quic-echo-client.h
+    model/quic-echo-server.h
+    model/quic-client.h
+    model/quic-server.h
+    helper/quic-echo-helper.h
+    helper/quic-client-server-helper.h
   LIBRARIES_TO_LINK ${libinternet}
   TEST_SOURCES
     test/three-gpp-http-client-server-test.cc
