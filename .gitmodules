@@ -13,3 +13,21 @@
 [submodule "src/quic"]
 	path = src/quic
 	url = https://github.com/signetlabdei/quic
+[submodule "contrib/ntn-constellation"]
+	path = contrib/ntn-constellation
+	url = https://github.com/Muhammaduazir69/ntn-constellation
+[submodule "contrib/ntn-rrc"]
+	path = contrib/ntn-rrc
+	url = https://github.com/Muhammaduazir69/ntn-rrc
+[submodule "contrib/ntn-sagin"]
+	path = contrib/ntn-sagin
+	url = https://github.com/Muhammaduazir69/ntn-sagin
+[submodule "contrib/ntn-slice"]
+	path = contrib/ntn-slice
+	url = https://github.com/Muhammaduazir69/ntn-slice
+[submodule "contrib/ntn-cho"]
+	path = contrib/ntn-cho
+	url = https://github.com/Muhammaduazir69/ntn-cho-framework
+[submodule "contrib/ntn-observability"]
+	path = contrib/ntn-observability
+	url = https://github.com/Muhammaduazir69/ntn-observability
