@@ -21,7 +21,7 @@
 	url = https://github.com/Muhammaduazir69/ntn-rrc
 [submodule "contrib/ntn-sagin"]
 	path = contrib/ntn-sagin
-	url = https://github.com/Muhammaduazir69/ntn-sagin
+	url = https://github.com/ssethj/ntn-sagin
 [submodule "contrib/ntn-slice"]
 	path = contrib/ntn-slice
 	url = https://github.com/Muhammaduazir69/ntn-slice
