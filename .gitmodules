@@ -1,6 +1,6 @@
 [submodule "contrib/satellite"]
 	path = contrib/satellite
-	url = https://ssethj@github.com/ssethj/sns3-satellite
+	url = https://github.com/sjeon87/sns3-satellite
 [submodule "contrib/traffic"]
 	path = contrib/traffic
 	url = https://github.com/sns3/traffic.git
@@ -9,25 +9,25 @@
 	url = https://github.com/sns3/stats.git
 [submodule "contrib/nr"]
 	path = contrib/nr
-	url = https://ssethj@github.com/ssethj/nr.git
+	url = https://github.com/sjeon87/nr.git
 [submodule "src/quic"]
 	path = src/quic
 	url = https://github.com/signetlabdei/quic
 [submodule "contrib/ntn-constellation"]
 	path = contrib/ntn-constellation
-	url = https://github.com/ssethj/ntn-constellation
+	url = https://github.com/sjeon87/ntn-constellation
 [submodule "contrib/ntn-rrc"]
 	path = contrib/ntn-rrc
 	url = https://github.com/Muhammaduazir69/ntn-rrc
 [submodule "contrib/ntn-sagin"]
 	path = contrib/ntn-sagin
-	url = https://github.com/ssethj/ntn-sagin
+	url = https://github.com/sjeon87/ntn-sagin
 [submodule "contrib/ntn-slice"]
 	path = contrib/ntn-slice
 	url = https://github.com/Muhammaduazir69/ntn-slice
 [submodule "contrib/ntn-cho"]
 	path = contrib/ntn-cho
-	url = https://github.com/ssethj/ntn-cho-framework
+	url = https://github.com/sjeon87/ntn-cho-framework
 [submodule "contrib/ntn-observability"]
 	path = contrib/ntn-observability
 	url = https://github.com/Muhammaduazir69/ntn-observability
