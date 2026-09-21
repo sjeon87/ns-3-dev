@@ -31,3 +31,6 @@
 [submodule "contrib/ntn-observability"]
 	path = contrib/ntn-observability
 	url = https://github.com/Muhammaduazir69/ntn-observability
+[submodule "external/ns3-mmwave"]
+	path = external/ns3-mmwave
+	url = https://github.com/nyuwireless-unipd/ns3-mmwave
