@@ -12,7 +12,7 @@
 	url = https://github.com/sjeon87/nr.git
 [submodule "src/quic"]
 	path = src/quic
-	url = https://github.com/signetlabdei/quic
+	url = https://github.com/sjeon87/quic
 [submodule "contrib/ntn-constellation"]
 	path = contrib/ntn-constellation
 	url = https://github.com/sjeon87/ntn-constellation
