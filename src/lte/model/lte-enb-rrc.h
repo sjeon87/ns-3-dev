@@ -300,6 +300,14 @@ class UeManager : public Object
      */
     void RecvMeasurementReport(LteRrcSap::MeasurementReport msg);
     /**
+     * Implement the LteEnbRrcSapProvider::RecvRrcSecondaryCellInitialAccessSuccessful
+     * interface (added to support MC functionalities). This manager has no mmWave
+     * secondary cell, so receiving it is unexpected.
+     * @param mmWaveRnti the RNTI of the UE on the mmWave cell
+     * @param mmWaveCellId the mmWave cell ID
+     */
+    void RecvRrcSecondaryCellInitialAccessSuccessful(uint16_t mmWaveRnti, uint16_t mmWaveCellId);
+    /**
      * Implement the LteEnbRrcSapProvider::RecvIdealUeContextRemoveRequest interface.
      *
      * @param rnti the C-RNTI identifying the user
@@ -653,16 +661,32 @@ class LteEnbRrc : public Object
     friend class MemberLteFfrRrcSapUser<LteEnbRrc>;
     /// allow MemberLteEnbRrcSapProvider<LteEnbRrc> class friend access
     friend class MemberLteEnbRrcSapProvider<LteEnbRrc>;
-    /// allow MemberLteEnbRrcSapProvider<LteEnbRrc> class friend access
-    friend class MemberEpcEnbS1SapUser<LteEnbRrc>;
     /// allow MemberEpcEnbS1SapUser<LteEnbRrc> class friend access
+    friend class MemberEpcEnbS1SapUser<LteEnbRrc>;
+    /// allow EpcX2SpecificEpcX2SapUser<LteEnbRrc> class friend access
     friend class EpcX2SpecificEpcX2SapUser<LteEnbRrc>;
     /// allow UeManager class friend access
     friend class UeManager;
-    /// allow  MemberLteCcmRrcSapUser<LteEnbRrc> class friend access
+    /// allow MemberLteEnbCphySapUser<LteEnbRrc> class friend access
+    friend class MemberLteEnbCphySapUser<LteEnbRrc>;
+    /// allow MemberLteCcmRrcSapUser<LteEnbRrc> class friend access
     friend class MemberLteCcmRrcSapUser<LteEnbRrc>;
 
   public:
+    /**
+     * Each instance of this struct is associated to a mmWave CC and contains the
+     * parameters needed by the RRC. When LteEnbRrc::ConfigureMmWaveCarriers() is
+     * called, a map of MmWaveComponentCarrierConf objects is stored in the
+     * m_mmWaveComponentCarrierPhyConf variable.
+     * (added to support MC functionalities)
+     */
+    struct MmWaveComponentCarrierConf
+    {
+        uint8_t m_ccId;       ///< mmWave component carrier ID
+        uint16_t m_cellId;    ///< cell ID
+        uint32_t m_bandwidth; ///< bandwidth
+    };
+
     /**
      * create an RRC instance for use within an eNB
      *
@@ -916,6 +940,7 @@ class LteEnbRrc : public Object
      * @param ccPhyConf the component carrier configuration
      */
     void ConfigureCell(std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> ccPhyConf);
+    void ConfigureCell(std::map<uint8_t, MmWaveComponentCarrierConf> ccPhyConf);
 
     /**
      * @brief Configure carriers.
@@ -924,11 +949,32 @@ class LteEnbRrc : public Object
     void ConfigureCarriers(std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> ccPhyConf);
 
     /**
+     * @brief Configure mmWave carriers (added to support MC functionalities).
+     * @param ccPhyConf the mmWave component carrier configuration
+     */
+    void ConfigureMmWaveCarriers(std::map<uint8_t, MmWaveComponentCarrierConf> ccPhyConf);
+
+    /**
      * set the cell id of this eNB
      *
      * @param m_cellId
      */
     void SetCellId(uint16_t m_cellId);
+
+    /**
+     * If this is a mmWave eNB RRC, set the cell id of the closest LTE cell
+     * (added to support MC functionalities).
+     *
+     * @param cellId the closest LTE cell ID
+     */
+    void SetClosestLteCellId(uint16_t cellId);
+
+    /**
+     * Get the cell id of this eNB (added to support MC functionalities).
+     *
+     * @return the cell ID
+     */
+    uint16_t GetCellId() const;
 
     /**
      * set the cell id of this eNB
@@ -1059,7 +1105,19 @@ class LteEnbRrc : public Object
         RLC_SM_ALWAYS = 1,
         RLC_UM_ALWAYS = 2,
         RLC_AM_ALWAYS = 3,
-        PER_BASED = 4
+        PER_BASED = 4,
+        RLC_UM_LOWLAT_ALWAYS = 5
+    };
+
+    /**
+     * Different secondary cell handover modes
+     * (added to support MC functionalities).
+     */
+    enum HandoverMode
+    {
+        FIXED_TTT = 1,
+        DYNAMIC_TTT = 2,
+        THRESHOLD = 3
     };
 
     /**
@@ -1201,6 +1259,19 @@ class LteEnbRrc : public Object
      * @param msg the LteRrcSap::MeasurementReport
      */
     void DoRecvMeasurementReport(uint16_t rnti, LteRrcSap::MeasurementReport msg);
+    /**
+     * Part of the RRC protocol. Forwarding
+     * LteEnbRrcSapProvider::RecvRrcSecondaryCellInitialAccessSuccessful interface to
+     * UeManager::RecvRrcSecondaryCellInitialAccessSuccessful
+     * (added to support MC functionalities).
+     *
+     * @param rnti the RNTI
+     * @param mmWaveRnti the RNTI of the UE on the mmWave cell
+     * @param mmWaveCellId the mmWave cell ID
+     */
+    void DoRecvRrcSecondaryCellInitialAccessSuccessful(uint16_t rnti,
+                                                       uint16_t mmWaveRnti,
+                                                       uint16_t mmWaveCellId);
     /**
      * @brief Part of the RRC protocol. Forwarding
      * LteEnbRrcSapProvider::RecvIdealUeContextRemoveRequest interface to
@@ -1382,6 +1453,14 @@ class LteEnbRrc : public Object
      */
     void DoSendLoadInformation(EpcX2Sap::LoadInformationParams params);
 
+    /**
+     * CPHY SAP: update UE SINR estimate from PHY
+     * (added to support MC functionalities).
+     *
+     * @param info the SINR info
+     */
+    void DoUpdateUeSinrEstimate(LteEnbCphySapUser::UeAssociatedSinrInfo info);
+
     // Internal methods
 
     /**
@@ -1432,6 +1511,13 @@ class LteEnbRrc : public Object
      * @param cellId neighbouring cell id
      */
     void AddX2Neighbour(uint16_t cellId);
+
+    /**
+     * Enable InterRat handover coordination mode, i.e. this LTE eNB
+     * coordinates handovers with mmWave secondary cells
+     * (added to support MC functionalities).
+     */
+    void SetInterRatHoMode();
 
     /**
      *
@@ -1776,6 +1862,25 @@ class LteEnbRrc : public Object
 
     /// Component carrier phy configuration
     std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> m_componentCarrierPhyConf;
+
+    /// mmWave component carrier phy configuration (added to support MC functionalities)
+    std::map<uint8_t, MmWaveComponentCarrierConf> m_mmWaveComponentCarrierPhyConf;
+
+    // MC support (added to support MC functionalities)
+    bool m_ismmWave{false};
+    bool m_interRatHoMode{false};
+    uint16_t m_cellId{0};
+    uint16_t m_lteCellId{0};
+    uint32_t m_firstSibTime{16};
+    HandoverMode m_handoverMode{DYNAMIC_TTT};
+    long double m_sinrThresholdDifference{3};
+    uint8_t m_fixedTttValue{110};
+    uint8_t m_minDynTttValue{25};
+    uint8_t m_maxDynTttValue{150};
+    double m_minDiffTttValue{3};
+    double m_maxDiffTttValue{20};
+    int m_crtPeriod{1600};
+    bool m_reportAllUeMeas{true};
 
     // end of `class LteEnbRrc`
 };

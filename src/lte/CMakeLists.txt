@@ -122,6 +122,7 @@ set(source_files
     model/lte-rlc-tag.cc
     model/lte-rlc-tm.cc
     model/lte-rlc-um.cc
+    model/lte-rlc-um-lowlat.cc
     model/lte-rlc.cc
     model/lte-rrc-header.cc
     model/lte-rrc-protocol-ideal.cc
@@ -141,6 +142,8 @@ set(source_files
     model/lte-ue-power-control.cc
     model/lte-ue-rrc.cc
     model/lte-vendor-specific-parameters.cc
+    model/mc-enb-pdcp.cc
+    model/mc-ue-pdcp.cc
     model/no-op-component-carrier-manager.cc
     model/no-op-handover-algorithm.cc
     model/pf-ff-mac-scheduler.cc
@@ -253,6 +256,7 @@ set(header_files
     model/lte-rlc-tag.h
     model/lte-rlc-tm.h
     model/lte-rlc-um.h
+    model/lte-rlc-um-lowlat.h
     model/lte-rlc.h
     model/lte-rrc-header.h
     model/lte-rrc-protocol-ideal.h
@@ -272,6 +276,8 @@ set(header_files
     model/lte-ue-power-control.h
     model/lte-ue-rrc.h
     model/lte-vendor-specific-parameters.h
+    model/mc-enb-pdcp.h
+    model/mc-ue-pdcp.h
     model/no-op-component-carrier-manager.h
     model/no-op-handover-algorithm.h
     model/pf-ff-mac-scheduler.h

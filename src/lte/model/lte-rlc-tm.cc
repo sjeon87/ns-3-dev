@@ -161,6 +161,14 @@ LteRlcTm::DoReceivePdu(LteMacSapUser::ReceivePduParameters rxPduParams)
     m_rlcSapUser->ReceivePdcpPdu(rxPduParams.p);
 }
 
+
+void
+LteRlcTm::DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params)
+{
+    NS_LOG_FUNCTION(this);
+    DoTransmitPdcpPdu(params.ueData);
+}
+
 void
 LteRlcTm::DoReportBufferStatus()
 {

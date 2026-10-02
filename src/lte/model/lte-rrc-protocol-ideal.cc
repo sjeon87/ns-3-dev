@@ -186,6 +186,18 @@ LteUeRrcProtocolIdeal::DoSendIdealUeContextRemoveRequest(uint16_t rnti)
 }
 
 void
+LteUeRrcProtocolIdeal::DoSendNotifySecondaryCellConnected(uint16_t mmWaveRnti,
+                                                          uint16_t mmWaveCellId)
+{
+    Simulator::Schedule(RRC_IDEAL_MSG_DELAY,
+                        &LteEnbRrcSapProvider::RecvRrcSecondaryCellInitialAccessSuccessful,
+                        m_enbRrcSapProvider,
+                        m_rnti,
+                        mmWaveRnti,
+                        mmWaveCellId);
+}
+
+void
 LteUeRrcProtocolIdeal::SetEnbRrcSapProvider()
 {
     NS_LOG_FUNCTION(this);
@@ -431,6 +443,24 @@ LteEnbRrcProtocolIdeal::DoSendRrcConnectionReject(uint16_t rnti, LteRrcSap::RrcC
                         &LteUeRrcSapProvider::RecvRrcConnectionReject,
                         GetUeRrcSapProvider(rnti),
                         msg);
+}
+
+void
+LteEnbRrcProtocolIdeal::DoSendRrcConnectionSwitch(uint16_t rnti, LteRrcSap::RrcConnectionSwitch msg)
+{
+    Simulator::Schedule(RRC_IDEAL_MSG_DELAY,
+                        &LteUeRrcSapProvider::RecvRrcConnectionSwitch,
+                        GetUeRrcSapProvider(rnti),
+                        msg);
+}
+
+void
+LteEnbRrcProtocolIdeal::DoSendRrcConnectToMmWave(uint16_t rnti, uint16_t mmWaveCellId)
+{
+    Simulator::Schedule(RRC_IDEAL_MSG_DELAY,
+                        &LteUeRrcSapProvider::RecvRrcConnectToMmWave,
+                        GetUeRrcSapProvider(rnti),
+                        mmWaveCellId);
 }
 
 /*

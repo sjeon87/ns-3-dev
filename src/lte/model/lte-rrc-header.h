@@ -527,6 +527,109 @@ class RrcDlCcchMessage : public RrcAsn1Header
 };
 
 /**
+ * This class manages the serialization/deserialization of RrcConnectToMmWave IE
+ * (added to support MC functionalities)
+ */
+class RrcConnectToMmWaveHeader : public RrcDlCcchMessage
+{
+  public:
+    RrcConnectToMmWaveHeader();
+    ~RrcConnectToMmWaveHeader() override;
+
+    // Inherited from RrcAsn1Header
+    static TypeId GetTypeId();
+    void PreSerialize() const override;
+    uint32_t Deserialize(Buffer::Iterator bIterator) override;
+    void Print(std::ostream& os) const override;
+
+    /**
+     * Receives a mmWave cell ID and stores it into the class attributes
+     * @param mmWaveId the mmWave cell ID
+     */
+    void SetMessage(uint16_t mmWaveId);
+
+    /**
+     * Returns the mmWave cell ID stored in the class attributes
+     * @return the mmWave cell ID
+     */
+    uint16_t GetMessage() const;
+
+  private:
+    std::bitset<16> m_mmWaveId; ///< mmWave cell ID
+};
+
+/**
+ * This class manages the serialization/deserialization of RrcNotifySecondaryConnected IE
+ * (added to support MC functionalities)
+ */
+class RrcNotifySecondaryConnectedHeader : public RrcUlDcchMessage
+{
+  public:
+    RrcNotifySecondaryConnectedHeader();
+    ~RrcNotifySecondaryConnectedHeader() override;
+
+    // Inherited from RrcAsn1Header
+    static TypeId GetTypeId();
+    void PreSerialize() const override;
+    uint32_t Deserialize(Buffer::Iterator bIterator) override;
+    void Print(std::ostream& os) const override;
+
+    /**
+     * Receives a mmWave cell ID and RNTI pair and stores them into the class attributes
+     * @param mmWaveId the mmWave cell ID
+     * @param mmWaveRnti the RNTI on the mmWave cell
+     */
+    void SetMessage(uint16_t mmWaveId, uint16_t mmWaveRnti);
+
+    /**
+     * Returns the (mmWave cell ID, mmWave RNTI) pair stored in the class attributes
+     * @return a pair of mmWave cell ID and mmWave RNTI
+     */
+    std::pair<uint16_t, uint16_t> GetMessage() const;
+
+  private:
+    std::bitset<16> m_mmWaveId;   ///< mmWave cell ID
+    std::bitset<16> m_mmWaveRnti; ///< RNTI on the mmWave cell
+};
+
+/**
+ * This class manages the serialization/deserialization of RrcConnectionSwitch IE
+ * (added to support MC functionalities)
+ */
+class RrcConnectionSwitchHeader : public RrcDlDcchMessage
+{
+  public:
+    RrcConnectionSwitchHeader();
+    ~RrcConnectionSwitchHeader() override;
+
+    // Inherited from RrcAsn1Header
+    void PreSerialize() const override;
+    uint32_t Deserialize(Buffer::Iterator bIterator) override;
+    void Print(std::ostream& os) const override;
+
+    /**
+     * Receives a RrcConnectionSwitch IE and stores the contents into the class attributes
+     * @param msg The information element to parse
+     */
+    void SetMessage(LteRrcSap::RrcConnectionSwitch msg);
+
+    /**
+     * Returns a RrcConnectionSwitch IE from the values in the class attributes
+     * @return A RrcConnectionSwitch, as defined in LteRrcSap
+     */
+    LteRrcSap::RrcConnectionSwitch GetMessage() const;
+
+    /**
+     * Get the RRC transaction identifier
+     * @return the RRC transaction identifier
+     */
+    uint8_t GetRrcTransactionIdentifier() const;
+
+  private:
+    mutable LteRrcSap::RrcConnectionSwitch m_msg; ///< the message
+};
+
+/**
  * This class manages the serialization/deserialization of RrcConnectionRequest IE
  */
 class RrcConnectionRequestHeader : public RrcUlCcchMessage

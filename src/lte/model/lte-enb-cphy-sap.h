@@ -14,6 +14,7 @@
 
 #include "ns3/ptr.h"
 
+#include <map>
 #include <stdint.h>
 
 namespace ns3
@@ -131,6 +132,20 @@ class LteEnbCphySapUser
      * Destructor
      */
     virtual ~LteEnbCphySapUser();
+
+    /// SINR report from PHY to RRC (added to support MC functionalities)
+    struct UeAssociatedSinrInfo
+    {
+        uint8_t componentCarrierId;               ///< component carrier ID
+        std::map<uint64_t, double> ueImsiSinrMap; ///< map of IMSI to SINR
+    };
+
+    /**
+     * Report UE SINR estimates (added to support MC functionalities).
+     *
+     * @param info the SINR info
+     */
+    virtual void UpdateUeSinrEstimate(UeAssociatedSinrInfo info) = 0;
 };
 
 /**
@@ -271,6 +286,7 @@ class MemberLteEnbCphySapUser : public LteEnbCphySapUser
     MemberLteEnbCphySapUser() = delete;
 
     // methods inherited from LteEnbCphySapUser go here
+    void UpdateUeSinrEstimate(UeAssociatedSinrInfo info) override;
 
   private:
     C* m_owner; ///< the owner class
@@ -280,6 +296,13 @@ template <class C>
 MemberLteEnbCphySapUser<C>::MemberLteEnbCphySapUser(C* owner)
     : m_owner(owner)
 {
+}
+
+template <class C>
+void
+MemberLteEnbCphySapUser<C>::UpdateUeSinrEstimate(UeAssociatedSinrInfo info)
+{
+    m_owner->DoUpdateUeSinrEstimate(info);
 }
 
 } // namespace ns3

@@ -32,6 +32,9 @@
 #include <set>
 #include <vector>
 
+#define MIN_NO_MMW_CC 1
+#define MAX_NO_MMW_CC 16 // from TR 38.802 (mmWave carriers supported in MC devices)
+
 namespace ns3
 {
 class LteRlc;
@@ -124,6 +127,13 @@ class LteUeRrc : public Object
      * @param index the index
      */
     void SetLteUeCphySapProvider(LteUeCphySapProvider* s, uint8_t index);
+    /**
+     * Set the CPHY SAP this RRC should use to interact with the mmWave PHY
+     * (added to support MC functionalities).
+     *
+     * @param s the CPHY SAP Provider
+     */
+    void SetMmWaveUeCphySapProvider(LteUeCphySapProvider* s);
 
     /**
      *
@@ -509,6 +519,20 @@ class LteUeRrc : public Object
      * @param msg the LteRrcSap::RrcConnectionReject
      */
     void DoRecvRrcConnectionReject(LteRrcSap::RrcConnectionReject msg);
+    /**
+     * Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionSwitch
+     * interface (added to support MC functionalities). This RRC has no mmWave
+     * secondary cell, so receiving it is unexpected.
+     * @param msg the LteRrcSap::RrcConnectionSwitch
+     */
+    void DoRecvRrcConnectionSwitch(LteRrcSap::RrcConnectionSwitch msg);
+    /**
+     * Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectToMmWave
+     * interface (added to support MC functionalities). This RRC has no mmWave
+     * secondary cell, so receiving it is unexpected.
+     * @param mmWaveCellId the mmWave cell ID to connect to
+     */
+    void DoRecvRrcConnectToMmWave(uint16_t mmWaveCellId);
 
     /**
      * RRC CCM SAP USER Method
@@ -731,15 +755,24 @@ class LteUeRrc : public Object
 
     std::vector<LteUeCphySapUser*> m_cphySapUser;         ///< UE CPhy SAP user
     std::vector<LteUeCphySapProvider*> m_cphySapProvider; ///< UE CPhy SAP provider
+    // CphyProviders for InterRat handover between MmWave and LTE
+    std::vector<LteUeCphySapProvider*> m_lteCphySapProvider;
+    std::vector<LteUeCphySapProvider*> m_mmWaveCphySapProvider;
 
     std::vector<LteUeCmacSapUser*> m_cmacSapUser;         ///< UE CMac SAP user
     std::vector<LteUeCmacSapProvider*> m_cmacSapProvider; ///< UE CMac SAP provider
+    // CmacProviders for InterRat handover between MmWave and LTE
+    std::vector<LteUeCmacSapProvider*> m_lteCmacSapProvider;
+    std::vector<LteUeCmacSapProvider*> m_mmWaveCmacSapProvider;
 
     LteUeRrcSapUser* m_rrcSapUser;         ///< RRC SAP user
     LteUeRrcSapProvider* m_rrcSapProvider; ///< RRC SAP provider
 
     LteMacSapProvider* m_macSapProvider; ///< MAC SAP provider
     LtePdcpSapUser* m_drbPdcpSapUser;    ///< DRB PDCP SAP user
+    // MacProviders for InterRat handover between MmWave and LTE
+    LteMacSapProvider* m_lteMacSapProvider;
+    LteMacSapProvider* m_mmWaveMacSapProvider;
 
     LteAsSapProvider* m_asSapProvider; ///< AS SAP provider
     LteAsSapUser* m_asSapUser;         ///< AS SAP user
@@ -879,6 +912,16 @@ class LteUeRrc : public Object
      * message.
      */
     TracedCallback<Ptr<LteUeRrc>, std::list<LteRrcSap::SCellToAddMod>> m_sCarrierConfiguredTrace;
+    /**
+     * The `SwitchToLte` trace source. Fired upon receiving a command to
+     * switch to LTE RAT. Exporting IMSI, cellId, RNTI.
+     */
+    TracedCallback<uint64_t, uint16_t, uint16_t> m_switchToLteTrace;
+    /**
+     * The `SwitchToMmWave` trace source. Fired upon receiving a command to
+     * switch to MmWave RAT. Exporting IMSI, cellId, RNTI.
+     */
+    TracedCallback<uint64_t, uint16_t, uint16_t> m_switchToMmWaveTrace;
     /**
      * The `Srb1Created` trace source. Fired when SRB1 is created, i.e.
      * the RLC and PDCP entities are created for logical channel = 1.
@@ -1314,7 +1357,56 @@ class LteUeRrc : public Object
      * The number of component carriers.
      */
     uint16_t m_numberOfComponentCarriers;
-};
+
+    /**
+     * The number of mmWave component carriers. This is used in McUeDevs.
+     */
+    uint16_t m_numberOfMmWaveComponentCarriers;
+
+  private:
+    bool m_isSecondaryRRC;
+    uint16_t m_mmWaveCellId;
+    uint16_t m_mmWaveRnti;
+
+    std::map<uint16_t, bool> m_isMmWaveCellMap;
+    bool m_interRatHoCapable;
+
+  public:
+    /**
+     * Set the secondary mmWave MAC SAP provider (added to support MC functionalities).
+     * @param s the MAC SAP provider of the mmWave stack
+     */
+    void SetMmWaveMacSapProvider(LteMacSapProvider* s);
+    /**
+     * Set the secondary mmWave UE CMAC SAP provider (added to support MC functionalities).
+     * @param s the CMAC SAP provider of the mmWave stack
+     */
+    void SetMmWaveUeCmacSapProvider(LteUeCmacSapProvider* s);
+    /**
+     * Set the secondary mmWave UE CMAC SAP provider for a component carrier
+     * (added to support MC functionalities).
+     * @param s the CMAC SAP provider of the mmWave stack
+     * @param index the component carrier index
+     */
+    void SetMmWaveUeCmacSapProvider(LteUeCmacSapProvider* s, uint8_t index);
+    /**
+     * Record an mmWave cell as known to this RRC (added to support MC functionalities).
+     * @param cellId the mmWave cell ID
+     */
+    void AddMmWaveCellId(uint16_t cellId);
+    /**
+     * Record an LTE cell as known to this RRC (added to support MC functionalities).
+     * @param cellId the LTE cell ID
+     */
+    void AddLteCellId(uint16_t cellId);
+    /**
+     * Switch lower layer SAP providers to the stack serving the given cell
+     * (added to support MC functionalities).
+     * @param cellId the cell to switch to
+     * @return true if the cell is known
+     */
+    bool SwitchLowerLayerProviders(uint16_t cellId);
+}; // end of class LteUeRrc
 
 /**
  * @brief Stream insertion operator.

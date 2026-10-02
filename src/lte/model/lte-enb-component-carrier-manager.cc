@@ -121,4 +121,10 @@ LteEnbComponentCarrierManager::SetNumberOfComponentCarriers(uint16_t noOfCompone
     m_ccmRrcSapUser->SetNumberOfComponentCarriers(noOfComponentCarriers);
 }
 
+void
+LteEnbComponentCarrierManager::SetBandwidthMap(std::map<uint8_t, double> bandwidthMap)
+{
+    m_bandwidthMap = bandwidthMap;
+}
+
 } // namespace ns3

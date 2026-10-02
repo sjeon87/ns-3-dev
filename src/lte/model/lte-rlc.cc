@@ -155,6 +155,25 @@ LteRlc::GetLteRlcSapProvider()
 }
 
 void
+LteRlc::SetUeDataParams(EpcX2Sap::UeDataParams params)
+{
+    isMc = true;
+    m_ueDataParams = params;
+}
+
+void
+LteRlc::SetEpcX2RlcProvider(EpcX2RlcProvider* s)
+{
+    m_epcX2RlcProvider = s;
+}
+
+EpcX2RlcUser*
+LteRlc::GetEpcX2RlcUser()
+{
+    return m_epcX2RlcUser;
+}
+
+void
 LteRlc::SetLteMacSapProvider(LteMacSapProvider* s)
 {
     NS_LOG_FUNCTION(this << s);
@@ -253,6 +272,13 @@ LteRlcSm::DoNotifyTxOpportunity(LteMacSapUser::TxOpportunityParameters txOpParam
 
     m_macSapProvider->TransmitPdu(params);
     ReportBufferStatus();
+}
+
+void
+LteRlcSm::DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params)
+{
+    NS_LOG_FUNCTION(this);
+    NS_FATAL_ERROR("Not supported");
 }
 
 void

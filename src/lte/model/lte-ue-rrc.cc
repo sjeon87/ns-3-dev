@@ -125,13 +125,22 @@ LteUeRrc::LteUeRrc()
       m_previousCellId(0),
       m_connEstFailCountLimit(0),
       m_connEstFailCount(0),
-      m_numberOfComponentCarriers(MIN_NO_CC)
+      m_numberOfComponentCarriers(MIN_NO_CC),
+      m_numberOfMmWaveComponentCarriers(MIN_NO_MMW_CC),
+      m_isSecondaryRRC(false),
+      m_mmWaveCellId(0),
+      m_mmWaveRnti(0),
+      m_interRatHoCapable(false)
 {
     NS_LOG_FUNCTION(this);
     m_cphySapUser.push_back(new MemberLteUeCphySapUser<LteUeRrc>(this));
     m_cmacSapUser.push_back(new UeMemberLteUeCmacSapUser(this));
     m_cphySapProvider.push_back(nullptr);
     m_cmacSapProvider.push_back(nullptr);
+    m_lteCphySapProvider.push_back(nullptr);
+    m_lteCmacSapProvider.push_back(nullptr);
+    m_mmWaveCphySapProvider.push_back(nullptr);
+    m_mmWaveCmacSapProvider.push_back(nullptr);
     m_rrcSapProvider = new MemberLteUeRrcSapProvider<LteUeRrc>(this);
     m_drbPdcpSapUser = new LtePdcpSpecificLtePdcpSapUser<LteUeRrc>(this);
     m_asSapProvider = new MemberLteAsSapProvider<LteUeRrc>(this);
@@ -306,7 +315,26 @@ LteUeRrc::GetTypeId()
                 "PhySyncDetection",
                 "trace fired upon receiving in Sync or out of Sync indications from UE PHY",
                 MakeTraceSourceAccessor(&LteUeRrc::m_phySyncDetectionTrace),
-                "ns3::LteUeRrc::PhySyncDetectionTracedCallback");
+                "ns3::LteUeRrc::PhySyncDetectionTracedCallback")
+            .AddTraceSource("SwitchToLte",
+                            "trace fired upon switching to LTE RAT",
+                            MakeTraceSourceAccessor(&LteUeRrc::m_switchToLteTrace),
+                            "ns3::LteUeRrc::ImsiCidRntiTracedCallback")
+            .AddTraceSource("SwitchToMmWave",
+                            "trace fired upon switching to MmWave RAT",
+                            MakeTraceSourceAccessor(&LteUeRrc::m_switchToMmWaveTrace),
+                            "ns3::LteUeRrc::ImsiCidRntiTracedCallback")
+            .AddAttribute("SecondaryRRC",
+                          "True if this is the RRC in charge of the secondary cell (MmWaveCell) "
+                          "for a MC device",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&LteUeRrc::m_isSecondaryRRC),
+                          MakeBooleanChecker())
+            .AddAttribute("InterRatHoCapable",
+                          "True if this RRC supports hard handover between LTE and MmWave",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&LteUeRrc::m_interRatHoCapable),
+                          MakeBooleanChecker());
     return tid;
 }
 
@@ -315,6 +343,7 @@ LteUeRrc::SetLteUeCphySapProvider(LteUeCphySapProvider* s)
 {
     NS_LOG_FUNCTION(this << s);
     m_cphySapProvider.at(0) = s;
+    m_lteCphySapProvider.at(0) = s;
 }
 
 void
@@ -322,6 +351,15 @@ LteUeRrc::SetLteUeCphySapProvider(LteUeCphySapProvider* s, uint8_t index)
 {
     NS_LOG_FUNCTION(this << s);
     m_cphySapProvider.at(index) = s;
+}
+
+void
+LteUeRrc::SetMmWaveUeCphySapProvider(LteUeCphySapProvider* s)
+{
+    NS_LOG_FUNCTION(this << s);
+    NS_ASSERT_MSG(m_mmWaveCphySapProvider.size() == 1,
+                  "mmWave CPHY providers not initialized (ctor must seed 1 slot)");
+    m_mmWaveCphySapProvider.at(0) = s;
 }
 
 LteUeCphySapUser*
@@ -350,6 +388,25 @@ LteUeRrc::SetLteUeCmacSapProvider(LteUeCmacSapProvider* s, uint8_t index)
 {
     NS_LOG_FUNCTION(this << s);
     m_cmacSapProvider.at(index) = s;
+    m_lteCmacSapProvider.at(index) = s;
+}
+
+void
+LteUeRrc::SetMmWaveUeCmacSapProvider(LteUeCmacSapProvider* s)
+{
+    NS_LOG_FUNCTION(this << s);
+    m_mmWaveCmacSapProvider.at(0) = s;
+}
+
+void
+LteUeRrc::SetMmWaveUeCmacSapProvider(LteUeCmacSapProvider* s, uint8_t index)
+{
+    NS_LOG_FUNCTION(this << s);
+    if (m_mmWaveCmacSapProvider.size() <= index)
+    {
+        m_mmWaveCmacSapProvider.resize(index + 1, nullptr);
+    }
+    m_mmWaveCmacSapProvider.at(index) = s;
 }
 
 LteUeCmacSapUser*
@@ -385,6 +442,14 @@ LteUeRrc::SetLteMacSapProvider(LteMacSapProvider* s)
 {
     NS_LOG_FUNCTION(this << s);
     m_macSapProvider = s;
+    m_lteMacSapProvider = s;
+}
+
+void
+LteUeRrc::SetMmWaveMacSapProvider(LteMacSapProvider* s)
+{
+    NS_LOG_FUNCTION(this << s);
+    m_mmWaveMacSapProvider = s;
 }
 
 void
@@ -567,6 +632,16 @@ LteUeRrc::InitializeSap()
             m_cmacSapUser.push_back(new UeMemberLteUeCmacSapUser(this));
             m_cphySapProvider.push_back(nullptr);
             m_cmacSapProvider.push_back(nullptr);
+            m_lteCmacSapProvider.push_back(nullptr);
+        }
+    }
+
+    // this is executed if the UE is MC
+    if (m_numberOfMmWaveComponentCarriers > MIN_NO_MMW_CC)
+    {
+        for (uint16_t i = 1; i < m_numberOfMmWaveComponentCarriers; i++)
+        {
+            m_mmWaveCmacSapProvider.push_back(nullptr);
         }
     }
 }
@@ -1228,6 +1303,91 @@ LteUeRrc::DoRecvRrcConnectionReject(LteRrcSap::RrcConnectionReject msg)
     m_hasReceivedSib2 = false; // invalidate the previously received SIB2
     SwitchToState(IDLE_CAMPED_NORMALLY);
     m_asSapUser->NotifyConnectionFailed(); // inform upper layer
+}
+
+void
+LteUeRrc::DoRecvRrcConnectionSwitch(LteRrcSap::RrcConnectionSwitch msg)
+{
+    NS_LOG_FUNCTION(this);
+    NS_FATAL_ERROR("RrcConnectionSwitch received on a plain LTE RRC (no mmWave secondary cell)");
+}
+
+void
+LteUeRrc::DoRecvRrcConnectToMmWave(uint16_t mmWaveCellId)
+{
+    NS_LOG_FUNCTION(this << mmWaveCellId);
+    NS_FATAL_ERROR("RrcConnectToMmWave received on a plain LTE RRC (no mmWave secondary cell)");
+}
+
+void
+LteUeRrc::AddMmWaveCellId(uint16_t cellId)
+{
+    NS_LOG_FUNCTION(this);
+    NS_ASSERT_MSG(m_interRatHoCapable,
+                  "Trying to setup unnecessary information on a non interRatHoCapable device");
+    auto it = m_isMmWaveCellMap.find(cellId);
+    if (it == m_isMmWaveCellMap.end())
+    {
+        m_isMmWaveCellMap.insert(std::pair<uint16_t, bool>(cellId, true));
+    }
+    else
+    {
+        it->second = true;
+    }
+}
+
+void
+LteUeRrc::AddLteCellId(uint16_t cellId)
+{
+    NS_LOG_FUNCTION(this);
+    NS_ASSERT_MSG(m_interRatHoCapable,
+                  "Trying to setup unnecessary information on a non interRatHoCapable device");
+    auto it = m_isMmWaveCellMap.find(cellId);
+    if (it == m_isMmWaveCellMap.end())
+    {
+        m_isMmWaveCellMap.insert(std::pair<uint16_t, bool>(cellId, false));
+    }
+    else
+    {
+        it->second = false;
+    }
+}
+
+bool
+LteUeRrc::SwitchLowerLayerProviders(uint16_t cellId)
+{
+    auto it = m_isMmWaveCellMap.find(cellId);
+    if (it != m_isMmWaveCellMap.end())
+    {
+        if (it->second)
+        {
+            NS_LOG_INFO("Switch SAP to MmWave");
+            m_cphySapProvider = m_mmWaveCphySapProvider;
+            m_cmacSapProvider = m_mmWaveCmacSapProvider;
+            m_macSapProvider = m_mmWaveMacSapProvider;
+
+            m_hasReceivedSib2 = false;
+            return true;
+        }
+        else
+        {
+            NS_LOG_INFO("Switch SAP to LTE");
+            m_cphySapProvider = m_lteCphySapProvider;
+            m_cmacSapProvider = m_lteCmacSapProvider;
+            m_macSapProvider = m_lteMacSapProvider;
+
+            m_hasReceivedSib2 = false;
+            return true;
+        }
+    }
+    else
+    {
+        if (m_interRatHoCapable)
+        {
+            NS_FATAL_ERROR("Unkown cell, set it up in the helper!");
+        }
+        return false;
+    }
 }
 
 void

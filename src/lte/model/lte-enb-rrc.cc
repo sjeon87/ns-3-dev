@@ -22,6 +22,7 @@
 #include "lte-radio-bearer-info.h"
 #include "lte-rlc-am.h"
 #include "lte-rlc-tm.h"
+#include "lte-rlc-um-lowlat.h"
 #include "lte-rlc-um.h"
 #include "lte-rlc.h"
 
@@ -1368,6 +1369,13 @@ UeManager::RecvMeasurementReport(LteRrcSap::MeasurementReport msg)
                                         msg);
 }
 
+void
+UeManager::RecvRrcSecondaryCellInitialAccessSuccessful(uint16_t mmWaveRnti, uint16_t mmWaveCellId)
+{
+    NS_LOG_FUNCTION(this << mmWaveRnti << mmWaveCellId);
+    NS_FATAL_ERROR("Secondary cell access success on a plain LTE UeManager (no mmWave cell)");
+}
+
 // methods forwarded from CMAC SAP
 
 void
@@ -1839,6 +1847,46 @@ LteEnbRrc::ConfigureCarriers(std::map<uint8_t, Ptr<ComponentCarrierBaseStation>>
     Object::DoInitialize();
 }
 
+void
+LteEnbRrc::ConfigureMmWaveCarriers(std::map<uint8_t, MmWaveComponentCarrierConf> ccPhyConf)
+{
+    NS_LOG_FUNCTION(this);
+    NS_ASSERT_MSG(!m_carriersConfigured, "Secondary carriers can be configured only once.");
+    m_mmWaveComponentCarrierPhyConf = ccPhyConf;
+    m_numberOfComponentCarriers = ccPhyConf.size();
+
+    // Skip the FFR SAP users: a mmWave eNB RRC only owns the dummy PCC entry
+    // created in the constructor (see DoDispose).
+    for (uint16_t i = 1; i < m_numberOfComponentCarriers; i++)
+    {
+        m_cphySapUser.push_back(new MemberLteEnbCphySapUser<LteEnbRrc>(this));
+        m_cmacSapUser.push_back(new EnbRrcMemberLteEnbCmacSapUser(this, i));
+        m_cphySapProvider.push_back(nullptr);
+        m_cmacSapProvider.push_back(nullptr);
+    }
+    m_carriersConfigured = true;
+    Object::DoInitialize();
+}
+
+void
+LteEnbRrc::SetClosestLteCellId(uint16_t cellId)
+{
+    m_lteCellId = cellId;
+    NS_LOG_LOGIC("Closest Lte CellId set to " << m_lteCellId);
+}
+
+uint16_t
+LteEnbRrc::GetCellId() const
+{
+    return m_cellId;
+}
+
+void
+LteEnbRrc::SetInterRatHoMode()
+{
+    m_interRatHoMode = true;
+}
+
 LteEnbRrc::~LteEnbRrc()
 {
     NS_LOG_FUNCTION(this);
@@ -1852,7 +1900,13 @@ LteEnbRrc::DoDispose()
     {
         delete m_cphySapUser[i];
         delete m_cmacSapUser[i];
-        delete m_ffrRrcSapUser[i];
+        // If this LteEnbRrc is part of a mmWave eNB device, m_ffrRrcSapUser
+        // contains one (dummy) element only, the one associated to the PCC which is
+        // instantiated in the constructor.
+        if (!(m_ismmWave == true && i > 0))
+        {
+            delete m_ffrRrcSapUser[i];
+        }
     }
     // delete m_cphySapUser;
     m_cphySapUser.erase(m_cphySapUser.begin(), m_cphySapUser.end());
@@ -1902,7 +1956,83 @@ LteEnbRrc::GetTypeId()
                                 RLC_AM_ALWAYS,
                                 "RlcAmAlways",
                                 PER_BASED,
-                                "PacketErrorRateBased"))
+                                "PacketErrorRateBased",
+                                RLC_UM_LOWLAT_ALWAYS,
+                                "MmwRlcUmAlways"))
+            .AddAttribute("mmWaveDevice",
+                          "Indicates whether RRC is for mmWave base station "
+                          "(added to support MC functionalities).",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&LteEnbRrc::m_ismmWave),
+                          MakeBooleanChecker())
+            .AddAttribute("InterRatHoMode",
+                          "Indicates whether RRC is for LTE base station that coordinates "
+                          "InterRatHo among eNBs (added to support MC functionalities).",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&LteEnbRrc::m_interRatHoMode),
+                          MakeBooleanChecker())
+            .AddAttribute("HoSinrDifference",
+                          "The value for which a handover between mmWave eNBs is triggered "
+                          "(added to support MC functionalities).",
+                          DoubleValue(3),
+                          MakeDoubleAccessor(&LteEnbRrc::m_sinrThresholdDifference),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("SecondaryCellHandoverMode",
+                          "Select the secondary cell handover mode "
+                          "(added to support MC functionalities).",
+                          EnumValue(DYNAMIC_TTT),
+                          MakeEnumAccessor<HandoverMode>(&LteEnbRrc::m_handoverMode),
+                          MakeEnumChecker(FIXED_TTT,
+                                          "FixedTtt",
+                                          DYNAMIC_TTT,
+                                          "DynamicTtt",
+                                          THRESHOLD,
+                                          "Threshold"))
+            .AddAttribute("FixedTttValue",
+                          "The value of TTT in case of fixed TTT handover (in ms) "
+                          "(added to support MC functionalities).",
+                          UintegerValue(110),
+                          MakeUintegerAccessor(&LteEnbRrc::m_fixedTttValue),
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute("MinDynTttValue",
+                          "The minimum value of TTT in case of dynamic TTT handover (in ms) "
+                          "(added to support MC functionalities).",
+                          UintegerValue(25),
+                          MakeUintegerAccessor(&LteEnbRrc::m_minDynTttValue),
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute("MaxDynTttValue",
+                          "The maximum value of TTT in case of dynamic TTT handover (in ms) "
+                          "(added to support MC functionalities).",
+                          UintegerValue(150),
+                          MakeUintegerAccessor(&LteEnbRrc::m_maxDynTttValue),
+                          MakeUintegerChecker<uint8_t>())
+            .AddAttribute(
+                "MinDiffValue",
+                "The minimum value of the difference in case of dynamic TTT handover [dB] "
+                "(added to support MC functionalities).",
+                DoubleValue(3),
+                MakeDoubleAccessor(&LteEnbRrc::m_minDiffTttValue),
+                MakeDoubleChecker<double>())
+            .AddAttribute(
+                "MaxDiffValue",
+                "The maximum value of the difference in case of dynamic TTT handover [dB] "
+                "(added to support MC functionalities).",
+                DoubleValue(20),
+                MakeDoubleAccessor(&LteEnbRrc::m_maxDiffTttValue),
+                MakeDoubleChecker<double>())
+            .AddAttribute("CrtPeriod",
+                          "The periodicity of a CRT (us) "
+                          "(added to support MC functionalities).",
+                          IntegerValue(1600),
+                          MakeIntegerAccessor(&LteEnbRrc::m_crtPeriod),
+                          MakeIntegerChecker<int>())
+            .AddAttribute("ReportAllUeMeas",
+                          "If true, the mmWave eNB sends to the LTE coordinator all the received "
+                          "UE measures (one per CC). If false, it sends only the maximum measures "
+                          "(added to support MC functionalities).",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&LteEnbRrc::m_reportAllUeMeas),
+                          MakeBooleanChecker())
             .AddAttribute("SystemInformationPeriodicity",
                           "The interval for sending system information (Time value)",
                           TimeValue(MilliSeconds(80)),
@@ -2418,6 +2548,8 @@ LteEnbRrc::ConfigureCell(std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> ccP
     NS_LOG_FUNCTION(this << ulBandwidth << dlBandwidth << ulEarfcn << dlEarfcn);
     NS_ASSERT(!m_configured);
 
+
+
     for (const auto& it : ccPhyConf)
     {
         m_cphySapProvider.at(it.first)->SetBandwidth(it.second->GetUlBandwidth(),
@@ -2495,6 +2627,75 @@ LteEnbRrc::ConfigureCell(std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> ccP
      */
     Simulator::Schedule(MilliSeconds(16), &LteEnbRrc::SendSystemInformation, this);
 
+    m_configured = true;
+}
+
+void
+LteEnbRrc::ConfigureCell(std::map<uint8_t, MmWaveComponentCarrierConf> ccPhyConf)
+{
+    NS_LOG_FUNCTION(this);
+    auto it = ccPhyConf.begin();
+    NS_ASSERT(it != ccPhyConf.end());
+    uint8_t bandwidth = it->second.m_bandwidth; // this information is not used
+    uint16_t cellId = it->second.m_cellId;
+    NS_ASSERT(!m_configured);
+
+    m_dlBandwidth = 6; // not used for mmWave devices, default value
+    m_ulBandwidth = 6; // not used for mmWave devices, default value
+    m_cellId = cellId; // RRC cellId is equal to the cellId of the primary carrier
+
+    for (const auto& mapIt : ccPhyConf)
+    {
+        bandwidth = mapIt.second.m_bandwidth;
+        m_cphySapProvider.at(mapIt.first)->SetBandwidth(bandwidth, bandwidth);
+        m_cphySapProvider.at(mapIt.first)->SetCellId(mapIt.second.m_cellId);
+        m_cmacSapProvider.at(mapIt.first)->ConfigureMac(bandwidth, bandwidth);
+    }
+
+    /*
+     * Initializing the list of UE measurement configuration (m_ueMeasConfig).
+     * Only intra-frequency measurements are supported, so only one measurement
+     * object is created.
+     */
+    LteRrcSap::MeasObjectToAddMod measObject;
+    measObject.measObjectId = 1;
+    measObject.measObjectEutra.carrierFreq = m_dlEarfcn;
+    measObject.measObjectEutra.allowedMeasBandwidth = m_dlBandwidth;
+    measObject.measObjectEutra.presenceAntennaPort1 = false;
+    measObject.measObjectEutra.neighCellConfig = 0;
+    measObject.measObjectEutra.offsetFreq = 0;
+    measObject.measObjectEutra.haveCellForWhichToReportCGI = false;
+
+    m_ueMeasConfig.measObjectToAddModList.push_back(measObject);
+    m_ueMeasConfig.haveQuantityConfig = true;
+    m_ueMeasConfig.quantityConfig.filterCoefficientRSRP = m_rsrpFilterCoefficient;
+    m_ueMeasConfig.quantityConfig.filterCoefficientRSRQ = m_rsrqFilterCoefficient;
+    m_ueMeasConfig.haveMeasGapConfig = false;
+    m_ueMeasConfig.haveSmeasure = false;
+    m_ueMeasConfig.haveSpeedStatePars = false;
+
+    m_sib1.clear();
+    m_sib1.reserve(ccPhyConf.size());
+    for (const auto& mapIt : ccPhyConf)
+    {
+        // Enabling MIB transmission
+        LteRrcSap::MasterInformationBlock mib;
+        mib.dlBandwidth = mapIt.second.m_bandwidth;
+        mib.systemFrameNumber = 0;
+        m_cphySapProvider.at(mapIt.first)->SetMasterInformationBlock(mib);
+
+        // Enabling SIB1 transmission with default values
+        LteRrcSap::SystemInformationBlockType1 sib1;
+        sib1.cellAccessRelatedInfo.cellIdentity = mapIt.second.m_cellId;
+        sib1.cellAccessRelatedInfo.csgIndication = false;
+        sib1.cellAccessRelatedInfo.csgIdentity = 0;
+        sib1.cellAccessRelatedInfo.plmnIdentityInfo.plmnIdentity = 0; // not used
+        sib1.cellSelectionInfo.qQualMin = -34;          // not used, set as minimum value
+        sib1.cellSelectionInfo.qRxLevMin = m_qRxLevMin; // set as minimum value
+        m_sib1.push_back(sib1);
+        m_cphySapProvider.at(mapIt.first)->SetSystemInformationBlockType1(sib1);
+    }
+    Simulator::Schedule(MilliSeconds(m_firstSibTime), &LteEnbRrc::SendSystemInformation, this);
     m_configured = true;
 }
 
@@ -2729,6 +2930,15 @@ LteEnbRrc::DoRecvMeasurementReport(uint16_t rnti, LteRrcSap::MeasurementReport m
 {
     NS_LOG_FUNCTION(this << rnti);
     GetUeManager(rnti)->RecvMeasurementReport(msg);
+}
+
+void
+LteEnbRrc::DoRecvRrcSecondaryCellInitialAccessSuccessful(uint16_t rnti,
+                                                         uint16_t mmWaveRnti,
+                                                         uint16_t mmWaveCellId)
+{
+    NS_LOG_FUNCTION(this << rnti);
+    GetUeManager(rnti)->RecvRrcSecondaryCellInitialAccessSuccessful(mmWaveRnti, mmWaveCellId);
 }
 
 void
@@ -3177,6 +3387,15 @@ LteEnbRrc::DoSendLoadInformation(EpcX2Sap::LoadInformationParams params)
     m_x2SapProvider->SendLoadInformation(params);
 }
 
+void
+LteEnbRrc::DoUpdateUeSinrEstimate(LteEnbCphySapUser::UeAssociatedSinrInfo info)
+{
+    NS_LOG_FUNCTION(this);
+    // Plain LTE eNBs never receive PHY SINR reports; only mmWave eNB RRCs do.
+    // Kept as a no-op so MemberLteEnbCphySapUser<LteEnbRrc> instantiations link.
+    (void)info;
+}
+
 uint16_t
 LteEnbRrc::AddUe(UeManager::State state, uint8_t componentCarrierId)
 {
@@ -3262,6 +3481,9 @@ LteEnbRrc::GetRlcType(EpsBearer bearer)
         {
             return LteRlcAm::GetTypeId();
         }
+
+    case RLC_UM_LOWLAT_ALWAYS:
+        return LteRlcUmLowLat::GetTypeId();
 
     default:
         return LteRlcSm::GetTypeId();

@@ -57,6 +57,13 @@ class LteRlcTm : public LteRlc
     void DoNotifyHarqDeliveryFailure() override;
     void DoReceivePdu(LteMacSapUser::ReceivePduParameters rxPduParams) override;
 
+    /**
+     * RLC EPC X2 SAP (added to support MC functionalities).
+     *
+     * @param params the UE data parameters
+     */
+    void DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params) override;
+
   private:
     /// Expire RBS timer function
     void ExpireRbsTimer();

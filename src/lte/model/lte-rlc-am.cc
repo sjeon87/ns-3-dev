@@ -1146,6 +1146,14 @@ LteRlcAm::DoReceivePdu(LteMacSapUser::ReceivePduParameters rxPduParams)
     }
 }
 
+
+void
+LteRlcAm::DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params)
+{
+    NS_LOG_FUNCTION(this);
+    DoTransmitPdcpPdu(params.ueData);
+}
+
 bool
 LteRlcAm::IsInsideReceivingWindow(SequenceNumber10 seqNumber)
 {

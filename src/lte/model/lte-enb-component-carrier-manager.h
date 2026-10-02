@@ -140,6 +140,14 @@ class LteEnbComponentCarrierManager : public Object
      */
     virtual void SetNumberOfComponentCarriers(uint16_t noOfComponentCarriers);
 
+    /**
+     * Set the per-carrier bandwidth map used by mmWave schedulers
+     * (added to support MC functionalities).
+     *
+     * @param bandwidthMap map from component carrier ID to bandwidth
+     */
+    virtual void SetBandwidthMap(std::map<uint8_t, double> bandwidthMap);
+
   protected:
     // inherited from Object
     void DoDispose() override;
@@ -210,6 +218,8 @@ class LteEnbComponentCarrierManager : public Object
     LteCcmRrcSapProvider*
         m_ccmRrcSapProvider; //!< A pointer to the SAP interface of the CCM instance to receive API
                              //!< calls from the eNodeB RRC instance.
+    std::map<uint8_t, double>
+        m_bandwidthMap; //!< Per-carrier bandwidth map (mmWave schedulers).
 };
 
 } // namespace ns3

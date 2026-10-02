@@ -11,6 +11,8 @@
 
 #include "ns3/packet.h"
 
+#include <list>
+
 namespace ns3
 {
 
@@ -64,6 +66,13 @@ class LteMacSapProvider
         uint16_t retxQueueHolDelay; /**<  the Head Of Line delay of the retransmission queue */
         uint16_t
             statusPduSize; /**< the current size of the pending STATUS RLC  PDU message in bytes */
+
+        // Added for mmWave low-latency schedulers (added to support MC functionalities)
+        std::list<uint32_t> txPacketSizes;
+        std::list<uint32_t> retxPacketSizes;
+        std::list<double> txPacketDelays;
+        std::list<double> retxPacketDelays;
+        double arrivalRate{0.0};
     };
 
     /**

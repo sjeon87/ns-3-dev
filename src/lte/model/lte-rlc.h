@@ -12,6 +12,7 @@
 #include "lte-mac-sap.h"
 #include "lte-rlc-sap.h"
 
+#include "ns3/epc-x2-sap.h"
 #include "ns3/nstime.h"
 #include "ns3/object.h"
 #include "ns3/packet.h"
@@ -85,6 +86,27 @@ class LteRlc : public Object // SimpleRefCount<LteRlc>
     LteRlcSapProvider* GetLteRlcSapProvider();
 
     /**
+     * Set the param needed for X2 tunneling (added to support MC functionalities).
+     *
+     * @param params the UeDataParams defined in RRC
+     */
+    void SetUeDataParams(EpcX2Sap::UeDataParams params);
+
+    /**
+     * Set the EpcX2Rlc provider (added to support MC functionalities).
+     *
+     * @param s the EpcX2Rlc Provider to the Epc X2 interface
+     */
+    void SetEpcX2RlcProvider(EpcX2RlcProvider* s);
+
+    /**
+     * Get the EpcX2Rlc user (added to support MC functionalities).
+     *
+     * @return the EpcX2Rlc User, given to X2 to access Rlc SendMcPdcpPdu method
+     */
+    EpcX2RlcUser* GetEpcX2RlcUser();
+
+    /**
      *
      *
      * @param s the MAC SAP Provider to be used by this LTE_RLC
@@ -155,6 +177,13 @@ class LteRlc : public Object // SimpleRefCount<LteRlc>
      */
     virtual void DoReceivePdu(LteMacSapUser::ReceivePduParameters params) = 0;
 
+    /**
+     * Send an MC PDCP SDU received over X2 (added to support MC functionalities).
+     *
+     * @param params the UE data parameters
+     */
+    virtual void DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params) = 0;
+
     LteMacSapUser* m_macSapUser;         ///< MAC SAP user
     LteMacSapProvider* m_macSapProvider; ///< MAC SAP provider
 
@@ -176,6 +205,13 @@ class LteRlc : public Object // SimpleRefCount<LteRlc>
      * transmission.
      */
     TracedCallback<Ptr<const Packet>> m_txDropTrace;
+
+    // MC functionalities (added to support MC functionalities)
+    // UeDataParams needed to forward data to mmWave
+    EpcX2Sap::UeDataParams m_ueDataParams;
+    bool isMc{false};
+    EpcX2RlcProvider* m_epcX2RlcProvider{nullptr};
+    EpcX2RlcUser* m_epcX2RlcUser{nullptr};
 };
 
 /**
@@ -203,6 +239,7 @@ class LteRlcSm : public LteRlc
     void DoNotifyTxOpportunity(LteMacSapUser::TxOpportunityParameters txOpParams) override;
     void DoNotifyHarqDeliveryFailure() override;
     void DoReceivePdu(LteMacSapUser::ReceivePduParameters rxPduParams) override;
+    void DoSendMcPdcpSdu(EpcX2Sap::UeDataParams params) override;
 
   private:
     /// Report buffer status

@@ -136,6 +136,9 @@ class LteUeRrcProtocolReal : public Object
      */
     void DoSendIdealUeContextRemoveRequest(uint16_t rnti);
 
+    /// Send secondary cell connected notification (added to support MC functionalities)
+    void DoSendNotifySecondaryCellConnected(uint16_t mmWaveRnti, uint16_t mmWaveCellId);
+
     /// Set ENB RRC SAP provider
     void SetEnbRrcSapProvider();
     /**
@@ -302,6 +305,22 @@ class LteEnbRrcProtocolReal : public Object
      * @param msg LteRrcSap::RrcConnectionReject
      */
     void DoSendRrcConnectionReject(uint16_t rnti, LteRrcSap::RrcConnectionReject msg);
+    /**
+     * Send RRC connection switch function
+     * (added to support MC functionalities).
+     *
+     * @param rnti the RNTI
+     * @param msg LteRrcSap::RrcConnectionSwitch
+     */
+    void DoSendRrcConnectionSwitch(uint16_t rnti, LteRrcSap::RrcConnectionSwitch msg);
+    /**
+     * Send RRC connect to mmWave function
+     * (added to support MC functionalities).
+     *
+     * @param rnti the RNTI
+     * @param mmWaveCellId the mmWave cell ID
+     */
+    void DoSendRrcConnectToMmWave(uint16_t rnti, uint16_t mmWaveCellId);
     /**
      * Encode handover preparation information function
      *

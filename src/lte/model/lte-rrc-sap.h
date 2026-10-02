@@ -15,6 +15,7 @@
 
 #include <list>
 #include <stdint.h>
+#include <vector>
 
 namespace ns3
 {
@@ -920,6 +921,14 @@ class LteRrcSap
         uint8_t rrcTransactionIdentifier; ///< RRC transaction identifier
     };
 
+    /// RrcConnectionSwitch structure (added to support MC functionalities)
+    struct RrcConnectionSwitch
+    {
+        uint8_t rrcTransactionIdentifier; ///< RRC transaction identifier
+        std::vector<uint8_t> drbidList;   ///< DRB identity list
+        uint16_t useMmWaveConnection;     ///< use mmWave connection flag
+    };
+
     /// RrcConnectionReject structure
     struct RrcConnectionReject
     {
@@ -1022,6 +1031,14 @@ class LteUeRrcSapUser : public LteRrcSap
      * @param rnti the C-RNTI of the UE
      */
     virtual void SendIdealUeContextRemoveRequest(uint16_t rnti) = 0;
+
+    /**
+     * @brief Send a secondary cell connected notification to the serving eNodeB
+     *        (added to support MC functionalities).
+     * @param mmWaveRnti the RNTI of the UE on the mmWave cell
+     * @param mmWaveCellId the mmWave cell ID
+     */
+    virtual void SendNotifySecondaryCellConnected(uint16_t mmWaveRnti, uint16_t mmWaveCellId) = 0;
 };
 
 /**
@@ -1101,6 +1118,22 @@ class LteUeRrcSapProvider : public LteRrcSap
      * @param msg the message
      */
     virtual void RecvRrcConnectionReject(RrcConnectionReject msg) = 0;
+
+    /**
+     * @brief Receive an _RRCConnectionSwitch_ message from the serving eNodeB
+     *        to switch data connection from LTE to MmWave or viceversa
+     *        (added to support MC functionalities).
+     * @param msg the message
+     */
+    virtual void RecvRrcConnectionSwitch(RrcConnectionSwitch msg) = 0;
+
+    /**
+     * @brief Receive an _RRCConnectToMmWave_ message from the serving eNodeB
+     *        during an RRC connection establishment procedure
+     *        (added to support MC functionalities).
+     * @param mmWaveCellId the mmWave cell ID to connect to
+     */
+    virtual void RecvRrcConnectToMmWave(uint16_t mmWaveCellId) = 0;
 };
 
 /**
@@ -1196,6 +1229,23 @@ class LteEnbRrcSapUser : public LteRrcSap
      * @param msg the message
      */
     virtual void SendRrcConnectionReject(uint16_t rnti, RrcConnectionReject msg) = 0;
+
+    /**
+     * @brief Send an _RRCConnectionSwitch_ message to a UE
+     *        (added to support MC functionalities).
+     * @param rnti the RNTI of the destination UE
+     * @param msg the message
+     */
+    virtual void SendRrcConnectionSwitch(uint16_t rnti, RrcConnectionSwitch msg) = 0;
+
+    /**
+     * @brief Send an _RRCConnectToMmWave_ message to a UE
+     *        during an RRC connection establishment procedure
+     *        (added to support MC functionalities).
+     * @param rnti the RNTI of the destination UE
+     * @param mmWaveCellId the mmWave cell ID to connect to
+     */
+    virtual void SendRrcConnectToMmWave(uint16_t rnti, uint16_t mmWaveCellId) = 0;
 
     /**
      * @brief Encode handover prepration information
@@ -1308,6 +1358,17 @@ class LteEnbRrcSapProvider : public LteRrcSap
     virtual void RecvMeasurementReport(uint16_t rnti, MeasurementReport msg) = 0;
 
     /**
+     * @brief Receive a secondary cell initial access success notification from a UE
+     *        (added to support MC functionalities).
+     * @param rnti the RNTI of the UE on the LTE cell
+     * @param mmWaveRnti the RNTI of the UE on the mmWave cell
+     * @param mmWaveCellId the mmWave cell ID
+     */
+    virtual void RecvRrcSecondaryCellInitialAccessSuccessful(uint16_t rnti,
+                                                             uint16_t mmWaveRnti,
+                                                             uint16_t mmWaveCellId) = 0;
+
+    /**
      * @brief Receive ideal UE context remove request from the UE RRC.
      *
      * Receive the notification from UE to remove the UE context
@@ -1353,6 +1414,7 @@ class MemberLteUeRrcSapUser : public LteUeRrcSapUser
         RrcConnectionReestablishmentComplete msg) override;
     void SendMeasurementReport(MeasurementReport msg) override;
     void SendIdealUeContextRemoveRequest(uint16_t rnti) override;
+    void SendNotifySecondaryCellConnected(uint16_t mmWaveRnti, uint16_t mmWaveCellId) override;
 
   private:
     C* m_owner; ///< the owner class
@@ -1423,6 +1485,14 @@ MemberLteUeRrcSapUser<C>::SendIdealUeContextRemoveRequest(uint16_t rnti)
     m_owner->DoSendIdealUeContextRemoveRequest(rnti);
 }
 
+template <class C>
+void
+MemberLteUeRrcSapUser<C>::SendNotifySecondaryCellConnected(uint16_t mmWaveRnti,
+                                                           uint16_t mmWaveCellId)
+{
+    m_owner->DoSendNotifySecondaryCellConnected(mmWaveRnti, mmWaveCellId);
+}
+
 /**
  * Template for the implementation of the LteUeRrcSapProvider as a member
  * of an owner class of type C to which all methods are forwarded
@@ -1450,6 +1520,8 @@ class MemberLteUeRrcSapProvider : public LteUeRrcSapProvider
     void RecvRrcConnectionReestablishmentReject(RrcConnectionReestablishmentReject msg) override;
     void RecvRrcConnectionRelease(RrcConnectionRelease msg) override;
     void RecvRrcConnectionReject(RrcConnectionReject msg) override;
+    void RecvRrcConnectionSwitch(RrcConnectionSwitch msg) override;
+    void RecvRrcConnectToMmWave(uint16_t mmWaveCellId) override;
 
   private:
     C* m_owner; ///< the owner class
@@ -1518,6 +1590,20 @@ MemberLteUeRrcSapProvider<C>::RecvRrcConnectionReject(RrcConnectionReject msg)
     Simulator::ScheduleNow(&C::DoRecvRrcConnectionReject, m_owner, msg);
 }
 
+template <class C>
+void
+MemberLteUeRrcSapProvider<C>::RecvRrcConnectionSwitch(RrcConnectionSwitch msg)
+{
+    Simulator::ScheduleNow(&C::DoRecvRrcConnectionSwitch, m_owner, msg);
+}
+
+template <class C>
+void
+MemberLteUeRrcSapProvider<C>::RecvRrcConnectToMmWave(uint16_t mmWaveCellId)
+{
+    Simulator::ScheduleNow(&C::DoRecvRrcConnectToMmWave, m_owner, mmWaveCellId);
+}
+
 /**
  * Template for the implementation of the LteEnbRrcSapUser as a member
  * of an owner class of type C to which all methods are forwarded
@@ -1548,6 +1634,8 @@ class MemberLteEnbRrcSapUser : public LteEnbRrcSapUser
                                                 RrcConnectionReestablishmentReject msg) override;
     void SendRrcConnectionRelease(uint16_t rnti, RrcConnectionRelease msg) override;
     void SendRrcConnectionReject(uint16_t rnti, RrcConnectionReject msg) override;
+    void SendRrcConnectionSwitch(uint16_t rnti, RrcConnectionSwitch msg) override;
+    void SendRrcConnectToMmWave(uint16_t rnti, uint16_t mmWaveCellId) override;
     Ptr<Packet> EncodeHandoverPreparationInformation(HandoverPreparationInfo msg) override;
     HandoverPreparationInfo DecodeHandoverPreparationInformation(Ptr<Packet> p) override;
     Ptr<Packet> EncodeHandoverCommand(RrcConnectionReconfiguration msg) override;
@@ -1631,6 +1719,20 @@ MemberLteEnbRrcSapUser<C>::SendRrcConnectionReject(uint16_t rnti, RrcConnectionR
 }
 
 template <class C>
+void
+MemberLteEnbRrcSapUser<C>::SendRrcConnectionSwitch(uint16_t rnti, RrcConnectionSwitch msg)
+{
+    m_owner->DoSendRrcConnectionSwitch(rnti, msg);
+}
+
+template <class C>
+void
+MemberLteEnbRrcSapUser<C>::SendRrcConnectToMmWave(uint16_t rnti, uint16_t mmWaveCellId)
+{
+    m_owner->DoSendRrcConnectToMmWave(rnti, mmWaveCellId);
+}
+
+template <class C>
 Ptr<Packet>
 MemberLteEnbRrcSapUser<C>::EncodeHandoverPreparationInformation(HandoverPreparationInfo msg)
 {
@@ -1689,6 +1791,9 @@ class MemberLteEnbRrcSapProvider : public LteEnbRrcSapProvider
         uint16_t rnti,
         RrcConnectionReestablishmentComplete msg) override;
     void RecvMeasurementReport(uint16_t rnti, MeasurementReport msg) override;
+    void RecvRrcSecondaryCellInitialAccessSuccessful(uint16_t rnti,
+                                                     uint16_t mmWaveRnti,
+                                                     uint16_t mmWaveCellId) override;
     void RecvIdealUeContextRemoveRequest(uint16_t rnti) override;
 
   private:
@@ -1755,6 +1860,19 @@ void
 MemberLteEnbRrcSapProvider<C>::RecvMeasurementReport(uint16_t rnti, MeasurementReport msg)
 {
     Simulator::ScheduleNow(&C::DoRecvMeasurementReport, m_owner, rnti, msg);
+}
+
+template <class C>
+void
+MemberLteEnbRrcSapProvider<C>::RecvRrcSecondaryCellInitialAccessSuccessful(uint16_t rnti,
+                                                                           uint16_t mmWaveRnti,
+                                                                           uint16_t mmWaveCellId)
+{
+    Simulator::ScheduleNow(&C::DoRecvRrcSecondaryCellInitialAccessSuccessful,
+                           m_owner,
+                           rnti,
+                           mmWaveRnti,
+                           mmWaveCellId);
 }
 
 template <class C>

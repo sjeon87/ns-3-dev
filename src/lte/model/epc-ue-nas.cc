@@ -26,6 +26,7 @@ EpcUeNas::EpcUeNas()
     : m_state(OFF),
       m_csgId(0),
       m_asSapProvider(nullptr),
+      m_mmWaveAsSapProvider(nullptr),
       m_bidCounter(0)
 {
     NS_LOG_FUNCTION(this);
@@ -93,6 +94,28 @@ EpcUeNas::SetAsSapProvider(LteAsSapProvider* s)
 {
     NS_LOG_FUNCTION(this << s);
     m_asSapProvider = s;
+}
+
+void
+EpcUeNas::SetMmWaveAsSapProvider(LteAsSapProvider* s)
+{
+    NS_LOG_FUNCTION(this << s);
+    m_mmWaveAsSapProvider = s;
+}
+
+void
+EpcUeNas::DoNotifyConnectToMmWave(uint16_t mmWaveCellId)
+{
+    NS_LOG_FUNCTION(this << mmWaveCellId);
+    if (m_mmWaveAsSapProvider != nullptr)
+    {
+        m_mmWaveAsSapProvider->ForceCampedOnEnb(mmWaveCellId, 0);
+        m_mmWaveAsSapProvider->Connect();
+    }
+    else
+    {
+        NS_LOG_WARN("Trying to connect to a secondary cell on a non MC capable device");
+    }
 }
 
 LteAsSapUser*

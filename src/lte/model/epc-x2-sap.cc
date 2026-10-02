@@ -28,4 +28,21 @@ EpcX2SapUser::~EpcX2SapUser()
 {
 }
 
+// MC primitives (added to support MC functionalities)
+EpcX2PdcpProvider::~EpcX2PdcpProvider()
+{
+}
+
+EpcX2PdcpUser::~EpcX2PdcpUser()
+{
+}
+
+EpcX2RlcProvider::~EpcX2RlcProvider()
+{
+}
+
+EpcX2RlcUser::~EpcX2RlcUser()
+{
+}
+
 } // namespace ns3

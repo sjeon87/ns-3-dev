@@ -63,12 +63,12 @@ class LtePhy : public Object
      * @brief Set the device where the phy layer is attached
      * @param d the device
      */
-    void SetDevice(Ptr<LteNetDevice> d);
+    void SetDevice(Ptr<NetDevice> d);
     /**
      * @brief Get the device where the phy layer is attached
      * @return the pointer to the device
      */
-    Ptr<LteNetDevice> GetDevice() const;
+    Ptr<NetDevice> GetDevice() const;
 
     /**
      *
@@ -210,7 +210,7 @@ class LtePhy : public Object
 
   protected:
     /// Pointer to the NetDevice where this PHY layer is attached.
-    Ptr<LteNetDevice> m_netDevice;
+    Ptr<NetDevice> m_netDevice;
 
     /**
      * The downlink LteSpectrumPhy associated to this LtePhy. Also available as

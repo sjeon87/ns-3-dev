@@ -79,6 +79,14 @@ class EpcUeNas : public Object
     void SetAsSapProvider(LteAsSapProvider* s);
 
     /**
+     * Set the SAP provider to interact with the MmWave RRC entity
+     * (added to support MC functionalities).
+     *
+     * @param s the AS SAP provider of the secondary (mmWave) RRC
+     */
+    void SetMmWaveAsSapProvider(LteAsSapProvider* s);
+
+    /**
      *
      *
      * @return the AS SAP user exported by this RRC
@@ -179,6 +187,12 @@ class EpcUeNas : public Object
     /// Notify connection released
     void DoNotifyConnectionReleased();
     /**
+     * Notify the secondary (mmWave) RRC to connect to the given cell
+     * (added to support MC functionalities, currently unused).
+     * @param mmWaveCellId the mmWave cell ID
+     */
+    void DoNotifyConnectToMmWave(uint16_t mmWaveCellId);
+    /**
      * Receive data
      * @param packet the packet
      */
@@ -218,6 +232,8 @@ class EpcUeNas : public Object
 
     /// LTE SAP provider
     LteAsSapProvider* m_asSapProvider;
+    /// Secondary (mmWave) SAP provider, set on MC-capable devices
+    LteAsSapProvider* m_mmWaveAsSapProvider;
     /// LTE SAP user
     LteAsSapUser* m_asSapUser;
 

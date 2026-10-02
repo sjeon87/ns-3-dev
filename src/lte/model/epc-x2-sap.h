@@ -15,6 +15,7 @@
 #include "ns3/packet.h"
 
 #include <bitset>
+#include <map>
 
 namespace ns3
 {
@@ -338,6 +339,105 @@ class EpcX2Sap
         uint16_t targetCellId;   ///< target cell ID
         uint16_t cause;          ///< cause
     };
+
+    // MC secondary-cell params (added to support MC functionalities)
+    struct SecondaryHandoverParams
+    {
+        uint64_t imsi;         ///< IMSI of the UE
+        uint16_t oldCellId;    ///< source cell ID
+        uint16_t targetCellId; ///< target cell ID
+    };
+
+    struct SecondaryHandoverCompletedParams
+    {
+        uint64_t imsi;            ///< IMSI of the UE
+        uint16_t mmWaveRnti;      ///< RNTI of the UE on the mmWave cell
+        uint16_t cellId;          ///< cell ID
+        uint16_t oldEnbUeX2apId;  ///< old eNB UE X2 AP ID
+    };
+
+    struct UeImsiSinrParams
+    {
+        uint16_t sourceCellId; ///< source cell ID
+        uint16_t targetCellId; ///< target cell ID
+        std::map<uint64_t, double> ueImsiSinrMap; ///< map of IMSI to SINR
+    };
+
+    struct HandoverFailedParams
+    {
+        uint64_t imsi;          ///< IMSI of the UE
+        uint16_t coordinatorId; ///< coordinator ID
+        uint16_t sourceCellId;  ///< source cell ID
+        uint16_t targetCellId;  ///< target cell ID
+    };
+
+    struct SwitchConnectionParams
+    {
+        uint32_t mmWaveRnti;       ///< RNTI of the UE on the mmWave cell
+        uint16_t mmWaveCellId;     ///< mmWave cell ID
+        uint8_t drbid;             ///< DRB identity
+        bool useMmWaveConnection;  ///< use mmWave connection flag
+    };
+
+    struct RlcSetupRequest
+    {
+        uint16_t sourceCellId; ///< source cell ID
+        uint16_t targetCellId; ///< target cell ID
+        uint32_t gtpTeid;      ///< GTP TEID
+        uint8_t drbid;         ///< DRB identity
+    };
+};
+
+/**
+ * MC primitives. Part of X2 entity, called by PDCP
+ * (added to support MC functionalities).
+ */
+class EpcX2PdcpProvider : public EpcX2Sap
+{
+  public:
+    ~EpcX2PdcpProvider() override;
+
+    // X2 sends a PDCP PDU in downlink to the mmWave eNB for transmission to the UE
+    virtual void SendMcPdcpPdu(UeDataParams params) = 0;
+};
+
+/**
+ * MC primitives. Part of PDCP entity, called by X2
+ * (added to support MC functionalities).
+ */
+class EpcX2PdcpUser : public EpcX2Sap
+{
+  public:
+    ~EpcX2PdcpUser() override;
+
+    // Receive a PDCP PDU in uplink from the mmWave eNB for transmission to CN
+    virtual void ReceiveMcPdcpPdu(UeDataParams params) = 0;
+};
+
+/**
+ * MC primitives. Part of X2 entity, called by RLC
+ * (added to support MC functionalities).
+ */
+class EpcX2RlcProvider : public EpcX2Sap
+{
+  public:
+    ~EpcX2RlcProvider() override;
+
+    // Receive a PDCP SDU from RLC for uplink transmission to PDCP in LTE eNB
+    virtual void ReceiveMcPdcpSdu(UeDataParams params) = 0;
+};
+
+/**
+ * MC primitives. Part of RLC entity, called by X2
+ * (added to support MC functionalities).
+ */
+class EpcX2RlcUser : public EpcX2Sap
+{
+  public:
+    ~EpcX2RlcUser() override;
+
+    // X2 sends a PDCP SDU to RLC for downlink transmission to the UE
+    virtual void SendMcPdcpSdu(UeDataParams params) = 0;
 };
 
 /**
@@ -776,6 +876,140 @@ void
 EpcX2SpecificEpcX2SapUser<C>::RecvHandoverCancel(HandoverCancelParams params)
 {
     m_rrc->DoRecvHandoverCancel(params);
+}
+
+/////////////////////////////////////////////
+// MC primitives (added to support MC functionalities)
+
+template <class C>
+class EpcX2PdcpSpecificProvider : public EpcX2PdcpProvider
+{
+  public:
+    EpcX2PdcpSpecificProvider(C* x2);
+
+    // Inherited
+    void SendMcPdcpPdu(UeDataParams params) override;
+
+  private:
+    EpcX2PdcpSpecificProvider();
+    C* m_x2;
+};
+
+template <class C>
+EpcX2PdcpSpecificProvider<C>::EpcX2PdcpSpecificProvider(C* x2)
+    : m_x2(x2)
+{
+}
+
+template <class C>
+EpcX2PdcpSpecificProvider<C>::EpcX2PdcpSpecificProvider()
+{
+}
+
+template <class C>
+void
+EpcX2PdcpSpecificProvider<C>::SendMcPdcpPdu(UeDataParams params)
+{
+    m_x2->DoSendMcPdcpPdu(params);
+}
+
+/////////////////////////////////////////////
+template <class C>
+class EpcX2RlcSpecificProvider : public EpcX2RlcProvider
+{
+  public:
+    EpcX2RlcSpecificProvider(C* x2);
+
+    // Inherited
+    void ReceiveMcPdcpSdu(UeDataParams params) override;
+
+  private:
+    EpcX2RlcSpecificProvider();
+    C* m_x2;
+};
+
+template <class C>
+EpcX2RlcSpecificProvider<C>::EpcX2RlcSpecificProvider(C* x2)
+    : m_x2(x2)
+{
+}
+
+template <class C>
+EpcX2RlcSpecificProvider<C>::EpcX2RlcSpecificProvider()
+{
+}
+
+template <class C>
+void
+EpcX2RlcSpecificProvider<C>::ReceiveMcPdcpSdu(UeDataParams params)
+{
+    m_x2->DoReceiveMcPdcpSdu(params);
+}
+
+/////////////////////////////////////////////
+template <class C>
+class EpcX2PdcpSpecificUser : public EpcX2PdcpUser
+{
+  public:
+    EpcX2PdcpSpecificUser(C* pdcp);
+
+    // Inherited
+    void ReceiveMcPdcpPdu(UeDataParams params) override;
+
+  private:
+    EpcX2PdcpSpecificUser();
+    C* m_pdcp;
+};
+
+template <class C>
+EpcX2PdcpSpecificUser<C>::EpcX2PdcpSpecificUser(C* pdcp)
+    : m_pdcp(pdcp)
+{
+}
+
+template <class C>
+EpcX2PdcpSpecificUser<C>::EpcX2PdcpSpecificUser()
+{
+}
+
+template <class C>
+void
+EpcX2PdcpSpecificUser<C>::ReceiveMcPdcpPdu(UeDataParams params)
+{
+    m_pdcp->DoReceiveMcPdcpPdu(params);
+}
+
+/////////////////////////////////////////////
+template <class C>
+class EpcX2RlcSpecificUser : public EpcX2RlcUser
+{
+  public:
+    EpcX2RlcSpecificUser(C* rlc);
+
+    // Inherited
+    void SendMcPdcpSdu(UeDataParams params) override;
+
+  private:
+    EpcX2RlcSpecificUser();
+    C* m_rlc;
+};
+
+template <class C>
+EpcX2RlcSpecificUser<C>::EpcX2RlcSpecificUser(C* rlc)
+    : m_rlc(rlc)
+{
+}
+
+template <class C>
+EpcX2RlcSpecificUser<C>::EpcX2RlcSpecificUser()
+{
+}
+
+template <class C>
+void
+EpcX2RlcSpecificUser<C>::SendMcPdcpSdu(UeDataParams params)
+{
+    m_rlc->DoSendMcPdcpSdu(params);
 }
 
 } // namespace ns3
