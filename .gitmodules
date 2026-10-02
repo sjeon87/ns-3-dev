@@ -37,3 +37,9 @@
 [submodule "contrib/oran-ntn"]
 	path = contrib/oran-ntn
 	url = https://github.com/Muhammaduazir69/oran-ntn
+[submodule "contrib/ns3-ai"]
+	path = contrib/ns3-ai
+	url = https://github.com/sjeon87/ns3-ai
+[submodule "contrib/ntn-v2x"]
+	path = contrib/ntn-v2x
+	url = https://github.com/sjeon87/ntn-v2x
