@@ -3,7 +3,7 @@
 	url = https://github.com/sjeon87/sns3-satellite
 [submodule "contrib/traffic"]
 	path = contrib/traffic
-	url = https://github.com/sns3/traffic.git
+	url = https://github.com/sjeon87/traffic.git
 [submodule "contrib/magister-stats"]
 	path = contrib/magister-stats
 	url = https://github.com/sns3/stats.git
