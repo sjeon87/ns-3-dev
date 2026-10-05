@@ -545,11 +545,14 @@ function(build_lib_tests libname ignore_pch folder test_sources
       # Create shared library containing tests of the module on UNIX and just
       # the object file that will be part of test-runner on Windows
       if(WIN32)
-        set(ns3-libs-tests
-            "$<TARGET_OBJECTS:${test${libname}}>;${ns3-libs-tests}"
+        set(ns3-libs-tests "${test${libname}};${ns3-libs-tests}"
             CACHE INTERNAL "list of test libraries"
         )
         add_library(${test${libname}} OBJECT "${test_sources}")
+        target_link_libraries(
+          ${test${libname}} PRIVATE ${libname}
+          "${BLIB_LIBRARIES_TO_LINK}" "${test_libraries_to_link}"
+        )
       else()
         set(ns3-libs-tests "${test${libname}};${ns3-libs-tests}"
             CACHE INTERNAL "list of test libraries"

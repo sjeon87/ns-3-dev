@@ -4,14 +4,14 @@ if(${ENABLE_TESTS})
   if(WIN32)
     # DLL linking shenanigans prevent loading symbols unused by a certain program,
     # so link the tests libraries (here built as objects) directly to the test runner
-    add_executable(test-runner test-runner.cc ${ns3-libs-tests} ${test_sources})
+    add_executable(test-runner test-runner.cc ${test_sources})
     if(${NS3_MONOLIB})
       target_link_libraries(
-              test-runner ${lib-ns3-monolib} ${ns3-contrib-libs}
+              test-runner ${ns3-libs-tests} ${lib-ns3-monolib} ${ns3-contrib-libs}
       )
     else()
       target_link_libraries(
-              test-runner ${ns3-libs} ${ns3-contrib-libs}
+              test-runner ${ns3-libs-tests} ${ns3-libs} ${ns3-contrib-libs}
       )
     endif()
   else()
