@@ -263,7 +263,7 @@ jobs:
           python ns3 configure --enable-tests --enable-examples --enable-asserts --disable-werror -d release -- -G"Visual Studio 18 2026" -A x64 -T ClangCL -DCMAKE_TOOLCHAIN_FILE="%VCPKG_INSTALLATION_ROOT%\scripts\buildsystems\vcpkg.cmake" -DPython_ROOT_DIR="%pythonLocation%" -DPython3_ROOT_DIR="%pythonLocation%" -Dpybind11_DIR="%PYBIND11_DIR%"
       - name: Build ns-3
         run: |
-          cmake --build cmake-cache --target ns3-ai --config Release -j 2
+          cmake --build cmake-cache --target ns3-ai --config Release -j 2 || exit /b 1
           python ns3 build
       - name: Run tests and examples
         run: |
