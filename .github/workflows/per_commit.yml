@@ -171,7 +171,6 @@ jobs:
           ccache -s
           python3 -c "import re, subprocess;print('cache_misses=%d' % int(re.findall('cache_miss(.*)', subprocess.check_output(['ccache', '--print-stats']).decode())[0]))" >> $GITHUB_ENV
       - name: Run tests and examples
-        if: env.cache_misses != '0'
         run: python3 test.py --no-build --verbose-failed
       - name: Save ccache
         if: always()
@@ -221,13 +220,16 @@ jobs:
           export PATH="$PATH" #:/usr/local/opt/qt/bin
           cmake --build cmake-cache --target ns3-ai --config Release -j 2
           ./ns3 build
+      - name: Check mmWave attachment
+        run: |
+          ./ns3 run "test-runner --suite=mmwave-attachment-test --verbose" --no-build --command-template "lldb --batch -o run -k bt -- %s"
+          ./ns3 run "test-runner --suite=mmwave-attachment-test --verbose" --no-build
       - name: Print ccache statistics
         id: ccache_results
         run: |
           ccache -s
           python3 -c "import re, subprocess;print('cache_misses=%d' % int(re.findall('cache_miss(.*)', subprocess.check_output(['ccache', '--print-stats']).decode())[0]))" >> $GITHUB_ENV
       - name: Run tests and examples
-        if: env.cache_misses != '0'
         run: ./test.py --no-build --verbose-failed
       - name: Save ccache
         if: always()
