@@ -1,5 +1,8 @@
 # Set lib core link dependencies
 set(libraries_to_link)
+if(WIN32)
+  list(APPEND libraries_to_link ws2_32)
+endif()
 
 set(config_headers
     ${CMAKE_HEADER_OUTPUT_DIRECTORY}/core-config.h
@@ -168,6 +171,7 @@ set(source_files
     model/names.cc
     model/vector.cc
     model/fatal-impl.cc
+    model/system-socket.cc
     model/system-path.cc
     model/hash-function.cc
     model/hash-murmur3.cc
@@ -269,6 +273,7 @@ set(header_files
     model/singleton.h
     model/string.h
     model/synchronizer.h
+    model/system-socket.h
     model/system-path.h
     model/system-wall-clock-ms.h
     model/system-wall-clock-timestamp.h
@@ -322,6 +327,7 @@ set(test_sources
     test/sample-test-suite.cc
     test/simulator-test-suite.cc
     test/splitstring-test-suite.cc
+    test/system-socket-test-suite.cc
     test/system-path-test-suite.cc
     test/threaded-test-suite.cc
     test/time-test-suite.cc
