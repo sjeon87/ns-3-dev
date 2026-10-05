@@ -108,6 +108,9 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
+      - name: Enable native symlinks
+        shell: bash
+        run: git config --global core.symlinks true
       - uses: actions/checkout@v6
         with:
           submodules: recursive
@@ -234,6 +237,9 @@ jobs:
       run:
         shell: cmd
     steps:
+      - name: Enable native symlinks
+        shell: bash
+        run: git config --global core.symlinks true
       - uses: actions/checkout@v6
         with:
           submodules: recursive
@@ -250,7 +256,7 @@ jobs:
         run: |
           if not exist "%VCPKG_DEFAULT_BINARY_CACHE%" mkdir "%VCPKG_DEFAULT_BINARY_CACHE%"
           python -m pip install pybind11
-          "%VCPKG_INSTALLATION_ROOT%\vcpkg.exe" install boost-program-options eigen3 protobuf gsl libxml2 sqlite3 --triplet x64-windows
+          "%VCPKG_INSTALLATION_ROOT%\vcpkg.exe" install boost-program-options boost-interprocess eigen3 protobuf gsl libxml2 sqlite3 --triplet x64-windows
       - name: Save dependency cache
         if: always()
         uses: actions/cache/save@v4
