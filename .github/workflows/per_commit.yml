@@ -127,7 +127,11 @@ jobs:
           mingw-w64-x86_64-gsl \
           mingw-w64-x86_64-libxml2 \
           mingw-w64-x86_64-lld \
-          mingw-w64-x86_64-sed
+          mingw-w64-x86_64-boost \
+          mingw-w64-x86_64-eigen3 \
+          mingw-w64-x86_64-protobuf \
+          mingw-w64-x86_64-pybind11 \
+          sed
           pacman --noconfirm -Scc
       - name: Get timestamp
         id: time
@@ -163,6 +167,7 @@ jobs:
   Mac_OS_X:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ macos-latest, macos-14 ]
     steps:
@@ -172,7 +177,8 @@ jobs:
       - name: Install required packages
         run: |
           brew uninstall cmake ninja
-          brew install ninja cmake ccache libxml2 gsl open-mpi #qt5
+          brew install ninja cmake ccache libxml2 gsl open-mpi boost eigen protobuf pybind11 python@3.12
+          echo "$(brew --prefix python@3.12)/libexec/bin" >> "$GITHUB_PATH"
       - name: Get timestamp
         id: time
         run: python3 -c "from datetime import datetime; print('time='+datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))" >> $GITHUB_ENV
@@ -181,8 +187,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ccache
-          key: osx_brew-ci-${{env.time}}
-          restore-keys: osx_brew-ci-
+          key: osx_brew-${{ matrix.os }}-ci-${{env.time}}
+          restore-keys: osx_brew-${{ matrix.os }}-ci-
       - name: Setup ccache
         run: |
           export PATH=/usr/local/bin:$PATH #:/usr/local/opt/qt/bin
@@ -216,13 +222,18 @@ jobs:
         with:
           submodules: recursive
       - uses: actions/setup-python@v6.2.0
+        with:
+          python-version: '3.12'
+      - name: Install required packages
+        run: |
+          python -m pip install pybind11
+          "%VCPKG_INSTALLATION_ROOT%\vcpkg.exe" install boost-program-options eigen3 protobuf gsl libxml2 sqlite3 --triplet x64-windows
       - name: Configure CMake
         run: |
-          %comspec% /k ""C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat""
-          python ns3 configure --enable-tests --enable-examples --enable-asserts -d release -- -G"Visual Studio 18 2026" -A x64 -T ClangCL
+          for /f "delims=" %%i in ('python -m pybind11 --cmakedir') do set PYBIND11_DIR=%%i
+          python ns3 configure --enable-tests --enable-examples --enable-asserts --disable-werror -d release -- -G"Visual Studio 18 2026" -A x64 -T ClangCL -DCMAKE_TOOLCHAIN_FILE="%VCPKG_INSTALLATION_ROOT%\scripts\buildsystems\vcpkg.cmake" -DPython_ROOT_DIR="%pythonLocation%" -Dpybind11_DIR="%PYBIND11_DIR%"
       - name: Build ns-3
         run: |
-          %comspec% /k ""C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat""
           python ns3 build
       - name: Run tests and examples
         run: |
