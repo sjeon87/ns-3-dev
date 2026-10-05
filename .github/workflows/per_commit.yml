@@ -114,6 +114,12 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: recursive
+      - name: Resolve mmWave directory symlink
+        shell: pwsh
+        run: |
+          Remove-Item -LiteralPath src/mmwave -Force
+          New-Item -ItemType SymbolicLink -Path src/mmwave -Target "$PWD/external/ns3-mmwave/src/mmwave"
+          if (!(Test-Path src/mmwave/CMakeLists.txt)) { throw "mmWave module is missing" }
       - uses: msys2/setup-msys2@v2
       - name: Install required msys2/mingw64 packages
         run: |
@@ -243,6 +249,12 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: recursive
+      - name: Resolve mmWave directory symlink
+        shell: pwsh
+        run: |
+          Remove-Item -LiteralPath src/mmwave -Force
+          New-Item -ItemType SymbolicLink -Path src/mmwave -Target "$PWD/external/ns3-mmwave/src/mmwave"
+          if (!(Test-Path src/mmwave/CMakeLists.txt)) { throw "mmWave module is missing" }
       - uses: actions/setup-python@v6.2.0
         with:
           python-version: '3.12'
