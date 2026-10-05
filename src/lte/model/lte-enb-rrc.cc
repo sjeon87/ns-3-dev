@@ -1977,6 +1977,11 @@ LteEnbRrc::GetTypeId()
                           DoubleValue(3),
                           MakeDoubleAccessor(&LteEnbRrc::m_sinrThresholdDifference),
                           MakeDoubleChecker<double>())
+            .AddAttribute("OutageThreshold",
+                          "SNR threshold for outage events in dB",
+                          DoubleValue(-5),
+                          MakeDoubleAccessor(&LteEnbRrc::m_outageThreshold),
+                          MakeDoubleChecker<double>(-10000, 10))
             .AddAttribute("SecondaryCellHandoverMode",
                           "Select the secondary cell handover mode "
                           "(added to support MC functionalities).",
@@ -2038,6 +2043,11 @@ LteEnbRrc::GetTypeId()
                           TimeValue(MilliSeconds(80)),
                           MakeTimeAccessor(&LteEnbRrc::m_systemInformationPeriodicity),
                           MakeTimeChecker())
+            .AddAttribute("FirstSibTime",
+                          "Time in milliseconds of the first system information message",
+                          UintegerValue(16),
+                          MakeUintegerAccessor(&LteEnbRrc::m_firstSibTime),
+                          MakeUintegerChecker<uint32_t>())
 
             // SRS related attributes
             .AddAttribute(
@@ -2548,8 +2558,6 @@ LteEnbRrc::ConfigureCell(std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> ccP
     NS_LOG_FUNCTION(this << ulBandwidth << dlBandwidth << ulEarfcn << dlEarfcn);
     NS_ASSERT(!m_configured);
 
-
-
     for (const auto& it : ccPhyConf)
     {
         m_cphySapProvider.at(it.first)->SetBandwidth(it.second->GetUlBandwidth(),
@@ -2625,7 +2633,7 @@ LteEnbRrc::ConfigureCell(std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> ccP
      * regularly transmitted every 80 ms by default (set the
      * SystemInformationPeriodicity attribute to configure this).
      */
-    Simulator::Schedule(MilliSeconds(16), &LteEnbRrc::SendSystemInformation, this);
+    Simulator::Schedule(MilliSeconds(m_firstSibTime), &LteEnbRrc::SendSystemInformation, this);
 
     m_configured = true;
 }
@@ -2642,6 +2650,8 @@ LteEnbRrc::ConfigureCell(std::map<uint8_t, MmWaveComponentCarrierConf> ccPhyConf
 
     m_dlBandwidth = 6; // not used for mmWave devices, default value
     m_ulBandwidth = 6; // not used for mmWave devices, default value
+    m_dlEarfcn = 0;
+    m_ulEarfcn = 0;
     m_cellId = cellId; // RRC cellId is equal to the cellId of the primary carrier
 
     for (const auto& mapIt : ccPhyConf)

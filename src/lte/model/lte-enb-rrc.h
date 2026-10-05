@@ -1874,6 +1874,7 @@ class LteEnbRrc : public Object
     uint32_t m_firstSibTime{16};
     HandoverMode m_handoverMode{DYNAMIC_TTT};
     long double m_sinrThresholdDifference{3};
+    double m_outageThreshold{-5}; ///< SNR threshold for outage events in dB.
     uint8_t m_fixedTttValue{110};
     uint8_t m_minDynTttValue{25};
     uint8_t m_maxDynTttValue{150};

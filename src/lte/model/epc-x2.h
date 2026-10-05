@@ -15,6 +15,7 @@
 #include "ns3/object.h"
 #include "ns3/ptr.h"
 #include "ns3/socket.h"
+#include "ns3/traced-callback.h"
 
 #include <map>
 
@@ -145,6 +146,21 @@ class EpcX2 : public Object
      */
     void RecvFromX2uSocket(Ptr<Socket> socket);
 
+    /**
+     * Signature of the X2 receive trace.
+     *
+     * @param sourceCellId Source cell ID.
+     * @param targetCellId Destination cell ID.
+     * @param bytes Packet size in bytes.
+     * @param delay Link delay in nanoseconds.
+     * @param data Whether the packet uses the user plane.
+     */
+    typedef void (*ReceiveTracedCallback)(uint16_t sourceCellId,
+                                          uint16_t targetCellId,
+                                          uint32_t bytes,
+                                          uint64_t delay,
+                                          bool data);
+
   protected:
     // Interface provided by EpcX2SapProvider
     /**
@@ -220,6 +236,9 @@ class EpcX2 : public Object
      * UDP ports to be used for the X2-U interface
      */
     uint16_t m_x2uUdpPort;
+
+    TracedCallback<uint16_t, uint16_t, uint32_t, uint64_t, bool>
+        m_rxPdu; ///< Source cell, destination cell, size, delay in ns, and user-plane indicator.
 };
 
 } // namespace ns3
