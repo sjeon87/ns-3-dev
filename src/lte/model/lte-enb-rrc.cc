@@ -2719,6 +2719,13 @@ uint8_t
 LteEnbRrc::CellToComponentCarrierId(uint16_t cellId)
 {
     NS_LOG_FUNCTION(this << cellId);
+    for (const auto& [ccId, conf] : m_mmWaveComponentCarrierPhyConf)
+    {
+        if (conf.m_cellId == cellId)
+        {
+            return ccId;
+        }
+    }
     for (auto& it : m_componentCarrierPhyConf)
     {
         if (it.second->GetCellId() == cellId)
@@ -2733,12 +2740,23 @@ uint16_t
 LteEnbRrc::ComponentCarrierToCellId(uint8_t componentCarrierId)
 {
     NS_LOG_FUNCTION(this << +componentCarrierId);
+    if (m_ismmWave)
+    {
+        return m_mmWaveComponentCarrierPhyConf.at(componentCarrierId).m_cellId;
+    }
     return m_componentCarrierPhyConf.at(componentCarrierId)->GetCellId();
 }
 
 bool
 LteEnbRrc::HasCellId(uint16_t cellId) const
 {
+    for (const auto& [ccId, conf] : m_mmWaveComponentCarrierPhyConf)
+    {
+        if (conf.m_cellId == cellId)
+        {
+            return true;
+        }
+    }
     for (auto& it : m_componentCarrierPhyConf)
     {
         if (it.second->GetCellId() == cellId)
@@ -3667,27 +3685,37 @@ LteEnbRrc::SendSystemInformation()
 {
     // NS_LOG_FUNCTION (this);
 
-    for (auto& it : m_componentCarrierPhyConf)
+    auto sendSystemInformation =
+        [this](uint8_t ccId, uint16_t cellId, uint32_t ulEarfcn, uint32_t ulBandwidth) {
+            LteRrcSap::SystemInformation si;
+            si.haveSib2 = true;
+            si.sib2.freqInfo.ulCarrierFreq = ulEarfcn;
+            si.sib2.freqInfo.ulBandwidth = ulBandwidth;
+            si.sib2.radioResourceConfigCommon.pdschConfigCommon.referenceSignalPower =
+                m_cphySapProvider.at(ccId)->GetReferenceSignalPower();
+            si.sib2.radioResourceConfigCommon.pdschConfigCommon.pb = 0;
+
+            LteEnbCmacSapProvider::RachConfig rc = m_cmacSapProvider.at(ccId)->GetRachConfig();
+            LteRrcSap::RachConfigCommon rachConfigCommon;
+            rachConfigCommon.preambleInfo.numberOfRaPreambles = rc.numberOfRaPreambles;
+            rachConfigCommon.raSupervisionInfo.preambleTransMax = rc.preambleTransMax;
+            rachConfigCommon.raSupervisionInfo.raResponseWindowSize = rc.raResponseWindowSize;
+            rachConfigCommon.txFailParam.connEstFailCount = rc.connEstFailCount;
+            si.sib2.radioResourceConfigCommon.rachConfigCommon = rachConfigCommon;
+
+            m_rrcSapUser->SendSystemInformation(cellId, si);
+        };
+
+    for (const auto& [ccId, carrier] : m_componentCarrierPhyConf)
     {
-        uint8_t ccId = it.first;
-
-        LteRrcSap::SystemInformation si;
-        si.haveSib2 = true;
-        si.sib2.freqInfo.ulCarrierFreq = it.second->GetUlEarfcn();
-        si.sib2.freqInfo.ulBandwidth = it.second->GetUlBandwidth();
-        si.sib2.radioResourceConfigCommon.pdschConfigCommon.referenceSignalPower =
-            m_cphySapProvider.at(ccId)->GetReferenceSignalPower();
-        si.sib2.radioResourceConfigCommon.pdschConfigCommon.pb = 0;
-
-        LteEnbCmacSapProvider::RachConfig rc = m_cmacSapProvider.at(ccId)->GetRachConfig();
-        LteRrcSap::RachConfigCommon rachConfigCommon;
-        rachConfigCommon.preambleInfo.numberOfRaPreambles = rc.numberOfRaPreambles;
-        rachConfigCommon.raSupervisionInfo.preambleTransMax = rc.preambleTransMax;
-        rachConfigCommon.raSupervisionInfo.raResponseWindowSize = rc.raResponseWindowSize;
-        rachConfigCommon.txFailParam.connEstFailCount = rc.connEstFailCount;
-        si.sib2.radioResourceConfigCommon.rachConfigCommon = rachConfigCommon;
-
-        m_rrcSapUser->SendSystemInformation(it.second->GetCellId(), si);
+        sendSystemInformation(ccId,
+                              carrier->GetCellId(),
+                              carrier->GetUlEarfcn(),
+                              carrier->GetUlBandwidth());
+    }
+    for (const auto& [ccId, conf] : m_mmWaveComponentCarrierPhyConf)
+    {
+        sendSystemInformation(ccId, conf.m_cellId, m_ulEarfcn, conf.m_bandwidth);
     }
 
     /*
