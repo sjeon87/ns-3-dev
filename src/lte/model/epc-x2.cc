@@ -23,6 +23,36 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("EpcX2");
 
+namespace
+{
+
+/** Timestamp tag for measuring X2 link delay. */
+class EpcX2TimestampTag : public TimestampTag
+{
+  public:
+    using TimestampTag::TimestampTag;
+
+    /**
+     * Get the type ID.
+     * @return The tag TypeId.
+     */
+    static TypeId GetTypeId()
+    {
+        static TypeId tid = TypeId("ns3::EpcX2TimestampTag")
+                                .SetParent<TimestampTag>()
+                                .SetGroupName("Lte")
+                                .AddConstructor<EpcX2TimestampTag>();
+        return tid;
+    }
+
+    TypeId GetInstanceTypeId() const override
+    {
+        return GetTypeId();
+    }
+};
+
+} // namespace
+
 X2IfaceInfo::X2IfaceInfo(Ipv4Address remoteIpAddr,
                          Ptr<Socket> localCtrlPlaneSocket,
                          Ptr<Socket> localUserPlaneSocket)
@@ -186,7 +216,7 @@ EpcX2::RecvFromX2cSocket(Ptr<Socket> socket)
                   "Missing infos of local and remote CellId");
     Ptr<X2CellInfo> cellsInfo = m_x2InterfaceCellIds[socket];
 
-    TimestampTag timestamp;
+    EpcX2TimestampTag timestamp;
     Time delay;
     if (packet->RemovePacketTag(timestamp))
     {
@@ -425,7 +455,7 @@ EpcX2::RecvFromX2uSocket(Ptr<Socket> socket)
                   "Missing infos of local and remote CellId");
     Ptr<X2CellInfo> cellsInfo = m_x2InterfaceCellIds[socket];
 
-    TimestampTag timestamp;
+    EpcX2TimestampTag timestamp;
     Time delay;
     if (packet->RemovePacketTag(timestamp))
     {
@@ -501,7 +531,7 @@ EpcX2::DoSendHandoverRequest(EpcX2SapProvider::HandoverRequestParams params)
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     sourceSocket->SendTo(packet, 0, InetSocketAddress(targetIpAddr, m_x2cUdpPort));
 }
@@ -551,7 +581,7 @@ EpcX2::DoSendHandoverRequestAck(EpcX2SapProvider::HandoverRequestAckParams param
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     localSocket->SendTo(packet, 0, InetSocketAddress(remoteIpAddr, m_x2cUdpPort));
 }
@@ -600,7 +630,7 @@ EpcX2::DoSendHandoverPreparationFailure(EpcX2SapProvider::HandoverPreparationFai
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     localSocket->SendTo(packet, 0, InetSocketAddress(remoteIpAddr, m_x2cUdpPort));
 }
@@ -650,7 +680,7 @@ EpcX2::DoSendSnStatusTransfer(EpcX2SapProvider::SnStatusTransferParams params)
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     localSocket->SendTo(packet, 0, InetSocketAddress(remoteIpAddr, m_x2cUdpPort));
 }
@@ -696,7 +726,7 @@ EpcX2::DoSendUeContextRelease(EpcX2SapProvider::UeContextReleaseParams params)
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     localSocket->SendTo(packet, 0, InetSocketAddress(remoteIpAddr, m_x2cUdpPort));
 }
@@ -740,7 +770,7 @@ EpcX2::DoSendLoadInformation(EpcX2SapProvider::LoadInformationParams params)
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     sourceSocket->SendTo(packet, 0, InetSocketAddress(targetIpAddr, m_x2cUdpPort));
 }
@@ -788,7 +818,7 @@ EpcX2::DoSendResourceStatusUpdate(EpcX2SapProvider::ResourceStatusUpdateParams p
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     sourceSocket->SendTo(packet, 0, InetSocketAddress(targetIpAddr, m_x2cUdpPort));
 }
@@ -821,7 +851,7 @@ EpcX2::DoSendUeData(EpcX2SapProvider::UeDataParams params)
     packet->AddHeader(gtpu);
 
     NS_LOG_INFO("Forward UE DATA through X2 interface");
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     sourceSocket->SendTo(packet, 0, InetSocketAddress(targetIpAddr, m_x2uUdpPort));
 }
@@ -869,7 +899,7 @@ EpcX2::DoSendHandoverCancel(EpcX2SapProvider::HandoverCancelParams params)
     NS_LOG_INFO("packetLen = " << packet->GetSize());
 
     // Send the X2 message through the socket
-    TimestampTag timestamp(Simulator::Now());
+    EpcX2TimestampTag timestamp(Simulator::Now());
     packet->ReplacePacketTag(timestamp);
     localSocket->SendTo(packet, 0, InetSocketAddress(remoteIpAddr, m_x2cUdpPort));
 }
