@@ -184,6 +184,9 @@ jobs:
             exit 1
           }
           timeout 120 python3 -u test.py --no-build --list --verbose
+          python3 ns3 run "test-runner --suite=ntn-sagin --verbose" --no-build || true
+          python3 ns3 run "test-runner --suite=sat-scenario-creation --verbose" --no-build || true
+          gdb --batch -ex run -ex "thread apply all bt" --args build/contrib/satellite/examples/ns3-dev-sat-cbr-example.exe --SimLength=0.5
           python3 -u test.py --no-build --verbose --verbose-failed
       - name: Save ccache
         if: always()
@@ -304,6 +307,7 @@ jobs:
       - name: Build ns-3
         run: |
           cmake --build cmake-cache --target ns3-ai --config Release -j 2 || exit /b 1
+          cmake --build cmake-cache --target traffic --config Release -j 2 || exit /b 1
           python ns3 build
       - name: Run tests and examples
         run: |
