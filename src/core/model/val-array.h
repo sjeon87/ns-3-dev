@@ -11,6 +11,8 @@
 #include "assert.h"
 #include "simple-ref-count.h"
 
+#include "ns3/core-export.h"
+
 #include <complex>
 #include <valarray>
 #include <vector>
@@ -723,6 +725,13 @@ operator<<(std::ostream& os, const ValArray<T>& a)
     }
     return os;
 }
+
+#if defined(NS_MSVC) && !defined(core_EXPORTS)
+// Import common specializations from core to keep DLL exports unique.
+extern template class CORE_EXPORT ValArray<std::complex<double>>;
+extern template class CORE_EXPORT ValArray<double>;
+extern template class CORE_EXPORT ValArray<int>;
+#endif
 
 } // namespace ns3
 

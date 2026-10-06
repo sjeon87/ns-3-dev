@@ -390,6 +390,12 @@ MatrixArray<T>::IdentityMatrix(const MatrixArray& likeme)
     return IdentityMatrix(likeme.GetNumRows(), likeme.GetNumPages());
 }
 
+#ifdef NS_MSVC
+template class CORE_EXPORT ValArray<std::complex<double>>;
+template class CORE_EXPORT ValArray<double>;
+template class CORE_EXPORT ValArray<int>;
+#endif
+
 template MatrixArray<std::complex<double>> MatrixArray<std::complex<double>>::HermitianTranspose()
     const;
 template class MatrixArray<std::complex<double>>;
