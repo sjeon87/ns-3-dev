@@ -76,8 +76,21 @@ const long double* UNIT_VALUE = InitUnitValue();
 // static
 Time::MarkedTimes* Time::g_markingTimes = nullptr;
 
-/// The static mutex for critical sections around modification of Time::g_markingTimes.
-static std::mutex g_markingMutex;
+namespace
+{
+
+/**
+ * Return the mutex protecting Time::g_markingTimes during static initialization.
+ * @return The time marking mutex.
+ */
+std::mutex&
+GetMarkingMutex()
+{
+    static std::mutex mutex;
+    return mutex;
+}
+
+} // namespace
 
 // Function called to force static initialization
 // static
@@ -86,7 +99,7 @@ Time::StaticInit()
 {
     static bool firstTime = true;
 
-    std::unique_lock lock{g_markingMutex};
+    std::unique_lock lock{GetMarkingMutex()};
 
     if (firstTime)
     {
@@ -304,7 +317,7 @@ Time::ClearMarkedTimes()
      * Instead, we copy this body into ConvertTimes.
      */
 
-    std::unique_lock lock{g_markingMutex};
+    std::unique_lock lock{GetMarkingMutex()};
 
     NS_LOG_FUNCTION_NOARGS();
     if (g_markingTimes)
@@ -319,7 +332,7 @@ Time::ClearMarkedTimes()
 void
 Time::Mark(Time* const time)
 {
-    std::unique_lock lock{g_markingMutex};
+    std::unique_lock lock{GetMarkingMutex()};
 
     NS_LOG_FUNCTION(time);
     NS_ASSERT(time != nullptr);
@@ -342,7 +355,7 @@ Time::Mark(Time* const time)
 void
 Time::Clear(Time* const time)
 {
-    std::unique_lock lock{g_markingMutex};
+    std::unique_lock lock{GetMarkingMutex()};
 
     NS_LOG_FUNCTION(time);
     NS_ASSERT(time != nullptr);
@@ -370,7 +383,7 @@ Time::Clear(Time* const time)
 void
 Time::ConvertTimes(const Unit unit)
 {
-    std::unique_lock lock{g_markingMutex};
+    std::unique_lock lock{GetMarkingMutex()};
 
     NS_LOG_FUNCTION_NOARGS();
 

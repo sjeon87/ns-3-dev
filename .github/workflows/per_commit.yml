@@ -174,9 +174,11 @@ jobs:
       - name: Run tests and examples
         run: |
           export PATH="$PWD/build/lib:$PATH"
-          cygcheck build/utils/ns3-dev-test-runner.exe || true
-          gdb --batch -ex run -ex "thread apply all bt" --args build/utils/ns3-dev-test-runner.exe --suite=system-socket --verbose
-          python3 ns3 run "test-runner --suite=system-socket --verbose" --no-build
+          python3 ns3 run "test-runner --suite=system-socket --verbose" --no-build || {
+            cygcheck build/utils/ns3-dev-test-runner.exe || true
+            gdb --batch -ex run -ex "thread apply all bt" --args build/utils/ns3-dev-test-runner.exe --suite=system-socket --verbose
+            exit 1
+          }
           python3 test.py --no-build --verbose-failed
       - name: Save ccache
         if: always()
