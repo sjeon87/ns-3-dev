@@ -185,9 +185,12 @@ jobs:
           }
           timeout 120 python3 -u test.py --no-build --list --verbose
           scenario_status=0
-          python3 ns3 run "test-runner --suite=ntn-sagin --verbose" --no-build || scenario_status=1
+          python3 ns3 run "test-runner --suite=ntn-sagin --verbose" --no-build || {
+            scenario_status=1
+            gdb --batch -ex "set breakpoint pending on" -ex "break std::__throw_out_of_range" -ex run -ex bt --args build/utils/ns3-dev-test-runner.exe --suite=ntn-sagin --verbose
+          }
           python3 ns3 run "test-runner --suite=sat-scenario-creation --verbose" --no-build || scenario_status=1
-          gdb --batch -ex run -ex "thread apply all bt" --args build/contrib/satellite/examples/ns3-dev-sat-cbr-example.exe --SimLength=0.5
+          gdb --batch -ex run -ex "thread apply all bt" --args build/contrib/satellite/examples/ns3-dev-sat-cbr-example.exe
           if [ "$scenario_status" -ne 0 ]; then exit "$scenario_status"; fi
           python3 -u test.py --no-build --verbose --verbose-failed
       - name: Save ccache
