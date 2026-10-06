@@ -322,4 +322,8 @@ jobs:
         run: |
           set PATH=%CD%\build;%VCPKG_INSTALLATION_ROOT%\installed\x64-windows\bin;%PATH%
           python ns3 run "test-runner --suite=system-socket --verbose" --no-build || exit /b 1
+          set NS3_SAT_TEST_FAILED=0
+          python ns3 run "test-runner --suite=sat-constellation-test --verbose" --no-build || set NS3_SAT_TEST_FAILED=1
+          python ns3 run "test-runner --suite=sat-mobility-observer-test --verbose" --no-build || set NS3_SAT_TEST_FAILED=1
+          if "%NS3_SAT_TEST_FAILED%"=="1" exit /b 1
           python .\test.py --no-build --verbose-failed
