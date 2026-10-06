@@ -171,7 +171,11 @@ jobs:
           ccache -s
           python3 -c "import re, subprocess;print('cache_misses=%d' % int(re.findall('cache_miss(.*)', subprocess.check_output(['ccache', '--print-stats']).decode())[0]))" >> $GITHUB_ENV
       - name: Run tests and examples
-        run: python3 test.py --no-build --verbose-failed
+        run: |
+          export PATH="$PWD/build/lib:$PATH"
+          cygcheck build/utils/ns3-dev-test-runner.exe || true
+          python3 ns3 run "test-runner --suite=system-socket --verbose" --no-build
+          python3 test.py --no-build --verbose-failed
       - name: Save ccache
         if: always()
         uses: actions/cache/save@v4
