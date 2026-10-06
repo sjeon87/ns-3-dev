@@ -236,6 +236,11 @@ jobs:
         run: |
           ./ns3 run "test-runner --suite=mmwave-attachment-test --verbose" --no-build --command-template "lldb --batch -o run -k bt -- %s"
           ./ns3 run "test-runner --suite=mmwave-attachment-test --verbose" --no-build
+      - name: Check satellite group cleanup
+        if: matrix.os == 'macos-14'
+        run: |
+          ./ns3 run sat-group-example --no-build --command-template "lldb --batch -o run -k bt -- %s"
+          ./ns3 run sat-group-example --no-build
       - name: Print ccache statistics
         id: ccache_results
         run: |
