@@ -172,6 +172,7 @@ set(source_files
     model/vector.cc
     model/fatal-impl.cc
     model/system-socket.cc
+    model/singleton.cc
     model/system-path.cc
     model/hash-function.cc
     model/hash-murmur3.cc

@@ -8,6 +8,10 @@
 #ifndef SINGLETON_H
 #define SINGLETON_H
 
+#include "ns3/core-export.h"
+
+#include <typeinfo>
+
 /**
  * @file
  * @ingroup singleton
@@ -16,6 +20,17 @@
 
 namespace ns3
 {
+
+/**
+ * @ingroup singleton
+ * @internal
+ * Find or create a singleton shared by all libraries in the process.
+ * @param type The singleton's type.
+ * @param create Function returning the instance when it is first requested.
+ * @return The singleton instance.
+ * @endinternal
+ */
+CORE_EXPORT void* GetSingletonInstance(const std::type_info& type, void* (*create)());
 
 /**
  * @ingroup core
@@ -95,8 +110,11 @@ template <typename T>
 T*
 Singleton<T>::Get()
 {
-    static T object;
-    return &object;
+    static T* object = static_cast<T*>(GetSingletonInstance(typeid(T), []() -> void* {
+        static T instance;
+        return &instance;
+    }));
+    return object;
 }
 
 } // namespace ns3
