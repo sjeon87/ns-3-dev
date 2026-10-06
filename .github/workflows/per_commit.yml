@@ -183,7 +183,8 @@ jobs:
             gdb --batch -ex run -ex "thread apply all bt" --args build/utils/ns3-dev-test-runner.exe --suite=system-socket --verbose
             exit 1
           }
-          python3 test.py --no-build --verbose-failed
+          timeout 120 python3 -u test.py --no-build --list --verbose
+          python3 -u test.py --no-build --verbose --verbose-failed
       - name: Save ccache
         if: always()
         uses: actions/cache/save@v4
