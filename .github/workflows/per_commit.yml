@@ -58,7 +58,6 @@ jobs:
   Codecov:
     runs-on: ubuntu-latest
     needs: Ubuntu
-    if: needs.Ubuntu.outputs.cache_misses != '0'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -101,7 +100,6 @@ jobs:
           ccache -s
           python3 -c "import re, subprocess;print('cache_misses=%d' % int(re.findall('cache_miss(.*)', subprocess.check_output(['ccache', '--print-stats']).decode())[0]))" >> $GITHUB_ENV
       - name: Generate coverage data and submit to codecov.io
-        if: env.cache_misses != '0'
         run: |
           ./ns3 build coverage_gcc
           cd ./build/coverage
