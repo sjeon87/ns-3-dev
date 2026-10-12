@@ -153,6 +153,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             pacman -S --noconfirm \
+            git \
             zip \
             unzip \
             tar \
