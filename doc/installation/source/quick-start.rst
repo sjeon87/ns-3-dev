@@ -90,7 +90,7 @@ There are two main options:
 
 #. Clone |ns3| from the ``ns-3-dev`` Git repository::
 
-    $ git clone https://gitlab.com/nsnam/ns-3-dev.git
+    $ git clone https://github.com/sjeon87/ns-3-dev.git
     $ cd ns-3-dev
 
 Note that if you select option 1), your directory name will contain the release number.  If
