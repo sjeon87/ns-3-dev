@@ -6,6 +6,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+
 jobs:
   Ubuntu:
     runs-on: ubuntu-latest
@@ -20,10 +24,20 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install apt-utils
           sudo apt-get -y install git gcc g++ cmake python3 make ninja-build
-          sudo apt-get -y install tcpdump libgsl-dev libxml2-dev
-          sudo apt-get -y install libboost-program-options-dev python3-dev pybind11-dev libprotobuf-dev protobuf-compiler libsctp-dev
-          sudo apt-get -y install curl unzip tar
+          sudo apt-get -y install tcpdump python3-dev
+          sudo apt-get -y install curl zip unzip tar pkg-config autoconf automake libtool bison
           sudo apt-get -y install ccache
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'build-support/vcpkg/ports/**') }}
+          restore-keys: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
+      - name: Bootstrap vcpkg
+        run: |
+          mkdir -p .vcpkg-cache
+          python3 utils/tests/test-vcpkg.py
+          python3 utils/setup-vcpkg.py --no-submodules
       - name: Get timestamp
         id: time
         run: python3 -c "from datetime import datetime; print('time='+datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))" >> $GITHUB_ENV
@@ -42,7 +56,7 @@ jobs:
           ccache -z
       - name: Configure CMake
         run: |
-          ./ns3 configure -d release --enable-asserts --enable-examples --enable-tests --disable-werror -G"Ninja"
+          ./ns3 configure --enable-vcpkg -d release --enable-asserts --enable-examples --enable-tests --disable-werror -G"Ninja"
       - name: Build ns-3
         run: |
           ./ns3 build
@@ -67,11 +81,21 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install apt-utils
           sudo apt-get -y install git gcc g++ cmake python3 make ninja-build
-          sudo apt-get -y install tcpdump libgsl-dev libxml2-dev
-          sudo apt-get -y install libboost-program-options-dev python3-dev pybind11-dev libprotobuf-dev protobuf-compiler libsctp-dev
-          sudo apt-get -y install curl unzip tar
+          sudo apt-get -y install tcpdump python3-dev
+          sudo apt-get -y install curl zip unzip tar pkg-config autoconf automake libtool bison
           sudo apt-get -y install ccache
           sudo apt-get -y install lcov
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'build-support/vcpkg/ports/**') }}
+          restore-keys: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
+      - name: Bootstrap vcpkg
+        run: |
+          mkdir -p .vcpkg-cache
+          python3 utils/tests/test-vcpkg.py
+          python3 utils/setup-vcpkg.py --no-submodules
       - name: Get timestamp
         id: time
         run: python3 -c "from datetime import datetime; print('time='+datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))" >> $GITHUB_ENV
@@ -90,7 +114,7 @@ jobs:
           ccache -z
       - name: Configure CMake
         run: |
-          ./ns3 configure --enable-asserts --enable-examples --enable-tests --disable-werror --enable-gcov -G"Ninja"
+          ./ns3 configure --enable-vcpkg --enable-asserts --enable-examples --enable-tests --disable-werror --enable-gcov -G"Ninja"
       - name: Build ns-3
         run: |
           ./ns3 build
@@ -129,6 +153,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             pacman -S --noconfirm \
+            zip \
             unzip \
             tar \
             mingw-w64-x86_64-curl \
@@ -139,18 +164,23 @@ jobs:
             mingw-w64-x86_64-ninja \
             mingw-w64-x86_64-python \
             mingw-w64-x86_64-ccache \
-            mingw-w64-x86_64-gsl \
-            mingw-w64-x86_64-libxml2 \
             mingw-w64-x86_64-lld \
-            mingw-w64-x86_64-boost \
-            mingw-w64-x86_64-eigen3 \
-            mingw-w64-x86_64-protobuf \
-            mingw-w64-x86_64-pybind11 \
             sed && break
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep 15
           done
           pacman --noconfirm -Scc
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'build-support/vcpkg/ports/**') }}
+          restore-keys: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
+      - name: Bootstrap vcpkg
+        run: |
+          mkdir -p .vcpkg-cache
+          python3 utils/tests/test-vcpkg.py
+          python3 utils/setup-vcpkg.py --no-submodules
       - name: Get timestamp
         id: time
         run: python3 -c "from datetime import datetime; print('time='+datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))" >> $GITHUB_ENV
@@ -169,7 +199,7 @@ jobs:
           ccache -z
       - name: Configure CMake
         run: |
-          python3 ns3 configure -d release --enable-asserts --enable-examples --enable-tests --disable-werror -G"Ninja" -- -DPython_ROOT_DIR="$(cygpath -m /mingw64)" -DPython3_ROOT_DIR="$(cygpath -m /mingw64)" -DPython_FIND_REGISTRY=NEVER -DPython3_FIND_REGISTRY=NEVER
+          python3 ns3 configure --enable-vcpkg -d release --enable-asserts --enable-examples --enable-tests --disable-werror -G"Ninja" -- -DPython_ROOT_DIR="$(cygpath -m /mingw64)" -DPython3_ROOT_DIR="$(cygpath -m /mingw64)" -DPython_FIND_REGISTRY=NEVER -DPython3_FIND_REGISTRY=NEVER
       - name: Build ns-3
         run: |
           cmake --build cmake-cache --target ns3-ai --config Release -j 2
@@ -181,7 +211,7 @@ jobs:
           python3 -c "import re, subprocess;print('cache_misses=%d' % int(re.findall('cache_miss(.*)', subprocess.check_output(['ccache', '--print-stats']).decode())[0]))" >> $GITHUB_ENV
       - name: Run tests and examples
         run: |
-          export PATH="$PWD/build/lib:$PATH"
+          export PATH="$PWD/build/lib:$PWD/cmake-cache/vcpkg_installed/x64-mingw-dynamic/bin:$PATH"
           python3 ns3 run "test-runner --suite=system-socket --verbose" --no-build || {
             cygcheck build/utils/ns3-dev-test-runner.exe || true
             gdb --batch -ex run -ex "thread apply all bt" --args build/utils/ns3-dev-test-runner.exe --suite=system-socket --verbose
@@ -216,8 +246,19 @@ jobs:
       - name: Install required packages
         run: |
           brew uninstall cmake ninja
-          brew install ninja cmake ccache libxml2 gsl open-mpi boost eigen protobuf pybind11 python@3.12
+          brew install ninja cmake ccache pkg-config autoconf automake libtool bison python@3.12
           echo "$(brew --prefix python@3.12)/libexec/bin" >> "$GITHUB_PATH"
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'build-support/vcpkg/ports/**') }}
+          restore-keys: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
+      - name: Bootstrap vcpkg
+        run: |
+          mkdir -p .vcpkg-cache
+          python3 utils/tests/test-vcpkg.py
+          python3 utils/setup-vcpkg.py --no-submodules
       - name: Get timestamp
         id: time
         run: python3 -c "from datetime import datetime; print('time='+datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))" >> $GITHUB_ENV
@@ -238,7 +279,7 @@ jobs:
       - name: Configure CMake
         run: |
           export PATH=/usr/local/bin:$PATH #:/usr/local/opt/qt/bin
-          ./ns3 configure -d release --enable-asserts --enable-examples --enable-tests --disable-werror -G"Ninja"
+          ./ns3 configure --enable-vcpkg -d release --enable-asserts --enable-examples --enable-tests --disable-werror -G"Ninja"
       - name: Build ns-3
         run: |
           export PATH="$PATH" #:/usr/local/opt/qt/bin
@@ -270,8 +311,6 @@ jobs:
           key: osx_brew-${{ matrix.os }}-ci-${{env.time}}
   Windows_Visual_Studio:
     runs-on: windows-latest
-    env:
-      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
     defaults:
       run:
         shell: cmd
@@ -300,18 +339,11 @@ jobs:
       - name: Install required packages
         run: |
           if not exist "%VCPKG_DEFAULT_BINARY_CACHE%" mkdir "%VCPKG_DEFAULT_BINARY_CACHE%"
-          python -m pip install pybind11
-          "%VCPKG_INSTALLATION_ROOT%\vcpkg.exe" install boost-program-options boost-interprocess eigen3 protobuf gsl libxml2 sqlite3 --triplet x64-windows
-      - name: Save dependency cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: .vcpkg-cache
-          key: vcpkg-x64-windows-${{ github.sha }}
+          python utils/tests/test-vcpkg.py
+          python utils/setup-vcpkg.py --no-submodules
       - name: Configure CMake
         run: |
-          for /f "delims=" %%i in ('python -m pybind11 --cmakedir') do set PYBIND11_DIR=%%i
-          python ns3 configure --enable-tests --enable-examples --enable-asserts --disable-werror -d release -- -G"Visual Studio 18 2026" -A x64 -T ClangCL -DCMAKE_TOOLCHAIN_FILE="%VCPKG_INSTALLATION_ROOT%\scripts\buildsystems\vcpkg.cmake" -DPython_ROOT_DIR="%pythonLocation%" -DPython3_ROOT_DIR="%pythonLocation%" -Dpybind11_DIR="%PYBIND11_DIR%"
+          python ns3 configure --enable-vcpkg --enable-tests --enable-examples --enable-asserts --disable-werror -d release -- -G"Visual Studio 18 2026" -A x64 -T ClangCL -DPython_ROOT_DIR="%pythonLocation%" -DPython3_ROOT_DIR="%pythonLocation%"
       - name: Build ns-3
         run: |
           cmake --build cmake-cache --target ns3-ai --config Release -j 2 || exit /b 1
@@ -319,10 +351,16 @@ jobs:
           python ns3 build
       - name: Run tests and examples
         run: |
-          set PATH=%CD%\build;%VCPKG_INSTALLATION_ROOT%\installed\x64-windows\bin;%PATH%
+          set PATH=%CD%\build;%CD%\cmake-cache\vcpkg_installed\x64-windows\bin;%PATH%
           python ns3 run "test-runner --suite=system-socket --verbose" --no-build || exit /b 1
           set NS3_SAT_TEST_FAILED=0
           python ns3 run "test-runner --suite=sat-constellation-test --verbose" --no-build || set NS3_SAT_TEST_FAILED=1
           python ns3 run "test-runner --suite=sat-mobility-observer-test --verbose" --no-build || set NS3_SAT_TEST_FAILED=1
           if "%NS3_SAT_TEST_FAILED%"=="1" exit /b 1
           python .\test.py --no-build --verbose-failed
+      - name: Save dependency cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-x64-windows-${{ github.sha }}

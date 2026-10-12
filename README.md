@@ -121,6 +121,20 @@ Then, build ns-3 by running the following command:
 ./ns3 build
 ```
 
+To provision native dependencies with vcpkg for ns-3 and its contribution
+modules, including recursive Git submodules, use:
+
+```shell
+python3 utils/setup-vcpkg.py
+./ns3 configure --enable-vcpkg --enable-examples --enable-tests
+./ns3 build
+```
+
+The shared manifest pins dependency versions and provides optional features.
+Host compilers, build tools and Python development headers remain prerequisites.
+See the [vcpkg build instructions](doc/manual/source/working-with-cmake.rst#vcpkg)
+for SDK reuse, feature selection and platform requirements.
+
 By default, the build artifacts will be stored in the `build/` directory.
 
 ### Supported Platforms

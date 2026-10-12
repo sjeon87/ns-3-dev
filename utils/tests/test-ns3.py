@@ -3229,7 +3229,10 @@ class NS3ExpectedUseTestCase(NS3BaseTestCase):
 
             if arch != "aarch64":
                 # Install VcPkg dependencies
-                container.execute("apt-get install -y zip unzip tar curl")
+                container.execute(
+                    "apt-get install -y zip unzip tar curl "
+                    "autoconf automake libtool bison python3-dev"
+                )
 
                 # Install Armadillo dependencies
                 container.execute("apt-get install -y pkg-config gfortran")

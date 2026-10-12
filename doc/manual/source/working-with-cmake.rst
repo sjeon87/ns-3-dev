@@ -1577,338 +1577,101 @@ such as `Vcpkg`_ and `CPM`_.
 vcpkg
 =====
 
-Vcpkg requires ``git``, ``curl``, ``zip``, ``unzip`` and ``tar``,
-along with the default ns-3 dependencies. The setup downloads
-and builds vcpkg from their Git repository. Telemetry is disabled
-by default.
+The repository's ``vcpkg.json`` pins the public registry with a
+``builtin-baseline``. vcpkg installs transitive dependencies in manifest mode;
+its CMake toolchain is selected before ``project()`` so dependency discovery
+also applies to ``src/``, ``contrib/`` and their nested CMake subdirectories.
+
+Install host prerequisites first: a supported C++ compiler, CMake 3.25 or newer,
+Git, Python with development headers, and a build tool (Ninja or Make).
+On Unix, bootstrap also requires curl, zip, unzip and tar. Ports may require
+pkg-config, autoconf, automake, libtool and bison. These host tools and kernel
+facilities such as Linux SCTP remain platform prerequisites. ns3-ai's Python
+utilities require Python 3.10 or newer.
 
 .. sourcecode:: console
 
-  ~$ ./ns3 configure -- -DNS3_VCPKG=ON
-  ...
-  -- vcpkg: setting up support
-  Cloning into 'vcpkg'...
-  Updating files: 100% (10376/10376), done.
-  Downloading vcpkg-glibc...
-  vcpkg package management program version 2023-07-19-814b7ec837b59f1c8778f72351c1dd7605983cd2
-  ...
+  ~$ python3 utils/setup-vcpkg.py
+  ~$ ./ns3 configure --enable-vcpkg --enable-examples --enable-tests
+  ~$ ./ns3 build
+  ~$ ./test.py --no-build
 
-Configuration will finish successfully.
-For example, now we can try using the Armadillo library.
-To do that, we use the following CMake statements:
+The setup utility initializes Git submodules recursively, including satellite
+data, and clones and bootstraps the SDK at the manifest baseline. It disables
+bootstrap telemetry. Reuse an SDK by setting ``VCPKG_ROOT`` or passing
+``--root /path/to/vcpkg`` to the utility and
+``-DNS3_VCPKG_ROOT=/path/to/vcpkg`` to CMake. Existing SDK checkouts are preserved.
+CMake can bootstrap the SDK automatically when ``NS3_VCPKG=ON``; initialize
+submodules separately if you skip the setup utility.
 
-.. sourcecode:: cmake
+Use a fresh CMake build directory when switching toolchains. With the wrapper,
+add ``--force-refresh`` when switching an existing system-dependency build to
+vcpkg. The existing ``-- -DNS3_VCPKG=ON`` spelling also works.
 
-    # Check this is not a fluke
-    find_package(Armadillo)
-    message(STATUS "Armadillo was found? ${ARMADILLO_FOUND}")
+The base manifest provides Boost.Math, Boost.Units and nlohmann/json. Default
+features provide Eigen, GSL, SQLite, libxml2 and the native ns3-ai dependencies
+(Boost.Interprocess, Boost.ProgramOptions, pybind11, protobuf and host protoc).
+These cover the native dependencies of the satellite, traffic, statistics, NR,
+QUIC, NTN and O-RAN submodules and the mmWave module linked through ``src/mmwave``.
+Satellite data has no native library dependencies. A pybind11 overlay supplies
+headers and CMake integration without installing another Python runtime, so
+bindings use the selected host Python environment. The overlay is pinned to
+an upstream release and verifies its source archive with SHA512.
 
-Reconfigure ns-3 to check if Armadillo is available.
-
-.. sourcecode:: console
-
-  ~$ ./ns3 configure
-  ...
-  -- vcpkg: setting up support
-  -- vcpkg: folder already exists, skipping git download
-  -- vcpkg: already bootstrapped
-  ...
-  -- Could NOT find Armadillo (missing: ARMADILLO_INCLUDE_DIR)
-  -- Armadillo was found? FALSE
-
-As you can see, no Armadillo found.
-We can now use vcpkg to install it, using the CMake
-function ``add_package(package_name)``. CMake
-will then be able to find the installed package using ``find_package``.
-
-Note: some packages may require additional dependencies.
-The Armadillo package requires ``pkg-config`` and a fortran compiler.
-You will be prompted with a CMake error when a missing dependency is found.
-
-.. sourcecode:: cmake
-
-    # Install Armadillo and search for it again
-    add_package(Armadillo) # Installs Armadillo with vcpkg
-    find_package(Armadillo) # Loads vcpkg installation of Armadillo
-    message(STATUS "Armadillo was found? ${ARMADILLO_FOUND}")
-
-Sadly, we will need to reconfigure ns-3 from the scratch,
-since CMake ``find_package`` caches are problematic.
-Installing the packages can take a while, and it can look like it hanged.
+Optional manifest features are ``gtk``, ``mpi``, ``onnx``, ``dpdk``, ``torch``, ``netanim`` and
+``package-manager-test`` (Armadillo). ``NS3_MPI=ON`` selects ``mpi`` automatically;
+``NS3_DPDK=ON`` similarly selects ``dpdk``, and ``NS3_NETANIM=ON`` selects
+``netanim`` to install Qt. CMake-based external projects receive the shared
+toolchain and installation directory; their child builds reuse dependencies
+without running another manifest installation.
+Select additional features before configuration, for example:
 
 .. sourcecode:: console
 
-  ~$ ./ns3 clean
-  ~$ ./ns3 configure -- -DNS3_VCPKG=ON
-  ...
-  -- vcpkg: setting up support
-  -- vcpkg: folder already exists, skipping git download
-  -- vcpkg: already bootstrapped
-  ...
-  -- vcpkg: Armadillo will be installed
-  -- vcpkg: Armadillo was installed
-  -- Armadillo was found? TRUE
+  ~$ ./ns3 configure --enable-vcpkg -- -DVCPKG_MANIFEST_FEATURES=onnx
 
-As shown above, the Armadillo library gets installed by vcpkg
-and it can be found by CMake's ``find_package`` function.
-We can then use it for our targets.
+To restrict dependency installation for a smaller module selection, use
+``-DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON`` and explicitly select features,
+for example ``-DVCPKG_MANIFEST_FEATURES=eigen;gsl;sqlite;xml``. Disabling an ns-3
+module alone does not remove its packages from the manifest's default features.
+Add new packages to the shared manifest instead of calling an installer from
+module CMake files. The legacy ``add_package()`` helper only checks installation.
 
-.. sourcecode:: cmake
+The mmWave checkout is attached through ``src/mmwave`` and inherits the
+superproject toolchain like the contribution modules. A separate full mmWave
+simulator checkout can use the same dependencies by passing the vcpkg toolchain
+and ``-DVCPKG_MANIFEST_DIR=/path/to/ns-3-dev`` before its first configuration.
+This repository's sparse mmWave checkout contains the module sources needed
+by the superproject rather than a complete standalone simulator.
 
-    # Install Armadillo
-    add_package(Armadillo) # Installs Armadillo with vcpkg
-    find_package(Armadillo) # Loads vcpkg installation of Armadillo
-    message(STATUS "Armadillo was found? ${ARMADILLO_FOUND}")
+The package installation directory defaults to the CMake build tree's
+``vcpkg_installed`` directory. Override it with ``VCPKG_INSTALLED_DIR`` to share
+an installation across separate builds using the same triplet. vcpkg also
+supports binary caching through ``VCPKG_BINARY_SOURCES``. Its toolchain infers
+the native architecture; set ``VCPKG_TARGET_TRIPLET`` and ``VCPKG_HOST_TRIPLET``
+explicitly for cross compilation. The MinGW default is ``x64-mingw-dynamic``;
+other MinGW architectures require explicit triplets. To use another toolchain,
+pass it through ``VCPKG_CHAINLOAD_TOOLCHAIN_FILE`` and select ``vcpkg.cmake`` as
+``CMAKE_TOOLCHAIN_FILE``.
 
-    # Include and link Armadillo to targets
-    include_directories(SYSTEM ${ARMADILLO_INCLUDE_DIRS})
-    link_libraries(${ARMADILLO_LIBRARIES})
+Python applications still require their own Python packages (such as cppyy,
+pyttb, Sionna, NumPy, Gymnasium or the pybind11 Python package). vcpkg supplies
+the native C++ dependencies; install Python packages into the interpreter or
+environment selected for the build. ns3-ai's Python protobuf dependency must
+be at least as new as the generator: the pinned baseline requires
+``protobuf>=6.33.4``. Its Python package metadata declares this minimum.
+Set ``Python_ROOT_DIR`` and ``Python3_ROOT_DIR`` consistently when selecting a
+non-default Python environment. The ``torch`` feature supplies the native
+PyTorch SDK for ns3-ai examples.
+TensorFlow C examples retain their module-local SDK setup because that SDK is
+not in the public vcpkg registry. BRITE, Click and ns-3 OpenFlow retain the existing
+``NS3_FETCH_OPTIONAL_COMPONENTS`` workflow because their ns-3-specific forks
+are not in the public vcpkg registry. The FlexRIC bridge's separate Docker image
+retains its container dependencies.
 
-.. _vcpkg manifests: https://learn.microsoft.com/en-us/vcpkg/users/manifests
-
-An alternative to manually installing packages with ``add_package`` is
-placing all packages into a ``vcpkg.json`` file in the ns-3 main directory.
-This mode is known as the "manifest mode" in the Vcpkg manual.
-Packages there will be automatically installed at the beginning of the configuration.
-More information about the manifest mode can be found in `vcpkg manifests`_ website.
-
-Let us see an example of this mode starting with the ``vcpkg.json`` file.
-
-.. sourcecode:: json
-
-    {
-      "dependencies": [
-        "sqlite3",
-        "eigen3",
-        "libxml2",
-        "gsl",
-        "boost-units"
-      ]
-    }
-
-These are some of the optional dependencies used by the upstream ns-3 modules.
-When configuring ns-3 with the Vcpkg support, we will see the following.
-
-.. sourcecode:: console
-
-    /ns-3-dev$ ./ns3 clean
-    /ns-3-dev$ ./ns3 configure -- -DNS3_VCPKG=ON
-    ...
-    -- vcpkg: setting up support
-    Cloning into 'vcpkg'...
-    Updating files: 100% (10434/10434), done.
-    Downloading vcpkg-glibc...
-    vcpkg package management program version 2023-08-02-6d13efa755f9b5e101712d210199e4139b4c29f6
-
-    See LICENSE.txt for license information.
-    -- vcpkg: detected a vcpkg manifest file: /ns-3-dev/vcpkg.json
-    A suitable version of cmake was not found (required v3.27.1) Downloading portable cmake 3.27.1...
-    Downloading cmake...
-    https://github.com/Kitware/CMake/releases/download/v3.27.1/cmake-3.27.1-linux-x86_64.tar.gz->/ns-3-dev/vcpkg/downloads/cmake-3.27.1-linux-x86_64.tar.gz
-    Extracting cmake...
-    Detecting compiler hash for triplet x64-linux...
-    The following packages will be built and installed:
-      * boost-array:x64-linux -> 1.82.0#2
-      ...
-      * boost-winapi:x64-linux -> 1.82.0#2
-        eigen3:x64-linux -> 3.4.0#2
-        gsl:x64-linux -> 2.7.1#3
-      * libiconv:x64-linux -> 1.17#1
-      * liblzma:x64-linux -> 5.4.3#1
-        libxml2[core,iconv,lzma,zlib]:x64-linux -> 2.10.3#1
-        sqlite3[core,json1]:x64-linux -> 3.42.0#1
-      * vcpkg-cmake:x64-linux -> 2023-05-04
-      * vcpkg-cmake-config:x64-linux -> 2022-02-06#1
-      * vcpkg-cmake-get-vars:x64-linux -> 2023-03-02
-      * zlib:x64-linux -> 1.2.13
-    Additional packages (*) will be modified to complete this operation.
-    Restored 0 package(s) from /root/.cache/vcpkg/archives in 98.7 us. Use --debug to see more details.
-    Installing 1/58 boost-uninstall:x64-linux...
-    ...
-    Installing 50/58 boost-units:x64-linux...
-    Building boost-units:x64-linux...
-    -- Downloading https://github.com/boostorg/units/archive/boost-1.82.0.tar.gz -> boostorg-units-boost-1.82.0.tar.gz...
-    -- Extracting source /ns-3-dev/vcpkg/downloads/boostorg-units-boost-1.82.0.tar.gz
-    -- Using source at /ns-3-dev/vcpkg/buildtrees/boost-units/src/ost-1.82.0-a9fdcc40b2.clean
-    -- Copying headers
-    -- Copying headers done
-    -- Installing: /ns-3-dev/vcpkg/packages/boost-units_x64-linux/share/boost-units/usage
-    -- Installing: /ns-3-dev/vcpkg/packages/boost-units_x64-linux/share/boost-units/copyright
-    -- Performing post-build validation
-    Stored binaries in 1 destinations in 276 ms.
-    Elapsed time to handle boost-units:x64-linux: 3.8 s
-    Installing 51/58 vcpkg-cmake-config:x64-linux...
-    Building vcpkg-cmake-config:x64-linux...
-    -- Installing: /ns-3-dev/vcpkg/packages/vcpkg-cmake-config_x64-linux/share/vcpkg-cmake-config/vcpkg_cmake_config_fixup.cmake
-    -- Installing: /ns-3-dev/vcpkg/packages/vcpkg-cmake-config_x64-linux/share/vcpkg-cmake-config/vcpkg-port-config.cmake
-    -- Installing: /ns-3-dev/vcpkg/packages/vcpkg-cmake-config_x64-linux/share/vcpkg-cmake-config/copyright
-    -- Performing post-build validation
-    Stored binaries in 1 destinations in 8.58 ms.
-    Elapsed time to handle vcpkg-cmake-config:x64-linux: 144 ms
-    Installing 52/58 eigen3:x64-linux...
-    Building eigen3:x64-linux...
-    -- Downloading https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz -> libeigen-eigen-3.4.0.tar.gz...
-    -- Extracting source /ns-3-dev/vcpkg/downloads/libeigen-eigen-3.4.0.tar.gz
-    -- Applying patch remove_configure_checks.patch
-    -- Applying patch fix-vectorized-reductions-half.patch
-    -- Using source at /ns-3-dev/vcpkg/buildtrees/eigen3/src/3.4.0-74a8d62212.clean
-    -- Configuring x64-linux
-    -- Building x64-linux-dbg
-    -- Building x64-linux-rel
-    -- Fixing pkgconfig file: /ns-3-dev/vcpkg/packages/eigen3_x64-linux/lib/pkgconfig/eigen3.pc
-    CMake Error at scripts/cmake/vcpkg_find_acquire_program.cmake:163 (message):
-      Could not find pkg-config.  Please install it via your package manager:
-
-          sudo apt-get install pkg-config
-    Call Stack (most recent call first):
-      scripts/cmake/vcpkg_fixup_pkgconfig.cmake:203 (vcpkg_find_acquire_program)
-      ports/eigen3/portfile.cmake:30 (vcpkg_fixup_pkgconfig)
-      scripts/ports.cmake:147 (include)
-
-
-    error: building eigen3:x64-linux failed with: BUILD_FAILED
-    Elapsed time to handle eigen3:x64-linux: 19 s
-    Please ensure you're using the latest port files with `git pull` and `vcpkg update`.
-    Then check for known issues at:
-        https://github.com/microsoft/vcpkg/issues?q=is%3Aissue+is%3Aopen+in%3Atitle+eigen3
-    You can submit a new issue at:
-        https://github.com/microsoft/vcpkg/issues/new?title=[eigen3]+Build+error&body=Copy+issue+body+from+%2Fns-3-dev%2Fvcpkg%2Finstalled%2Fvcpkg%2Fissue_body.md
-
-    CMake Error at build-support/3rd-party/colored-messages.cmake:82 (_message):
-      vcpkg: packages defined in the manifest failed to be installed
-    Call Stack (most recent call first):
-      build-support/custom-modules/ns3-vcpkg-hunter.cmake:138 (message)
-      build-support/custom-modules/ns3-vcpkg-hunter.cmake:183 (setup_vcpkg)
-      build-support/macros-and-definitions.cmake:743 (include)
-      CMakeLists.txt:149 (process_options)
-
-As we can see above, the setup failed during the eigen3 setup due to a missing dependency.
-In this case, pkg-config. We can install it using the system package manager and then
-resume the ns-3 configuration.
-
-
-.. sourcecode:: console
-
-    /ns-3-dev$ apt install -y pkg-config
-    /ns-3-dev$ ./ns3 configure -- -DNS3_VCPKG=ON
-    ...
-    -- vcpkg: folder already exists, skipping git download
-    -- vcpkg: already bootstrapped
-    -- vcpkg: detected a vcpkg manifest file: /ns-3-dev/vcpkg.json
-    Detecting compiler hash for triplet x64-linux...
-    The following packages will be built and installed:
-        eigen3:x64-linux -> 3.4.0#2
-        gsl:x64-linux -> 2.7.1#3
-      * libiconv:x64-linux -> 1.17#1
-      * liblzma:x64-linux -> 5.4.3#1
-        libxml2[core,iconv,lzma,zlib]:x64-linux -> 2.10.3#1
-        sqlite3[core,json1]:x64-linux -> 3.42.0#1
-      * zlib:x64-linux -> 1.2.13
-    Additional packages (*) will be modified to complete this operation.
-    Restored 0 package(s) from /root/.cache/vcpkg/archives in 97.6 us. Use --debug to see more details.
-    Installing 1/7 eigen3:x64-linux...
-    Building eigen3:x64-linux...
-    -- Using cached libeigen-eigen-3.4.0.tar.gz.
-    -- Cleaning sources at /ns-3-dev/vcpkg/buildtrees/eigen3/src/3.4.0-74a8d62212.clean. Use --editable to skip cleaning for the packages you specify.
-    -- Extracting source /ns-3-dev/vcpkg/downloads/libeigen-eigen-3.4.0.tar.gz
-    -- Applying patch remove_configure_checks.patch
-    -- Applying patch fix-vectorized-reductions-half.patch
-    -- Using source at /ns-3-dev/vcpkg/buildtrees/eigen3/src/3.4.0-74a8d62212.clean
-    -- Configuring x64-linux
-    -- Building x64-linux-dbg
-    -- Building x64-linux-rel
-    -- Fixing pkgconfig file: /ns-3-dev/vcpkg/packages/eigen3_x64-linux/lib/pkgconfig/eigen3.pc
-    -- Fixing pkgconfig file: /ns-3-dev/vcpkg/packages/eigen3_x64-linux/debug/lib/pkgconfig/eigen3.pc
-    -- Installing: /ns-3-dev/vcpkg/packages/eigen3_x64-linux/share/eigen3/copyright
-    -- Performing post-build validation
-    Stored binaries in 1 destinations in 1.7 s.
-    Elapsed time to handle eigen3:x64-linux: 28 s
-    Installing 2/7 gsl:x64-linux...
-    ...
-    Installing 7/7 sqlite3:x64-linux...
-    Building sqlite3[core,json1]:x64-linux...
-    -- Downloading https://sqlite.org/2023/sqlite-amalgamation-3420000.zip -> sqlite-amalgamation-3420000.zip...
-    -- Extracting source /ns-3-dev/vcpkg/downloads/sqlite-amalgamation-3420000.zip
-    -- Applying patch fix-arm-uwp.patch
-    -- Applying patch add-config-include.patch
-    -- Using source at /ns-3-dev/vcpkg/buildtrees/sqlite3/src/on-3420000-e624a7f335.clean
-    -- Configuring x64-linux
-    -- Building x64-linux-dbg
-    -- Building x64-linux-rel
-    -- Fixing pkgconfig file: /ns-3-dev/vcpkg/packages/sqlite3_x64-linux/lib/pkgconfig/sqlite3.pc
-    -- Fixing pkgconfig file: /ns-3-dev/vcpkg/packages/sqlite3_x64-linux/debug/lib/pkgconfig/sqlite3.pc
-    -- Installing: /ns-3-dev/vcpkg/packages/sqlite3_x64-linux/share/sqlite3/usage
-    -- Performing post-build validation
-    Stored binaries in 1 destinations in 430 ms.
-    Elapsed time to handle sqlite3:x64-linux: 42 s
-    Total install time: 2.5 min
-    The package boost is compatible with built-in CMake targets:
-
-        find_package(Boost REQUIRED [COMPONENTS <libs>...])
-        target_link_libraries(main PRIVATE Boost::boost Boost::<lib1> Boost::<lib2> ...)
-
-    eigen3 provides CMake targets:
-
-        # this is heuristically generated, and may not be correct
-        find_package(Eigen3 CONFIG REQUIRED)
-        target_link_libraries(main PRIVATE Eigen3::Eigen)
-
-    The package gsl is compatible with built-in CMake targets:
-
-        find_package(GSL REQUIRED)
-        target_link_libraries(main PRIVATE GSL::gsl GSL::gslcblas)
-
-    The package libxml2 is compatible with built-in CMake targets:
-
-        find_package(LibXml2 REQUIRED)
-        target_link_libraries(main PRIVATE LibXml2::LibXml2)
-
-    sqlite3 provides pkgconfig bindings.
-    sqlite3 provides CMake targets:
-
-        find_package(unofficial-sqlite3 CONFIG REQUIRED)
-        target_link_libraries(main PRIVATE unofficial::sqlite3::sqlite3)
-
-    -- vcpkg: packages defined in the manifest were installed
-    -- find_external_library: SQLite3 was found.
-    ...
-    -- LibXML2 was found.
-    ...
-    -- Found Boost: /ns-3-dev/vcpkg/installed/x64-linux/include (found version "1.82.0")
-    ...
-    -- Looking for include files boost/units/quantity.hpp, boost/units/systems/si.hpp
-    -- Looking for include files boost/units/quantity.hpp, boost/units/systems/si.hpp - found
-    -- Boost Units have been found.
-    ...
-    -- ---- Summary of ns-3 settings:
-    Build profile                 : default
-    Build directory               : /ns-3-dev/build
-    Build with runtime asserts    : ON
-    ...
-    GNU Scientific Library (GSL)  : ON
-    ...
-    LibXml2 support               : ON
-    ...
-    SQLite support                : ON
-    Eigen3 support                : ON
-    ...
-
-From the above, we can see that the headers and libraries installed by the packages
-were correctly found by CMake and the optional features were successfully enabled.
-
-.. _Armadillo's port on vcpkg: https://github.com/microsoft/vcpkg/blob/master/ports/armadillo/usage
-
-Note: not every vcpkg package (also known as a port) obeys
-the same pattern for usage. The user of the package needs
-to look into the usage file of said port for instructions.
-In the case of Armadillo, the corresponding file can be found
-in `Armadillo's port on vcpkg`_.
-
-Vcpkg is installed to a ``vcpkg`` directory inside the ns-3 main directory (e.g. ``ns-3-dev``).
-Packages installed via vcpkg are installed to ``ns-3-dev/vcpkg/installed/${VCPKG_TRIPLET}``,
-which is automatically added to the ``CMAKE_PREFIX_PATH``, making headers, libraries, and
-pkg-config and CMake packages discoverable via ``find_file``, ``find_library``, ``find_package``
-and ``pkg_check_modules``.
+See `vcpkg CMake integration <https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration>`_
+for toolchain settings and `vcpkg manifests <https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode>`_
+for dependency and feature declarations.
 
 CPM
 ===

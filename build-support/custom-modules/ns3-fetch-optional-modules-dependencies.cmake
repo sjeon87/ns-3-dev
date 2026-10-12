@@ -7,6 +7,7 @@ ExternalProject_Add(
   PREFIX brite_dep
   BUILD_IN_SOURCE TRUE
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_OUTPUT_DIRECTORY}
+             ${NS3_VCPKG_EXTERNAL_PROJECT_ARGS}
 )
 
 ExternalProject_Add(
@@ -30,6 +31,7 @@ ExternalProject_Add(
   PREFIX openflow_dep
   BUILD_IN_SOURCE TRUE
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_OUTPUT_DIRECTORY}
+             ${NS3_VCPKG_EXTERNAL_PROJECT_ARGS}
 )
 
 find_file(

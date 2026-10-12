@@ -337,13 +337,17 @@ function(build_lib_reexport_third_party_libraries libname libraries_to_link)
     # treated differently
     set(new_exported_include_directories)
     foreach(directory ${exported_include_directories})
-      string(FIND "${directory}" "${PROJECT_SOURCE_DIR}" is_prefixed_in_subdir)
-      if(${is_prefixed_in_subdir} GREATER_EQUAL 0)
-        string(SUBSTRING "${directory}" ${is_prefixed_in_subdir} -1
-                         directory_path
-        )
+      cmake_path(
+        IS_PREFIX PROJECT_SOURCE_DIR "${directory}" NORMALIZE
+        is_source_directory
+      )
+      cmake_path(
+        IS_PREFIX PROJECT_BINARY_DIR "${directory}" NORMALIZE
+        is_binary_directory
+      )
+      if(is_source_directory OR is_binary_directory)
         list(APPEND new_exported_include_directories
-             $<BUILD_INTERFACE:${directory_path}>
+             $<BUILD_INTERFACE:${directory}>
         )
       else()
         list(APPEND new_exported_include_directories ${directory})

@@ -1,0 +1,106 @@
+{
+  "name": "ns3",
+  "version-string": "3-dev",
+  "builtin-baseline": "2750401336fb7c95f6619657a46a7e798661341c",
+  "dependencies": [
+    "boost-math",
+    "boost-units",
+    "nlohmann-json"
+  ],
+  "default-features": [
+    "eigen",
+    "gsl",
+    "ns3-ai",
+    "sqlite",
+    "xml"
+  ],
+  "features": {
+    "dpdk": {
+      "description": "DPDK-backed fd-net-device support",
+      "dependencies": [
+        "dpdk"
+      ]
+    },
+    "eigen": {
+      "description": "Eigen matrix support for ns-3, NR and mmWave",
+      "dependencies": [
+        "eigen3"
+      ]
+    },
+    "gsl": {
+      "description": "GNU Scientific Library support",
+      "dependencies": [
+        "gsl"
+      ]
+    },
+    "gtk": {
+      "description": "GTK configuration editor",
+      "dependencies": [
+        "gtk3",
+        "harfbuzz"
+      ]
+    },
+    "mpi": {
+      "description": "Distributed simulation",
+      "dependencies": [
+        "mpi"
+      ]
+    },
+    "netanim": {
+      "description": "Qt GUI dependencies for NetAnim",
+      "dependencies": [
+        {
+          "name": "qtbase",
+          "default-features": false,
+          "features": [
+            "gui",
+            "widgets"
+          ]
+        }
+      ]
+    },
+    "ns3-ai": {
+      "description": "ns3-ai and dependent O-RAN modules, including generated protobuf bindings",
+      "dependencies": [
+        "boost-interprocess",
+        "boost-program-options",
+        "protobuf",
+        {
+          "name": "protobuf",
+          "host": true
+        },
+        "pybind11"
+      ]
+    },
+    "onnx": {
+      "description": "O-RAN ONNX inference",
+      "dependencies": [
+        "onnxruntime"
+      ]
+    },
+    "package-manager-test": {
+      "description": "Armadillo package manager integration test",
+      "dependencies": [
+        "armadillo"
+      ]
+    },
+    "sqlite": {
+      "description": "SQLite statistics and O-RAN repositories",
+      "dependencies": [
+        "sqlite3"
+      ]
+    },
+    "torch": {
+      "description": "ns3-ai pure C++ PyTorch examples",
+      "dependencies": [
+        "libtorch"
+      ]
+    },
+    "xml": {
+      "description": "XML configuration storage",
+      "dependencies": [
+        "libxml2"
+      ]
+    }
+  }
+}

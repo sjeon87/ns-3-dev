@@ -6,7 +6,27 @@ cmake_minimum_required(VERSION 3.25..3.25)
 # ##############################################################################
 # Project name                        #
 # ##############################################################################
+include(build-support/custom-modules/ns3-vcpkg.cmake)
+
 project(NS3 CXX)
+
+if(NS3_VCPKG)
+  set(NS3_VCPKG_EXTERNAL_PROJECT_ARGS
+      "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
+      "-DVCPKG_MANIFEST_DIR=${VCPKG_MANIFEST_DIR}"
+      "-DVCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR}"
+      "-DVCPKG_MANIFEST_INSTALL=OFF"
+      "-DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}"
+      "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+  )
+  foreach(ns3_vcpkg_variable VCPKG_HOST_TRIPLET VCPKG_CHAINLOAD_TOOLCHAIN_FILE)
+    if(DEFINED ${ns3_vcpkg_variable})
+      list(APPEND NS3_VCPKG_EXTERNAL_PROJECT_ARGS
+           "-D${ns3_vcpkg_variable}=${${ns3_vcpkg_variable}}"
+      )
+    endif()
+  endforeach()
+endif()
 
 file(STRINGS VERSION NS3_VER)
 
@@ -91,7 +111,6 @@ option(NS3_EIGEN "Build with Eigen support" ON)
 option(NS3_STATIC "Build a static ns-3 library and link it against executables"
        OFF
 )
-option(NS3_VCPKG "Enable the Vcpkg C++ library manager support" OFF)
 option(NS3_VERBOSE "Print additional build system messages" OFF)
 option(NS3_VISUALIZER "Build visualizer module" ON)
 option(NS3_WARNINGS "Enable compiler warnings" ON)

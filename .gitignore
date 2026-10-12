@@ -44,9 +44,13 @@ version.cache
 .gitlab-ci-local/
 .idea/
 cmake-*/
-vcpkg/
+/vcpkg/
 
 .vs/
 
 # Ignore local cache used by e.g. clangd
 .cache/
+
+# vcpkg manifest installations and binary cache
+vcpkg_installed/
+.vcpkg-cache/

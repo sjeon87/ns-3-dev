@@ -301,6 +301,7 @@ macro(process_options)
         GIT_REPOSITORY "https://github.com/aras-p/ClangBuildAnalyzer.git"
         GIT_TAG "47406981a1c5a89e8f8c62802b924c3e163e7cb4"
         CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                   ${NS3_VCPKG_EXTERNAL_PROJECT_ARGS}
         INSTALL_COMMAND cmake -E copy_if_different ClangBuildAnalyzer
                         ${PROJECT_BINARY_DIR}
       )
@@ -525,33 +526,23 @@ macro(process_options)
   # Set common include folder (./build/include, where we find ns3/core-module.h)
   include_directories(${CMAKE_OUTPUT_DIRECTORY}/include)
 
-  # Vendored third-party header-only libraries (e.g. nlohmann/json).
-  #
-  # Rather than placing the generic third-party/ directory on the global include
-  # path -- which would assume that every vendored library is header-only and
-  # follows the same <library>/header layout -- copy the specific vendored
-  # library into the build-tree include directory (build/include, already added
-  # to the include path above). Consumers then use the upstream include path,
-  # e.g. #include <nlohmann/json.hpp>. Re-run CMake after updating the vendored
-  # copy under third-party/nlohmann/ to refresh it.
-  file(COPY ${PROJECT_SOURCE_DIR}/third-party/nlohmann
-       DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include
-  )
+  if(NS3_VCPKG)
+    file(REMOVE_RECURSE "${CMAKE_OUTPUT_DIRECTORY}/include/nlohmann")
+    find_package(nlohmann_json CONFIG REQUIRED)
+    get_target_property(
+      ns3_json_include_dirs nlohmann_json::nlohmann_json
+      INTERFACE_INCLUDE_DIRECTORIES
+    )
+    include_directories(SYSTEM ${ns3_json_include_dirs})
+  else()
+    file(COPY ${PROJECT_SOURCE_DIR}/third-party/nlohmann
+         DESTINATION ${CMAKE_OUTPUT_DIRECTORY}/include
+    )
+    install(DIRECTORY ${CMAKE_OUTPUT_DIRECTORY}/include/nlohmann
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+  endif()
 
-  # Install the vendored header alongside the ns-3 public headers. This keeps an
-  # installed ns-3 self-contained should the library ever be included from an
-  # installed ns-3 header (a public header that includes <nlohmann/json.hpp>
-  # would otherwise fail to compile for downstream users).
-  install(DIRECTORY ${CMAKE_OUTPUT_DIRECTORY}/include/nlohmann
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  )
-
-  # Include our package managers
-  # cmake-format: off
-  # Starting with a custom cmake file that provides a Hunter-like interface to vcpkg
-  # Use add_package(package) to install a package
-  # Then find_package(package) to use it
-  # cmake-format: on
   include(ns3-vcpkg-hunter)
 
   # Then the beautiful CPM manager (too bad it doesn't work with everything)
@@ -582,7 +573,7 @@ macro(process_options)
       find_package(ARMADILLO REQUIRED)
       message(STATUS "Armadillo was found? ${ARMADILLO_FOUND}")
     elseif(${TEST_PACKAGE_MANAGER} STREQUAL "VCPKG")
-      add_package(Armadillo)
+      add_package(armadillo)
       find_package(Armadillo REQUIRED)
       message(STATUS "Armadillo was found? ${ARMADILLO_FOUND}")
     else()
@@ -1415,6 +1406,7 @@ macro(process_options)
       GIT_TAG netanim-3.110
       BUILD_IN_SOURCE TRUE
       CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_OUTPUT_DIRECTORY}
+                 ${NS3_VCPKG_EXTERNAL_PROJECT_ARGS}
     )
   endif()
 
