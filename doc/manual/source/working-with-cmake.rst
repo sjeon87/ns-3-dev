@@ -1616,7 +1616,9 @@ QUIC, NTN and O-RAN submodules and the mmWave module linked through ``src/mmwave
 Satellite data has no native library dependencies. A pybind11 overlay supplies
 headers and CMake integration without installing another Python runtime, so
 bindings use the selected host Python environment. The overlay is pinned to
-an upstream release and verifies its source archive with SHA512.
+an upstream release and verifies its source archive with SHA512. A GSL overlay
+exports the functions needed by ns-3 when building shared libraries with MinGW.
+It uses the GSL version from the manifest baseline.
 
 Optional manifest features are ``gtk``, ``mpi``, ``onnx``, ``dpdk``, ``torch``, ``netanim`` and
 ``package-manager-test`` (Armadillo). ``NS3_MPI=ON`` selects ``mpi`` automatically;
