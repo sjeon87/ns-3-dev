@@ -263,6 +263,10 @@ that includes creating a GitLab account, forking the ns-3-dev project
 under the new account's name, and then cloning the forked repository.
 You can find more information in the [manual](https://www.nsnam.org/docs/manual/html/working-with-git.html).
 
+This fork tracks declared upstream repositories and selected upstream paths with
+`python3 utils/upstream-status.py scan`. See [upstream tracking](doc/upstream-tracking.md)
+for reports, integration strategies, review receipts, and scheduled audits.
+
 ## Contributing to ns-3
 
 The process of contributing to the ns-3 project varies with

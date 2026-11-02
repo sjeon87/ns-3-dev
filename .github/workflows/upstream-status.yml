@@ -1,0 +1,66 @@
+name: Upstream status
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 23 * * 0'
+  push:
+    paths:
+      - upstream
+      - upstream-state.json
+      - upstream-map.json
+      - .gitmodules
+      - utils/upstream-status.py
+      - utils/tests/test-upstream-status.py
+      - .github/workflows/upstream-status.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-status-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - name: Test the tracker
+        run: python3 utils/tests/test-upstream-status.py -v
+      - name: Restore upstream observations and objects
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/upstream
+          key: upstream-status-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: upstream-status-${{ runner.os }}-
+      - name: Audit upstreams
+        run: |
+          rm -f .cache/upstream/status.md .cache/upstream/status.json
+          python3 utils/upstream-status.py scan --timeout 600 --fail-on-attention
+      - name: Save upstream observations and objects
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/upstream
+          key: upstream-status-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Add report to job summary
+        if: always()
+        run: |
+          if test -f .cache/upstream/status.md; then
+            cat .cache/upstream/status.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-status
+          path: |
+            .cache/upstream/status.md
+            .cache/upstream/status.json
+            .cache/upstream/observations.json
+          if-no-files-found: warn

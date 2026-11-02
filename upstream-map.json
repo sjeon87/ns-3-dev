@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "mappings": [
+    {
+      "project": "external/ns3-mmwave",
+      "url": "https://github.com/Muhammaduazir69/ns3-ntn-toolkit",
+      "path": "contrib/mmwave",
+      "destination": "src/mmwave"
+    }
+  ]
+}
