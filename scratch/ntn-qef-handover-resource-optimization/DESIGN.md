@@ -1,6 +1,6 @@
 # Quasi-Earth-fixed NTN handover resource allocation: design
 
-**Version:** 2.
+**Version:** 3.
 
 **Date:** 2026-11-05.
 
@@ -11,16 +11,17 @@ does not point to local folders or files outside this study.
 
 Where this document differs from the intent statement, this document takes precedence.
 
-## Changes in version 2
+## Changes in version 3
 
-1. Removed all local folder and file references.
-2. Added population density as an input.
-3. Added the allocator algorithm and its time and space complexity as outputs.
-4. Added a control-variable summary for repeated simulations.
-5. Added prior-work, similar-work, and duplicate-work research.
-6. Added the post-decision re-allocation problem to the backlog.
-7. Removed pre-existing target traffic and its constraints.
-8. Evaluated ns-3, Python, and MATLAB, and selected Python.
+1. Realized the post-decision re-allocation problem from the version 2 backlog.
+2. Realized multi-cell candidate selection on one satellite.
+3. Kept the ns-3 validation slice conditional.
+4. Added two preemption policies and three balancing policies, all compared.
+5. Added the arrival process and the commitment horizon as inputs.
+6. Added re-allocation and multi-cell KPIs, artifacts, and experiments.
+7. Extended the algorithm and complexity for candidate cells and re-planning.
+8. Added related work on re-allocation and arrival-aware management.
+9. Left only conditional and future items in the backlog.
 
 ## 1. Problem and objective
 
@@ -29,13 +30,19 @@ At a handover epoch, a batch of incoming UEs must access the target. Each UE has
 access capability profile and a delay budget. The target activates only C cells at a
 time through a fixed beam-hopping schedule.
 
-The task is one joint decision at the epoch. For every incoming UE, choose an access
-type and a time-frequency resource. The choice must respect the UE capability, the
-cell active mask, the cell bandwidth, and the random-access resources.
+The study has two decisions.
 
-The primary output is a per-UE assignment. The secondary outputs are the allocator
-algorithm with its complexity, and the measured outcome: access attempts, handover
-success, completion time, and delay-budget violations.
+The first decision is the initial batch plan. For every incoming UE, choose a candidate
+cell, an access type, and a time-frequency resource. The choice must respect the UE
+capability, the candidate set, the cell active mask, the cell bandwidth, and the
+random-access resources.
+
+The second decision is the re-allocation after a new UE arrives. A new UE can attach or
+connect after the initial plan. The target must decide whether to re-plan, which leases
+to move, and how to charge the disruption to the UEs that already hold a plan.
+
+The study also compares re-plan policies. Two preemption policies and three balancing
+policies form a six-policy matrix. All six are implemented and compared.
 
 The target starts empty. This version does not model pre-existing traffic. A loaded
 target is outside the scope.
@@ -43,12 +50,13 @@ target is outside the scope.
 ### 1.1 Meaning of optimal
 
 "Optimal" in this study means optimal for a declared discrete model. The model sets
-four things:
+five things:
 
 1. the finite option set per UE,
 2. the slot grid and the resource granularity,
 3. the random seed and the resulting random draws,
-4. the lexicographic objective in section 9.3.
+4. the arrival trace and the commitment horizon,
+5. the lexicographic objective in sections 9.3 and 9.12.
 
 The study does not claim optimality for the stochastic network, for the real protocol,
 or for any continuous relaxation. Section 9.5 states the reference classes and their
@@ -56,13 +64,17 @@ limits.
 
 ### 1.2 Research questions
 
-1. Which access type should each UE use when capabilities and delay budgets differ?
-2. How much does joint access and resource selection improve over a fixed access rule?
+1. Which access type and candidate cell should each UE use when capabilities and delay
+   budgets differ?
+2. How much does joint access, cell, and resource selection improve over a fixed rule?
 3. How do the active-cell count and the beam dwell change the access mix and the
    violation rate?
 4. When does contention bind, and when do control and preamble constraints bind?
-5. How close is the online allocator to the exact reference on tiny instances, and how
-   does that gap grow with scale?
+5. When a new UE arrives, which re-plan policy gives the best service without
+   excessive churn?
+6. Does allowing preemption of prepared or committed leases beat a policy that moves
+   only uncommitted leases?
+7. How close is the online allocator to the exact reference on tiny instances?
 
 ### 1.3 Hypotheses
 
@@ -74,6 +86,10 @@ These are tests, not assumptions.
   many UEs fail MsgA in the same occasion.
 - H3: The beam schedule sets a hard lower bound on completion time. A budget below that
   bound is infeasible for some cells, whatever the access type.
+- H4: Candidate-cell selection helps edge UEs, because a neighboring cell can be active
+  sooner. The gain grows with the duty-cycle imbalance across cells.
+- H5: Allowing preemption improves the new UE's success rate. The gain falls as the
+  commitment horizon grows, because more leases are frozen.
 
 ## 2. Inputs, derived inputs, and outputs
 
@@ -85,6 +101,8 @@ These are tests, not assumptions.
 | Minimum elevation | `theta_min` | deg | 30 | Full profile |
 | Cell circumradius | `r_c` | km | 25 | Geometry |
 | Cell layout | - | rings or derived | derived | Full profile |
+| Candidate cells per UE | `Q` | count | 3 | Multi-cell |
+| Candidate edge margin | `m_e` | km | 0 | Multi-cell |
 | Active cells | `C` | count | 19 (cluster), 64 (full) | Hop |
 | Beam dwell | `D` | ms | 20 | Hop |
 | Cell bandwidth | `B_c` | MHz | 15 | Radio |
@@ -94,6 +112,12 @@ These are tests, not assumptions.
 | Active UE fraction | `alpha` | fraction | 1.0 | Population |
 | Capability profile shares | - | fractions | Table 6.2 | Population |
 | Delay budget classes | `B_u` | ms | 100/200/400/800 | Population |
+| New-UE arrival mode | - | poisson or fixed | poisson | Re-allocation |
+| Arrival rate | `lambda_f` | fraction of `N_in` per s | 0.05 | Re-allocation |
+| First arrival time | `t_first` | ms | 100 | Re-allocation |
+| Commitment horizon | `H_c` | ms | 20 | Re-allocation |
+| Preemption policy | - | two values | both compared | Re-allocation |
+| Balancing policy | - | three values | all compared | Re-allocation |
 | Random-access resources | - | pools | Section 7.3 | Radio |
 
 The population density is the primary population input. A person is not a UE. The
@@ -101,8 +125,6 @@ terminal penetration converts persons to terminals, and the active fraction conv
 terminals to UEs that attempt access at the epoch.
 
 ### 2.2 Derived inputs
-
-The model derives these quantities:
 
 | Quantity | Formula |
 |---|---|
@@ -115,21 +137,26 @@ The model derives these quantities:
 | UEs per cell | `N_in(c) = round(rho * pi * alpha * A_c)` |
 | Total incoming UEs | `N_in = sum over cells of N_in(c)` |
 | PRB count | `N_PRB = floor(B_c / (12 * SCS))` |
+| Candidate set | cells whose center distance to the UE is at most `r_c + m_e`, capped at `Q` |
+| Initial batch | `N_in` UEs at the epoch |
+| Arrival process | Poisson with rate `lambda_f * N_in` per second, or one fixed batch |
 
 ### 2.3 Outputs
 
 | Output | Form |
 |---|---|
-| Per-UE assignment | `(cell, access, start slot, PRB range, occasion, preamble, CG/DG slot)` |
-| Allocator algorithm | Pseudocode in section 9.6 |
-| Time complexity | Per-stage and total bounds in section 9.7 |
-| Space complexity | Ledger and option storage bounds in section 9.7 |
+| Initial per-UE assignment | `(cell, access, start slot, PRB range, occasion, preamble, CG/DG slot)` |
+| Re-allocation decision | accept or reject, moved leases, new-UE placement |
+| Policy comparison | six-policy matrix results, section 14 |
+| Batch algorithm | pseudocode in section 9.6 |
+| Batch complexity | time and space bounds in section 9.7 |
+| Re-allocation algorithm | pseudocode in section 9.10 |
+| Re-allocation complexity | time and space bounds in section 9.11 |
 | KPIs | Section 10 |
 | Exact-reference gap | Tiny instances only, section 9.8 |
-| Validation record | Gate results and limits, section 12.6 |
 
-The algorithm and its complexity are deliverables, not simulation artifacts. The study
-reports them with the code.
+The algorithms and their complexity are deliverables, not simulation artifacts. The
+study reports them with the code.
 
 ## 3. Scope
 
@@ -139,12 +166,15 @@ reports them with the code.
 |---|---|
 | Target satellite | One satellite with a QEF footprint and a beam-hopping payload |
 | Cells | Hexagonal cells inside the footprint, fixed on the ground |
+| Candidate cells | Up to `Q = 3` cells that cover the UE, one chosen per UE |
 | Incoming UEs | Batch released at the epoch, with capabilities and delay budgets |
+| New UEs after the plan | Poisson or fixed-batch arrivals, each may trigger a re-plan |
 | Access types | 4-step CBRA, 4-step CFRA, 2-step CBRA, 2-step CFRA, RACH-less CG, RACH-less DG |
 | Resources | PRB by slot grid, PRACH occasions, contention and dedicated preambles, PDCCH CCEs, PUSCH and PDSCH PRB-symbols |
-| Decision | One batch decision at the epoch, executed over a short horizon |
-| Algorithm | Greedy marginal-benefit allocator with a swap pass |
-| Outputs | Access type and resource per UE, algorithm, complexity, KPIs |
+| Decisions | One initial batch decision, then an event-driven re-plan at each arrival |
+| Re-plan policies | Two preemption policies and three balancing policies, all compared |
+| Algorithms | Greedy marginal-benefit allocator with a swap pass, plus incremental re-plan |
+| Outputs | Assignments, re-plan decisions, algorithm, complexity, KPIs |
 
 ### 3.2 Out of scope
 
@@ -158,30 +188,34 @@ reports them with the code.
 | Core network and application traffic | The delay budget is an access budget, not a packet budget |
 | Inter-cell interference | Cells are independent for access. Reuse is a declared scenario input |
 | UE mobility | UEs are static during the run |
-| Cell reselection | The cell is fixed by UE position. The study does not select a cell |
-| Multi-satellite candidate selection | One target only |
+| Multiple satellites | Version 3 adds candidate cells on one satellite, not multi-satellite selection |
 | Pre-existing target traffic | The target starts empty in this version |
 | HARQ for data and RLC | Access retries are modeled. Data retransmission is not |
-| Post-decision re-allocation | Deferred to the backlog, section 15 |
+| Multi-satellite visibility | Deferred to the backlog, section 15 |
 
 ## 4. Decision log
 
 | ID | Question | Decision | Why |
 |---|---|---|---|
 | D-1 | Where does the study live? | This folder, as new code | The study is independent |
-| D-2 | What is the decision scope? | One batch decision at the epoch | The target plans once, then executes |
-| D-3 | What does the delay budget bound? | Epoch to access completion | The study measures access, not application packets |
+| D-2 | What is the initial decision scope? | One batch decision at the epoch | The target plans once, then executes |
+| D-3 | What does the delay budget bound? | Arrival or epoch to access completion | The study measures access, not application packets |
 | D-4 | How detailed are the access models? | Abstract event model, calibrated | 2-step and RACH-less paths have no usable full-stack model here |
 | D-5 | Does the target start empty? | Yes. Pre-existing traffic is removed in version 2 | The batch problem is isolated first |
 | D-6 | What is the resource granularity? | PRB by slot per cell and direction, plus control and PRACH pools | The output must name concrete resources |
 | D-7 | What is the geometry? | Static snapshot with per-UE elevation and propagation | The intent puts satellite motion out of scope |
 | D-8 | How does beam hopping work? | Round-robin cell groups, C active, fixed dwell | The intent gives the active-cell count as an input |
-| D-9 | Does a UE choose a cell? | No. The cell follows from the UE position | The intent asks for access type and resource, not cell |
+| D-9 | Does a UE choose a cell? | Yes, from up to three candidate cells | Realized from the version 2 backlog |
 | D-10 | Which access types are modeled? | All six named in the intent | The comparison is the core of the study |
 | D-11 | What optimizer class? | Greedy marginal-benefit heuristic plus an exact reference on tiny instances | The study needs a deployable policy and a bound |
 | D-12 | How is the population sized? | Density times penetration times active fraction | The intent asks for a density input |
 | D-13 | What implementation environment? | Python, not ns-3 or MATLAB | Section 11 gives the evaluation |
-| D-14 | What is deferred? | Re-allocation after a late UE attach | Section 15 records the backlog item |
+| D-14 | What happens after a new UE arrives? | Event-driven re-plan, local first, global fallback | Realized from the version 2 backlog |
+| D-15 | Which leases may move? | Both policies are compared: uncommitted only, and any lease with compensation | The user asked for the comparison |
+| D-16 | How is the new UE balanced against existing UEs? | All three policies are compared: total-first, existing-first, stability-first | The user asked for the comparison |
+| D-17 | How many candidate cells? | Up to three on one satellite | The user chose this scope |
+| D-18 | Is the ns-3 validation realized? | No. It stays conditional | The user chose this scope |
+| D-19 | How do new UEs arrive? | Poisson by default, with a fixed-batch test mode | A general process plus a deterministic test |
 
 ## 5. Geometry and beam schedule
 
@@ -246,7 +280,7 @@ Two reference profiles use 25 km cells:
 
 | Profile | `N_cells` | Footprint radius | Edge elevation | Edge delay | Purpose |
 |---|---:|---:|---:|---:|---|
-| cluster | 37 | 129.9 km | 76.6 deg | 2.052 ms | Mechanism and exact reference |
+| cluster | 37 | 129.9 km | 76.6 deg | 2.052 ms | Mechanism, exact reference, re-allocation |
 | full | 1373 | 853.47 km | 30.0 deg | 3.586 ms | Scale and geometry |
 
 The cluster is three hex rings around the center cell (`1 + 6 + 12 + 18 = 37`). It is a
@@ -285,18 +319,42 @@ Dwell values for the sweep are 5, 10, 20, 50, and 100 ms. Active-cell values are
 is longer than the dwell.
 
 The hop schedule is a hard constraint. A UE in an inactive cell cannot transmit. It
-waits for the next active dwell of its cell. That wait is part of the access latency,
-even when the UE has a dedicated grant.
+waits for the next active dwell of its chosen cell. That wait is part of the access
+latency, even when the UE has a dedicated grant.
 
 ### 5.4 UE placement
 
-Each UE is placed uniformly at random inside its cell, using an area-uniform draw on
-the hexagon. The population generator draws `N_in(c)` UEs for each cell. For an
-imported population, the cell index is the index of the nearest lattice center. A UE
+Each UE is placed uniformly at random inside its serving cell, using an area-uniform
+draw on the hexagon. The population generator draws `N_in(c)` UEs for each cell. For an
+imported population, the serving cell is the cell with the nearest lattice center. A UE
 outside every cell is not created. The generator reports the number of rejected draws.
 
 The default placement is uniform, not edge-heavy. An edge-heavy sensitivity study uses
-a separate draw toward the cell boundary.
+a separate draw toward the cell boundary, which also raises the candidate-set size.
+
+### 5.5 Candidate cells
+
+A UE may be covered by more than one cell. The model computes a candidate set at the
+decision instant:
+
+```text
+CandidateCells(u) = { c : distance(u, center(c)) <= r_c + m_e }, capped at Q
+```
+
+The serving cell is the nearest center. It is always in the set. A UE in the interior
+has one candidate. A UE on an edge has two. A UE on a vertex has three.
+
+`Q` defaults to 3. `Q = 1` reproduces the single-cell version. `m_e` defaults to 0,
+which means strict hexagonal coverage. A positive `m_e` adds overlapping cells and can
+raise the candidate count, but the cap `Q` still applies.
+
+The candidate set is static during a procedure, because the UE and the cells are
+static. The propagation delay does not depend on the chosen cell, because one satellite
+serves all cells. The cell choice changes the hop wait and the per-cell resources.
+
+A cell switch is a plan change. The model counts it as churn. A switch to a cell that
+is active sooner can reduce the completion time. A switch to a loaded cell can raise
+contention. Both effects are measured.
 
 ## 6. Population
 
@@ -362,17 +420,39 @@ declared policy restriction.
 | medium | 400 | 30% |
 | loose | 800 | 20% |
 
-The budget applies from the epoch to the access completion event. It includes the
-decision latency, the wait for the cell active window, and the access procedure.
+For an initial UE, the budget applies from the epoch to the access completion event.
+For a new UE, it applies from its arrival to the access completion event. Both include
+the decision latency, the wait for the chosen cell's active window, and the access
+procedure.
 
 ### 6.4 Feasibility precheck
 
 The model checks one condition before it runs the allocator. A UE whose budget is below
 its minimum possible completion time is marked `budget-infeasible`. The minimum includes
-the decision latency and the wait for the next active dwell.
+the decision latency and the wait for the next active dwell of any candidate cell.
 
 The marked UE stays in the run and in the KPI denominator. It gets an explicit reason
 code. The study does not remove it or move it to a different cell.
+
+### 6.5 Arrival process
+
+New UEs arrive after the initial plan. The model supports two modes.
+
+| Mode | Behaviour | Use |
+|---|---|---|
+| poisson | Independent arrivals at rate `lambda_f * N_in` per second, starting at `t_first` | Main study |
+| fixed | One batch of `N_arrivals` UEs at `t_first` | Deterministic tests and exact cases |
+
+A new UE gets a cell from its position, a candidate set, a capability profile, and a
+budget. Its budget starts at its arrival time. Its context creation costs one control
+message and `context_creation_ms` (default 1 ms).
+
+The arrival trace is generated from the episode seed before the run starts. The trace is
+recorded, so a re-plan comparison uses the same arrivals for every policy.
+
+The default `lambda_f` is 0.05. That is 5% of the initial population per second. For
+the cluster (1,802 UEs), it gives about 90 new UEs per second. That is one arrival every
+11 ms. The sweep uses 0.01, 0.05, and 0.20.
 
 ## 7. Resource model
 
@@ -480,10 +560,10 @@ The engine enforces four rules:
 2. A lease holds its capacity until it is consumed, released, or expired. An unused
    lease still blocks capacity.
 3. A preamble index is unique inside one occasion and one cell.
-4. A UE consumes resources only in slots where its cell is active.
+4. A UE consumes resources only in slots where its chosen cell is active.
 
-The engine writes a per-slot ledger. The metrics tool rebuilds the totals from the
-ledger and compares them with the counters. A mismatch fails the run.
+The engine writes a per-slot ledger for every cell. The metrics tool rebuilds the totals
+from the ledger and compares them with the counters. A mismatch fails the run.
 
 ### 7.6 Worked capacity example
 
@@ -507,6 +587,29 @@ fall to 8.7 per occasion. That is still below 80, so contention remains the bind
 limit. The control limit binds only when the per-slot RAR demand exceeds 8, for example
 with a short RAR window or a small `max_rar_per_slot`. The study sweeps that setting.
 The crossing between contention and control is one of its testable mechanisms.
+
+### 7.7 Lease states and commitment
+
+A lease carries a version and a state. The state controls whether a re-plan may move it.
+
+| State | Meaning | Move under uncommitted-only | Move under any-with-compensation |
+|---|---|---|---|
+| planned | Allocated, no configuration sent | Yes | Yes |
+| prepared | Configuration sent to the UE | No | Yes, with cost |
+| committed | Start slot is inside the commitment horizon | No | Yes, with cost |
+| consumed | The UE has transmitted | No | No |
+| expired | The lease expired | No | No |
+
+A lease becomes `committed` when its start slot is at most `H_c` slots ahead. The
+default `H_c` is 20 ms. A lease outside the horizon stays `prepared` or `planned`.
+
+The reconfiguration cost is one control message and `reconfig_delay_ms` (default 5 ms).
+A moved `prepared` or `committed` lease releases its old resources at the re-plan
+instant. The UE's new start is at or after `now + reconfig_delay_ms + preparation`. The
+old resources may be reused by another UE. The wasted reservation is counted.
+
+Each move increments the lease version. The engine rejects a stale version. The old
+configuration is cancelled with a reconfiguration message.
 
 ## 8. Access model
 
@@ -535,7 +638,7 @@ delays as one round-trip constant, because `tau` differs by UE.
 
 ### 8.2 4-step CBRA
 
-1. The UE waits for the next PRACH occasion of its cell.
+1. The UE waits for the next PRACH occasion of its chosen cell.
 2. The UE draws one preamble uniformly from the contention pool.
 3. If two or more UEs in the same cell and occasion draw the same preamble, all of them
    collide. There is no capture effect by default.
@@ -590,7 +693,7 @@ RACH-less access has no preamble and no RAR.
 
 The model charges:
 
-- one configuration message at the epoch, with a declared byte count,
+- one configuration message at the decision, with a declared byte count,
 - 12 PUSCH PRB-symbols at the chosen occasion,
 - the reserved occasion itself, even if the UE misses it.
 
@@ -636,6 +739,8 @@ denominator.
 | Detection probability | 1.0 | Idealized first stage |
 | MsgA payload success | 0.99 | Declared. No calibrated source in this study |
 | MsgB window | 10 slots | Same as the RAR window |
+| Context creation | 1 ms | Declared. For a new UE after the initial plan |
+| Reconfiguration delay | 5 ms | Declared. For a moved prepared or committed lease |
 
 The retry interval follows from the occasion period, the RAR window, and the backoff.
 It is not copied from another study. A calibration stage must reproduce the analytical
@@ -645,32 +750,36 @@ singleton curve before it claims agreement with any external measurement.
 
 ### 9.1 Decision variables
 
-For UE `u`, access type `a`, and start slot `k`:
+For UE `u`, candidate cell `c`, access type `a`, and start slot `k`:
 
 ```text
-x[u, a, k] = 1 if UE u uses access a starting at slot k, otherwise 0
+x[u, c, a, k] = 1 if UE u uses cell c, access a, starting at slot k, otherwise 0
 ```
 
 A UE may also be left unassigned. That state is explicit and penalized.
+
+`c` must belong to `CandidateCells(u)`. For `Q = 1`, the model reduces to the
+single-cell case.
 
 For CFRA, the model adds a preamble index `p` from the dedicated pool. For CG, it adds
 the occasion index. For DG, the grant slot is the start slot.
 
 For CBRA, the network does not choose the preamble. The UE draws it at random. The
-allocator chooses only the occasion and the contention pool. This distinction is
-important. A model that lets the allocator pick CBRA preambles is modeling CFRA.
+allocator chooses only the cell, the occasion, and the contention pool. This distinction
+is important. A model that lets the allocator pick CBRA preambles is modeling CFRA.
 
 ### 9.2 Constraints
 
 For every UE `u`:
 
 ```text
-sum over legal (a, k) of x[u, a, k] + unassigned[u] = 1
+sum over legal (c, a, k) of x[u, c, a, k] + unassigned[u] = 1
 ```
 
 Legal means all of the following:
 
 - `a` is in the UE capability profile,
+- `c` is in `CandidateCells(u)`,
 - the start slot is a valid PRACH occasion, CG occasion, or DG grant slot,
 - the cell of `u` is active at every slot in which the procedure transmits or receives,
 - the start slot is at or after the decision end,
@@ -679,7 +788,7 @@ Legal means all of the following:
 For every cell `c`, slot `k`, and pool `r`:
 
 ```text
-sum of demand(u, a, k, r) * x[u, a, k] <= capacity(c, k, r)
+sum of demand(u, c, a, k, r) * x[u, c, a, k] <= capacity(c, k, r)
 ```
 
 For every cell `c`, occasion `o`, and preamble index `p`:
@@ -693,11 +802,11 @@ draw. The allocator can only control the number of contenders per occasion.
 
 ### 9.3 Objective
 
-The objective is lexicographic. Each stage is reported separately.
+The batch objective is lexicographic. Each stage is reported separately.
 
 | Stage | Quantity | Definition |
 |---|---|---|
-| 1 | Delay-budget violation rate | Weighted count of violating incoming UEs divided by all incoming UEs |
+| 1 | Delay-budget violation rate | Weighted count of violating UEs divided by all UEs |
 | 2 | Worst-stratum violation rate | Maximum violation rate over capability and budget strata |
 | 3 | Resource cost | PRB-symbols, preambles, CCEs, CG waste, and re-attempts |
 
@@ -714,18 +823,22 @@ before the evaluation runs.
 Stage 2 is a declared tie-breaker. It is not a hard fairness constraint. It prevents a
 policy from improving the mean by sacrificing a small capability stratum.
 
+The re-allocation objective uses the same quantities on the current plan. It adds a
+churn stage. Section 9.12 defines the six policies.
+
 ### 9.4 Feasible options and pruning
 
-For UE `u`, an option is a legal `(access, start)` pair with a predicted completion and
-a resource vector. The option count is bounded by
+For UE `u`, an option is a legal `(cell, access, start)` triple with a predicted
+completion and a resource vector. The option count is bounded by
 
 ```text
-(occasions within budget) * (legal access types) + (DG slots within budget)
+Q * (occasions within budget) * (legal access types) + Q * (DG slots within budget)
 ```
 
-For a 400 ms budget, a 10 ms PRACH period, five access types, and 400 DG slots, the
-count can exceed 500 before pruning. Pruning keeps the earliest three starts per access
-type, which gives at most 15 random-access and CG options plus three DG options.
+For a 400 ms budget, `Q = 3`, a 10 ms PRACH period, five access types, and 400 DG slots,
+the count can exceed 1,500 before pruning. Pruning keeps the earliest three starts per
+access type and per cell, which gives at most 45 random-access and CG options plus nine
+DG options.
 
 ### 9.5 Reference classes
 
@@ -741,23 +854,23 @@ the same engine with the same seeds. It recomputes collisions for that schedule.
 not transplant outcomes between schedules.
 
 The beam-and-latency lower bound is simple and valid. For each UE, compute the earliest
-active dwell of its cell and add the minimum procedure time of any legal access type.
-If that time exceeds the budget, the UE must violate. The count of such UEs is a lower
-bound on the violation count. It ignores contention, so it can be loose.
+active dwell over its candidate cells and add the minimum procedure time of any legal
+access type. If that time exceeds the budget, the UE must violate. The count of such UEs
+is a lower bound on the violation count. It ignores contention, so it can be loose.
 
 A heuristic solution is not a lower bound. The study reports `LB <= optimum <= UB` only
 when it has both. A gap is valid only inside the same feasible set and the same
 lexicographic stage.
 
-### 9.6 Algorithm
+### 9.6 Batch algorithm
 
-The allocator runs once at the epoch. It has a declared decision latency of 1 ms by
-default. The first access start must be after the decision end.
+The initial allocator runs once at the epoch. It has a declared decision latency of 1 ms
+by default. The first access start must be after the decision end.
 
 ```text
-ALGORITHM AllocateBatch(U, cells, hop, resources, budgets, capabilities)
+ALGORITHM AllocateBatch(U, cells, hop, resources, budgets, capabilities, frozen)
  1  for each u in U:
- 2      options[u] = EnumerateOptions(u, capabilities[u], budgets[u], hop, resources)
+ 2      options[u] = EnumerateOptions(u, candidates[u], budgets[u], hop, resources)
  3      if options[u] is empty:
  4          mark u unassigned with reason no-legal-option
  5          continue
@@ -765,28 +878,29 @@ ALGORITHM AllocateBatch(U, cells, hop, resources, budgets, capabilities)
  7      slack[u] = budgets[u] - T_min[u]
  8  order = sort U by (slack ascending, len(options) ascending)
  9  ledger = BuildLedger(cells, horizon)          # capacity per cell, slot, pool
-10  for each u in order:
-11      best = none
-12      for each option o in options[u]:
-13          if not Feasible(ledger, o):
-14              continue
-15          s = Score(o, budgets[u], ledger.prices, ledger.contention)
-16          if best is none or s < best.score:
-17              best = o
-18      if best is none:
-19          mark u unassigned with reason capacity
-20      else:
-21          Commit(ledger, best)
-22          u.plan = best
-23  for pass in 1..max_swap_passes:
-24      improved = false
-25      for each pair (u, v) in SwapCandidates(order, swap_cap):
-26          if SwapImproves(u, v, ledger):
-27              ApplySwap(u, v, ledger)
-28              improved = true
-29      if not improved:
-30          break
-31  return plans, ledger
+10  ledger = ApplyFrozen(ledger, frozen)           # committed leases are fixed load
+11  for each u in order:
+12      best = none
+13      for each option o in options[u]:
+14          if not Feasible(ledger, o):
+15              continue
+16          s = Score(o, budgets[u], ledger.prices, ledger.contention)
+17          if best is none or s < best.score:
+18              best = o
+19      if best is none:
+20          mark u unassigned with reason capacity
+21      else:
+22          Commit(ledger, best)
+23          u.plan = best
+24  for pass in 1..max_swap_passes:
+25      improved = false
+26      for each pair (u, v) in SwapCandidates(order, swap_cap):
+27          if SwapImproves(u, v, ledger):
+28              ApplySwap(u, v, ledger)
+29              improved = true
+30      if not improved:
+31          break
+32  return plans, ledger
 ```
 
 The score is
@@ -813,40 +927,38 @@ The allocator logs every rejection with a reason code: `no-legal-option`, `capac
 
 The allocator is deterministic for a fixed seed and input. It does not read simulator
 state that a real target would not know. It sees the UE capabilities, the budgets, the
-hop schedule, and its own resource ledger. It does not see future random draws.
+candidate cells, the hop schedule, and its own resource ledger. It does not see future
+random draws.
 
-### 9.7 Time and space complexity
-
-Let these symbols denote sizes:
+### 9.7 Batch complexity
 
 | Symbol | Meaning | Default scale |
 |---|---|---:|
 | `U` | Incoming UEs | 1,802 cluster, 11,147 full |
+| `Q` | Candidate cells per UE | at most 3 |
 | `A` | Legal access types per UE | at most 5 |
-| `O` | Candidate starts per access type after pruning | at most 3 |
+| `O` | Candidate starts per access type and cell after pruning | at most 3 |
 | `K` | Slots in the horizon | 2,000 |
 | `C` | Cells | 37 or 1,373 |
 | `R` | Resource pools per cell and slot | 6 |
-| `S` | Swap candidate cap | 200 |
+| `S` | Swap candidate cap | 100 |
 | `P` | Swap passes | 10 |
 
 | Stage | Time complexity | Notes |
 |---|---|---|
-| Option enumeration | `O(U * A * O)` with an occasion index, `O(U * K)` without | The index is built once |
+| Option enumeration | `O(U * Q * A * O)` with an index, `O(U * Q * K)` without | The index is built once |
 | Sorting | `O(U log U)` | Slack and option count |
-| Greedy assignment | `O(U * A * O * R)` | Price and feasibility checks |
-| Swap pass | `O(P * S^2 * A * O)` | Bounded candidate pairs |
+| Greedy assignment | `O(U * Q * A * O * R)` | Price and feasibility checks |
+| Swap pass | `O(P * S^2 * Q * A * O)` | Bounded candidate pairs |
 | Ledger build | `O(C * K * R)` dense, `O(occupied slots)` sparse | Sparse is the default |
-| Total | `O(U*A*O + U log U + U*A*O*R + P*S^2*A*O + occupied slots)` | The swap pass dominates at large `S` |
+| Total | `O(U*Q*A*O + U log U + U*Q*A*O*R + P*S^2*Q*A*O + occupied slots)` | The swap pass dominates at large `S` |
 | Exact reference | `O(M^U * U * L)` | Exponential. `M <= 4`, `U <= 6` |
-| Lower bound | `O(U * A)` | Earliest dwell and minimum procedure |
+| Lower bound | `O(U * Q * A)` | Earliest dwell and minimum procedure |
 
-With the default values, the greedy pass is about `90 * U` operations. The swap pass is
-at most `10 * 200^2 * 15 = 6.0M` basic checks, which is why `S` and `P` are capped. The
-space bound is `O(U * A * O + occupied ledger slots)`. The ledger is sparse, so a run
-does not allocate `C * K * R` entries for inactive cells.
-
-The exact reference is only for tiny instances. Its exponential term is the reason.
+With the default values and `Q = 3`, the greedy pass is about `270 * U` operations. The
+swap pass is at most `10 * 100^2 * 45 = 4.5M` basic checks, which is why `S` and `P` are
+capped. The space bound is `O(U * Q * A * O + occupied ledger slots)`. The ledger is
+sparse, so a run does not allocate `C * K * R` entries for inactive cells.
 
 ### 9.8 What the gap claim means
 
@@ -855,27 +967,150 @@ gap is the additive difference in stage-1 violation rate, with the same option s
 the same seeds. The study does not claim a gap at full scale. At full scale it reports
 the lower bound and the measured outcome.
 
+### 9.9 Re-allocation problem
+
+A new UE arrives at `t_a`. The target holds a current plan with leases in the states of
+section 7.7. The re-allocation must decide four things:
+
+1. whether to re-plan at all,
+2. which leases may move,
+3. which scope to use,
+4. how to balance the new UE against the existing UEs.
+
+The re-plan runs at `t_a + decision_latency`. The decision latency is 1 ms by default.
+The new UE's context creation costs 1 ms. Its first access start is after both.
+
+The no-re-plan baseline places the new UE only on residual resources. It moves no
+existing lease. If no residual option fits, the new UE fails. The no-re-plan baseline is
+the reference for the re-plan benefit.
+
+The local-first policy tries the new UE's candidate cells first. If the local attempt
+places the new UE and improves the selected objective, the target accepts it. Otherwise,
+the target runs the global fallback, capped at `max_replan_ues` UEs by slack order. If
+the global attempt also fails, the target keeps the current plan and marks the new UE
+unassigned.
+
+The commitment horizon `H_c` protects leases close to transmission. A lease whose start
+is at most `H_c` ahead is `committed`. The default is 20 ms, one dwell. A longer horizon
+freezes more leases and reduces the benefit of preemption. A shorter horizon exposes
+more transmissions to change.
+
+### 9.10 Re-allocation algorithm
+
+```text
+ALGORITHM ReplanOnArrival(u_new, now, plan, ledger, policy)
+ 1  candidates = CandidateCells(u_new)
+ 2  attempts = [local, global] if policy.scope == local-first else [global]
+ 3  frozen = leases that policy.preempt cannot move
+ 4  base = Objective(plan, policy.balance)
+ 5  for attempt in attempts:
+ 6      if attempt == local:
+ 7          conflict = UEs in candidates whose leases overlap u_new's feasible options
+ 8          subset = {u_new} + conflict
+ 9      else:
+10          subset = {u_new} + first max_replan_ues UEs by slack
+11      candidate_plan = AllocateBatch(subset, frozen, policy.balance)
+12      candidate_plan = Merge(plan, candidate_plan, frozen)
+13      value = Objective(candidate_plan, policy.balance)
+14      if value < base:
+15          return candidate_plan
+16  return plan with u_new unassigned
+```
+
+`Merge` keeps every frozen lease and every lease outside the subset unchanged. It
+releases the moved leases and applies the new assignments. A moved lease increments its
+version. The engine rejects a stale version.
+
+The re-plan does not change the hop schedule, the access timers, or the traffic. It
+changes only the cell, access type, start slot, and resource of the UEs in the subset.
+
+A re-plan is accepted only when the selected objective is strictly better. A tie keeps
+the current plan. This prevents churn without a service gain.
+
+### 9.11 Re-allocation complexity
+
+| Symbol | Meaning | Default scale |
+|---|---|---:|
+| `N_new` | New UEs in the decision | 1 for event-driven |
+| `N_conflict` | Existing UEs in the local conflict set | bounded by `max_local_ues` |
+| `N_global` | Existing UEs in the global fallback | bounded by `max_replan_ues` |
+| `N_arr` | Arrivals in the episode | about 90 per second at the default rate |
+| `G_att` | Global fallback attempts in the episode | bounded by `N_arr` |
+
+| Stage | Time complexity |
+|---|---|
+| Local attempt | `O((N_new + N_conflict) * Q * A * O * R + P * S^2 * Q * A * O + C_local * K * R)` |
+| Global fallback | `O((N_new + N_global) * Q * A * O * R + P * S^2 * Q * A * O + C * K * R)` |
+| Per episode | `O(N_arr * local_cost + G_att * global_cost)` |
+| Space | `O((N_new + N_global) * Q * A * O + occupied ledger slots)` |
+
+With `N_new = 1`, `N_conflict <= 20`, `Q = 3`, and `S = 100`, the local attempt is
+cheap. The global fallback costs about the same as a batch run on the capped subset. The
+design reports the measured re-plan latency in the experiment report.
+
+### 9.12 Re-plan policy matrix
+
+The study implements and compares six policies. The preemption axis controls which
+leases may move. The balance axis controls the objective order.
+
+| ID | Preemption | Balance | Objective order |
+|---|---|---|---|
+| R1 | uncommitted-only | total-first | total violations, then churn, then resource cost |
+| R2 | uncommitted-only | existing-first | existing-UE violations, then new-UE violations, then churn, then resource cost |
+| R3 | uncommitted-only | stability-first | new-UE failure, then churn, then total violations, then resource cost |
+| R4 | any-with-compensation | total-first | total violations, then churn, then resource cost |
+| R5 | any-with-compensation | existing-first | existing-UE violations, then new-UE violations, then churn, then resource cost |
+| R6 | any-with-compensation | stability-first | new-UE failure, then churn, then total violations, then resource cost |
+
+The preemption policies are:
+
+- `uncommitted-only`: only `planned` leases move. `prepared` and `committed` leases are
+  frozen. This is the low-churn policy.
+- `any-with-compensation`: `planned`, `prepared`, and `committed` leases move. Each moved
+  lease pays one control message and `reconfig_delay_ms`. `consumed` and `expired`
+  leases never move. This is the high-flexibility policy.
+
+The balance policies are:
+
+- `total-first`: minimize the weighted violations over all UEs, then churn.
+- `existing-first`: minimize the weighted violations over existing UEs first, then the
+  new UE, then churn. This protects UEs that already hold a plan.
+- `stability-first`: minimize new-UE failure first. If the new UE can be served, then
+  minimize churn, then total violations. This keeps the plan stable unless the new UE
+  would fail.
+
+All six policies use the same arrivals, capabilities, budgets, hop schedule, and random
+streams. They may differ only in the legal moves and the objective order.
+
 ## 10. KPIs and measurement
 
 ### 10.1 KPI definitions
 
 | KPI | Definition | Denominator |
 |---|---|---|
-| Handover success rate | UEs that reach `CONNECTED_TARGET` / incoming UEs | All incoming UEs |
-| Handover failure rate | UEs that reach the attempt limit, the CG or DG deadline, or the horizon | All incoming UEs |
-| Delay-budget violation rate | UEs that fail or complete after their budget / incoming UEs | All incoming UEs |
-| Time to completion | Epoch to `CONNECTED_TARGET` | Successful UEs only, with failures reported separately |
-| RACH attempts | PRACH or MsgA transmissions per UE | All incoming UEs |
+| Handover success rate | UEs that reach `CONNECTED_TARGET` / UEs | All UEs |
+| Handover failure rate | UEs that reach the attempt limit, the CG or DG deadline, or the horizon | All UEs |
+| Delay-budget violation rate | UEs that fail or complete after their budget / UEs | All UEs |
+| New-UE violation rate | New UEs that fail or exceed budget / new UEs | New UEs |
+| Existing-UE violation delta | Existing-UE violation rate after re-plan minus the no-re-plan baseline | Existing UEs |
+| Time to completion | Arrival or epoch to `CONNECTED_TARGET` | Successful UEs only |
+| RACH attempts | PRACH or MsgA transmissions per UE | All UEs |
 | Re-attempts | Attempts minus one for UEs with at least one attempt | UEs with at least one attempt |
+| Churn | Moved leases / existing UEs with a lease | Existing UEs with a lease |
+| Preempted resources | PRB-symbols, preambles, and CCEs released by moved leases | Per re-plan |
+| Re-plan count | Accepted and rejected re-plans | Per episode |
+| Plan age | Time since the last change for a UE | Existing UEs |
+| Cell load balance | Maximum per-cell PRB utilization / mean | Per episode |
+| Cell switch count | UEs that changed cell in a re-plan | Existing UEs |
 | Resource use | PRB-symbols, CCEs, preambles, CG waste | Per cell and slot |
-| Access mix | Share of UEs by selected access type | All incoming UEs |
+| Access mix | Share of UEs by selected access type | All UEs |
 
 Time to completion reports the median, p95, p99, and maximum. Failures are censored at
 the horizon and reported as a separate count. A completion time without the failure
 count is not a valid result.
 
 The violation rate uses the same denominator for every policy. The denominator is the
-generated incoming cohort, not the set of UEs that received an assignment.
+generated cohort, not the set of UEs that received an assignment.
 
 ### 10.2 Strata
 
@@ -883,16 +1118,19 @@ Every KPI is reported for these strata:
 
 - capability profile (P1 to P7),
 - delay-budget class,
-- cell,
-- access type actually used.
+- cell and candidate-set size,
+- initial UE versus new UE,
+- access type actually used,
+- re-plan policy (R1 to R6).
 
 A stratum with fewer than 20 UEs or 100 attempts is marked low-support. The study does
 not claim population reliability from it.
 
 ### 10.3 Statistical protocol
 
-The experimental unit is one episode. An episode is one batch at one epoch with one
-seed. Positions, capabilities, budgets, and random draws all derive from that seed.
+The experimental unit is one episode. An episode is one batch at one epoch plus its
+arrival trace, with one seed. Positions, capabilities, budgets, arrivals, and random
+draws all derive from that seed.
 
 - Use paired seeds across policies.
 - Run at least 30 episodes per main scenario.
@@ -909,10 +1147,12 @@ finding. A point that disappears under replication is a retraction.
 | File | Content |
 |---|---|
 | `run.json` | Resolved configuration, package versions, config hash, seed list |
-| `ues.csv` | One row per UE: id, cell, position, capability, budget |
+| `ues.csv` | One row per UE: id, arrival time, cell, candidates, capability, budget |
 | `plan.csv` | One row per assigned UE: the full assignment record |
-| `access-events.csv` | One row per attempt: UE, access, occasion, outcome, reason |
-| `ledger.csv` | Per cell, slot, pool: capacity and incoming use |
+| `access-events.csv` | One row per attempt: UE, cell, access, occasion, outcome, reason |
+| `leases.csv` | One row per lease: UE, cell, access, state, version, start, resources |
+| `replans.csv` | One row per re-plan: arrival, policy, scope, attempt, objective before and after, moved leases, preempted resources |
+| `ledger.csv` | Per cell, slot, pool: capacity and use |
 | `summary.json` | All KPIs, strata, confidence intervals, and feasibility flags |
 | `summary.csv` | Flat KPI table for plotting |
 
@@ -921,7 +1161,14 @@ The `plan.csv` columns are:
 ```text
 ue, cell, access, start_slot, prach_occasion, preamble_pool, preamble_index,
 prb_start, prb_count, symbol_count, cce_count, cg_occasion, dg_slot,
-predicted_completion_slot
+predicted_completion_slot, lease_version
+```
+
+The `replans.csv` columns are:
+
+```text
+time_ms, ue_new, policy, scope, attempt, accepted, objective_before, objective_after,
+moved_leases, preempted_prb_symbols, preempted_preambles, preempted_cce
 ```
 
 The `preamble_index` column is empty for CBRA, because the UE chooses the preamble. It
@@ -975,7 +1222,7 @@ Do not use MATLAB. It is good for numerical optimization. However, its discrete-
 support is weak, and its licensing and CI story is heavier. The study needs a tested
 event engine more than a matrix language.
 
-Do not use ns-3 for version 2. Revisit this decision only if one of these conditions
+Do not use ns-3 for version 3. Revisit this decision only if one of these conditions
 holds:
 
 1. The study adds PHY or SINR behavior.
@@ -991,7 +1238,7 @@ the experiment engine in Python. Do not move the whole study.
 - Tests use pytest, not the ns-3 test runner.
 - The model claims mechanism and relative policy performance. It does not claim
   protocol conformance.
-- A future ns-3 validation is a separate backlog item, section 15.
+- The ns-3 validation slice stays conditional in the backlog, section 15.
 
 ## 12. Python implementation plan
 
@@ -1003,26 +1250,33 @@ qef_ho_ra/
 |-- cli.py               command line and run orchestration
 |-- config.py            schema, validation, resolved document
 |-- geometry.py          Earth, footprint, cells, per-UE delay
+|-- cells.py             candidate sets and cell distance
 |-- hop.py               groups, dwell, active mask
 |-- population.py        density, penetration, capabilities, budgets
+|-- arrivals.py          Poisson and fixed-batch traces
 |-- resources.py         PRB and pool ledger
 |-- access.py            six access procedures and retries
 |-- allocator.py         options, greedy pass, swap pass
+|-- replan.py            lease states, six policies, incremental re-plan
 |-- engine.py            SimPy environment and episode runner
 |-- metrics.py           counters, strata, CSV writers
 `-- reference.py         exhaustive reference and lower bound
 tests/
 |-- test_geometry.py
+|-- test_cells.py
 |-- test_hop.py
 |-- test_population.py
+|-- test_arrivals.py
 |-- test_resources.py
 |-- test_access.py
 |-- test_allocator.py
+|-- test_replan.py
 |-- test_reference.py
 `-- test_determinism.py
 scenarios/
 |-- cluster-37.json
 |-- footprint-1373.json
+|-- replan-matrix.json
 `-- tiny-exact.json
 tools/
 |-- sweep.py
@@ -1033,14 +1287,17 @@ README.md
 
 ### 12.2 Event engine and determinism
 
-The engine uses SimPy 4.1. Each episode creates a new `simpy.Environment`. The allocator
-runs as a plain function at time zero after the decision latency. Each UE access is a
-SimPy process.
+The engine uses SimPy 4.1. Each episode creates a new `simpy.Environment`. The initial
+allocator runs as a plain function at time zero after the decision latency. Each arrival
+runs the re-plan function and then starts the new UE's access process.
 
 Random draws use `numpy.random.SeedSequence`. The episode seed spawns separate streams
-for positions, capabilities, budgets, preamble draws, detection outcomes, MsgA payload
-outcomes, DG grant outcomes, and backoff. A policy-specific draw must not shift an
-exogenous stream. Stream IDs are recorded in `run.json`.
+for positions, capabilities, budgets, arrivals, preamble draws, detection outcomes,
+MsgA payload outcomes, DG grant outcomes, and backoff. A policy-specific draw must not
+shift an exogenous stream. Stream IDs are recorded in `run.json`.
+
+The arrival trace is generated before the run and recorded. Every policy in a comparison
+uses the same trace.
 
 The ledger uses integer PRB-symbols, not floating-point units. All iteration over UEs
 and resources is sorted by ID. A rerun with the same seed produces byte-identical CSV
@@ -1052,13 +1309,15 @@ The configuration is JSON with a typed schema. A compact example:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "geometry": {
     "altitude_km": 600,
     "min_elevation_deg": 30,
     "cell_radius_km": 25,
     "profile": "cluster",
-    "rings": 3
+    "rings": 3,
+    "candidate_cells": 3,
+    "edge_margin_km": 0.0
   },
   "hop": {
     "active_cells": 19,
@@ -1085,6 +1344,12 @@ The configuration is JSON with a typed schema. A compact example:
     "budget_ms": [100, 200, 400, 800],
     "capability_budget_correlation": "independent"
   },
+  "arrivals": {
+    "mode": "poisson",
+    "fraction_per_s": 0.05,
+    "first_arrival_ms": 100,
+    "context_creation_ms": 1
+  },
   "access": {
     "max_attempts": 10,
     "backoff_slots": 8,
@@ -1098,8 +1363,18 @@ The configuration is JSON with a typed schema. A compact example:
     "decision_latency_ms": 1,
     "options_per_access": 3,
     "lambda": 1.0,
-    "swap_cap": 200,
+    "swap_cap": 100,
     "max_swap_passes": 10
+  },
+  "replan": {
+    "scope": "local-first",
+    "preempt_policy": "uncommitted-only",
+    "balance_policy": "total-first",
+    "commitment_horizon_ms": 20,
+    "reconfig_delay_ms": 5,
+    "max_local_ues": 20,
+    "max_replan_ues": 200,
+    "cooldown_ms": 10
   },
   "evaluation": {
     "horizon_slots": 2000,
@@ -1123,6 +1398,7 @@ python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m qef_ho_ra.cli --config scenarios/cluster-37.json --output results/cluster-37
+python -m qef_ho_ra.cli --config scenarios/replan-matrix.json --output results/replan-matrix
 pytest -q
 ```
 
@@ -1144,6 +1420,9 @@ outside the output directory.
 | V6 Replay | The plan replayed through the engine reproduces its predicted outcomes with the same seed | The allocator reads hidden state |
 | V7 Exact | Independent enumeration reproduces the lexicographic optimum of a tiny case | The reference or the objective order is wrong |
 | V8 Determinism | Two runs with one seed produce byte-identical CSV files | A stream or iteration order is unstable |
+| V9 Candidate set | A vertex UE has three candidates, an edge UE has two, an interior UE has one | The cell geometry is wrong |
+| V10 Lease state | `consumed` and `expired` leases never move. Versions increase on a move | The re-plan changes committed work |
+| V11 Re-plan policy | R1 to R6 are selectable, and a tie keeps the current plan | The policy matrix or the acceptance rule is wrong |
 
 A gate is not a claim. V4 shows the model implements the formula, not that the formula
 matches a real gNB. V7 shows the solver is right for its model, not that the model is
@@ -1153,13 +1432,14 @@ the network.
 
 | Stage | Work | Exit criterion |
 |---|---|---|
-| S0 | Config, geometry, hop, population, resource ledger | V1, V2, V3, V8 pass |
+| S0 | Config, geometry, candidate cells, hop, population, resource ledger | V1, V2, V3, V8, V9 pass |
 | S1 | 4-step CBRA and CFRA engine | V4 and the CBRA and CFRA cases of V5 pass |
 | S2 | 2-step access with fallback | The 2-step cases of V5 pass |
 | S3 | CG and DG access | The RACH-less cases of V5 pass |
-| S4 | Greedy allocator and swap pass | V6 passes |
-| S5 | Exhaustive reference and lower bound | V7 passes |
-| S6 | Experiment harness, pilot, and main run | The pilot sets the sample size and the sweep points |
+| S4 | Batch allocator with candidate cells and swap pass | V6 passes |
+| S5 | Arrivals, lease states, and the six re-plan policies | V10 and V11 pass |
+| S6 | Exhaustive reference and lower bound | V7 passes |
+| S7 | Experiment harness, pilot, and main run | The pilot sets the sample size and the sweep points |
 
 Each stage runs the full gate set for the features it adds. A stage that changes an
 earlier artifact reruns the earlier gates. The study does not stack stages without a
@@ -1176,6 +1456,8 @@ green gate.
 | Geometry | `cell_radius_km` | 25 | 25, 50, 100 | Sensitivity |
 | Geometry | `profile` | cluster | cluster, full | Fixed per run |
 | Geometry | `rings` | 3 | 2, 3, 4 | Fixed per run |
+| Multi-cell | `candidate_cells` | 3 | 1, 2, 3 | Sweep |
+| Multi-cell | `edge_margin_km` | 0 | 0, 5, 10 | Sensitivity |
 | Population | `density_persons_per_km2` | 30 cluster, 5 full | 1, 2, 5, 10, 30, 100 | Sweep |
 | Population | `terminal_penetration` | 0.001 | 0.0001, 0.001, 0.01 | Sensitivity |
 | Population | `active_fraction` | 1.0 | 0.3, 0.6, 1.0 | Sensitivity |
@@ -1183,6 +1465,18 @@ green gate.
 | Population | `budget_ms` | 100/200/400/800 | tight-heavy, default, loose-heavy | Sweep |
 | Population | `capability_budget_correlation` | independent | independent, advanced-on-tight | Sensitivity |
 | Population | `spatial_distribution` | uniform | uniform, hotspot | Sensitivity |
+| Arrivals | `mode` | poisson | poisson, fixed | Fixed per run |
+| Arrivals | `fraction_per_s` | 0.05 | 0.01, 0.05, 0.20 | Sweep |
+| Arrivals | `first_arrival_ms` | 100 | 50, 100, 500 | Sensitivity |
+| Arrivals | `context_creation_ms` | 1 | fixed | Fixed |
+| Re-plan | `scope` | local-first | local-first, global-only | Sweep |
+| Re-plan | `preempt_policy` | uncommitted-only | uncommitted-only, any-with-compensation | Sweep |
+| Re-plan | `balance_policy` | total-first | total-first, existing-first, stability-first | Sweep |
+| Re-plan | `commitment_horizon_ms` | 20 | 0, 20, 100 | Sweep |
+| Re-plan | `reconfig_delay_ms` | 5 | 1, 5, 20 | Sensitivity |
+| Re-plan | `max_local_ues` | 20 | 5, 20, 50 | Sensitivity |
+| Re-plan | `max_replan_ues` | 200 | 50, 200, 1000 | Sensitivity |
+| Re-plan | `cooldown_ms` | 10 | 0, 10, 50 | Sensitivity |
 | Hop | `active_cells` | 19 cluster, 64 full | 7, 19, 37, 64 | Sweep |
 | Hop | `dwell_ms` | 20 | 5, 10, 20, 50, 100 | Sweep |
 | Hop | `phase_slots` | 0 | 0, half cycle | Sensitivity |
@@ -1205,7 +1499,7 @@ green gate.
 | Allocator | `decision_latency_ms` | 1 | 0, 1, 5 | Sweep |
 | Allocator | `options_per_access` | 3 | 1, 3, 5 | Sensitivity |
 | Allocator | `lambda` | 1.0 | 0.1, 1, 10 | Sensitivity |
-| Allocator | `swap_cap` | 200 | 0, 200, 1000 | Sensitivity |
+| Allocator | `swap_cap` | 100 | 0, 100, 500 | Sensitivity |
 | Allocator | `max_swap_passes` | 10 | fixed | Fixed |
 | Evaluation | `horizon_slots` | 2000 | 1000, 2000, 4000 | Fixed per run |
 | Evaluation | `episodes` | 30 | 30, 100 | Fixed after pilot |
@@ -1215,12 +1509,13 @@ green gate.
 
 1. Freeze the structural controls: geometry profile, cell radius, hop pattern, and
    access timers.
-2. Vary one group at a time. Do not move density, dwell, and preamble split together in
-   one sweep. Their effects overlap and the attribution is lost.
-3. Use paired seeds for every policy at the same point.
-4. Replicate each point with at least three seeds before publishing it.
-5. Freeze the evaluation seed block and the sample size before the main run.
-6. Record the resolved configuration and the config hash in `run.json`.
+2. Freeze the arrival trace for a comparison. Every policy uses the same trace.
+3. Vary one group at a time. Do not move density, dwell, and arrival rate together in one
+   sweep. Their effects overlap and the attribution is lost.
+4. Use paired seeds for every policy at the same point.
+5. Replicate each point with at least three seeds before publishing it.
+6. Freeze the evaluation seed block and the sample size before the main run.
+7. Record the resolved configuration and the config hash in `run.json`.
 
 ## 14. Experiment plan
 
@@ -1235,6 +1530,12 @@ green gate.
 | E7 | Does correlation matter? | Capability and budget | independent, advanced-on-tight | Test fairness claims |
 | E8 | Does the result scale? | Population | full profile, density 5 | Scale and runtime |
 | E9 | How sensitive is the answer? | Detection, MsgA, fallback | 0.90/0.99, fallback on/off | Sensitivity, not a headline result |
+| E10 | Which re-plan policy is best? | Preemption and balance | R1 to R6, plus a no-re-plan baseline | Compare service, churn, and latency |
+| E11 | How does the arrival rate change it? | Arrival fraction | 0.01, 0.05, 0.20 per s | Find the re-plan saturation point |
+| E12 | How does the horizon change it? | Commitment horizon | 0, 20, 100 ms | Measure the cost of frozen leases |
+| E13 | Is local-first enough? | Scope | local-first, global-only | Measure the value of the fallback |
+| E14 | Does multi-cell help? | Candidate cells | 1, 2, 3 | Test H4 |
+| E15 | Do multi-cell and re-plan interact? | Candidates, arrival rate | 1/3, 0.01/0.05 | Joint effect on edge UEs |
 
 The main comparison uses the cluster with `C = 19` and density 30. The scale run uses
 the full profile with `C = 64` and density 5.
@@ -1251,49 +1552,18 @@ Feasibility checks run before any scoring:
 - every UE has at least one legal option,
 - the hop schedule has the declared duty,
 - the PRACH and control pools fit the declared load,
-- the horizon covers the largest budget.
+- the horizon covers the largest budget,
+- every candidate set is nonempty.
 
 An infeasible point stays in the matrix as a labeled stress case. The study does not
 drop it silently.
 
 ## 15. Backlog
 
-### B-1 Re-allocation problem due to a new UE attached after the allocation decision
+The version 2 backlog items on re-allocation and multi-cell are now design sections.
+This backlog holds only conditional and future items.
 
-**Status:** not started. Deferred from version 2.
-
-This is the re-allocation problem due to a new UE attached or connected after the
-allocation decision. Version 2 assumes a closed batch. In a real target, a new UE can
-attach or connect after the decision. The target must then decide whether to re-plan. It
-must also decide which committed resources can move. The disruption to the UEs that
-already hold a plan has a cost.
-
-Questions to answer:
-
-1. What triggers a re-plan? A single new UE, a count threshold, or a loss in the
-   predicted violation rate?
-2. What is the scope? One cell, a set of cells, or the whole footprint?
-3. Which committed resources can move? A dedicated preamble, a CG occasion, a DG
-   grant, or a PRB lease.
-4. What is the cost of preemption? Signaling, wasted reservations, and a longer
-   completion time for the moved UE.
-5. How stable must the plan be? A re-plan that improves the mean but churns many UEs
-   can be worse in practice.
-6. How are early and late UEs treated? The late UE has a shorter remaining budget.
-
-Method sketch:
-
-- Add a commitment horizon. A plan inside the horizon is fixed.
-- Compare three policies: no re-plan, local re-plan in the affected cell, and global
-  re-plan.
-- Metrics: violation delta, re-allocations per UE, preempted PRB-symbols, plan age,
-  and churn.
-- The batch allocator from version 2 is the baseline.
-
-Dependencies: the version 2 allocator, the replay check, and the exact reference on
-tiny instances.
-
-### B-2 ns-3 validation slice for 4-step access
+### B-1 ns-3 validation slice for 4-step access
 
 **Status:** conditional. See section 11.
 
@@ -1301,12 +1571,20 @@ If a reviewer requires full-stack validation, build a small ns-3 validation that
 4-step path the stack supports. Compare its timing distribution with the abstract model.
 State which procedure stages the stack does not model. Do not move the main engine.
 
-### B-3 Multi-satellite candidate selection
+### B-2 Multi-satellite candidate selection
 
-**Status:** not started. Out of scope in version 2.
+**Status:** not started. Outside version 3.
 
-Add several candidate target cells and let the allocator choose the cell. This needs a
-per-cell ledger and a visibility model. It is a separate stage.
+Version 3 adds candidate cells on one satellite. A later stage adds several candidate
+satellites with a visibility model. The allocator then chooses a satellite and a cell.
+This needs per-satellite propagation and a candidate-satellite set.
+
+### B-3 PHY and dynamic hop pattern
+
+**Status:** not started. Outside version 3.
+
+Add SINR, link adaptation, and a hop pattern that the allocator can optimize. This is the
+point where ns-3 becomes the better engine, because PHY behavior enters the model.
 
 ## 16. Related work, similar work, and duplicate assessment
 
@@ -1327,9 +1605,11 @@ Queries:
 6. joint access type and resource allocation non-terrestrial network handover
 7. contention-free preamble allocation handover LEO satellite
 8. random access resource allocation satellite handover heterogeneous users
+9. dynamic resource allocation LEO satellite new user arrival re-planning
+10. handover re-planning LEO satellite resource allocation
 
 Most sources were inspected at abstract level. The closest paper was paywalled, so its
-full text was not read. The negative duplicate result in section 16.4 is therefore
+full text was not read. The negative duplicate result in section 16.5 is therefore
 provisional.
 
 ### 16.2 Prior work
@@ -1339,8 +1619,10 @@ These works establish the setting or one ingredient. None solves the joint probl
 | Work | Contribution | Relation to this study |
 |---|---|---|
 | Hozayen, Darwish, Karabulut, Yanikomeroglu, "A Graph-Based Customizable Handover Framework for LEO Satellite Networks", IEEE GC Wkshps 2022, arXiv:2211.07872 | Handover timing and target selection in a QEFC scenario through a time-based graph and shortest path | Establishes QEFC as a studied scenario. No random-access resource allocation |
+| Koutsopoulos, Tassiulas, "A Unified Framework for Handover Prediction and Resource Allocation in Non-Geostationary Mobile Satellite Networks", IEEE VTC 1999 Fall, vol. 4, pp. 2106-2110 | Joint handover prediction and resource allocation for non-geostationary networks | Early joint formulation. No 2-step or RACH-less access, no PRB grid, no re-plan policy comparison |
 | Kim, Lee, Kim, "Enhanced RACH-less conditional handover for LEO intra-satellite system", ICT Express 12(1):142-146, 2026, DOI 10.1016/j.icte.2025.08.004 | RACH-less CHO with UL grant start timing predicted from antenna gain | Establishes RACH-less access as a viable handover type. One access type, no allocation across UEs |
 | Le, Hassan, Lansard, Yuen, "A Random Access Protocol for Mixed-Traffic in LEO Satellite-Based IoT Communication", IEEE VTC2024-Spring, 2024 | JRA-PA: joint random access and preamble allocation for high-priority and low-priority traffic | Establishes preamble partitioning under mixed priorities. No handover, no PRB allocation |
+| Zhu, Sun, Peng, "Beam Management in LEO Satellite Networks With Random Traffic Arrival and Time-Varying Topology", IEEE TVT 73(9):13352-13367, 2024, DOI 10.1109/TVT.2024.3393924 | Beam management with random traffic arrivals and time-varying topology | Arrival-aware beam management. No per-UE access-type choice, no re-plan policy matrix |
 | Choi, "On Fast Retrial for Two-Step Random Access in MTC", IEEE Internet of Things Journal, 2021 | Analytical model of fast retrial for 2-step random access | Establishes 2-step retrial analysis. Not NTN handover |
 | 3GPP TR 38.821, TS 38.321, TS 38.300 | NTN scenarios, 4-step and 2-step random access, RACH-less handover | Standard baseline for the access types and timers |
 
@@ -1350,36 +1632,52 @@ These works overlap with part of the problem.
 
 | Work | What it does | Overlap | Difference | Evidence |
 |---|---|---|---|---|
-| Wang, Wen, Lu, Jing, Zhang, "Random access optimization for initial access and seamless handover for 5G-satellite network", Computer Networks 214:109176, 2022, DOI 10.1016/j.comnet.2022.109176 | Proposes 2-step random access for satellite (TRAS) and an MC-controlled handover (SMHOS) that reserves PUSCH time-frequency resources for the target | 2-step access and reserved time-frequency resources for handover | Fixes 2-step for all UEs. No per-UE choice among 4-step, CFRA, and RACH-less. No shared PRB-grid allocation across mixed capabilities. No per-UE delay-budget objective | Abstract |
-| Chen et al., "Incentivizing Cooperation for Handover Strategies in LEO Constellations via Fairness-guided MARL", ACM Transactions on Internet Technology 26(1), 2026, DOI 10.1145/3760527 | Fairness-guided multi-agent reinforcement learning that selects the handover target and sub-channel | Joint handover and resource selection. Fairness objective | No access-type choice. No random-access procedure. Learning, not a one-shot allocation over a PRB grid | Abstract |
+| Wang, Wen, Lu, Jing, Zhang, "Random access optimization for initial access and seamless handover for 5G-satellite network", Computer Networks 214:109176, 2022, DOI 10.1016/j.comnet.2022.109176 | Proposes 2-step random access for satellite (TRAS) and an MC-controlled handover (SMHOS) that reserves PUSCH time-frequency resources for the target | 2-step access and reserved time-frequency resources for handover | Fixes 2-step for all UEs. No per-UE choice among 4-step, CFRA, and RACH-less. No shared PRB-grid allocation across mixed capabilities. No per-UE delay-budget objective. No re-plan policy comparison | Abstract |
+| Chen et al., "Incentivizing Cooperation for Handover Strategies in LEO Constellations via Fairness-guided MARL", ACM Transactions on Internet Technology 26(1), 2026, DOI 10.1145/3760527 | Fairness-guided multi-agent reinforcement learning that selects the handover target and sub-channel | Joint handover and resource selection. Fairness objective | No access-type choice. No random-access procedure. Learning, not a one-shot allocation over a PRB grid. No post-decision re-allocation | Abstract |
 | "Beam-Hopping Pattern Design for Grant-Free Random Access in LEO Satellite Communications", arXiv:2508.03391, 2025 | Binary optimization of the beam-hopping pattern to maximize the minimum successful transmission probability across cells | Beam hopping and grant-free access | No handover batch. No per-UE access-type choice. Pattern design, not resource allocation for access | Abstract |
-| He, Ying, You, Gao, "PreHO: Predictive Handover for LEO Satellite Networks", arXiv:2603.07987, 2026 | Predictive handover planning with alternating optimization and dynamic programming | Plans a handover batch in advance | Timing and target planning only. No random-access resource allocation | Abstract |
-| Lee, Park, Park, Molisch, "Handover Protocol Learning for LEO Satellite Networks: Access Delay and Collision Minimization", arXiv:2310.20215, 2023 | Deep reinforcement learning handover protocol that modifies measurement reporting to reduce access delay and collisions | Access delay and collision reduction | Protocol learning, not resource allocation. No 2-step or RACH-less selection | Abstract |
-| Gou et al., "Beam-Hopping Scheduling for High-Priority and Time-Sensitive Services in Low-Earth-Orbit Satellite Networks", Sensors 26(19):6081, 2026, DOI 10.3390/s26196081 | Beam-hopping scheduling for high-priority and time-sensitive services | Beam-hopping scheduling under service requirements | No handover. No random-access procedure | Abstract |
+| He, Ying, You, Gao, "PreHO: Predictive Handover for LEO Satellite Networks", arXiv:2603.07987, 2026 | Predictive handover planning with alternating optimization and dynamic programming | Plans a handover batch in advance | Timing and target planning only. No random-access resource allocation. No late-arrival re-plan | Abstract |
+| Lee, Park, Park, Molisch, "Handover Protocol Learning for LEO Satellite Networks: Access Delay and Collision Minimization", arXiv:2310.20215, 2023 | Deep reinforcement learning handover protocol that modifies measurement reporting to reduce access delay and collisions | Access delay and collision reduction | Protocol learning, not resource allocation. No 2-step or RACH-less selection. No re-plan policy matrix | Abstract |
+| Gou et al., "Beam-Hopping Scheduling for High-Priority and Time-Sensitive Services in Low-Earth-Orbit Satellite Networks", Sensors 26(19):6081, 2026, DOI 10.3390/s26196081 | Beam-hopping scheduling for high-priority and time-sensitive services | Beam-hopping scheduling under service requirements | No handover. No random-access procedure. No re-allocation after an arrival | Abstract |
 
-### 16.4 Exact duplicate assessment
+### 16.4 Multi-cell and re-allocation work
 
-No inspected work combines all five elements:
+| Work | Overlap | Difference |
+|---|---|---|
+| Koutsopoulos and Tassiulas, 1999 | Joint handover prediction and resource allocation | Aggregate channel allocation, not per-UE access type, PRB grid, or policy comparison |
+| Chen et al., 2026 | Handover target and sub-channel selection | Learning policy, no RA procedure, no churn or preemption comparison |
+| Zhu, Sun, Peng, 2024 | Random traffic arrival and beam management | Beam-level management, not UE-level access and re-plan decisions |
+| Hozayen et al., 2022 | QEFC handover sequence and target choice | Sequence planning, not resource allocation or re-planning |
+
+### 16.5 Exact duplicate assessment
+
+No inspected work combines all seven elements:
 
 1. a QEF handover batch at a target satellite,
 2. a per-UE choice among 4-step, 2-step, and RACH-less CG/DG access,
-3. a shared PRB-by-slot allocation across cells and UEs,
-4. per-UE access delay budgets,
-5. a one-shot target-side decision with a declared algorithm and complexity.
+3. a per-UE choice among up to three candidate cells,
+4. a shared PRB-by-slot allocation across cells and UEs,
+5. per-UE access delay budgets,
+6. event-driven re-allocation after a new UE arrives,
+7. a comparison of preemption and balancing policies with churn accounting.
 
-The nearest work is Wang et al. 2022. It reserves PUSCH time-frequency resources for
-handover and uses 2-step access. It does not choose the access type per UE, and it does
-not allocate a shared PRB grid across mixed capabilities and budgets.
+The nearest work for the initial allocation is Wang et al. 2022. It reserves PUSCH
+time-frequency resources for handover and uses 2-step access. It does not choose the
+access type per UE, allocate a shared PRB grid, or re-plan after an arrival.
+
+The nearest work for joint handover and resource allocation is Koutsopoulos and
+Tassiulas 1999. It formulates the joint problem but does not model the access types,
+per-UE budgets, candidate cells, or re-plan policies of this study.
 
 This is a provisional negative result. The search was not exhaustive, and the closest
-paper was inspected at abstract level. Absence of a duplicate is not proof of priority.
+papers were inspected at abstract level. Absence of a duplicate is not proof of priority.
 
 Novelty confidence: moderate for the combination, low for any single ingredient.
 
 What would weaken the claim:
 
-- A paper that jointly selects access types and allocates PRBs for handover.
-- A paper that proves a fixed access rule is optimal for the same objective.
+- A paper that jointly selects access types, cells, and PRBs for handover.
+- A paper that compares re-plan preemption and balancing policies for NTN handover.
+- A paper that proves a fixed access or re-plan rule is optimal for the same objective.
 - A paper that reduces the QEF batch problem to a single-cell problem with no loss.
 
 ## 17. Assumptions, risks, and open items
@@ -1389,16 +1687,23 @@ What would weaken the claim:
 | A-1 | The incoming context is prepared before the epoch | Assumption from the intent | Preparation delay would add to every budget |
 | A-2 | The target knows the capabilities and budgets at the epoch | Design assumption | Stale or missing data would add a report delay |
 | A-3 | Cells are independent for access | Declared | Inter-cell interference would change collision and detection rates |
-| A-4 | The target starts empty | Scope choice for version 2 | Pre-existing traffic would change the residual capacity |
+| A-4 | The target starts empty | Scope choice | Pre-existing traffic would change the residual capacity |
 | A-5 | Spectral efficiency is constant | Declared | Link adaptation would change the capacity table |
 | A-6 | The hop pattern is fixed and known | Design choice | An optimized pattern would change the wait floor |
 | A-7 | MsgA success is 0.99 | Declared | No calibrated source in this study |
 | A-8 | 2-step CFRA uses the same MsgB window as CBRA | Declared | A different window would change the completion time |
+| A-9 | New UEs arrive as a Poisson process | Declared default | A bursty arrival would change the re-plan load |
+| A-10 | The target re-plans within 1 ms of an arrival | Declared | A slower decision would miss the new UE's options |
+| A-11 | A moved lease pays 5 ms and one control message | Declared | A larger cost would reduce the value of preemption |
+| A-12 | The candidate set is static during a procedure | Design choice | A moving UE or a moving cell would change the set |
 | R-1 | The abstract model may not match a real gNB | Risk | The validation gates bound the claim |
 | R-2 | The exact reference is exponential | Risk | Tiny cases only |
 | R-3 | The heuristic may be far from the bound at scale | Risk | Report the tiny-instance gap, not a near-optimality claim at scale |
 | R-4 | The density is an average over the footprint | Risk | A hotspot would change the per-cell load |
 | R-5 | The study folder may be outside version control | Fact | The study has no repository history unless it moves |
+| R-6 | The re-plan comparison depends on the arrival rate | Risk | Report the rate and do not generalize across rates |
+| R-7 | Churn depends on the lease-state definition | Risk | State the definitions and keep them fixed |
+| R-8 | The multi-cell gain depends on the overlap model | Risk | A different overlap would change the candidate sets |
 
 Open items for the user, with the defaults chosen here:
 
@@ -1406,6 +1711,7 @@ Open items for the user, with the defaults chosen here:
 2. Reference density for the main comparison (30 persons/km^2 on the cluster).
 3. Terminal penetration (0.001) and active fraction (1.0).
 4. Whether the full-footprint run is required or the cluster is enough.
+5. Whether the ns-3 validation slice is needed for a reviewer.
 
 ## 18. Standards and references
 
@@ -1430,8 +1736,10 @@ full-stack reference, which this study does not build.
 | Work | Identifier |
 |---|---|
 | Hozayen et al., graph-based QEFC handover framework | arXiv:2211.07872 |
+| Koutsopoulos and Tassiulas, joint handover and resource allocation | IEEE VTC 1999 Fall, vol. 4, pp. 2106-2110 |
 | Kim et al., enhanced RACH-less CHO | DOI 10.1016/j.icte.2025.08.004 |
 | Le et al., JRA-PA mixed-traffic random access | IEEE VTC2024-Spring |
+| Zhu et al., beam management with random arrivals | DOI 10.1109/TVT.2024.3393924 |
 | Wang et al., random access optimization for satellite handover | DOI 10.1016/j.comnet.2022.109176 |
 | Chen et al., fairness-guided MARL handover | DOI 10.1145/3760527 |
 | Beam-hopping pattern design for GFRA | arXiv:2508.03391 |
@@ -1443,16 +1751,18 @@ full-stack reference, which this study does not build.
 ## 19. Deliverables
 
 1. This design document.
-2. A Python package with the six access procedures and the resource ledger.
-3. The allocator algorithm with pseudocode and time and space complexity bounds.
-4. A greedy allocator with a deterministic plan and a replay check.
-5. An exhaustive reference and a lower bound for tiny instances.
-6. A metrics and experiment toolchain with confidence intervals.
-7. A validation record with the gate results and the exact limits.
-8. An experiment report with the access mix, the violation rate, and the crossover
-   points.
-9. The backlog entry for post-decision re-allocation.
+2. A Python package with six access procedures, candidate-cell selection, and the
+   resource ledger.
+3. The batch allocator algorithm with pseudocode and time and space complexity bounds.
+4. The re-allocation algorithm with pseudocode and time and space complexity bounds.
+5. Six re-plan policies: two preemption policies times three balancing policies.
+6. A deterministic plan replay check and a lease-version audit.
+7. An arrival generator with Poisson and fixed-batch modes.
+8. An exhaustive reference and a lower bound for tiny instances.
+9. A metrics and experiment toolchain with confidence intervals.
+10. A validation record with the gate results and the exact limits.
+11. An experiment report with the access mix, the violation rate, the re-plan policy
+    comparison, and the candidate-cell comparison.
 
 The study does not deliver a physical calibration, a full-stack reference, a
-near-optimality claim at scale, or a dynamic re-planning policy. Those are separate
-stages.
+near-optimality claim at scale, or a multi-satellite policy. Those are separate stages.
