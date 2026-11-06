@@ -55,9 +55,23 @@ jobs:
           if test -f .cache/upstream/status.md; then
             cat .cache/upstream/status.md >> "$GITHUB_STEP_SUMMARY"
           fi
+          if test -f .cache/upstream/status.html; then
+            {
+              echo ""
+              echo "### Visual report"
+              echo ""
+              echo 'Download the **upstream-status** artifact from this run and open `status.html`.'
+              echo ""
+              echo "[Run artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)"
+              if [ "${{ vars.UPSTREAM_PAGES }}" = "true" ] && [ "${{ github.ref }}" = "refs/heads/master" ]; then
+                echo ""
+                echo "[Published page](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: upstream-status
           path: |
@@ -66,3 +80,43 @@ jobs:
             .cache/upstream/status.html
             .cache/upstream/observations.json
           if-no-files-found: warn
+
+  publish:
+    needs: audit
+    if: >-
+      always() && needs.audit.result != 'cancelled'
+      && vars.UPSTREAM_PAGES == 'true'
+      && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Download reports
+        uses: actions/download-artifact@v8
+        with:
+          name: upstream-status
+          path: reports
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp reports/status.html _site/index.html
+          cp reports/status.md _site/status.md
+          cp reports/status.json _site/status.json
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

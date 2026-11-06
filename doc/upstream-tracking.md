@@ -303,11 +303,23 @@ the auditor never guesses a subtree lineage or merges unrelated full histories.
 
 `.github/workflows/upstream-status.yml` runs weekly, on manual dispatch, and on
 tracker changes. It publishes Markdown, JSON, and HTML artifacts and a job
-summary; incomplete audits or manual findings fail the status check. It does
-not merge, push, open issues, or publish messages. Submodule manifest edits
-become visible when their commits and parent gitlinks are pushed. Schedule
-notifications follow the repository's existing GitHub Actions notification
-settings.
+summary that links to the run's artifacts and, when Pages is enabled, to the
+published page; incomplete audits or manual findings fail the status check. It
+does not merge, push, open issues, or publish messages. Submodule manifest
+edits become visible when their commits and parent gitlinks are pushed.
+Schedule notifications follow the repository's existing GitHub Actions
+notification settings.
+
+To publish the page at a stable URL:
+
+1. In the repository settings, set the Pages source to "GitHub Actions".
+2. Set the repository variable `UPSTREAM_PAGES` to `true`.
+
+The `publish` job then deploys `status.html` as the site index on the default
+branch, at `https://<owner>.github.io/<repository>/`. Without the variable the
+job is skipped and the page remains an artifact. The published page is public
+when the repository is public; it contains the same source URLs, commit
+subjects, and findings as the JSON report.
 
 The same command can be run by cron or another CI system. Persist or archive
 `.cache/upstream/observations.json` and the matching cache between runs to detect
