@@ -7,6 +7,7 @@ import collections
 import datetime
 import difflib
 import hashlib
+import importlib.util
 import json
 import os
 import shlex
@@ -326,6 +327,16 @@ class Audit:
             sample.append({"commit": oid, "date": date, "subject": subject})
         return count, sample
 
+    def recent(self, tip, limit, exclude=None):
+        """Sample recent commits, optionally restricted to those absent from an ancestor."""
+        revisions = [tip, *(["^" + exclude] if exclude else [])]
+        output = self.run("log", f"-{limit}", "--format=%H%x09%cI%x09%s", *revisions).stdout
+        sample = []
+        for line in output.splitlines():
+            oid, date, subject = line.split("\t", 2)
+            sample.append({"commit": oid, "date": date, "subject": subject})
+        return sample
+
     def merge_check(self, local, source):
         """Predict merge conflicts without writing an index, worktree, or commit."""
         result = self.run(
@@ -379,6 +390,9 @@ def analyze_source(
         return result
     history = audit.history(local, tip)
     result.update(history)
+    result["local_commits"] = audit.recent(local, args.sample, history.get("merge_base"))
+    if history["relation"] == "unrelated":
+        result["local_total"] = int(audit.run("rev-list", "--count", local).stdout)
     receipt = ledger.get(key)
     baseline = None
     if receipt:
@@ -526,6 +540,19 @@ def markdown(report):
         "",
     ]
     return "\n".join(lines)
+
+
+def render_html(report, path):
+    """Render the visual report with the sibling renderer module."""
+    path = Path(path)
+    spec = importlib.util.spec_from_file_location(
+        "upstream_graph", Path(__file__).resolve().with_name("upstream_graph.py")
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Cannot load the HTML renderer module.")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.write(report, path)
 
 
 def scan(args):
@@ -690,10 +717,11 @@ def scan(args):
     write_json(args.json, report)
     args.markdown.parent.mkdir(parents=True, exist_ok=True)
     args.markdown.write_text(markdown(report))
+    render_html(report, args.html)
     if not args.offline:
         write_json(cache / "observations.json", observations)
     print(json.dumps(report["summary"], indent=2))
-    print(f"Reports: {args.markdown}\n         {args.json}")
+    print(f"Reports: {args.markdown}\n         {args.json}\n         {args.html}")
     return (
         2
         if report["summary"]["errors"]
@@ -764,6 +792,7 @@ def main(argv=None):
     )
     parser.add_argument("--json", type=Path, help="JSON report; default CACHE/status.json")
     parser.add_argument("--markdown", type=Path, help="Markdown report; default CACHE/status.md")
+    parser.add_argument("--html", type=Path, help="HTML graph report; default CACHE/status.html")
     subparsers = parser.add_subparsers(dest="command", required=True)
     scan_parser = subparsers.add_parser(
         "scan", help="Fetch all source heads and report their status"
@@ -806,6 +835,7 @@ def main(argv=None):
     args.mappings = args.mappings or args.root / "upstream-map.json"
     args.json = args.json or args.cache / "status.json"
     args.markdown = args.markdown or args.cache / "status.md"
+    args.html = args.html or args.cache / "status.html"
     if args.command == "scan" and (args.sample < 0 or args.timeout < 1):
         parser.error("sample must be nonnegative and timeout must be positive")
     try:

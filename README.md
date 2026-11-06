@@ -265,7 +265,7 @@ You can find more information in the [manual](https://www.nsnam.org/docs/manual/
 
 This fork tracks declared upstream repositories and selected upstream paths with
 `python3 utils/upstream-status.py scan`. See [upstream tracking](doc/upstream-tracking.md)
-for reports, integration strategies, review receipts, and scheduled audits.
+for reports, branch graphs, integration strategies, review receipts, and scheduled audits.
 
 ## Contributing to ns-3
 

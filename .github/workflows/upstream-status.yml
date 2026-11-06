@@ -11,6 +11,7 @@ on:
       - upstream-map.json
       - .gitmodules
       - utils/upstream-status.py
+      - utils/upstream_graph.py
       - utils/tests/test-upstream-status.py
       - .github/workflows/upstream-status.yml
 
@@ -40,7 +41,7 @@ jobs:
           restore-keys: upstream-status-${{ runner.os }}-
       - name: Audit upstreams
         run: |
-          rm -f .cache/upstream/status.md .cache/upstream/status.json
+          rm -f .cache/upstream/status.md .cache/upstream/status.json .cache/upstream/status.html
           python3 utils/upstream-status.py scan --timeout 600 --fail-on-attention
       - name: Save upstream observations and objects
         if: always()
@@ -62,5 +63,6 @@ jobs:
           path: |
             .cache/upstream/status.md
             .cache/upstream/status.json
+            .cache/upstream/status.html
             .cache/upstream/observations.json
           if-no-files-found: warn

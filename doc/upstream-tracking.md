@@ -10,8 +10,10 @@ The default outputs are `.cache/upstream/status.md` and
 `.cache/upstream/status.json`. The Markdown report lists declared upstreams,
 other branches requiring review, and outstanding manual work. JSON contains
 all advertised branches, full commit IDs, commit counts, commit samples, all
-changed paths, conflict paths, errors, and fetch timestamps. The cache is
-already excluded by the project's `.gitignore`.
+changed paths, conflict paths, errors, and fetch timestamps. A self-contained
+`.cache/upstream/status.html` visualizes the same report; see
+[Visual report](#visual-report). The cache is already excluded by the project's
+`.gitignore`.
 
 The auditor reads the root repository and every initialized recursive Git
 submodule, including `contrib/satellite/data`. An uninitialized submodule or
@@ -133,6 +135,8 @@ would otherwise need no action.
 | Field or column | Interpretation |
 | --- | --- |
 | Pending commits / `pending_commits` | Source commits not reachable from local HEAD or a valid review baseline, limited to the selected source path when present. The JSON `commits` field contains samples rather than the entire list. |
+| `local_commits` | Samples of commits reachable from local HEAD but not from the merge base, newest first. `local_only` remains the complete count; `--sample` limits the samples. |
+| `local_total` | For an unrelated history, the complete count of commits reachable from local HEAD. `local_only` is absent because there is no merge base. |
 | `(unverified)` / `pending_commits_proven: false` | No validated review baseline establishes which scoped or unrelated source changes were already handled. The count represents candidate history, potentially including the entire source history. |
 | `exclusive_commits` | For an undeclared branch, candidate commits remaining after also excluding declared branches for the same URL and source path. `exclusive_commit_samples` samples these commits. |
 | Files / conflicts | The number of differing file paths and predicted conflict paths. A zero conflict count only establishes a clean simulation when the status is `merge-clean`; a simulation may not have run for other statuses. |
@@ -148,6 +152,34 @@ it runs from the reviewed source snapshot to the current source snapshot. Thus
 the later report isolates subsequent upstream changes instead of repeatedly
 listing intentional local differences. Shared-history whole-repository
 integration candidates show upstream file changes since the merge base.
+
+### Visual report
+
+Each scan also writes `.cache/upstream/status.html`. Open it in a browser. The
+page is self-contained, uses no scripts, and makes no network requests. It
+presents the same JSON report as a repository tree for the root and every
+initialized submodule, an overview table of declared statuses and pending
+counts, and one branch connection diagram per declared source and per other
+branch that needs review. Commit samples, changed paths, predicted conflicts,
+and findings appear below their diagram.
+
+A diagram places the merge base on the left and the tips on the right. The blue
+lane holds commits reachable from local HEAD but not from the merge base. The
+orange lane holds pending source commits. A single lane means the other tip is
+the merge base. An unrelated history has no merge base: both lanes are drawn
+with a dashed divider and the blue lane counts all local commits. A filled dot
+is a sampled commit, the ringed dot is the tip, a hollow dot means the tip has
+no sampled commits, and `+N more` states how many commits the sample omits.
+Hover a dot for its identifier, date, and subject. `local_commits` holds the
+blue-lane samples and `commits` holds the orange-lane samples. Both are limited
+by `--sample`; the counts are complete.
+
+The page is a view of the JSON report and adds no evidence. Regenerate it
+without fetching:
+
+```sh
+python3 utils/upstream_graph.py --json .cache/upstream/status.json --html status.html
+```
 
 ### Other manual findings
 
@@ -270,11 +302,12 @@ the auditor never guesses a subtree lineage or merges unrelated full histories.
 ## Scheduling and validation
 
 `.github/workflows/upstream-status.yml` runs weekly, on manual dispatch, and on
-tracker changes. It publishes Markdown and JSON artifacts and a job summary;
-incomplete audits or manual findings fail the status check. It does not merge,
-push, open issues, or publish messages. Submodule manifest edits become visible
-when their commits and parent gitlinks are pushed. Schedule notifications follow
-the repository's existing GitHub Actions notification settings.
+tracker changes. It publishes Markdown, JSON, and HTML artifacts and a job
+summary; incomplete audits or manual findings fail the status check. It does
+not merge, push, open issues, or publish messages. Submodule manifest edits
+become visible when their commits and parent gitlinks are pushed. Schedule
+notifications follow the repository's existing GitHub Actions notification
+settings.
 
 The same command can be run by cron or another CI system. Persist or archive
 `.cache/upstream/observations.json` and the matching cache between runs to detect

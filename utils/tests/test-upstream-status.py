@@ -379,6 +379,52 @@ class UpstreamStatusTest(unittest.TestCase):
         ledger = json.loads((self.root / "upstream-state.json").read_text())
         self.assertEqual(ledger["reviews"][source["key"]]["reason"], "Amended decision")
 
+    def test_html_report_and_local_commit_samples(self):
+        self.commit(self.root, {"local": "local\n"})
+        self.commit(self.source, {"remote": "remote\n"})
+        report = self.scan()
+        source = self.declared(report)
+        self.assertEqual(source["relation"], "diverged")
+        self.assertEqual(source["local_only"], 1)
+        self.assertEqual(len(source["local_commits"]), 1)
+        self.assertEqual(
+            source["local_commits"][0]["commit"],
+            upstream.git(self.root, "rev-parse", "HEAD").stdout.strip(),
+        )
+        page = (self.root / ".cache/upstream/status.html").read_text()
+        self.assertIn("merge base", page)
+        self.assertIn(source["merge_base"][:8], page)
+        self.assertIn("local-only 1", page)
+        self.assertIn("Pending upstream commits", page)
+        self.assertNotIn("<script", page)
+        self.assertNotIn("<link", page)
+
+    def test_html_escapes_commit_subjects(self):
+        self.commit(self.source, {"code": "x\n"}, message="<script>alert(1)</script>")
+        self.scan()
+        page = (self.root / ".cache/upstream/status.html").read_text()
+        self.assertNotIn("<script>alert(1)</script>", page)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", page)
+
+    def test_html_marks_unrelated_history(self):
+        source = self.new_repo("unrelated")
+        self.commit(source, {"code": "one\n"})
+        self.manifest(source)
+        result = self.declared(self.scan())
+        self.assertEqual(result["relation"], "unrelated")
+        self.assertGreaterEqual(result["local_total"], 1)
+        page = (self.root / ".cache/upstream/status.html").read_text()
+        self.assertIn("no common", page)
+        self.assertIn("ancestor", page)
+        self.assertIn("local commit", page)
+
+    def test_html_handles_empty_samples(self):
+        self.commit(self.source, {"code": "updated\n"})
+        self.scan("--sample", "0")
+        page = (self.root / ".cache/upstream/status.html").read_text()
+        self.assertIn("Pending upstream commits", page)
+        self.assertIn("0 of 1 shown", page)
+
 
 if __name__ == "__main__":
     unittest.main()
