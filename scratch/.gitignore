@@ -6,3 +6,6 @@
 !subdir/
 !scratch-simulator.cc
 !CMakeLists.txt
+
+# Tracked study: design, implementation, tests and written records.
+!ntn-qef-handover-resource-optimization/
