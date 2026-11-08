@@ -72,6 +72,9 @@ Where this document differs from the intent statement, this document takes prece
 32. Showed the budget-infeasible skip in the 9.6 pseudocode and defined the `Feasible`
     blocking-pool return.
 33. Added the header version to `run.json` and the budget share check to the loader.
+34. Changed section 7.6 to evaluate the singleton count with the contention preamble pool
+    `M = preamble_total - preamble_dedicated = 56`, not the 64-preamble total. The
+    131-UE value is 12.6 (was 16.9); the 200-UE value is 5.5 (was 8.7).
 
 ## Changes in version 5
 
@@ -634,17 +637,19 @@ capacity is 996 PRB-symbols per active slot. One Msg3 uses 12 PRB-symbols, so th
 limit is 83 Msg3 per slot. The RAR processing limit is 8 per slot. The model spreads
 RARs across the 10-slot RAR window, so the control capacity is 80 RARs per occasion.
 
-With a 10 ms PRACH period, the cell has two occasions per dwell. At 131 UEs per cell and
-64 preambles, the expected number of singleton preambles is
+With a 10 ms PRACH period, the cell has two occasions per dwell. Let `M` be the contention
+preamble pool, `M = preamble_total - preamble_dedicated`. The default split of section 7.3
+gives `M = 56`, and the dedicated preambles cannot serve CBRA. At 131 UEs per cell, the
+expected number of singleton preambles is
 
 ```text
-n * (1 - 1/M)^(n-1) = 131 * (63/64)^130 = 16.9
+n * (1 - 1/M)^(n-1) = 131 * (1 - 1/56)^130 = 12.6
 ```
 
-So about 17 UEs can succeed per occasion under contention alone. That is below the
+So about 13 UEs can succeed per occasion under contention alone. That is below the
 control capacity of 80 and below the PRB capacity. The first dwell is therefore
 contention-limited. At 200 UEs per cell (density about 46), the expected singletons
-fall to 8.7 per occasion. That is still below 80, so contention remains the binding
+fall to 5.5 per occasion. That is still below 80, so contention remains the binding
 limit. The control limit binds only when the per-slot RAR demand exceeds 8, for example
 with a short RAR window or a small `max_rar_per_slot`. The study sweeps that setting.
 The crossing between contention and control is one of its testable mechanisms.

@@ -83,11 +83,12 @@ costs (239,148). The tiny-instance gap in V7 survives the swap for the same
 reason. Fix: let the swap exchange access types and rebuild both timelines, or
 drop the swap from the claim.
 
-**N1 - singleton arithmetic uses the wrong pool.** Section 7.6 evaluates
-`131*(63/64)^130 = 16.9` with the 64-preamble total, while section 8.2 draws
-from the 56-preamble contention pool. With the declared split the value is
-`131*(55/56)^130 = 12.6`, a 25 percent difference in the stated contention
-capacity. The code and `tests/test_analytic.py` use 56.
+**N1 - singleton arithmetic uses the wrong pool.** *(Resolved in design v5.1 item 34.)*
+Section 7.6 evaluated `131*(63/64)^130 = 16.9` with the 64-preamble total, while section
+8.2 draws from the 56-preamble contention pool. The section now defines
+`M = preamble_total - preamble_dedicated` and gives 12.6 and 5.5. The code and
+`tests/test_analytic.py` always used the pool; the fixture now derives it from the
+configuration instead of naming a constant. Kept for the record.
 
 **N2 - the full profile's "outer cell-center radius".** The table reports
 853.47 km, which is the footprint radius `R_f`; the outermost lattice centre is

@@ -246,9 +246,10 @@ H2 at the default point - the fallback helps success but costs the delay budget.
    term, make `mu` act on the order or the acceptance, and give the swap an
    access-type exchange. Re-run E1 and C1; require the tiny-instance stage-3 gap
    to fall below 1.1x and the swap to change something.
-2. **Fix the two numeric statements (N1, N2).** 16.9 becomes 12.6 in section 7.6;
-   the full-profile row gains a caption that 853.47 km is the footprint radius
-   and the outermost centre is 852.17 km.
+2. **Fix N2 (N1 is fixed in v5.1 item 34).** Section 7.6 now uses
+   `M = preamble_total - preamble_dedicated`. The full-profile row still needs a
+   caption that 853.47 km is the footprint radius and the outermost centre is
+   852.17 km.
 3. **Decide the timeout semantics (N3).** Either state that RAR and CR timeouts
    cannot occur under active-slot timers, or restore wall-clock windows and
    re-measure the pause cases (the C_max=7 rows would change).

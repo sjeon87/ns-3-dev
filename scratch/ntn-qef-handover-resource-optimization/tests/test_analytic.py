@@ -36,11 +36,19 @@ def test_singleton_curve_follows_the_closed_form():
 
 
 def test_singleton_curve_uses_the_contention_pool_not_the_total():
-    expected64 = 131 * (63 / 64) ** 130
-    expected56 = 131 * (55 / 56) ** 130
-    assert expected64 == pytest.approx(16.9, abs=0.05)
-    assert expected56 == pytest.approx(12.6, abs=0.1)
-    assert abs(singletons(131, 56) - expected56) < abs(singletons(131, 56) - expected64)
+    from qef_ho_ra.config import ScenarioConfig
+    from scenarios.generate import scenario
+
+    cfg = ScenarioConfig.model_validate(scenario())
+    total = cfg.radio.preamble_total
+    dedicated = cfg.radio.preamble_dedicated
+    pool = total - dedicated
+    assert pool == 56  # declared split of DESIGN.md 7.3
+    expected_pool = 131 * (1 - 1 / pool) ** 130
+    expected_total = 131 * (1 - 1 / total) ** 130
+    assert expected_pool == pytest.approx(12.6, abs=0.1)
+    observed = singletons(131, pool)
+    assert abs(observed - expected_pool) < abs(observed - expected_total)
 
 
 def test_singletons_scale_with_load():
