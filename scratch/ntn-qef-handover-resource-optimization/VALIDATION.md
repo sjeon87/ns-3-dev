@@ -21,8 +21,8 @@ conformance, no near-optimality claim at scale.
 | V4 Analytic | `tests/test_analytic.py` | Singleton count follows `n*(1-1/M)^(n-1)` | Pass. At n=131 and M=56 the measured mean is 12.6 per occasion over 400 seeds, within 5 percent of the closed form. |
 | V5 Boundary | `tests/test_access.py`, `tests/test_engine.py` | Budget equal to completion, attempt limit, occasion boundary, inactive cell, preamble exhaustion, CG and DG deadline, 2-step fallback, policy gap, capability fallback | Pass. 12 fixtures; each one exercises the named branch. |
 | V6a Information boundary | `tests/test_engine.py` | Same cohort, different outcome streams, identical `plan.csv` | Pass. `plan.csv` is byte-identical under two outcome seeds; `ue-outcomes.csv` differs. |
-| V6b Success-path replay | `tests/test_engine.py` and every episode summary | A first-attempt success whose messages land at the planned slots completes at the predicted instant | Pass. Across 369 episodes: 947,827 first-attempt successes, 930,465 with every message at the planned slot, **0 mismatches**, 17,362 delayed by a control-pool spill (excluded with the reason recorded). |
-| V7 Exact | `tests/test_reference.py` | Per-cell enumeration plus frontier combination equals joint enumeration; the reference bounds the allocator | Pass. The decomposition equals a brute force over 3x3x3 candidate sets. On the tiny instance the optimum is `(0.0, 0.0, 520)` and the allocator returns `(0.0, 0.0, 1064)`: the same stage 1 and stage 2, a stage-3 gap of 544. |
+| V6b Success-path replay | `tests/test_engine.py` and every episode summary | A first-attempt success whose messages land at the planned slots completes at the predicted instant | Pass. Across 369 episodes: 948,121 first-attempt successes, 930,714 with every message at the planned slot, **0 mismatches**, 17,407 delayed by a control-pool spill (excluded with the reason recorded). |
+| V7 Exact | `tests/test_reference.py` | Per-cell enumeration plus frontier combination equals joint enumeration; the reference bounds the allocator | Pass. The decomposition equals a brute force over 3x3x3 candidate sets. On the tiny instance the optimum is `(0.0, 0.0, 520)` and the allocator returns `(0.0, 0.0, 520)` after the G2 tie-break, so the gap is zero on this instance. Before the tie-break the allocator returned 1,064. |
 | V8 Determinism | `tests/test_engine.py` | Two runs of one seed produce byte-identical CSV | Pass. All eight artifacts hash equal. |
 
 V4 shows that the model implements the formula, not that the formula matches a
@@ -55,6 +55,10 @@ These were declared before the runs and cost nothing to reverse.
 6. **Stage-3 cost** `PRB-symbols + 12*(CCEs + preambles + RAR grants + DG grants)`.
 7. **Exact instance** ring-1 cluster (7 cells), three UEs per cell for V7 and two
    per cell for the joint-vs-decomposition check.
+8. **Tie-break.** On an exact score tie the allocator takes the cheaper option,
+   then the earlier predicted completion, then the enumeration order. DESIGN.md
+   9.6 leaves the tie to the enumeration order; without this rule the access mix
+   depends on the order of `ACCESS_TYPES` (G2).
 
 ## 3. Findings against the design
 
@@ -66,14 +70,19 @@ stays as declared, with a comment in `allocator.score` that records the reason,
 so the configured score and the design agree. Moving it to the ordering key or
 the acceptance rule remains a design revision, not a code fix.
 
-**G2 - stage 3 is unreachable from the greedy.** The score has no cost term, and
-`score < best - 1e-12` keeps the first enumerated option on a tie. At low
-utilisation every price is zero, so the first option wins: on the tiny instance
-all 14 UEs take 4-step and the cost is 1064 against an optimum of 520 (2.05x).
-At the cluster default the mix is sensible (P1 UEs take the mandatory 4-step,
-CG-capable UEs take CG), so the defect is load-dependent, not universal.
-Fix: add `epsilon * direct_cost` to the score (a one-line change that breaks the
-design's declared score), or evaluate the stage-3 delta in the swap.
+**G2 - stage 3 was unreachable from the greedy.** *(Tie fixed; the cost term is
+still absent.)* The score has no cost term, and `score < best - 1e-12` kept the
+first enumerated option on a tie. At low utilisation every price is zero, so the
+first option won: before the fix all 14 tiny-instance UEs took 4-step and the
+cost was 1,064 against an optimum of 520. At the cluster default the mix was
+always sensible (P1 UEs take the mandatory 4-step, CG-capable UEs take CG), and
+the measured total is within 4.5 percent of the per-UE cheapest-option bound
+(239,352 against 229,112, seed 1). Status: an exact tie now takes
+`(direct_cost, predicted_completion, enumeration index)`, declared in section 2
+item 8. The tiny instance reaches 520, the exact optimum; the cluster headline is
+unchanged. Stage 3 remains *reported, not optimized* (decision D): the score
+still has no cost term, so `epsilon*direct_cost` remains an option if the claim
+must hold at low load.
 
 **G3 - the swap pass is inert at the headline point.** A start-slot exchange
 leaves the access type - and therefore the stage-3 cost - unchanged, and it
@@ -128,10 +137,11 @@ tighter deadline or a larger probability.
 
 ## 5. What would close the open items
 
-1. Decide G1/G2/G3 as one design revision: score the stage-3 cost, make `mu`
-   act on the order or the acceptance, and give the swap access-type exchange.
-   Re-run E1 and C1 and require the stage-3 gap on the tiny instance to fall.
-2. Correct N1 in section 7.6 and N2 in the table caption.
+1. Decide G1 and G3 (G2's tie-break is applied and its tiny gap is closed): give
+   `mu` a real lever (ordering or acceptance) and either exchange access types in
+   the swap or drop it from the claim. Re-run E1 and C1 and require the swap to
+   change something.
+2. Correct N2 in the full-profile caption (N1 is fixed in v5.1 item 34).
 3. State in section 8.2 that RAR and CR timeouts cannot occur under active-slot
    timers, or restore wall-clock windows and re-measure the pause cases.
 4. Add a CG sensitivity point that can bind (deadline below the first retry or

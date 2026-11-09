@@ -82,3 +82,9 @@ objective or scope.
    UEs per cell for the tiny instance and two UEs per cell for the joint
    decomposition check. The design's two-cell figure is a size declaration; the
    method is unchanged.
+10. **Tie-break.** On an exact score tie the allocator takes the cheaper option,
+    then the earlier predicted completion, then the enumeration order. Section
+    9.6 of the design leaves the tie to the enumeration order (VALIDATION G2).
+11. **Stage 3** is a plan-time total over assigned UEs. It excludes retries and
+    CG waste, which are reported separately, and it is reported, not optimized:
+    the score has no cost term and the swap keeps each access type.

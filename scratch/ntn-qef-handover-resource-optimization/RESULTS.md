@@ -4,6 +4,11 @@
 **Runs:** 60 points, 369 episodes, 1,818,900 UE-episodes, 1,207,504 successes;
 `results/report.md` holds the raw tables and `results/figures/` the figures.
 
+These tables come from the run with the G2 tie-break applied (`results/`). The
+pre-fix run is kept in `results-prefix-tiebreak/`. The E1 headline is unchanged
+to four decimals; other points move by at most 0.001, except the low-load
+medians and the full-profile cost.
+
 Setup unless stated otherwise: cluster of 37 cells, 131 or 132 UEs per cell
 (4,848 UEs), `C_max = 19`, dwell 20 ms, 15 MHz, density 30 persons/km2, joint
 access menu, 30 paired seeds. Every rate uses the generated cohort as the
@@ -13,7 +18,7 @@ denominator; an unassigned UE counts as a failure and a violation.
 
 | point | success | budget violation (95% CI) | median ms | p95 ms |
 |---|---|---|---|---|
-| joint | 1.0000 | 0.0159 [0.0154, 0.0165] | 53.4 | 127.1 |
+| joint | 1.0000 | 0.0159 [0.0154, 0.0164] | 53.4 | 127.1 |
 | 4-step CBRA only | 0.7921 | 0.2834 [0.2819, 0.2850] | 107.4 | 155.9 |
 | 2-step CBRA only | 0.5015 | 0.5252 [0.5226, 0.5279] | 59.3 | 132.3 |
 | CG only | 0.2495 | 0.7505 [0.7484, 0.7527] | 25.4 | 67.2 |
@@ -22,7 +27,7 @@ denominator; an unassigned UE counts as a failure and a violation.
 | 2-step CFRA only | 0.1832 | 0.8172 [0.8171, 0.8173] | 48.0 | 68.1 |
 
 Paired against joint, every arm is worse with a 95 percent interval that
-excludes zero: 4-step +0.2675 [+0.2660, +0.2691], 2-step +0.5093, CG +0.7346,
+excludes zero: 4-step +0.2676 [+0.2660, +0.2691], 2-step +0.5093, CG +0.7347,
 DG +0.8014, CFRA +0.828.
 
 The strict arms are a *policy* comparison: a UE without the type is unassigned
@@ -32,7 +37,7 @@ separates them:
 
 | arm | all-cohort violation | eligible-only violation | eligible success | eligible share |
 |---|---:|---:|---:|---:|
-| joint | 0.0154 | 0.0154 | 1.0000 | 1.000 |
+| joint | 0.0153 | 0.0153 | 1.0000 | 1.000 |
 | 4-step CBRA | 0.2798 | 0.2798 | 0.7921 | 1.000 |
 | 2-step CBRA | 0.5249 | 0.0529 | 1.0000 | 0.502 |
 | CG | 0.7494 | 0.0000 | 1.0000 | 0.251 |
@@ -47,7 +52,7 @@ separates them:
 
 Reading:
 
-- The mix is worth 26.7 points against the 3GPP baseline (4-step CBRA, the only
+- The mix is worth 26.8 points against the 3GPP baseline (4-step CBRA, the only
   type every UE must support). That is H1: a single access rule is far from the
   joint allocation.
 - CG is the best single type for the UEs that have it (0.0 percent eligible
@@ -66,15 +71,15 @@ Reading:
 
 | density | success | violation (95% CI) | median ms | p95 ms |
 |---|---|---|---|---|
-| 2 | 1.0000 | 0.0000 | 55.4 | 107.1 |
-| 10 | 1.0000 | 0.0052 [-0.0026, 0.0129] | 38.5 | 107.1 |
-| 30 | 1.0000 | 0.0154 [0.0129, 0.0179] | 54.0 | 127.1 |
+| 2 | 1.0000 | 0.0000 [0.0000, 0.0000] | 33.8 | 98.0 |
+| 10 | 1.0000 | 0.0045 [0.0022, 0.0069] | 38.1 | 107.1 |
+| 30 | 1.0000 | 0.0153 [0.0125, 0.0182] | 54.0 | 127.1 |
 | 100 | 0.7441 | 0.3278 [0.3234, 0.3323] | 67.3 | 198.4 |
 
 The curve is flat to density 10 and rises steeply between 30 (131 UEs/cell) and
 100 (437 UEs/cell). At density 100 one quarter of UEs exhaust the 10 attempts.
 The lever is the pruned three-start option set: `C1/options-1` and
-`C1/options-5` move the same point from 0.2230 to 0.0080. The design's
+`C1/options-5` move the same point from 0.2230 to 0.0074. The design's
 contention-versus-control crossover is not reached on the cluster: the control
 pools are spread over the ten-slot window and do not bind before the preamble
 pool does.
@@ -83,14 +88,14 @@ pool does.
 
 | point | success | violation | median ms | p95 ms |
 |---|---|---|---|---|
-| C_max=7, dwell 5 | 0.4218 | 0.5782 | 50.1 | 138.1 |
-| C_max=7, dwell 10 | 1.0000 | 0.1278 | 136.4 | 344.1 |
+| C_max=7, dwell 5 | 0.4222 | 0.5778 | 50.1 | 138.1 |
+| C_max=7, dwell 10 | 1.0000 | 0.1274 | 135.7 | 344.1 |
 | C_max=7, dwell 20 | 0.9591 | 0.1628 | 134.0 | 345.4 |
-| C_max=7, dwell 50 | 0.7767 | 0.2561 | 138.1 | 337.1 |
+| C_max=7, dwell 50 | 0.7767 | 0.2560 | 138.1 | 337.1 |
 | C_max=7, dwell 100 | 0.5436 | 0.4564 | 128.1 | 507.1 |
 | C_max=19, dwell 5 | 0.7216 | 0.2786 | 30.4 | 84.1 |
-| C_max=19, dwell 10 | 1.0000 | 0.0151 | 48.1 | 124.1 |
-| C_max=19, dwell 20 | 1.0000 | 0.0154 | 54.0 | 127.1 |
+| C_max=19, dwell 10 | 1.0000 | 0.0152 | 48.1 | 124.1 |
+| C_max=19, dwell 20 | 1.0000 | 0.0153 | 54.0 | 127.1 |
 | C_max=19, dwell 50 | 1.0000 | 0.0146 | 61.1 | 157.0 |
 | C_max=19, dwell 100 | 0.9020 | 0.0980 | 61.1 | 147.4 |
 | C_max=37, any dwell | 1.0000 | 0.0000 | 28.8 | 67.7 |
@@ -99,7 +104,7 @@ pool does.
   finish inside one window. At C_max=7, dwell 5 the mix collapses to CG and DG
   (2,039 of 2,077 capable UEs) and 1,692 UEs are unassigned; P1 and P2 UEs
   violate at 100 percent. This is the hard floor of H3, not contention.
-- Dwell 10 beats dwell 20 at C_max=7 (12.8 vs 16.3 percent) although the duty is
+- Dwell 10 beats dwell 20 at C_max=7 (12.7 vs 16.3 percent) although the duty is
   the same (1/6). The cycle is 60 ms against 120 ms, so the wait floor halves;
   the 19-slot procedure spans more windows, and the shorter cycle still wins.
   This non-monotonic pair survives three seeds and is reported as a finding, not
@@ -114,24 +119,25 @@ pool does.
 
 | shares | success | violation | median ms |
 |---|---|---|---|
-| loose-heavy | 1.0000 | 0.0060 | 54.1 |
-| default | 1.0000 | 0.0154 | 54.0 |
+| loose-heavy | 1.0000 | 0.0063 | 54.0 |
+| default | 1.0000 | 0.0153 | 54.0 |
 | tight-heavy | 1.0000 | 0.0314 | 54.1 |
 
 The violation rate follows the tight share almost linearly (35, 20, 10 percent of
 UEs at 100 ms give 3.1, 1.5, 0.6 percent violations) while the access mix and the
-median completion are unchanged. The allocator does not re-mix under budget
-pressure; this is the same defect as G2 (no stage-3 term, first-option
-tie-break), not evidence that the mix is insensitive.
+median completion barely move. The allocator does not re-mix under budget
+pressure: the tie-break now prices resources on an exact score tie, but stage 3
+still does not enter the score, so a budget change cannot make the policy prefer
+a cheaper mix.
 
 ## E5 - dedicated preambles (3 seeds)
 
 | dedicated | success | violation | median ms |
 |---|---|---|---|
 | 0 | 1.0000 | 0.0299 | 54.1 |
-| 8 | 1.0000 | 0.0154 | 54.0 |
-| 16 | 1.0000 | 0.0085 | 49.4 |
-| 32 | 1.0000 | 0.0049 | 48.1 |
+| 8 | 1.0000 | 0.0153 | 54.0 |
+| 16 | 1.0000 | 0.0084 | 49.4 |
+| 32 | 1.0000 | 0.0047 | 48.1 |
 
 Monotone: each doubling of the dedicated pool roughly halves the violation rate
 as CFRA substitutes for contention. The median also falls, because a CFRA UE
@@ -142,9 +148,9 @@ binds on the *split* between the two pools, not on the 64 total.
 
 | MHz | PRB | success | violation | median ms |
 |---|---|---|---|---|
-| 5 | 27 | 1.0000 | 0.0128 | 54.1 |
-| 15 | 83 | 1.0000 | 0.0154 | 54.0 |
-| 30 | 166 | 1.0000 | 0.0166 | 54.1 |
+| 5 | 27 | 1.0000 | 0.0127 | 54.1 |
+| 15 | 83 | 1.0000 | 0.0153 | 54.0 |
+| 30 | 166 | 1.0000 | 0.0164 | 54.1 |
 
 Flat within three seeds. At 131 UEs per cell the PRB grid is not the binding
 resource: the delay comes from the hop wait and the access procedure, and the
@@ -155,11 +161,11 @@ where PUSCH saturates, which E2's density 100 does not reach either.
 
 | correlation | success | violation | median ms |
 |---|---|---|---|
-| independent | 1.0000 | 0.0154 | 54.0 |
-| advanced-on-tight | 1.0000 | 0.0126 | 48.4 |
+| independent | 1.0000 | 0.0153 | 54.0 |
+| advanced-on-tight | 1.0000 | 0.0127 | 48.4 |
 
 Putting advanced capabilities on tight-budget UEs lowers the violation rate by
-0.3 points and the median by 5.6 ms, because the tight UEs then have CG/DG/2-step
+0.26 points and the median by 5.6 ms, because the tight UEs then have CG/DG/2-step
 available. The effect is small: fairness claims need the low-support strata of
 E7 to be large, and 3 seeds cannot support a stratum claim.
 
@@ -167,9 +173,9 @@ E7 to be large, and 3 seeds cannot support a stratum claim.
 
 | success | violation (95% CI) | median ms | p95 ms | cost |
 |---|---|---|---|---|
-| 0.9057 | 0.2048 [0.1966, 0.2130] | 152.6 | 427.6 | 498,104 |
+| 0.9057 | 0.2046 [0.1966, 0.2126] | 151.8 | 421.8 | 490,212 |
 
-By budget class (one probe episode): tight 60.4 percent violation and 52.3
+By budget class (one probe episode): tight 60.3 percent violation and 52.3
 percent success, short 27.6 percent violation with 100 percent success, medium
 0.5 percent, loose 0.0. By capability: P1 46.4 percent, P2-P7 between 8 and 10
 percent. 9.3 percent of UEs are unassigned at plan time.
@@ -185,17 +191,17 @@ procedure.
 
 | point | success | violation | note |
 |---|---|---|---|
-| detection 1.00 | 1.0000 | 0.0154 | baseline |
-| detection 0.99 | 1.0000 | 0.0163 | +0.09 pt |
-| detection 0.90 | 1.0000 | 0.0233 | +0.79 pt |
-| MsgA 0.99 | 1.0000 | 0.0154 | baseline |
-| MsgA 0.95 | 1.0000 | 0.0168 | +0.14 pt |
-| DG decode 0.00 | 1.0000 | 0.0154 | baseline |
-| DG decode 0.01 | 0.9981 | 0.0173 | 8-11 failures per episode, no DG retry |
-| sync off | 1.0000 | 0.0154 | baseline |
-| sync 0.005 | 1.0000 | 0.0154 | 4-7 sync errors, all recovered |
-| sync 0.01 | 1.0000 | 0.0154 | 12-16 sync errors, 144-192 PRB-symbols wasted |
-| fallback off | 1.0000 | 0.0071 | half the baseline |
+| detection 1.00 | 1.0000 | 0.0153 | baseline |
+| detection 0.99 | 1.0000 | 0.0162 | +0.09 pt |
+| detection 0.90 | 1.0000 | 0.0232 | +0.79 pt |
+| MsgA 0.99 | 1.0000 | 0.0153 | baseline |
+| MsgA 0.95 | 1.0000 | 0.0167 | +0.14 pt |
+| DG decode 0.00 | 1.0000 | 0.0153 | baseline |
+| DG decode 0.01 | 0.9981 | 0.0172 | 8-11 failures per episode, no DG retry |
+| sync off | 1.0000 | 0.0153 | baseline |
+| sync 0.005 | 1.0000 | 0.0153 | 4-7 sync errors, all recovered |
+| sync 0.01 | 1.0000 | 0.0153 | 12-16 sync errors, 144-192 PRB-symbols wasted |
+| fallback off | 1.0000 | 0.0069 | less than half the baseline |
 
 The CG sync path fires and the next CG occasion recovers it, so the KPI does not
 move while the waste does (N4). The DG decode failure is terminal by design and
@@ -208,13 +214,33 @@ H2 at the default point - the fallback helps success but costs the delay budget.
 
 | control | violation | reading |
 |---|---|---|
-| mu 0 / mu 2 | 0.0154 / 0.0154 | inert (G1) |
-| lambda 0.1 / 10 | 0.0154 / 0.0154 | inert at this point: no predicted violation |
-| decision latency 0 | 0.0089 | an earlier decision helps |
-| decision latency 5 | 0.0154 | same as 1 ms at this load |
+| mu 0 / mu 2 | 0.0153 / 0.0153 | inert (G1) |
+| lambda 0.1 / 10 | 0.0153 / 0.0153 | inert at this point: no predicted violation |
+| decision latency 0 | 0.0091 | an earlier decision helps |
+| decision latency 5 | 0.0153 | same as 1 ms at this load |
 | options 1 | 0.2230 | pruning depth is the dominant lever |
-| options 5 | 0.0080 | 5 starts per type nearly removes the gap |
-| swap 0 / 500 | 0.0154 / 0.0154 | inert (G3); cost identical at 239,148 |
+| options 5 | 0.0074 | 5 starts per type nearly removes the gap |
+| swap 0 / 500 | 0.0153 / 0.0153 | inert (G3); cost identical at 239,148 |
+
+## Cost, after the tie-break
+
+Stage 3 is the sum over assigned UEs of the option cost (1 per PRB-symbol, 12 per
+control unit): CG 12, DG 36, 2-step 56, 4-step 76.
+
+| point | total | per UE |
+|---|---:|---:|
+| cluster joint, 30 seeds | 238,793 | 49.26 |
+| full profile, 3 seeds | 490,212 | 43.42 |
+| tiny instance, allocator | 520 | 37.14 |
+| tiny instance, exact reference | 520 | 37.14 |
+
+The tie-break reaches the exact reference cost on the tiny instance, where the
+pre-fix run took 1,064. At the cluster point the total barely moves (239,352 for
+seed 1, before and after) because the congestion price already separated the
+options; the seed-1 per-UE cheapest-option lower bound is 229,112, so stage 3 is
+within 4.5 percent of a bound that ignores capacity. Stage 3 is reported, not
+optimized: the score still has no cost term, and the swap cannot change an access
+type.
 
 ## Answers to the research questions
 
@@ -223,8 +249,8 @@ H2 at the default point - the fallback helps success but costs the delay budget.
    the dedicated pool allows, and 4-step only for the UEs that have nothing else.
    The joint mix cuts the violation rate from 28.3 to 1.6 percent against the
    4-step baseline.
-2. **How much does joint selection gain?** 26.7 points against the 3GPP
-   baseline, 10.1 points against the best family arm (CBRA family), and 1.6
+2. **How much does joint selection gain?** 26.8 points against the 3GPP
+   baseline, 10.1 points against the best family arm (CBRA family), and 1.3
    points against the RACH-less family on eligible UEs. The gain is not uniform:
    it is concentrated in P1 UEs, which the mix cannot help at all.
 3. **How do `C_max` and dwell change the answer?** They set a floor. Below the
@@ -237,19 +263,19 @@ H2 at the default point - the fallback helps success but costs the delay budget.
    of the cohort. Control pools do not bind before the preamble pool. PRB
    capacity does not bind at any tested point.
 5. **How close is the allocator to the exact reference?** On the tiny instance it
-   matches stages 1 and 2 and is 2.05x the optimum on stage 3. The gap is the
-   greedy's missing cost term, not the reference or the objective order.
+   matches all three stages, 520 against 520, after the tie-break. At the
+   headline point stage 3 is within 4.5 percent of a per-UE lower bound.
+   Stage 3 remains reported, not optimized.
 
 ## Ranked next actions
 
-1. **Revise the allocation score (G1, G2, G3 as one change).** Add a small cost
-   term, make `mu` act on the order or the acceptance, and give the swap an
-   access-type exchange. Re-run E1 and C1; require the tiny-instance stage-3 gap
-   to fall below 1.1x and the swap to change something.
-2. **Fix N2 (N1 is fixed in v5.1 item 34).** Section 7.6 now uses
-   `M = preamble_total - preamble_dedicated`. The full-profile row still needs a
-   caption that 853.47 km is the footprint radius and the outermost centre is
-   852.17 km.
+1. **Decide G1 and G3 (G2's tie-break is applied).** G2 is closed at the option
+   level: an exact tie takes the cheaper option and the tiny-instance stage-3 gap
+   is zero. What remains is the missing cost term in the score (add
+   `epsilon*direct_cost` if the stage-3 claim must hold at low load) and the swap
+   (exchange access types, or drop it from the claim).
+2. **Fix N2.** The full-profile row still needs a caption that 853.47 km is the
+   footprint radius and the outermost centre is 852.17 km.
 3. **Decide the timeout semantics (N3).** Either state that RAR and CR timeouts
    cannot occur under active-slot timers, or restore wall-clock windows and
    re-measure the pause cases (the C_max=7 rows would change).
@@ -262,8 +288,8 @@ H2 at the default point - the fallback helps success but costs the delay budget.
 
 ```sh
 . .venv/bin/activate
-pytest -q                                        # 90 tests, V1-V8
-python tools/sweep.py --experiment E1 --out results --resume
-python tools/sweep.py --experiment E2 --out results --resume   # ... E9, C1
+pytest -q                                        # 91 tests, V1-V8
+python tools/sweep.py --experiment E1 --out results
+python tools/sweep.py --experiment E2 --out results   # ... E9, C1
 python tools/report.py --results results
 ```

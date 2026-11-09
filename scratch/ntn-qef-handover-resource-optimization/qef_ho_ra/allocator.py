@@ -252,9 +252,10 @@ class Allocator:
             ue = self.by_id[uid]
             best = None
             best_score = math.inf
+            best_tie = (math.inf, math.inf, math.inf)
             preamble_blocked = False
             other_blocked = False
-            for option in self.options[uid]:
+            for index, option in enumerate(self.options[uid]):
                 if self.ledger.blocking_pools(option.demands):
                     effective = self._effective(ue, option)
                 else:
@@ -270,9 +271,16 @@ class Allocator:
                         other_blocked = True
                     continue
                 s = self.score(ue, effective)
-                if s < best_score - 1e-12:
+                # DESIGN.md 9.6 leaves an equal score to the enumeration order,
+                # which made the mix depend on the ACCESS_TYPES order (G2). On a
+                # tie, take the cheaper option, then the earlier completion, then
+                # the enumeration order.
+                tie = (effective.direct_cost, effective.predicted_completion, index)
+                if (best is None or s < best_score - 1e-12
+                        or (abs(s - best_score) <= 1e-12 and tie < best_tie)):
                     best_score = s
                     best = effective
+                    best_tie = tie
             if best is None:
                 reason = "preamble-exhausted" if (preamble_blocked and not other_blocked) else "capacity"
                 self.records[uid] = PlanRecord(uid, ue.cell, reason=reason)

@@ -90,6 +90,23 @@ def test_objective_is_lexicographic_and_swap_never_worsens():
     assert swapped["allocation"].stats["assigned"] >= plain["allocation"].stats["assigned"]
 
 
+def test_equal_score_tie_prefers_the_cheaper_access():
+    """G2: on an exact score tie the cheaper option wins, not the first one.
+
+    On the tiny instance every score is zero for the first UE, so the old
+    strict comparison took the first enumerated option (4-step, cost 76). The
+    tie-break reaches the exact reference cost of 520.
+    """
+    from qef_ho_ra.cli import load_config
+
+    cfg = load_config("scenarios/tiny-joint.json")
+    bundle = Runner(cfg).episode(1)
+    summary = bundle["summary"]
+    assert summary["objective"]["stage3_resource_cost"] == 520
+    assert summary["access_mix_planned"]["cg"] >= 1
+    assert summary["access_mix_planned"]["2step-cbra"] >= 1
+
+
 def test_mu_is_inert_under_option_wise_scoring():
     """Characterisation of a design gap: mu multiplies a UE-level constant.
 
