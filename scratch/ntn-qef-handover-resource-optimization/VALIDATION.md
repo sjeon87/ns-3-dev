@@ -61,10 +61,10 @@ These were declared before the runs and cost nothing to reverse.
 **G1 - `mu` is inert.** `mu*(1-pressure[u])` is constant across a UE's option
 set, so it cannot change an option choice. `C1/mu-0` and `C1/mu-2` produce
 identical plans and identical KPIs (violation 0.0154 in both, 3 seeds). The
-stage-2 signal exists only in the swap's lexicographic test. Fix: move the term
-to the *ordering* key (for example, order by `pressure` descending before slack)
-or add it to the acceptance rule; either changes the algorithm and needs a
-design revision.
+stage-2 signal exists only in the swap's lexicographic test. Decision: the term
+stays as declared, with a comment in `allocator.score` that records the reason,
+so the configured score and the design agree. Moving it to the ordering key or
+the acceptance rule remains a design revision, not a code fix.
 
 **G2 - stage 3 is unreachable from the greedy.** The score has no cost term, and
 `score < best - 1e-12` keeps the first enumerated option on a tie. At low

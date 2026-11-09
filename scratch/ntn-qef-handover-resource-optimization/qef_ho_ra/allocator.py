@@ -125,6 +125,10 @@ class Allocator:
         if t > budget:
             s += 1000.0
             s += self.cfg.allocator.lambda_ * (t - budget)
+        # DESIGN.md 9.6 declares this stage-2 term. pressure[u] is a property of
+        # the UE, not of the option, so the term is constant across the UE's
+        # candidates and cannot change this argmin (VALIDATION.md G1). It stays
+        # to match the declared score and as the hook for a later revision.
         s += self.cfg.allocator.mu * (1.0 - self.pressure(ue))
         for m in option.demands:
             util = self.ledger.utilisation(m.pool, option.cell, m.slot)
