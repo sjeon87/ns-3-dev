@@ -68,9 +68,10 @@ objective or scope.
    This realises the "80 RARs per occasion" statement of section 7.6.
 3. **Preamble split.** Contention draws use the 56-preamble contention pool, not
    the 64-preamble total.
-4. **Swap.** An option's timeline depends on its own UE's propagation delay, so
-   options cannot be transplanted between UEs. The swap exchanges the two start
-   slots and each UE keeps its access type.
+4. **Swap.** A pairwise exchange preserves the cost multiset, so the pass can move
+   only stages 1-2. It exchanges the two access types at the current start slots,
+   inside each UE's pruned set, and a pair whose exchanged `(access, start)` is
+   absent is skipped. Measured empty at every tested point (VALIDATION G3).
 5. **CG offset.** The per-UE configured-grant offset is `(ue*5 + 3) mod P_cg`.
 6. **Hotspot.** The hotspot cells share `w*N_cells` of weight equally and the
    other cells share `(1-w)*N_cells`; `w = 0` is uniform.

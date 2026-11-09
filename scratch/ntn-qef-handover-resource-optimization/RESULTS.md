@@ -220,7 +220,16 @@ H2 at the default point - the fallback helps success but costs the delay budget.
 | decision latency 5 | 0.0153 | same as 1 ms at this load |
 | options 1 | 0.2230 | pruning depth is the dominant lever |
 | options 5 | 0.0074 | 5 starts per type nearly removes the gap |
-| swap 0 / 500 | 0.0153 / 0.0153 | inert (G3); cost identical at 239,148 |
+| swap 0 / 500 | 0.0153 / 0.0153 | inert (G3); cost identical at 239,148, 0 of 2,500 candidates accepted |
+
+The swap result deserves one line. With the access-type exchange at the fixed
+start, 4,950 pairs are tested per episode and 2,500 of them have both lookups
+present, yet none improves the tuple. That is structural, not an implementation
+gap: a pairwise exchange preserves the pair's cost multiset, so stage 3 cannot
+move, and the greedy already assigns in slack order, so the fast types are
+already on the tight UEs. The pass is a repair pass for stages 1-2 and is empty
+at every tested point. A stage-3 improvement needs a *move* (one UE to another of
+its own options, including the unassigned), not a swap.
 
 ## Cost, after the tie-break
 
@@ -269,11 +278,13 @@ type.
 
 ## Ranked next actions
 
-1. **Decide G1 and G3 (G2's tie-break is applied).** G2 is closed at the option
-   level: an exact tie takes the cheaper option and the tiny-instance stage-3 gap
-   is zero. What remains is the missing cost term in the score (add
-   `epsilon*direct_cost` if the stage-3 claim must hold at low load) and the swap
-   (exchange access types, or drop it from the claim).
+1. **Decide G1 (G2's tie-break is applied and G3 is closed as a null result).**
+   G2 is closed at the option level: an exact tie takes the cheaper option and the
+   tiny-instance stage-3 gap is zero. G3 is closed structurally: a pairwise
+   exchange preserves the cost multiset, so the swap can only repair stages 1-2,
+   and it accepted 0 of 2,500 candidates. What remains is `mu` (give it a real
+   lever or drop it) and, if a stage-3 local search is wanted, a *move* pass over
+   each UE's own options including the unassigned.
 2. **Fix N2.** The full-profile row still needs a caption that 853.47 km is the
    footprint radius and the outermost centre is 852.17 km.
 3. **Decide the timeout semantics (N3).** Either state that RAR and CR timeouts

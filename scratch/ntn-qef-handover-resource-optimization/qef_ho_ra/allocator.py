@@ -95,6 +95,10 @@ class Allocator:
         self.violation_weight = 0.0
         self.cost = 0
         self.cg_waste = 0
+        self.swap_pairs = 0
+        self.swap_missing = 0
+        self.swap_candidates = 0
+        self.swap_accepted = 0
 
     # -- objective -------------------------------------------------------
     def objective(self) -> tuple[float, float, int]:
@@ -297,6 +301,12 @@ class Allocator:
             "stratum_n": list(self.stratum_n),
             "stratum_supported": list(self.stratum_supported),
             "cg_waste": self.cg_waste,
+            "swap": {
+                "pairs": self.swap_pairs,
+                "missing": self.swap_missing,
+                "candidates": self.swap_candidates,
+                "accepted": self.swap_accepted,
+            },
         }
         return AllocationResult(self.records, self.ledger, order, stats)
 
@@ -336,12 +346,18 @@ class Allocator:
         rec_u, rec_v = self.records[u_id], self.records[v_id]
         o_u, o_v = rec_u.option, rec_v.option
         assert o_u is not None and o_v is not None
-        if (o_u.access, o_u.start_slot) == (o_v.access, o_v.start_slot):
+        self.swap_pairs += 1
+        if o_u.access == o_v.access:
             return False
-        new_u = self._option_lookup(u_id, o_u.access, o_v.start_slot)
-        new_v = self._option_lookup(v_id, o_v.access, o_u.start_slot)
+        # Exchange the two access types at the current start slots, inside the
+        # pruned set. An option's timeline belongs to its own UE's propagation
+        # delay, so the option is looked up in the UE's own set, never copied.
+        new_u = self._option_lookup(u_id, o_v.access, o_u.start_slot)
+        new_v = self._option_lookup(v_id, o_u.access, o_v.start_slot)
         if new_u is None or new_v is None:
+            self.swap_missing += 1
             return False
+        self.swap_candidates += 1
 
         before = self.objective()
         self._remove(u_id)
@@ -350,6 +366,7 @@ class Allocator:
         applied_v = self._apply(ue_v, new_v, "assigned")
         if applied_u is not None and applied_v is not None:
             if self.objective() < before:
+                self.swap_accepted += 1
                 return True
         if applied_u is not None:
             self._remove(u_id)

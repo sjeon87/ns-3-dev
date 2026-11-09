@@ -167,6 +167,7 @@ def analyze(cfg, resolved: dict, layout, ues, allocation, episode, seed: int) ->
             "assigned": allocation.stats["assigned"],
             "reasons": plan_reasons,
             "fallback_used": sum(1 for r in allocation.records.values() if r.fallback_used),
+            "swap": allocation.stats.get("swap", {}),
         },
         "resources": {
             "ledger_totals": ledger_totals,

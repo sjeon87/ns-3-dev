@@ -47,8 +47,10 @@ These were declared before the runs and cost nothing to reverse.
 3. **Preamble split.** Contention draws use the 56-preamble contention pool, not
    the 64-preamble total (see N1).
 4. **Swap scope.** An option's timeline depends on its own UE's propagation
-   delay, so two options are not interchangeable objects. The swap exchanges the
-   two start slots and keeps each UE's access type (see G3).
+   delay, so two options are not interchangeable objects. The pass exchanges the
+   two access types at the current start slots, rebuilds each choice from its own
+   UE's pruned set, and skips a pair whose exchanged `(access, start)` is absent
+   (see G3).
 5. **CG offset** `(ue*5 + 3) mod P_cg`; **hotspot** weight split as declared in
    README.md; **CFRA retry** uses the contention pool; **DG** has one grant and no
    retry after a decode failure.
@@ -84,13 +86,25 @@ unchanged. Stage 3 remains *reported, not optimized* (decision D): the score
 still has no cost term, so `epsilon*direct_cost` remains an option if the claim
 must hold at low load.
 
-**G3 - the swap pass is inert at the headline point.** A start-slot exchange
-leaves the access type - and therefore the stage-3 cost - unchanged, and it
-rarely changes a violation, because no planned UE violates at the default
-operating point. `C1/swap-0` and `C1/swap-500` give identical summaries, plans and
-costs (239,148). The tiny-instance gap in V7 survives the swap for the same
-reason. Fix: let the swap exchange access types and rebuild both timelines, or
-drop the swap from the claim.
+**G3 - the swap cannot change the objective.** *(Closed as a measured null
+result.)* The pass exchanges two assigned UEs' options and accepts a pair only if
+the tuple improves lexicographically. Two facts make it empty:
+
+- Stage 3 is invariant under any pairwise exchange that keeps both UEs assigned.
+  The pair's cost multiset is unchanged, so
+  `cost_u(a_v) + cost_v(a_u) = cost_u(a_u) + cost_v(a_v)` for any two types.
+- Stages 1 and 2 change only if one UE's violation flips without flipping the
+  other's. The greedy assigns in slack order, so tight UEs already hold the fast
+  types; at a fixed start the exchange puts the slower procedure on the partner.
+
+Measured after implementing the access-type exchange at the fixed start (option
+A): 4,950 pairs tested per point, with 2,500 / 2,100 / 2,331 / 2,275 candidate
+pairs (both lookups present) at the cluster default, density 100, C_max=7 dwell 5,
+and a tight-heavy cohort. **0 accepted at all four points.** `C1/swap-0` and
+`C1/swap-500` remain identical per seed in violation and cost. The pass is kept as
+a repair pass for stages 1-2 and is labelled empty at the tested points; stage 3
+stands as reported, not optimized (D). An earlier note in this record said a type
+exchange could move stage 3. That was wrong, by the identity above.
 
 **N1 - singleton arithmetic uses the wrong pool.** *(Resolved in design v5.1 item 34.)*
 Section 7.6 evaluated `131*(63/64)^130 = 16.9` with the 64-preamble total, while section
@@ -137,10 +151,10 @@ tighter deadline or a larger probability.
 
 ## 5. What would close the open items
 
-1. Decide G1 and G3 (G2's tie-break is applied and its tiny gap is closed): give
-   `mu` a real lever (ordering or acceptance) and either exchange access types in
-   the swap or drop it from the claim. Re-run E1 and C1 and require the swap to
-   change something.
+1. Decide G1 (G2's tie-break is applied and G3 is closed as a null result): give
+   `mu` a real lever (ordering or acceptance), or drop it from the score. The swap
+   needs no change; if a local search is wanted, use a *move* pass over a UE's own
+   options (including the unassigned), not a pairwise exchange.
 2. Correct N2 in the full-profile caption (N1 is fixed in v5.1 item 34).
 3. State in section 8.2 that RAR and CR timeouts cannot occur under active-slot
    timers, or restore wall-clock windows and re-measure the pause cases.
